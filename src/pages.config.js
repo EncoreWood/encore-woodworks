@@ -50,6 +50,7 @@
 import Dashboard from './pages/Dashboard';
 import ProjectDetails from './pages/ProjectDetails';
 import Kanban from './pages/Kanban';
+import Calendar from './pages/Calendar';
 import __Layout from './Layout.jsx';
 
 
@@ -57,6 +58,7 @@ export const PAGES = {
     "Dashboard": Dashboard,
     "ProjectDetails": ProjectDetails,
     "Kanban": Kanban,
+    "Calendar": Calendar,
 }
 
 export const pagesConfig = {

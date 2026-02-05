@@ -1,12 +1,13 @@
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Box, Kanban as KanbanIcon } from "lucide-react";
+import { LayoutDashboard, Box, Kanban as KanbanIcon, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Layout({ children, currentPageName }) {
   const navItems = [
     { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
-    { name: "Board", icon: KanbanIcon, page: "Kanban" }
+    { name: "Board", icon: KanbanIcon, page: "Kanban" },
+    { name: "Calendar", icon: Calendar, page: "Calendar" }
   ];
 
   return (
