@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import RoomsEditor from "./RoomsEditor";
+import FileUploader from "./FileUploader";
 
 const initialFormState = {
   project_name: "",
@@ -23,6 +24,7 @@ const initialFormState = {
   cabinet_style: "",
   hardware_type: "",
   notes: "",
+  files: [],
   rooms: []
 };
 
@@ -238,6 +240,16 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
                 />
               </div>
             </div>
+          </div>
+
+          {/* Project Files */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Project Files</h3>
+            <FileUploader
+              files={formData.files || []}
+              onChange={(files) => handleChange("files", files)}
+              label="Contracts, Designs, etc."
+            />
           </div>
 
           {/* Rooms */}

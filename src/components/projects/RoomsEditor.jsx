@@ -4,13 +4,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Plus, Trash2, DoorOpen } from "lucide-react";
+import FileUploader from "./FileUploader";
 
 const emptyRoom = {
   room_name: "",
   cabinet_count: "",
   style: "",
   finish: "",
-  notes: ""
+  notes: "",
+  files: []
 };
 
 export default function RoomsEditor({ rooms = [], onChange }) {
@@ -112,6 +114,13 @@ export default function RoomsEditor({ rooms = [], onChange }) {
                     placeholder="Room-specific notes..."
                     rows={2}
                     className="resize-none"
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <FileUploader
+                    files={room.files || []}
+                    onChange={(files) => handleRoomChange(index, "files", files)}
+                    label="Room Files"
                   />
                 </div>
               </div>
