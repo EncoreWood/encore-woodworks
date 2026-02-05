@@ -33,12 +33,12 @@ export default function FileViewer({ file, className = "" }) {
     return (
       <div className={className}>
         <iframe
-          src={file.url}
+          src={`${file.url}#view=FitH`}
           className="w-full h-96 rounded-lg border border-slate-200"
           title={file.name}
         />
         <a 
-          href={file.url} 
+          href={`${file.url}#view=FitH`}
           target="_blank" 
           rel="noopener noreferrer"
           className="flex items-center gap-2 mt-2 text-xs text-amber-600 hover:text-amber-700"
