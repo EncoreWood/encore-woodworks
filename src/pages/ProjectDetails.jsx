@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import ProjectForm from "../components/projects/ProjectForm";
+import FileViewer from "../components/projects/FileViewer";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -226,21 +227,9 @@ export default function ProjectDetails() {
                 <h2 className="text-lg font-semibold text-slate-900 mb-4">
                   Project Files ({project.files.length})
                 </h2>
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {project.files.map((file, idx) => (
-                    <a
-                      key={idx}
-                      href={file.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100 hover:border-amber-200 hover:bg-amber-50 transition-all group"
-                    >
-                      <FileIcon className="w-5 h-5 text-slate-400 group-hover:text-amber-500" />
-                      <span className="flex-1 text-sm text-slate-700 group-hover:text-amber-700">
-                        {file.name}
-                      </span>
-                      <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-amber-500" />
-                    </a>
+                    <FileViewer key={idx} file={file} />
                   ))}
                 </div>
               </Card>
@@ -320,20 +309,10 @@ export default function ProjectDetails() {
                             <p className="text-sm text-slate-600 mt-2">{room.notes}</p>
                           )}
                           {room.files && room.files.length > 0 && (
-                            <div className="mt-3 space-y-1">
-                              <p className="text-xs font-medium text-slate-500 mb-1">Files:</p>
+                            <div className="mt-3 space-y-2">
+                              <p className="text-xs font-medium text-slate-500 mb-2">Files:</p>
                               {room.files.map((file, fileIdx) => (
-                                <a
-                                  key={fileIdx}
-                                  href={file.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-2 text-xs text-amber-600 hover:text-amber-700 group"
-                                >
-                                  <FileIcon className="w-3 h-3" />
-                                  <span className="truncate">{file.name}</span>
-                                  <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100" />
-                                </a>
+                                <FileViewer key={fileIdx} file={file} />
                               ))}
                             </div>
                           )}
