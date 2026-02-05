@@ -31,7 +31,8 @@ import {
   Palette,
   Wrench,
   FileText,
-  Loader2
+  Loader2,
+  DoorOpen
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -216,6 +217,51 @@ export default function ProjectDetails() {
                 ))}
               </div>
             </Card>
+
+            {/* Rooms */}
+            {project.rooms && project.rooms.length > 0 && (
+              <Card className="p-6 bg-white border-0 shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-900 mb-4">
+                  Rooms ({project.rooms.length})
+                </h2>
+                <div className="space-y-3">
+                  {project.rooms.map((room, idx) => (
+                    <div key={idx} className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                      <div className="flex items-start gap-3">
+                        <DoorOpen className="w-5 h-5 text-amber-500 mt-0.5" />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-medium text-slate-900">{room.room_name || `Room ${idx + 1}`}</h3>
+                            {room.cabinet_count && (
+                              <Badge variant="outline" className="text-xs">
+                                {room.cabinet_count} cabinets
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            {room.style && (
+                              <div>
+                                <span className="text-slate-500">Style:</span>{" "}
+                                <span className="text-slate-700">{room.style}</span>
+                              </div>
+                            )}
+                            {room.finish && (
+                              <div>
+                                <span className="text-slate-500">Finish:</span>{" "}
+                                <span className="text-slate-700">{room.finish}</span>
+                              </div>
+                            )}
+                          </div>
+                          {room.notes && (
+                            <p className="text-sm text-slate-600 mt-2">{room.notes}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
 
             {/* Specifications */}
             {(project.cabinet_style || project.hardware_type || project.notes) && (

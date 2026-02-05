@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
+import RoomsEditor from "./RoomsEditor";
 
 const initialFormState = {
   project_name: "",
@@ -21,11 +22,18 @@ const initialFormState = {
   estimated_completion: "",
   cabinet_style: "",
   hardware_type: "",
-  notes: ""
+  notes: "",
+  rooms: []
 };
 
 export default function ProjectForm({ open, onOpenChange, onSubmit, initialData, isLoading }) {
   const [formData, setFormData] = useState(initialData || initialFormState);
+
+  useEffect(() => {
+    if (open) {
+      setFormData(initialData || initialFormState);
+    }
+  }, [open, initialData]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -231,6 +239,12 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
               </div>
             </div>
           </div>
+
+          {/* Rooms */}
+          <RoomsEditor
+            rooms={formData.rooms || []}
+            onChange={(rooms) => handleChange("rooms", rooms)}
+          />
 
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
