@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -249,17 +250,53 @@ export default function ProjectDetails() {
             {/* Rooms */}
             {project.rooms && project.rooms.length > 0 && (
               <Card className="p-6 bg-white border-0 shadow-sm">
-                <h2 className="text-lg font-semibold text-slate-900 mb-4">
-                  Rooms ({project.rooms.length})
-                </h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    Rooms ({project.rooms.length})
+                  </h2>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-slate-500">
+                      {project.rooms.filter(r => r.completed).length}/{project.rooms.length} complete
+                    </span>
+                    <Progress 
+                      value={(project.rooms.filter(r => r.completed).length / project.rooms.length) * 100} 
+                      className="w-24 h-2 bg-slate-100"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-3">
                   {project.rooms.map((room, idx) => (
-                    <div key={idx} className="p-4 bg-slate-50 rounded-lg border border-slate-100">
+                    <div 
+                      key={idx} 
+                      className={cn(
+                        "p-4 rounded-lg border transition-all",
+                        room.completed 
+                          ? "bg-emerald-50 border-emerald-200" 
+                          : "bg-slate-50 border-slate-100"
+                      )}
+                    >
                       <div className="flex items-start gap-3">
-                        <DoorOpen className="w-5 h-5 text-amber-500 mt-0.5" />
+                        <Checkbox
+                          checked={room.completed}
+                          onCheckedChange={(checked) => {
+                            const updatedRooms = [...project.rooms];
+                            updatedRooms[idx] = { ...room, completed: checked };
+                            updateMutation.mutate({ rooms: updatedRooms });
+                          }}
+                          className="mt-0.5 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                        />
+                        <DoorOpen className={cn(
+                          "w-5 h-5 mt-0.5",
+                          room.completed ? "text-emerald-600" : "text-amber-500"
+                        )} />
                         <div className="flex-1">
                           <div className="flex items-center justify-between mb-2">
-                            <h3 className="font-medium text-slate-900">{room.room_name || `Room ${idx + 1}`}</h3>
+                            <h3 className={cn(
+                              "font-medium",
+                              room.completed ? "text-emerald-700" : "text-slate-900"
+                            )}>
+                              {room.room_name || `Room ${idx + 1}`}
+                            </h3>
                             {room.cabinet_count && (
                               <Badge variant="outline" className="text-xs">
                                 {room.cabinet_count} cabinets

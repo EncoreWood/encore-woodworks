@@ -12,6 +12,7 @@ const emptyRoom = {
   style: "",
   finish: "",
   notes: "",
+  completed: false,
   files: []
 };
 
