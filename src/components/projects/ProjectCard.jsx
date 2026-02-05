@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Calendar, MapPin, User, ChevronRight } from "lucide-react";
+import { Calendar, MapPin, User, ChevronRight, DoorOpen } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -89,6 +89,30 @@ export default function ProjectCard({ project }) {
             </div>
           )}
         </div>
+
+        {/* Rooms List */}
+        {project.rooms && project.rooms.length > 0 && (
+          <div className="mb-4 p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
+              <DoorOpen className="w-4 h-4 text-slate-400" />
+              <span>Rooms ({project.rooms.length})</span>
+            </div>
+            <div className="space-y-1.5">
+              {project.rooms.slice(0, 3).map((room, idx) => (
+                <div key={idx} className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600">{room.room_name}</span>
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    {room.cabinet_count && <span>{room.cabinet_count} cabinets</span>}
+                    {room.style && <Badge variant="outline" className="text-xs py-0">{room.style}</Badge>}
+                  </div>
+                </div>
+              ))}
+              {project.rooms.length > 3 && (
+                <p className="text-xs text-slate-400">+{project.rooms.length - 3} more rooms</p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
