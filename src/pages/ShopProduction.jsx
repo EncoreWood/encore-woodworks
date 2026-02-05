@@ -1,6 +1,12 @@
+import { useState } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import ProductionItemForm from "../components/production/ProductionItemForm";
 
 const productionColumns = [
   { id: "face_frame", label: "Face Frame", color: "bg-blue-50" },
@@ -9,52 +15,165 @@ const productionColumns = [
 ];
 
 export default function ShopProduction() {
+  const queryClient = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+
+  const { data: items = [] } = useQuery({
+    queryKey: ["productionItems"],
+    queryFn: () => base44.entities.ProductionItem.list(),
+    initialData: []
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data) => base44.entities.ProductionItem.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+      setShowForm(false);
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.ProductionItem.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+    }
+  });
+
   const handleDragEnd = (result) => {
     if (!result.destination) return;
     
-    // TODO: Update production stage when items are added
-    console.log("Moved to:", result.destination.droppableId);
+    const itemId = result.draggableId;
+    const newStage = result.destination.droppableId;
+    
+    updateMutation.mutate({
+      id: itemId,
+      data: { stage: newStage }
+    });
   };
 
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Shop Production</h1>
-          <p className="text-slate-500 mt-1">Track projects through production stages</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Shop Production</h1>
+            <p className="text-slate-500 mt-1">Track projects through production stages</p>
+          </div>
+          <Button onClick={() => setShowForm(true)} className="bg-amber-600 hover:bg-amber-700">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Item
+          </Button>
         </div>
 
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex gap-4 overflow-x-auto pb-4">
-            {productionColumns.map((column) => (
-              <div key={column.id} className="flex-shrink-0 w-80">
-                <div className="mb-3 flex items-center justify-between">
-                  <h2 className="font-semibold text-slate-700">{column.label}</h2>
-                  <Badge variant="outline" className="text-xs">
-                    0
-                  </Badge>
-                </div>
+            {productionColumns.map((column) => {
+              const columnItems = items.filter((item) => item.stage === column.id);
+              
+              return (
+                <div key={column.id} className="flex-shrink-0 w-80">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h2 className="font-semibold text-slate-700">{column.label}</h2>
+                    <Badge variant="outline" className="text-xs">
+                      {columnItems.length}
+                    </Badge>
+                  </div>
 
-                <Droppable droppableId={column.id}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={`min-h-[500px] rounded-lg p-3 transition-colors ${
-                        snapshot.isDraggingOver ? "bg-slate-200" : column.color
-                      }`}
-                    >
-                      <div className="space-y-3">
-                        {/* Cards will go here */}
+                  <Droppable droppableId={column.id}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={`min-h-[500px] rounded-lg p-3 transition-colors ${
+                          snapshot.isDraggingOver ? "bg-slate-200" : column.color
+                        }`}
+                      >
+                        <div className="space-y-3">
+                          {columnItems.map((item, index) => (
+                            <Draggable key={item.id} draggableId={item.id} index={index}>
+                              {(provided, snapshot) => (
+                                <div
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                >
+                                  <Card
+                                    className={`p-4 bg-white border-0 shadow-sm transition-shadow ${
+                                      snapshot.isDragging ? "shadow-lg" : ""
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between mb-2">
+                                      <h3 className="font-medium text-slate-900">{item.name}</h3>
+                                      <Badge
+                                        variant="outline"
+                                        className={
+                                          item.type === "cabinet"
+                                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                                            : item.type === "misc"
+                                            ? "bg-purple-50 text-purple-700 border-purple-200"
+                                            : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                        }
+                                      >
+                                        {item.type === "cabinet" ? "Cabinet" : item.type === "misc" ? "Misc" : "Pick up"}
+                                      </Badge>
+                                    </div>
+                                    
+                                    {item.notes && (
+                                      <p className="text-sm text-slate-600 mb-3">{item.notes}</p>
+                                    )}
+                                    
+                                    {item.files && item.files.length > 0 && (
+                                      <div className="space-y-2 pt-2 border-t border-slate-100">
+                                        {item.files.map((file, idx) => (
+                                          <div key={idx} className="text-xs">
+                                            {file.url && (file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                              <img 
+                                                src={file.url} 
+                                                alt={file.name} 
+                                                className="w-full rounded-md border border-slate-200"
+                                              />
+                                            ) : file.url.match(/\.pdf$/i) ? (
+                                              <iframe 
+                                                src={file.url} 
+                                                className="w-full h-48 rounded-md border border-slate-200"
+                                                title={file.name}
+                                              />
+                                            ) : (
+                                              <a 
+                                                href={file.url} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="text-amber-600 hover:text-amber-700 underline"
+                                              >
+                                                {file.name}
+                                              </a>
+                                            ))}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </Card>
+                                </div>
+                              )}
+                            </Draggable>
+                          ))}
+                        </div>
+                        {provided.placeholder}
                       </div>
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </div>
-            ))}
+                    )}
+                  </Droppable>
+                </div>
+              );
+            })}
           </div>
         </DragDropContext>
+
+        <ProductionItemForm
+          open={showForm}
+          onOpenChange={setShowForm}
+          onSubmit={(data) => createMutation.mutate(data)}
+          isLoading={createMutation.isPending}
+        />
       </div>
     </div>
   );
