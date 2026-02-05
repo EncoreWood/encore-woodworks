@@ -24,9 +24,10 @@ const initialFormState = {
   cabinet_style: "",
   hardware_type: "",
   notes: "",
+  project_url: "",
   files: [],
   rooms: []
-};
+  };
 
 export default function ProjectForm({ open, onOpenChange, onSubmit, initialData, isLoading }) {
   const [formData, setFormData] = useState(initialData || initialFormState);
@@ -230,6 +231,16 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
                 />
               </div>
               <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="project_url">Project URL</Label>
+                <Input
+                  id="project_url"
+                  type="url"
+                  value={formData.project_url}
+                  onChange={(e) => handleChange("project_url", e.target.value)}
+                  placeholder="https://example.com/project"
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea
                   id="notes"
@@ -239,8 +250,8 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
                   rows={3}
                 />
               </div>
-            </div>
-          </div>
+              </div>
+              </div>
 
           {/* Project Files */}
           <div className="space-y-4">

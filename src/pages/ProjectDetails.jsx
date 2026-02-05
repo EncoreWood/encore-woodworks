@@ -221,6 +221,58 @@ export default function ProjectDetails() {
               </div>
             </Card>
 
+            {/* Specifications */}
+            {(project.cabinet_style || project.hardware_type || project.project_url || project.notes) && (
+              <Card className="p-6 bg-white border-0 shadow-sm">
+                <h2 className="text-lg font-semibold text-slate-900 mb-4">Specifications</h2>
+                <div className="space-y-4">
+                  {project.cabinet_style && (
+                    <div className="flex items-start gap-3">
+                      <Palette className="w-5 h-5 text-slate-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-slate-500">Cabinet Style</p>
+                        <p className="font-medium text-slate-900">{project.cabinet_style}</p>
+                      </div>
+                    </div>
+                  )}
+                  {project.hardware_type && (
+                    <div className="flex items-start gap-3">
+                      <Wrench className="w-5 h-5 text-slate-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-slate-500">Hardware</p>
+                        <p className="font-medium text-slate-900">{project.hardware_type}</p>
+                      </div>
+                    </div>
+                  )}
+                  {project.project_url && (
+                    <div className="flex items-start gap-3">
+                      <ExternalLink className="w-5 h-5 text-slate-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-slate-500">Project URL</p>
+                        <a 
+                          href={project.project_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="font-medium text-amber-600 hover:text-amber-700 underline"
+                        >
+                          {project.project_url}
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  {project.notes && (
+                    <div className="flex items-start gap-3">
+                      <FileText className="w-5 h-5 text-slate-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-slate-500">Notes</p>
+                        <p className="text-slate-700 whitespace-pre-wrap">{project.notes}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
             {/* Project Files */}
             {project.files && project.files.length > 0 && (
               <Card className="p-6 bg-white border-0 shadow-sm">
@@ -320,46 +372,10 @@ export default function ProjectDetails() {
                       </div>
                     </div>
                   ))}
-                </div>
-              </Card>
-            )}
-
-            {/* Specifications */}
-            {(project.cabinet_style || project.hardware_type || project.notes) && (
-              <Card className="p-6 bg-white border-0 shadow-sm">
-                <h2 className="text-lg font-semibold text-slate-900 mb-4">Specifications</h2>
-                <div className="space-y-4">
-                  {project.cabinet_style && (
-                    <div className="flex items-start gap-3">
-                      <Palette className="w-5 h-5 text-slate-400 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-slate-500">Cabinet Style</p>
-                        <p className="font-medium text-slate-900">{project.cabinet_style}</p>
-                      </div>
-                    </div>
+                  </div>
+                  </Card>
                   )}
-                  {project.hardware_type && (
-                    <div className="flex items-start gap-3">
-                      <Wrench className="w-5 h-5 text-slate-400 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-slate-500">Hardware</p>
-                        <p className="font-medium text-slate-900">{project.hardware_type}</p>
-                      </div>
-                    </div>
-                  )}
-                  {project.notes && (
-                    <div className="flex items-start gap-3">
-                      <FileText className="w-5 h-5 text-slate-400 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-slate-500">Notes</p>
-                        <p className="text-slate-700 whitespace-pre-wrap">{project.notes}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
-          </div>
+                  </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
