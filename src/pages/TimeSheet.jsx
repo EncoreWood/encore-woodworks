@@ -160,10 +160,23 @@ export default function TimeSheet() {
   };
 
   const getPayPeriodDates = () => {
-    const payPeriodDays = settings[0]?.pay_period_days || 14;
-    const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
-    const periodStart = addDays(weekStart, -((Math.floor((selectedDate - weekStart) / (1000 * 60 * 60 * 24)) % payPeriodDays) || 0));
-    const periodEnd = addDays(periodStart, payPeriodDays - 1);
+    const startDay = settings[0]?.pay_period_start_day || 16;
+    const endDay = settings[0]?.pay_period_end_day || 15;
+    const date = selectedDate;
+    const currentDay = date.getDate();
+    
+    let periodStart, periodEnd;
+    
+    if (currentDay >= startDay) {
+      // Pay period started this month
+      periodStart = new Date(date.getFullYear(), date.getMonth(), startDay);
+      periodEnd = new Date(date.getFullYear(), date.getMonth() + 1, endDay);
+    } else {
+      // Pay period started last month
+      periodStart = new Date(date.getFullYear(), date.getMonth() - 1, startDay);
+      periodEnd = new Date(date.getFullYear(), date.getMonth(), endDay);
+    }
+    
     return { periodStart, periodEnd };
   };
 
