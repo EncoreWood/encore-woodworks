@@ -262,13 +262,17 @@ export default function TimeSheet() {
 
         {/* Tabs */}
         <Tabs value={currentTab} onValueChange={setCurrentTab} className="mb-8">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="employee">Employee Details</TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              Settings
-            </TabsTrigger>
+          <TabsList className={`grid w-full ${currentUser?.role === "admin" ? "grid-cols-3" : "grid-cols-2"}`}>
+            {currentUser?.role === "admin" && (
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+            )}
+            <TabsTrigger value="employee">Time Card</TabsTrigger>
+            {currentUser?.role === "admin" && (
+              <TabsTrigger value="settings" className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Settings
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* OVERVIEW TAB */}
