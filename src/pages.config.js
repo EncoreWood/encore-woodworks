@@ -56,6 +56,7 @@ import MorningMeeting from './pages/MorningMeeting';
 import ProjectDetails from './pages/ProjectDetails';
 import ShopProduction from './pages/ShopProduction';
 import Team from './pages/Team';
+import StretchingRoutine from './pages/StretchingRoutine';
 import __Layout from './Layout.jsx';
 
 
@@ -69,6 +70,7 @@ export const PAGES = {
     "ProjectDetails": ProjectDetails,
     "ShopProduction": ShopProduction,
     "Team": Team,
+    "StretchingRoutine": StretchingRoutine,
 }
 
 export const pagesConfig = {
