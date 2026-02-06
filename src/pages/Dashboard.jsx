@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, Briefcase, Clock, CheckCircle, AlertTriangle, Play, Square } from "lucide-react";
-import { format } from "date-fns";
+import { Plus, Briefcase, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 import StatsCard from "../components/dashboard/StatsCard";
 import ProjectCard from "../components/projects/ProjectCard";
 import ProjectFilters from "../components/projects/ProjectFilters";
@@ -19,9 +18,6 @@ export default function Dashboard() {
     type: "all",
     priority: "all"
   });
-  const [currentUser, setCurrentUser] = useState(null);
-  const [clockInTime, setClockInTime] = useState(null);
-  const [elapsedTime, setElapsedTime] = useState("00:00:00");
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
