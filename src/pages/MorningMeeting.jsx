@@ -7,6 +7,23 @@ import { Card } from "@/components/ui/card";
 import { User, Calendar, AlertCircle, Coffee, Sun, Target, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 
+const motivationalQuotes = [
+  "Excellence is not a skill, it's an attitude.",
+  "Quality is not an act, it is a habit.",
+  "The expert in anything was once a beginner.",
+  "Success is the sum of small efforts repeated day in and day out.",
+  "Do what you do so well that they will want to see it again.",
+  "Strive for progress, not perfection.",
+  "Great things are done by a series of small things brought together.",
+  "The only way to do great work is to love what you do.",
+  "Craftsmanship is a tradition of excellence.",
+  "Precision and passion create perfection.",
+  "Every project is an opportunity to exceed expectations.",
+  "Build it right, build it once.",
+  "Take pride in every cut, every joint, every finish.",
+  "Attention to detail makes all the difference."
+];
+
 const agendaSections = [
   {
     id: "urgent",
@@ -55,6 +72,16 @@ export default function MorningMeeting() {
     queryFn: () => base44.entities.Project.list("-created_date")
   });
 
+  // Get daily quote based on day of year
+  const getDailyQuote = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = now - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    const dayOfYear = Math.floor(diff / oneDay);
+    return motivationalQuotes[dayOfYear % motivationalQuotes.length];
+  };
+
   const getProjectsBySection = (sectionId) => {
     switch (sectionId) {
       case "urgent":
@@ -89,9 +116,14 @@ export default function MorningMeeting() {
               Daily Morning Meeting
             </h1>
           </div>
-          <p className="text-lg text-slate-600 font-medium">
+          <p className="text-lg text-slate-600 font-medium mb-4">
             {format(new Date(), "EEEE, MMMM d, yyyy")}
           </p>
+          <div className="max-w-2xl mx-auto bg-gradient-to-r from-amber-100 to-orange-100 rounded-lg p-6 shadow-md border-l-4 border-amber-500">
+            <p className="text-xl font-semibold text-slate-700 italic">
+              "{getDailyQuote()}"
+            </p>
+          </div>
         </div>
 
         {/* Agenda Sections */}
