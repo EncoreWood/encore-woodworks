@@ -222,18 +222,27 @@ export default function Team() {
 
         {/* Employee Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {employees.map((employee) => (
-            <EmployeeCard
-              key={employee.id}
-              employee={employee}
-              onClick={() => {
-                setViewingEmployee(employee);
-                setShowEmployeeDetails(true);
-              }}
-              onEdit={handleEdit}
-              onAssignTask={handleAssignTask}
-            />
-          ))}
+          {employees.map((employee) => {
+            const employeeTasks = tasks.filter(task => task.assignee === employee.full_name && !task.completed);
+            const employeePresentations = presenters.filter(p => p.presenter_name === employee.full_name);
+            const employeeCleanings = bathroomCleanings.filter(c => c.assigned_to?.includes(employee.full_name));
+            
+            return (
+              <EmployeeCard
+                key={employee.id}
+                employee={employee}
+                tasks={employeeTasks}
+                presentations={employeePresentations}
+                cleanings={employeeCleanings}
+                onClick={() => {
+                  setViewingEmployee(employee);
+                  setShowEmployeeDetails(true);
+                }}
+                onEdit={handleEdit}
+                onAssignTask={handleAssignTask}
+              />
+            );
+          })}
         </div>
 
         {employees.length === 0 && (
