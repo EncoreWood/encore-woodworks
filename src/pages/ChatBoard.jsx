@@ -92,12 +92,37 @@ export default function ChatBoard() {
     }
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if ((newMessage.trim() || attachments.length > 0) && selectedRoom) {
       sendMessageMutation.mutate({
         message: newMessage.trim(),
         attachments
       });
+
+      // Auto-organize attachments into folders
+      if (attachments.length > 0) {
+        try {
+          const folders = await base44.entities.ChatFolder.filter({ room_id: selectedRoom.id });
+          
+          attachments.forEach(attachment => {
+            const folderType = attachment.type === 'photo' ? 'photos' : 'files';
+            const folder = folders.find(f => f.type === folderType);
+            
+            if (folder) {
+              const updatedFiles = folder.files ? [...folder.files] : [];
+              updatedFiles.push({
+                name: attachment.name,
+                url: attachment.url,
+                uploaded_by: currentUser?.full_name || currentUser?.email
+              });
+              
+              base44.entities.ChatFolder.update(folder.id, { files: updatedFiles });
+            }
+          });
+        } catch (error) {
+          console.error('Error organizing attachments:', error);
+        }
+      }
     }
   };
 
