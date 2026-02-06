@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { User, Calendar, AlertCircle, Coffee, Sun, Target, CheckCircle2 } from "lucide-react";
-import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { User, Calendar, AlertCircle, Coffee, Sun, Target, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { format, addDays, subDays } from "date-fns";
 
 const employees = [
   "Mike Johnson",
@@ -75,7 +77,8 @@ const priorityColors = {
 };
 
 export default function MorningMeeting() {
-  const today = format(new Date(), "yyyy-MM-dd");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const dateString = format(selectedDate, "yyyy-MM-dd");
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
@@ -83,32 +86,30 @@ export default function MorningMeeting() {
   });
 
   const { data: presenterData } = useQuery({
-    queryKey: ["presenter", today],
+    queryKey: ["presenter", dateString],
     queryFn: async () => {
-      const presenters = await base44.entities.MeetingPresenter.filter({ date: today });
+      const presenters = await base44.entities.MeetingPresenter.filter({ date: dateString });
       return presenters[0];
     }
   });
 
   // Get daily quote based on day of year
   const getDailyQuote = () => {
-    const now = new Date();
-    const start = new Date(now.getFullYear(), 0, 0);
-    const diff = now - start;
+    const start = new Date(selectedDate.getFullYear(), 0, 0);
+    const diff = selectedDate - start;
     const oneDay = 1000 * 60 * 60 * 24;
     const dayOfYear = Math.floor(diff / oneDay);
     return motivationalQuotes[dayOfYear % motivationalQuotes.length];
   };
 
-  // Get today's presenter from calendar or fallback to rotation
-  const getTodayPresenter = () => {
+  // Get presenter from calendar or fallback to rotation
+  const getPresenter = () => {
     if (presenterData?.presenter_name) {
       return presenterData.presenter_name;
     }
     // Fallback to rotation if not set in calendar
-    const now = new Date();
-    const start = new Date(now.getFullYear(), 0, 0);
-    const diff = now - start;
+    const start = new Date(selectedDate.getFullYear(), 0, 0);
+    const diff = selectedDate - start;
     const oneDay = 1000 * 60 * 60 * 24;
     const dayOfYear = Math.floor(diff / oneDay);
     return employees[dayOfYear % employees.length];
@@ -148,16 +149,46 @@ export default function MorningMeeting() {
               Daily Morning Meeting
             </h1>
           </div>
-          <p className="text-lg text-slate-600 font-medium mb-4">
-            {format(new Date(), "EEEE, MMMM d, yyyy")}
-          </p>
+
+          {/* Date Navigation */}
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setSelectedDate(subDays(selectedDate, 1))}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <div className="flex flex-col items-center">
+              <p className="text-lg text-slate-600 font-medium">
+                {format(selectedDate, "EEEE, MMMM d, yyyy")}
+              </p>
+              {format(selectedDate, "yyyy-MM-dd") !== format(new Date(), "yyyy-MM-dd") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedDate(new Date())}
+                  className="text-xs text-amber-600 hover:text-amber-700"
+                >
+                  Back to Today
+                </Button>
+              )}
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
           
           {/* Presenter Badge */}
           <div className="mb-4">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-full shadow-lg">
               <User className="w-5 h-5" />
-              <span className="font-semibold">Today's Presenter:</span>
-              <span className="font-bold text-lg">{getTodayPresenter()}</span>
+              <span className="font-semibold">Presenter:</span>
+              <span className="font-bold text-lg">{getPresenter()}</span>
             </div>
           </div>
 
