@@ -16,14 +16,14 @@ const initialFormState = {
   notes: ""
 };
 
-export default function ProductionItemForm({ open, onOpenChange, onSubmit, isLoading }) {
+export default function ProductionItemForm({ open, onOpenChange, onSubmit, initialData, isLoading }) {
   const [formData, setFormData] = useState(initialFormState);
 
   useEffect(() => {
     if (open) {
-      setFormData(initialFormState);
+      setFormData(initialData || initialFormState);
     }
-  }, [open]);
+  }, [open, initialData]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -39,7 +39,7 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, isLoa
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-slate-900">
-            Add Production Item
+            {initialData ? "Edit Production Item" : "Add Production Item"}
           </DialogTitle>
         </DialogHeader>
 
@@ -108,7 +108,7 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, isLoa
             </Button>
             <Button type="submit" disabled={isLoading} className="bg-amber-600 hover:bg-amber-700">
               {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Add Item
+              {initialData ? "Update Item" : "Add Item"}
             </Button>
           </div>
         </form>
