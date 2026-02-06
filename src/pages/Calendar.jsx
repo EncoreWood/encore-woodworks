@@ -656,6 +656,7 @@ export default function Calendar() {
                   ))}
 
                   {/* Tasks Section */}
+                  {(activeFilter === "all" || activeFilter === "tasks") && (
                   <div className="border-t pt-4 mt-4">
                     <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4" />
