@@ -87,6 +87,20 @@ export default function TimeSheet() {
   });
 
   useEffect(() => {
+    const fetchCurrentUser = async () => {
+      const user = await base44.auth.me();
+      setCurrentUser(user);
+      
+      // Auto-select current user if they're a regular user
+      if (user?.role === "user") {
+        const emp = employees.find(e => e.user_email === user.email);
+        if (emp) setSelectedEmployee(emp);
+      }
+    };
+    fetchCurrentUser();
+  }, [employees]);
+
+  useEffect(() => {
     if (!clockInTime) return;
     const interval = setInterval(() => {
       const now = new Date();
