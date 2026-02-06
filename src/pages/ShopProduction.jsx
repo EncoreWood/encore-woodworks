@@ -5,7 +5,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import ProductionItemForm from "../components/production/ProductionItemForm";
 import WoodworkingCalculator from "../components/production/WoodworkingCalculator";
 
@@ -41,6 +41,13 @@ export default function ShopProduction() {
       queryClient.invalidateQueries({ queryKey: ["productionItems"] });
       setShowForm(false);
       setEditingItem(null);
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => base44.entities.ProductionItem.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
     }
   });
 
@@ -125,6 +132,19 @@ export default function ShopProduction() {
                                           }}
                                         >
                                           <Pencil className="w-3 h-3" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (confirm(`Delete "${item.name}"?`)) {
+                                              deleteMutation.mutate(item.id);
+                                            }
+                                          }}
+                                        >
+                                          <Trash2 className="w-3 h-3" />
                                         </Button>
                                         <Badge
                                           variant="outline"
