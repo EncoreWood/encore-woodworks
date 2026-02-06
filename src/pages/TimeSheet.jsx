@@ -367,9 +367,10 @@ export default function TimeSheet() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+            </TabsContent>
+            )}
 
-          {/* EMPLOYEE DETAILS TAB */}
+            {/* EMPLOYEE DETAILS TAB */}
           <TabsContent value="employee">
             {/* Date Navigation */}
             <div className="flex items-center gap-4 mb-8">
