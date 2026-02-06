@@ -47,6 +47,8 @@ export default function Layout({ children, currentPageName }) {
   const [editingBoardKey, setEditingBoardKey] = useState(null);
   const [editingBoardGroupKey, setEditingBoardGroupKey] = useState(null);
   const [editingBoardName, setEditingBoardName] = useState("");
+  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
 
   const toggleGroup = (groupKey) => {
     setExpandedGroups(prev => ({
@@ -137,6 +139,25 @@ export default function Layout({ children, currentPageName }) {
     });
   };
 
+  const createNewGroup = () => {
+    if (newGroupName.trim()) {
+      const groupKey = newGroupName.toLowerCase().replace(/\s+/g, "_");
+      setNavGroups(prev => ({
+        ...prev,
+        [groupKey]: {
+          name: newGroupName.trim(),
+          items: []
+        }
+      }));
+      setExpandedGroups(prev => ({
+        ...prev,
+        [groupKey]: true
+      }));
+      setNewGroupName("");
+      setCreatingGroup(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
@@ -212,9 +233,50 @@ export default function Layout({ children, currentPageName }) {
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Board Groups Settings</DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle>Board Groups Settings</DialogTitle>
+              {!creatingGroup && (
+                <Button
+                  onClick={() => setCreatingGroup(true)}
+                  size="sm"
+                  className="bg-amber-600 hover:bg-amber-700"
+                >
+                  + New Group
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           <div className="space-y-4">
+            {creatingGroup && (
+              <div className="border rounded-lg p-4 bg-amber-50">
+                <div className="flex gap-2">
+                  <Input
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    placeholder="Group name (e.g., Archived, Admin)"
+                    autoFocus
+                  />
+                  <Button
+                    onClick={createNewGroup}
+                    size="sm"
+                    className="bg-amber-600 hover:bg-amber-700"
+                    disabled={!newGroupName.trim()}
+                  >
+                    Create
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setCreatingGroup(false);
+                      setNewGroupName("");
+                    }}
+                    size="sm"
+                    variant="outline"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
             {Object.entries(navGroups).map(([groupKey, group]) => (
               <div key={groupKey} className="border rounded-lg p-4 space-y-3">
                 {editingGroupKey === groupKey ? (
