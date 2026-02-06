@@ -602,7 +602,6 @@ export default function TimeSheet() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
 
         {/* Add Entry Dialog */}
         <Dialog open={showAddEntry} onOpenChange={setShowAddEntry}>
