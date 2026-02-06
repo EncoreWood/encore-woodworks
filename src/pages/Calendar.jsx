@@ -6,11 +6,24 @@ import { createPageUrl } from "@/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Plus, Pencil } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Plus, Pencil, Briefcase, Users } from "lucide-react";
 import { format, isSameDay, startOfMonth, endOfMonth } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import ProjectForm from "../components/projects/ProjectForm";
 
 const statusConfig = {
@@ -28,7 +41,9 @@ const statusConfig = {
 export default function Calendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
-  const [presenterName, setPresenterName] = useState("");
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [addType, setAddType] = useState(null);
+  const [formData, setFormData] = useState({});
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
   const queryClient = useQueryClient();
@@ -43,21 +58,26 @@ export default function Calendar() {
     queryFn: () => base44.entities.MeetingPresenter.list()
   });
 
+  const { data: designMeetings = [] } = useQuery({
+    queryKey: ["designMeetings"],
+    queryFn: () => base44.entities.DesignMeeting.list()
+  });
+
   const createPresenterMutation = useMutation({
     mutationFn: (data) => base44.entities.MeetingPresenter.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["presenters"] });
-      setPresenterName("");
-      setSelectedDate(null);
+      setShowAddDialog(false);
+      setFormData({});
     }
   });
 
-  const updatePresenterMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.MeetingPresenter.update(id, data),
+  const createDesignMeetingMutation = useMutation({
+    mutationFn: (data) => base44.entities.DesignMeeting.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["presenters"] });
-      setPresenterName("");
-      setSelectedDate(null);
+      queryClient.invalidateQueries({ queryKey: ["designMeetings"] });
+      setShowAddDialog(false);
+      setFormData({});
     }
   });
 
@@ -79,22 +99,24 @@ export default function Calendar() {
     }
   });
 
-  const handleSetPresenter = () => {
-    if (!selectedDate || !presenterName) return;
+  const handleOpenAdd = (type) => {
+    if (!selectedDate) return;
+    setAddType(type);
+    setFormData({ date: format(selectedDate, "yyyy-MM-dd") });
     
-    const dateStr = format(selectedDate, "yyyy-MM-dd");
-    const existing = presenters.find(p => p.date === dateStr);
-    
-    if (existing) {
-      updatePresenterMutation.mutate({
-        id: existing.id,
-        data: { presenter_name: presenterName }
-      });
+    if (type === "project") {
+      setEditingProject({ start_date: format(selectedDate, "yyyy-MM-dd") });
+      setShowProjectForm(true);
     } else {
-      createPresenterMutation.mutate({
-        date: dateStr,
-        presenter_name: presenterName
-      });
+      setShowAddDialog(true);
+    }
+  };
+
+  const handleSubmitAdd = () => {
+    if (addType === "presenter" && formData.presenter_name) {
+      createPresenterMutation.mutate(formData);
+    } else if (addType === "designMeeting" && formData.client_name) {
+      createDesignMeetingMutation.mutate(formData);
     }
   };
 
@@ -103,14 +125,9 @@ export default function Calendar() {
     return presenters.find(p => p.date === dateStr);
   };
 
-  const handleCreateProject = () => {
-    setEditingProject(null);
-    const formData = {};
-    if (selectedDate) {
-      formData.start_date = format(selectedDate, "yyyy-MM-dd");
-    }
-    setEditingProject(formData);
-    setShowProjectForm(true);
+  const getDesignMeetingsForDate = (date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return designMeetings.filter(m => m.date === dateStr);
   };
 
   const handleEditProject = (project) => {
@@ -276,102 +293,131 @@ export default function Calendar() {
             </Card>
           </div>
 
-          {/* Projects List and Presenter Assignment */}
+          {/* Selected Date Info */}
           <div className="space-y-6">
-            {/* Presenter Assignment */}
             <Card className="p-6 bg-white border-0 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                <User className="w-5 h-5 text-blue-600" />
-                Meeting Presenter
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  {selectedDate ? format(selectedDate, "MMM d, yyyy") : "Select a date"}
+                </h2>
+                {selectedDate && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="icon" variant="ghost" className="h-8 w-8">
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleOpenAdd("presenter")}>
+                        <User className="w-4 h-4 mr-2" />
+                        Meeting Presenter
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenAdd("project")}>
+                        <Briefcase className="w-4 h-4 mr-2" />
+                        New Project
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenAdd("designMeeting")}>
+                        <Users className="w-4 h-4 mr-2" />
+                        Design Meeting
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+
               {selectedDate ? (
                 <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm text-slate-600">
-                      Date: {format(selectedDate, "MMM d, yyyy")}
-                    </Label>
-                  </div>
-                  <div>
-                    <Label htmlFor="presenter">Presenter Name</Label>
-                    <Input
-                      id="presenter"
-                      value={presenterName}
-                      onChange={(e) => setPresenterName(e.target.value)}
-                      placeholder="Enter presenter name"
-                      className="mt-1"
-                    />
-                  </div>
-                  <Button
-                    onClick={handleSetPresenter}
-                    disabled={!presenterName}
-                    size="icon"
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
+                  {/* Presenter */}
                   {getPresenterForDate(selectedDate) && (
-                    <p className="text-xs text-slate-500">
-                      Current: {getPresenterForDate(selectedDate).presenter_name}
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm font-medium text-blue-900">
+                        <User className="w-4 h-4" />
+                        Meeting Presenter
+                      </div>
+                      <p className="text-sm text-blue-700 mt-1">
+                        {getPresenterForDate(selectedDate).presenter_name}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Projects */}
+                  {getProjectsForDate(selectedDate).map((project) => (
+                    <div key={project.id} className="p-3 bg-amber-50 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Briefcase className="w-4 h-4 text-amber-700" />
+                            <span className="text-sm font-medium text-amber-900">
+                              {project.project_name}
+                            </span>
+                          </div>
+                          <p className="text-xs text-amber-700">{project.client_name}</p>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6"
+                          onClick={() => handleEditProject(project)}
+                        >
+                          <Pencil className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Design Meetings */}
+                  {getDesignMeetingsForDate(selectedDate).map((meeting) => (
+                    <div key={meeting.id} className="p-3 bg-violet-50 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm font-medium text-violet-900">
+                        <Users className="w-4 h-4" />
+                        Design Meeting
+                      </div>
+                      <p className="text-sm text-violet-700 mt-1">{meeting.client_name}</p>
+                      {meeting.project_name && (
+                        <p className="text-xs text-violet-600">{meeting.project_name}</p>
+                      )}
+                    </div>
+                  ))}
+
+                  {!getPresenterForDate(selectedDate) && 
+                   getProjectsForDate(selectedDate).length === 0 && 
+                   getDesignMeetingsForDate(selectedDate).length === 0 && (
+                    <p className="text-sm text-slate-500 text-center py-4">
+                      No items for this date
                     </p>
                   )}
                 </div>
               ) : (
-                <p className="text-sm text-slate-500">
-                  Select a date on the calendar to assign a presenter
+                <p className="text-sm text-slate-500 text-center py-4">
+                  Select a date to view and add items
                 </p>
               )}
             </Card>
 
-            {/* Projects List */}
+            {/* This Month Projects */}
             <Card className="p-6 bg-white border-0 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-slate-900">
-                  {selectedDate ? `${format(selectedDate, "MMM d, yyyy")}` : `This Month (${projectsInMonth.length})`}
-                </h2>
-                <Button
-                  onClick={handleCreateProject}
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8"
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-              <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {(selectedDate ? getProjectsForDate(selectedDate) : projectsInMonth).length === 0 ? (
-                  <p className="text-sm text-slate-500">
-                    {selectedDate ? "No projects on this date" : "No projects scheduled this month"}
-                  </p>
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">
+                This Month ({projectsInMonth.length})
+              </h2>
+              <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                {projectsInMonth.length === 0 ? (
+                  <p className="text-sm text-slate-500">No projects scheduled this month</p>
                 ) : (
-                  (selectedDate ? getProjectsForDate(selectedDate) : projectsInMonth).map((project) => (
-                    <div
+                  projectsInMonth.map((project) => (
+                    <Link
                       key={project.id}
-                      className="p-3 rounded-lg border border-slate-100 hover:border-amber-200 hover:bg-amber-50 transition-all"
+                      to={createPageUrl("ProjectDetails") + "?id=" + project.id}
+                      className="block p-3 rounded-lg border border-slate-100 hover:border-amber-200 hover:bg-amber-50 transition-all"
                     >
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <Link
-                          to={createPageUrl("ProjectDetails") + "?id=" + project.id}
-                          className="flex-1"
+                        <h3 className="font-medium text-slate-900 text-sm line-clamp-1">
+                          {project.project_name}
+                        </h3>
+                        <Badge
+                          className={`text-xs border-0 ${statusConfig[project.status]?.color || "bg-slate-500"} text-white`}
                         >
-                          <h3 className="font-medium text-slate-900 text-sm line-clamp-1">
-                            {project.project_name}
-                          </h3>
-                        </Link>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            className={`text-xs border-0 ${statusConfig[project.status]?.color || "bg-slate-500"} text-white`}
-                          >
-                            {statusConfig[project.status]?.label || project.status}
-                          </Badge>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-6 w-6"
-                            onClick={() => handleEditProject(project)}
-                          >
-                            <Pencil className="w-3 h-3" />
-                          </Button>
-                        </div>
+                          {statusConfig[project.status]?.label || project.status}
+                        </Badge>
                       </div>
                       <p className="text-xs text-slate-600 mb-2">{project.client_name}</p>
                       <div className="space-y-1 text-xs text-slate-500">
@@ -388,13 +434,91 @@ export default function Calendar() {
                           </div>
                         )}
                       </div>
-                    </div>
+                    </Link>
                   ))
                 )}
               </div>
             </Card>
           </div>
         </div>
+
+        {/* Add Dialog */}
+        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {addType === "presenter" && "Add Meeting Presenter"}
+                {addType === "designMeeting" && "Add Design Meeting"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm text-slate-600">
+                  Date: {formData.date && format(new Date(formData.date), "MMM d, yyyy")}
+                </Label>
+              </div>
+
+              {addType === "presenter" && (
+                <div>
+                  <Label htmlFor="presenter_name">Presenter Name</Label>
+                  <Input
+                    id="presenter_name"
+                    value={formData.presenter_name || ""}
+                    onChange={(e) => setFormData({ ...formData, presenter_name: e.target.value })}
+                    placeholder="Enter presenter name"
+                  />
+                </div>
+              )}
+
+              {addType === "designMeeting" && (
+                <>
+                  <div>
+                    <Label htmlFor="client_name">Client Name *</Label>
+                    <Input
+                      id="client_name"
+                      value={formData.client_name || ""}
+                      onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
+                      placeholder="Enter client name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="project_name">Project Name</Label>
+                    <Input
+                      id="project_name"
+                      value={formData.project_name || ""}
+                      onChange={(e) => setFormData({ ...formData, project_name: e.target.value })}
+                      placeholder="Enter project name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      value={formData.notes || ""}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Meeting notes..."
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmitAdd}
+                  disabled={
+                    (addType === "presenter" && !formData.presenter_name) ||
+                    (addType === "designMeeting" && !formData.client_name)
+                  }
+                >
+                  Add
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Project Form */}
         <ProjectForm
