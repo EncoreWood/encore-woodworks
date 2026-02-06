@@ -46,49 +46,33 @@ export default function StretchingRoutine() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-slate-900 mb-3">Pre-Meeting Stretch Routine</h1>
-          <p className="text-lg text-slate-600 flex items-center justify-center gap-2">
-            <Clock className="w-5 h-5" />
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">Pre-Meeting Stretch Routine</h1>
+          <p className="text-sm text-slate-600 flex items-center justify-center gap-2">
+            <Clock className="w-4 h-4" />
             3 minutes • 6 stretches
           </p>
         </div>
 
         {/* Stretches Grid */}
-        <div className="space-y-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
           {stretches.map((stretch, idx) => (
-            <Card
-              key={idx}
-              className="cursor-pointer hover:shadow-lg transition-all"
-              onClick={() => setExpandedStretch(expandedStretch === idx ? -1 : idx)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-xl text-slate-900">{stretch.name}</CardTitle>
-                    <p className="text-sm text-indigo-600 font-medium mt-1">{stretch.duration}</p>
-                  </div>
-                  <ChevronDown
-                    className={`w-6 h-6 text-slate-400 transition-transform ${
-                      expandedStretch === idx ? "rotate-180" : ""
-                    }`}
-                  />
-                </div>
+            <Card key={idx} className="overflow-hidden">
+              <img
+                src={stretch.image}
+                alt={stretch.name}
+                className="w-full h-24 object-cover"
+              />
+              <CardHeader className="p-3 pb-2">
+                <CardTitle className="text-sm text-slate-900">{stretch.name}</CardTitle>
+                <p className="text-xs text-indigo-600 font-medium">{stretch.duration}</p>
               </CardHeader>
-
-              {expandedStretch === idx && (
-                <CardContent className="space-y-4">
-                  <img
-                    src={stretch.image}
-                    alt={stretch.name}
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
-                  <p className="text-slate-700 leading-relaxed">{stretch.description}</p>
-                </CardContent>
-              )}
+              <CardContent className="p-3 pt-0">
+                <p className="text-xs text-slate-600 leading-snug">{stretch.description}</p>
+              </CardContent>
             </Card>
           ))}
         </div>
