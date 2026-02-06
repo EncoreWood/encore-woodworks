@@ -26,15 +26,15 @@ export default function StretchingRoutine() {
       image: "https://images.unsplash.com/photo-1518611505868-48d0b8fb7167?w=400&h=300&fit=crop"
     },
     {
-      name: "Seated Forward Bend",
+      name: "Standing Forward Bend",
       duration: "30 seconds",
-      description: "Sit upright and slowly bend forward from the hips. Reach toward your toes.",
+      description: "Stand with feet hip-width apart and slowly bend forward from the hips. Let your arms hang down.",
       image: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&h=300&fit=crop"
     },
     {
-      name: "Spinal Twist",
+      name: "Standing Spinal Twist",
       duration: "30 seconds",
-      description: "Sit with good posture, cross one leg over the other, and gently twist toward the bent knee.",
+      description: "Stand with feet shoulder-width apart, hands behind head, and gently twist your torso side to side.",
       image: "https://images.unsplash.com/photo-1535397097300-3b314f6d0df5?w=400&h=300&fit=crop"
     },
     {
