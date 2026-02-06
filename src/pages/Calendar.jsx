@@ -6,8 +6,9 @@ import { createPageUrl } from "@/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Plus, Pencil, Briefcase, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Plus, Pencil, Briefcase, Users, CheckCircle2, Trash2 } from "lucide-react";
 import { format, isSameDay, startOfMonth, endOfMonth } from "date-fns";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +49,8 @@ export default function Calendar() {
   const [editingProject, setEditingProject] = useState(null);
   const [showDayDialog, setShowDayDialog] = useState(false);
   const [dayDialogDate, setDayDialogDate] = useState(null);
+  const [newTask, setNewTask] = useState("");
+  const [newAssignee, setNewAssignee] = useState("");
   const queryClient = useQueryClient();
 
   const { data: projects = [], isLoading } = useQuery({
@@ -63,6 +66,11 @@ export default function Calendar() {
   const { data: designMeetings = [] } = useQuery({
     queryKey: ["designMeetings"],
     queryFn: () => base44.entities.DesignMeeting.list()
+  });
+
+  const { data: tasks = [] } = useQuery({
+    queryKey: ["tasks"],
+    queryFn: () => base44.entities.MeetingTask.list()
   });
 
   const createPresenterMutation = useMutation({
@@ -178,6 +186,62 @@ export default function Calendar() {
   const getDesignMeetingsForDate = (date) => {
     const dateStr = format(date, "yyyy-MM-dd");
     return designMeetings.filter(m => m.date === dateStr);
+  };
+
+  const getTasksForDate = (date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return tasks.filter(t => t.date === dateStr);
+  };
+
+  const createTaskMutation = useMutation({
+    mutationFn: async (data) => {
+      const task = await base44.entities.MeetingTask.create(data);
+      // Sync to Google Calendar
+      try {
+        await base44.functions.invoke('syncToGoogleCalendar', {
+          type: 'task',
+          data
+        });
+      } catch (error) {
+        console.error('Failed to sync to Google Calendar:', error);
+      }
+      return task;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setNewTask("");
+      setNewAssignee("");
+    }
+  });
+
+  const updateTaskMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.MeetingTask.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    }
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: (id) => base44.entities.MeetingTask.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    }
+  });
+
+  const handleAddTask = () => {
+    if (newTask.trim()) {
+      const dateToUse = selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd");
+      createTaskMutation.mutate({
+        task: newTask.trim(),
+        date: dateToUse,
+        assignee: newAssignee.trim() || undefined,
+        completed: false
+      });
+    }
+  };
+
+  const handleToggleTask = (task) => {
+    updateTaskMutation.mutate({ id: task.id, data: { completed: !task.completed } });
   };
 
   const handleEditProject = (project) => {
@@ -343,6 +407,7 @@ export default function Calendar() {
                     const presenter = getPresenterForDate(date);
                     const projectCount = getProjectsForDate(date).length;
                     const meetingCount = getDesignMeetingsForDate(date).length;
+                    const taskCount = getTasksForDate(date).length;
                     return (
                       <div className="w-full h-full flex flex-col p-2">
                         <div className="text-base font-semibold mb-auto flex items-center justify-between">
@@ -362,6 +427,11 @@ export default function Calendar() {
                               {meetingCount}
                             </div>
                           )}
+                          {taskCount > 0 && (
+                            <div className="text-xs px-1.5 py-0.5 bg-purple-500 text-white rounded font-medium">
+                              {taskCount}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -377,6 +447,10 @@ export default function Calendar() {
                 <div className="flex items-center gap-2">
                   <div className="px-2 py-1 bg-violet-500 text-white rounded font-medium text-xs">1</div>
                   <span className="text-slate-700">Design Meeting</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="px-2 py-1 bg-purple-500 text-white rounded font-medium text-xs">1</div>
+                  <span className="text-slate-700">Task</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-blue-600" />
@@ -471,9 +545,73 @@ export default function Calendar() {
                     </div>
                   ))}
 
+                  {/* Tasks Section */}
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4" />
+                      Tasks
+                    </h3>
+                    
+                    {/* Add Task */}
+                    <div className="flex gap-2 mb-3">
+                      <Input
+                        placeholder="New task..."
+                        value={newTask}
+                        onChange={(e) => setNewTask(e.target.value)}
+                        onKeyPress={(e) => e.key === "Enter" && handleAddTask()}
+                        className="text-sm"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handleAddTask}
+                        disabled={!newTask.trim() || createTaskMutation.isPending}
+                        className="bg-purple-600 hover:bg-purple-700"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </Button>
+                    </div>
+
+                    {/* Tasks List */}
+                    <div className="space-y-2">
+                      {getTasksForDate(selectedDate).map((task) => (
+                        <div
+                          key={task.id}
+                          className={`flex items-center gap-2 p-2 rounded border ${
+                            task.completed
+                              ? "bg-slate-50 border-slate-200"
+                              : "bg-white border-slate-200"
+                          }`}
+                        >
+                          <Checkbox
+                            checked={task.completed}
+                            onCheckedChange={() => handleToggleTask(task)}
+                            className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                          />
+                          <div className="flex-1">
+                            <p className={`text-sm ${task.completed ? "text-slate-400 line-through" : "text-slate-700"}`}>
+                              {task.task}
+                            </p>
+                            {task.assignee && (
+                              <p className="text-xs text-slate-500">{task.assignee}</p>
+                            )}
+                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => deleteTaskMutation.mutate(task.id)}
+                            className="h-6 w-6 text-slate-400 hover:text-red-600"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                   {!getPresenterForDate(selectedDate) && 
                    getProjectsForDate(selectedDate).length === 0 && 
-                   getDesignMeetingsForDate(selectedDate).length === 0 && (
+                   getDesignMeetingsForDate(selectedDate).length === 0 &&
+                   getTasksForDate(selectedDate).length === 0 && (
                     <p className="text-sm text-slate-500 text-center py-4">
                       No items for this date
                     </p>
@@ -721,9 +859,44 @@ export default function Calendar() {
                     </div>
                   ))}
 
+                  {/* Tasks */}
+                  {getTasksForDate(dayDialogDate).length > 0 && (
+                    <div className="p-4 bg-purple-50 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm font-medium text-purple-900 mb-3">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Tasks ({getTasksForDate(dayDialogDate).filter(t => !t.completed).length} remaining)
+                      </div>
+                      <div className="space-y-2">
+                        {getTasksForDate(dayDialogDate).map((task) => (
+                          <div
+                            key={task.id}
+                            className={`flex items-center gap-2 p-2 rounded ${
+                              task.completed ? "bg-slate-50" : "bg-white"
+                            }`}
+                          >
+                            <Checkbox
+                              checked={task.completed}
+                              onCheckedChange={() => handleToggleTask(task)}
+                              className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                            />
+                            <div className="flex-1">
+                              <p className={`text-sm ${task.completed ? "text-slate-400 line-through" : "text-purple-700"}`}>
+                                {task.task}
+                              </p>
+                              {task.assignee && (
+                                <p className="text-xs text-purple-600">{task.assignee}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {!getPresenterForDate(dayDialogDate) && 
                    getProjectsForDate(dayDialogDate).length === 0 && 
-                   getDesignMeetingsForDate(dayDialogDate).length === 0 && (
+                   getDesignMeetingsForDate(dayDialogDate).length === 0 &&
+                   getTasksForDate(dayDialogDate).length === 0 && (
                     <p className="text-sm text-slate-500 text-center py-8">
                       No events scheduled for this day
                     </p>
