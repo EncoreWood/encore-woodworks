@@ -17,9 +17,17 @@ export default function EmployeeCard({ employee, onEdit, onAssignTask }) {
     <Card className="p-6 bg-white border-0 shadow-sm hover:shadow-md transition-all">
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-full flex items-center justify-center">
-            <User className="w-6 h-6 text-white" />
-          </div>
+          {employee.profile_image ? (
+            <img 
+              src={employee.profile_image} 
+              alt={employee.full_name}
+              className="w-12 h-12 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-full flex items-center justify-center">
+              <User className="w-6 h-6 text-white" />
+            </div>
+          )}
           <div>
             <h3 className="font-semibold text-slate-900">{employee.full_name}</h3>
             {employee.position && (

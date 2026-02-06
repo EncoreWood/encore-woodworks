@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, X, User } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 
 export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading }) {
   const [formData, setFormData] = useState({
@@ -16,8 +17,10 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
     department: "",
     hire_date: "",
     birthday: "",
+    profile_image: "",
     notes: ""
   });
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (employee) {
@@ -29,6 +32,7 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
         department: employee.department || "",
         hire_date: employee.hire_date || "",
         birthday: employee.birthday || "",
+        profile_image: employee.profile_image || "",
         notes: employee.notes || ""
       });
     } else {
@@ -40,6 +44,7 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
         department: "",
         hire_date: "",
         birthday: "",
+        profile_image: "",
         notes: ""
       });
     }
@@ -50,6 +55,21 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
     onSubmit(formData);
   };
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setFormData({ ...formData, profile_image: file_url });
+    } catch (error) {
+      console.error("Failed to upload image:", error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -57,6 +77,60 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
           <DialogTitle>{employee ? "Edit Employee" : "Add Employee"}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label>Profile Image</Label>
+            <div className="flex items-center gap-4">
+              {formData.profile_image ? (
+                <div className="relative">
+                  <img 
+                    src={formData.profile_image} 
+                    alt="Profile" 
+                    className="w-20 h-20 rounded-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, profile_image: "" })}
+                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-amber-600 rounded-full flex items-center justify-center">
+                  <User className="w-10 h-10 text-white" />
+                </div>
+              )}
+              <div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="profile_image_upload"
+                  disabled={uploading}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById("profile_image_upload").click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Upload Image
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+
           <div>
             <Label htmlFor="full_name">Full Name *</Label>
             <Input
