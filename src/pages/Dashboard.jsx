@@ -130,30 +130,30 @@ export default function Dashboard() {
 
         {/* Stats */}
         {getSectionVisibility("stats") && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatsCard
-            title="Total Projects"
-            value={totalProjects}
-            icon={Briefcase}
-          />
-          <StatsCard
-            title="Active"
-            value={activeProjects}
-            icon={Clock}
-            subtitle="In progress"
-          />
-          <StatsCard
-            title="Completed"
-            value={completedProjects}
-            icon={CheckCircle}
-          />
-          <StatsCard
-            title="Urgent"
-            value={urgentProjects}
-            icon={AlertTriangle}
-            className={urgentProjects > 0 ? "border-l-4 border-l-amber-500" : ""}
-          />
-        </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <StatsCard
+              title="Total Projects"
+              value={totalProjects}
+              icon={Briefcase}
+            />
+            <StatsCard
+              title="Active"
+              value={activeProjects}
+              icon={Clock}
+              subtitle="In progress"
+            />
+            <StatsCard
+              title="Completed"
+              value={completedProjects}
+              icon={CheckCircle}
+            />
+            <StatsCard
+              title="Urgent"
+              value={urgentProjects}
+              icon={AlertTriangle}
+              className={urgentProjects > 0 ? "border-l-4 border-l-amber-500" : ""}
+            />
+          </div>
         )}
 
         {/* Filters */}
