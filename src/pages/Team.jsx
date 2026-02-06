@@ -26,6 +26,21 @@ export default function Team() {
     queryFn: () => base44.entities.Employee.list("-created_date")
   });
 
+  const { data: tasks = [] } = useQuery({
+    queryKey: ["tasks"],
+    queryFn: () => base44.entities.MeetingTask.list("-date")
+  });
+
+  const { data: presenters = [] } = useQuery({
+    queryKey: ["presenters"],
+    queryFn: () => base44.entities.MeetingPresenter.list("-date")
+  });
+
+  const { data: bathroomCleanings = [] } = useQuery({
+    queryKey: ["bathroomCleanings"],
+    queryFn: () => base44.entities.BathroomCleaning.list("-date")
+  });
+
   const createEmployeeMutation = useMutation({
     mutationFn: async (data) => {
       const employee = await base44.entities.Employee.create(data);
@@ -373,6 +388,76 @@ export default function Team() {
                     <p className="text-sm text-slate-600 whitespace-pre-wrap">{viewingEmployee.notes}</p>
                   </div>
                 )}
+
+                {/* Assigned Tasks */}
+                {(() => {
+                  const employeeTasks = tasks.filter(task => task.assignee === viewingEmployee.full_name);
+                  const upcomingTasks = employeeTasks.filter(task => !task.completed && new Date(task.date) >= new Date());
+                  
+                  if (upcomingTasks.length > 0) {
+                    return (
+                      <div className="border-t pt-4">
+                        <h4 className="text-sm font-semibold text-slate-700 mb-3">Upcoming Tasks</h4>
+                        <div className="space-y-2">
+                          {upcomingTasks.slice(0, 5).map((task) => (
+                            <div key={task.id} className="flex items-start gap-2 p-2 bg-blue-50 rounded-lg">
+                              <Calendar className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-slate-900">{task.task}</p>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                  {format(new Date(task.date), "MMM d, yyyy")}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                })()}
+
+                {/* Calendar Events */}
+                {(() => {
+                  const upcomingPresentations = presenters.filter(
+                    p => p.presenter_name === viewingEmployee.full_name && new Date(p.date) >= new Date()
+                  );
+                  const upcomingCleanings = bathroomCleanings.filter(
+                    c => c.assigned_to?.includes(viewingEmployee.full_name) && new Date(c.date) >= new Date()
+                  );
+                  
+                  if (upcomingPresentations.length > 0 || upcomingCleanings.length > 0) {
+                    return (
+                      <div className="border-t pt-4">
+                        <h4 className="text-sm font-semibold text-slate-700 mb-3">Calendar Events</h4>
+                        <div className="space-y-2">
+                          {upcomingPresentations.slice(0, 3).map((presenter) => (
+                            <div key={presenter.id} className="flex items-start gap-2 p-2 bg-purple-50 rounded-lg">
+                              <Users className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-slate-900">Morning Meeting Presenter</p>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                  {format(new Date(presenter.date), "MMM d, yyyy")}
+                                  {presenter.time && ` at ${presenter.time}`}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                          {upcomingCleanings.slice(0, 3).map((cleaning) => (
+                            <div key={cleaning.id} className="flex items-start gap-2 p-2 bg-green-50 rounded-lg">
+                              <Calendar className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-slate-900">Bathroom Cleaning</p>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                  {format(new Date(cleaning.date), "MMM d, yyyy")}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                })()}
 
                 {/* Actions */}
                 <div className="border-t pt-4 flex gap-2">
