@@ -6,11 +6,12 @@ import { createPageUrl } from "@/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Plus, Pencil } from "lucide-react";
 import { format, isSameDay, startOfMonth, endOfMonth } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import ProjectForm from "../components/projects/ProjectForm";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-500" },
@@ -28,6 +29,8 @@ export default function Calendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [presenterName, setPresenterName] = useState("");
+  const [showProjectForm, setShowProjectForm] = useState(false);
+  const [editingProject, setEditingProject] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: projects = [], isLoading } = useQuery({
@@ -58,6 +61,24 @@ export default function Calendar() {
     }
   });
 
+  const createProjectMutation = useMutation({
+    mutationFn: (data) => base44.entities.Project.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setShowProjectForm(false);
+      setEditingProject(null);
+    }
+  });
+
+  const updateProjectMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Project.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setShowProjectForm(false);
+      setEditingProject(null);
+    }
+  });
+
   const handleSetPresenter = () => {
     if (!selectedDate || !presenterName) return;
     
@@ -80,6 +101,29 @@ export default function Calendar() {
   const getPresenterForDate = (date) => {
     const dateStr = format(date, "yyyy-MM-dd");
     return presenters.find(p => p.date === dateStr);
+  };
+
+  const handleCreateProject = () => {
+    setEditingProject(null);
+    const formData = {};
+    if (selectedDate) {
+      formData.start_date = format(selectedDate, "yyyy-MM-dd");
+    }
+    setEditingProject(formData);
+    setShowProjectForm(true);
+  };
+
+  const handleEditProject = (project) => {
+    setEditingProject(project);
+    setShowProjectForm(true);
+  };
+
+  const handleSubmitProject = (data) => {
+    if (editingProject?.id) {
+      updateProjectMutation.mutate({ id: editingProject.id, data });
+    } else {
+      createProjectMutation.mutate(data);
+    }
   };
 
   const getProjectsForDate = (date) => {
@@ -279,28 +323,54 @@ export default function Calendar() {
 
             {/* Projects List */}
             <Card className="p-6 bg-white border-0 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900 mb-4">
-                This Month ({projectsInMonth.length})
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  {selectedDate ? `${format(selectedDate, "MMM d, yyyy")}` : `This Month (${projectsInMonth.length})`}
+                </h2>
+                <Button
+                  onClick={handleCreateProject}
+                  size="sm"
+                  className="bg-amber-600 hover:bg-amber-700"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add
+                </Button>
+              </div>
               <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                {projectsInMonth.length === 0 ? (
-                  <p className="text-sm text-slate-500">No projects scheduled this month</p>
+                {(selectedDate ? getProjectsForDate(selectedDate) : projectsInMonth).length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    {selectedDate ? "No projects on this date" : "No projects scheduled this month"}
+                  </p>
                 ) : (
-                  projectsInMonth.map((project) => (
-                    <Link
+                  (selectedDate ? getProjectsForDate(selectedDate) : projectsInMonth).map((project) => (
+                    <div
                       key={project.id}
-                      to={createPageUrl("ProjectDetails") + "?id=" + project.id}
-                      className="block p-3 rounded-lg border border-slate-100 hover:border-amber-200 hover:bg-amber-50 transition-all"
+                      className="p-3 rounded-lg border border-slate-100 hover:border-amber-200 hover:bg-amber-50 transition-all"
                     >
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <h3 className="font-medium text-slate-900 text-sm line-clamp-1">
-                          {project.project_name}
-                        </h3>
-                        <Badge
-                          className={`text-xs border-0 ${statusConfig[project.status]?.color || "bg-slate-500"} text-white`}
+                        <Link
+                          to={createPageUrl("ProjectDetails") + "?id=" + project.id}
+                          className="flex-1"
                         >
-                          {statusConfig[project.status]?.label || project.status}
-                        </Badge>
+                          <h3 className="font-medium text-slate-900 text-sm line-clamp-1">
+                            {project.project_name}
+                          </h3>
+                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            className={`text-xs border-0 ${statusConfig[project.status]?.color || "bg-slate-500"} text-white`}
+                          >
+                            {statusConfig[project.status]?.label || project.status}
+                          </Badge>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-6 w-6"
+                            onClick={() => handleEditProject(project)}
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </Button>
+                        </div>
                       </div>
                       <p className="text-xs text-slate-600 mb-2">{project.client_name}</p>
                       <div className="space-y-1 text-xs text-slate-500">
@@ -317,13 +387,22 @@ export default function Calendar() {
                           </div>
                         )}
                       </div>
-                    </Link>
+                    </div>
                   ))
                 )}
               </div>
             </Card>
           </div>
         </div>
+
+        {/* Project Form */}
+        <ProjectForm
+          open={showProjectForm}
+          onOpenChange={setShowProjectForm}
+          onSubmit={handleSubmitProject}
+          initialData={editingProject}
+          isLoading={createProjectMutation.isPending || updateProjectMutation.isPending}
+        />
       </div>
     </div>
   );

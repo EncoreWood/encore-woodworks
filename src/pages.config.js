@@ -50,9 +50,9 @@
 import Calendar from './pages/Calendar';
 import Dashboard from './pages/Dashboard';
 import Kanban from './pages/Kanban';
+import MorningMeeting from './pages/MorningMeeting';
 import ProjectDetails from './pages/ProjectDetails';
 import ShopProduction from './pages/ShopProduction';
-import MorningMeeting from './pages/MorningMeeting';
 import __Layout from './Layout.jsx';
 
 
@@ -60,9 +60,9 @@ export const PAGES = {
     "Calendar": Calendar,
     "Dashboard": Dashboard,
     "Kanban": Kanban,
+    "MorningMeeting": MorningMeeting,
     "ProjectDetails": ProjectDetails,
     "ShopProduction": ShopProduction,
-    "MorningMeeting": MorningMeeting,
 }
 
 export const pagesConfig = {
