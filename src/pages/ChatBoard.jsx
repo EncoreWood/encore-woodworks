@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Plus, Trash2, Send, Paperclip, X, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, Send, Paperclip, X, ExternalLink, FileText, Image } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,6 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import ChatEmployees from '@/components/chat/ChatEmployees';
-import ChatFolders from '@/components/chat/ChatFolders';
 
 export default function ChatBoard() {
   const [selectedRoom, setSelectedRoom] = useState(null);
