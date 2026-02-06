@@ -119,7 +119,42 @@ export default function EmployeeCard({ employee, tasks = [], presentations = [],
           )}
         </div>
 
-
+        {/* Upcoming Events */}
+        {upcomingItems.length > 0 && (
+          <div className="pt-3 border-t border-slate-100 space-y-1.5">
+            {upcomingItems.map((item, idx) => (
+              <div key={idx} className="text-xs">
+                {item.type === 'task' && (
+                  <div className="flex items-start gap-2 text-blue-700 bg-blue-50 p-1.5 rounded">
+                    <ListTodo className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium">{item.data.task}</p>
+                      <p className="text-blue-600">{format(new Date(item.data.date), "MMM d")}</p>
+                    </div>
+                  </div>
+                )}
+                {item.type === 'presentation' && (
+                  <div className="flex items-start gap-2 text-purple-700 bg-purple-50 p-1.5 rounded">
+                    <Users className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium">Morning Meeting</p>
+                      <p className="text-purple-600">{format(new Date(item.data.date), "MMM d")}</p>
+                    </div>
+                  </div>
+                )}
+                {item.type === 'cleaning' && (
+                  <div className="flex items-start gap-2 text-green-700 bg-green-50 p-1.5 rounded">
+                    <Paperclip className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate font-medium">Bathroom Cleaning</p>
+                      <p className="text-green-600">{format(new Date(item.data.date), "MMM d")}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </Card>
   );
