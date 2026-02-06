@@ -586,9 +586,9 @@ export default function Calendar() {
               </div>
 
               {selectedDate ? (
-                <div className="space-y-4">
+               <div className="space-y-4">
                   {/* Presenter */}
-                  {getPresenterForDate(selectedDate) && (
+                  {getPresenterForDate(selectedDate) && (activeFilter === "all" || activeFilter === "presenter") && (
                     <div className="p-3 bg-blue-50 rounded-lg">
                       <div className="flex items-center gap-2 text-sm font-medium text-blue-900">
                         <User className="w-4 h-4" />
