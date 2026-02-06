@@ -58,7 +58,17 @@ export default function Calendar() {
   const [dayDialogDate, setDayDialogDate] = useState(null);
   const [newTask, setNewTask] = useState("");
   const [newAssignee, setNewAssignee] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
   const queryClient = useQueryClient();
+
+  const filterOptions = [
+    { id: "all", label: "All Events", icon: "📅" },
+    { id: "projects", label: "Projects", icon: "💼" },
+    { id: "meetings", label: "Design Meetings", icon: "👥" },
+    { id: "tasks", label: "Tasks", icon: "✓" },
+    { id: "presenter", label: "Presenters", icon: "👤" },
+    { id: "cleaning", label: "Cleaning", icon: "✨" }
+  ];
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
