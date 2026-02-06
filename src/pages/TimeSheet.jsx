@@ -14,6 +14,7 @@ export default function TimeSheet() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showAddEntry, setShowAddEntry] = useState(false);
+  const [currentTab, setCurrentTab] = useState("overview");
   const [formData, setFormData] = useState({
     clock_in: "",
     clock_out: "",
@@ -22,6 +23,11 @@ export default function TimeSheet() {
   });
   const [clockInTime, setClockInTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
+  const [settingsData, setSettingsData] = useState({
+    hours_per_year: 160,
+    accrual_rate: 0.0192,
+    pay_period_days: 14
+  });
 
   const queryClient = useQueryClient();
 
