@@ -284,11 +284,41 @@ export default function ChatBoard() {
           <div className="lg:col-span-3">
             {selectedRoom ? (
               <Card className="p-6 bg-white border-0 shadow-lg flex flex-col h-[600px]">
-                <div className="mb-4 pb-4 border-b border-slate-200">
-                  <h2 className="text-xl font-semibold text-slate-900">{selectedRoom.name}</h2>
-                  {selectedRoom.description && (
-                    <p className="text-sm text-slate-500 mt-1">{selectedRoom.description}</p>
-                  )}
+                <div className="mb-4 pb-4 border-b border-slate-200 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-900">{selectedRoom.name}</h2>
+                    {selectedRoom.description && (
+                      <p className="text-sm text-slate-500 mt-1">{selectedRoom.description}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setShowFilesDialog(true)}
+                      className="p-2 hover:bg-slate-100 rounded transition-colors"
+                      title="Files"
+                    >
+                      <FileText className="w-5 h-5 text-slate-600" />
+                    </button>
+                    <button
+                      onClick={() => setShowPhotosDialog(true)}
+                      className="p-2 hover:bg-slate-100 rounded transition-colors"
+                      title="Photos"
+                    >
+                      <Image className="w-5 h-5 text-slate-600" />
+                    </button>
+                    {selectedRoom.project_id && (
+                      <Link to={createPageUrl("ProjectDetails") + "?id=" + selectedRoom.project_id}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9"
+                          title="View Project"
+                        >
+                          <ExternalLink className="w-5 h-5 text-blue-600" />
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
                 </div>
 
                 {/* Messages List */}
