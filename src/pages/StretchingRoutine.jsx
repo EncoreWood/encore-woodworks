@@ -10,38 +10,38 @@ export default function StretchingRoutine() {
     {
       name: "Neck Rolls",
       duration: "30 seconds",
-      description: "Slowly roll your head in circles. This helps release tension in your neck and shoulders.",
-      image: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&h=300&fit=crop"
+      description: "Gently roll your head in slow circles. Breathe deeply and relax your shoulders.",
+      image: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/7631b038c_generated_image.png"
     },
     {
-      name: "Shoulder Shrugs",
-      duration: "20 seconds",
-      description: "Lift shoulders up to ears, hold for 1 second, then release. Repeat 10 times.",
-      image: "https://images.unsplash.com/photo-1517836357463-d25ddfcbf042?w=400&h=300&fit=crop"
+      name: "Shoulder Rolls",
+      duration: "30 seconds",
+      description: "Roll your shoulders backward in slow circles, then reverse direction.",
+      image: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/3b487860b_generated_image.png"
     },
     {
       name: "Arm Circles",
       duration: "30 seconds",
       description: "Extend arms out to sides and make small circles, gradually increasing size.",
-      image: "https://images.unsplash.com/photo-1518611505868-48d0b8fb7167?w=400&h=300&fit=crop"
+      image: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/9baac4e1c_generated_image.png"
     },
     {
       name: "Standing Forward Bend",
       duration: "30 seconds",
       description: "Stand with feet hip-width apart and slowly bend forward from the hips. Let your arms hang down.",
-      image: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=400&h=300&fit=crop"
+      image: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/501b7bc0d_generated_image.png"
     },
     {
-      name: "Standing Spinal Twist",
+      name: "Quad Stretch",
       duration: "30 seconds",
-      description: "Stand with feet shoulder-width apart, hands behind head, and gently twist your torso side to side.",
-      image: "https://images.unsplash.com/photo-1535397097300-3b314f6d0df5?w=400&h=300&fit=crop"
+      description: "Stand on one leg and pull the other foot toward your buttocks. Keep your balance.",
+      image: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/56deaa5c4_generated_image.png"
     },
     {
-      name: "Wrist & Ankle Circles",
-      duration: "20 seconds",
-      description: "Rotate wrists and ankles in circles to improve circulation in extremities.",
-      image: "https://images.unsplash.com/photo-1518835912916-a9e76e5f2e88?w=400&h=300&fit=crop"
+      name: "Calf Stretch",
+      duration: "30 seconds",
+      description: "Step one leg back and press your heel down while keeping your leg straight. Feel the stretch in your calf.",
+      image: "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/308324154_generated_image.png"
     }
   ];
 
