@@ -55,6 +55,21 @@ export default function TimeSheet() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["timeEntries"] })
   });
 
+  useEffect(() => {
+    if (!clockInTime) return;
+    const interval = setInterval(() => {
+      const now = new Date();
+      const diff = now - clockInTime;
+      const hours = Math.floor(diff / 3600000);
+      const minutes = Math.floor((diff % 3600000) / 60000);
+      const seconds = Math.floor((diff % 60000) / 1000);
+      setElapsedTime(
+        `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+      );
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [clockInTime]);
+
   const calculateHours = (clockIn, clockOut) => {
     if (!clockIn || !clockOut) return 0;
     const [inH, inM] = clockIn.split(":").map(Number);
@@ -62,6 +77,32 @@ export default function TimeSheet() {
     const inMinutes = inH * 60 + inM;
     const outMinutes = outH * 60 + outM;
     return ((outMinutes - inMinutes) / 60).toFixed(2);
+  };
+
+  const handleClockIn = () => {
+    setClockInTime(new Date());
+  };
+
+  const handleClockOut = () => {
+    if (!clockInTime || !selectedEmployee) return;
+    const now = new Date();
+    const clockInStr = format(clockInTime, "HH:mm");
+    const clockOutStr = format(now, "HH:mm");
+    const hours = calculateHours(clockInStr, clockOutStr);
+
+    createEntryMutation.mutate({
+      employee_id: selectedEmployee.id,
+      employee_name: selectedEmployee.full_name,
+      date: format(selectedDate, "yyyy-MM-dd"),
+      clock_in: clockInStr,
+      clock_out: clockOutStr,
+      hours_worked: parseFloat(hours),
+      entry_type: "work",
+      notes: ""
+    });
+
+    setClockInTime(null);
+    setElapsedTime("00:00:00");
   };
 
   const handleAddEntry = () => {
