@@ -175,6 +175,15 @@ export default function Calendar() {
       createPresenterMutation.mutate(formData);
     } else if (addType === "designMeeting" && formData.client_name) {
       createDesignMeetingMutation.mutate(formData);
+    } else if (addType === "task" && formData.task) {
+      createTaskMutation.mutate({
+        task: formData.task,
+        date: formData.date,
+        assignee: formData.assignee || undefined,
+        completed: false
+      });
+      setShowAddDialog(false);
+      setFormData({});
     }
   };
 
@@ -678,6 +687,7 @@ export default function Calendar() {
               <DialogTitle>
                 {addType === "presenter" && "Add Meeting Presenter"}
                 {addType === "designMeeting" && "Add Design Meeting"}
+                {addType === "task" && "Add Task"}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -755,6 +765,29 @@ export default function Calendar() {
                 </>
               )}
 
+              {addType === "task" && (
+                <>
+                  <div>
+                    <Label htmlFor="task">Task *</Label>
+                    <Input
+                      id="task"
+                      value={formData.task || ""}
+                      onChange={(e) => setFormData({ ...formData, task: e.target.value })}
+                      placeholder="Enter task description"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="assignee">Assign To</Label>
+                    <Input
+                      id="assignee"
+                      value={formData.assignee || ""}
+                      onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
+                      placeholder="Person's name (optional)"
+                    />
+                  </div>
+                </>
+              )}
+
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setShowAddDialog(false)}>
                   Cancel
@@ -763,7 +796,8 @@ export default function Calendar() {
                   onClick={handleSubmitAdd}
                   disabled={
                     (addType === "presenter" && !formData.presenter_name) ||
-                    (addType === "designMeeting" && !formData.client_name)
+                    (addType === "designMeeting" && !formData.client_name) ||
+                    (addType === "task" && !formData.task)
                   }
                 >
                   Add
