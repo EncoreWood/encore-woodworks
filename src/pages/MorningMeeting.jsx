@@ -187,19 +187,38 @@ export default function MorningMeeting() {
     }
   });
 
-  const handleAddTask = () => {
+  const handleAddTask = async () => {
     if (newTask.trim()) {
-      createTaskMutation.mutate({
+      const taskData = {
         task: newTask.trim(),
         date: dateString,
         assignee: newAssignee.trim() || undefined,
         completed: false
-      });
+      };
+      createTaskMutation.mutate(taskData);
+      
+      // Sync to Google Calendar
+      await syncTaskToCalendar(taskData);
     }
   };
 
   const handleToggleTask = (task) => {
     updateTaskMutation.mutate({ id: task.id, data: { completed: !task.completed } });
+  };
+
+  const syncTaskToCalendar = async (task) => {
+    try {
+      await base44.functions.invoke('syncToGoogleCalendar', {
+        type: 'task',
+        data: {
+          task: task.task,
+          assignee: task.assignee,
+          date: task.date
+        }
+      });
+    } catch (error) {
+      console.error('Failed to sync task to calendar:', error);
+    }
   };
 
   // Get daily quote based on day of year
@@ -396,6 +415,15 @@ export default function MorningMeeting() {
                         </p>
                       )}
                     </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => syncTaskToCalendar(task)}
+                      className="text-slate-400 hover:text-green-600"
+                      title="Sync to Calendar"
+                    >
+                      <Calendar className="w-4 h-4" />
+                    </Button>
                     <Button
                       size="icon"
                       variant="ghost"

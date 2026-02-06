@@ -57,6 +57,18 @@ Deno.serve(async (req) => {
         },
         colorId: '7' // Blue for presenters
       };
+    } else if (type === 'task') {
+      event = {
+        summary: `✓ ${data.task}`,
+        description: data.assignee ? `Assigned to: ${data.assignee}` : '',
+        start: {
+          date: data.date
+        },
+        end: {
+          date: data.date
+        },
+        colorId: '10' // Green for tasks
+      };
     }
 
     let response;
