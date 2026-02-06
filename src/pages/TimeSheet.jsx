@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Clock, Plus, Trash2, CheckCircle2 } from "lucide-react";
+import { Clock, Plus, Trash2, CheckCircle2, Play, Square } from "lucide-react";
 import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
 
 export default function TimeSheet() {
