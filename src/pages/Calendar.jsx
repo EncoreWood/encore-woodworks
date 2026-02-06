@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User } from "lucide-react";
 import { format, isSameDay, startOfMonth, endOfMonth } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-500" },
@@ -24,11 +26,61 @@ const statusConfig = {
 
 export default function Calendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [presenterName, setPresenterName] = useState("");
+  const queryClient = useQueryClient();
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: () => base44.entities.Project.list("-created_date")
   });
+
+  const { data: presenters = [] } = useQuery({
+    queryKey: ["presenters"],
+    queryFn: () => base44.entities.MeetingPresenter.list()
+  });
+
+  const createPresenterMutation = useMutation({
+    mutationFn: (data) => base44.entities.MeetingPresenter.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["presenters"] });
+      setPresenterName("");
+      setSelectedDate(null);
+    }
+  });
+
+  const updatePresenterMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.MeetingPresenter.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["presenters"] });
+      setPresenterName("");
+      setSelectedDate(null);
+    }
+  });
+
+  const handleSetPresenter = () => {
+    if (!selectedDate || !presenterName) return;
+    
+    const dateStr = format(selectedDate, "yyyy-MM-dd");
+    const existing = presenters.find(p => p.date === dateStr);
+    
+    if (existing) {
+      updatePresenterMutation.mutate({
+        id: existing.id,
+        data: { presenter_name: presenterName }
+      });
+    } else {
+      createPresenterMutation.mutate({
+        date: dateStr,
+        presenter_name: presenterName
+      });
+    }
+  };
+
+  const getPresenterForDate = (date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return presenters.find(p => p.date === dateStr);
+  };
 
   const getProjectsForDate = (date) => {
     return projects.filter((project) => {
@@ -133,6 +185,8 @@ export default function Calendar() {
 
               <CalendarComponent
                 mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
                 month={currentMonth}
                 onMonthChange={setCurrentMonth}
                 className="w-full"
@@ -148,12 +202,20 @@ export default function Calendar() {
                   day_outside: "text-slate-300"
                 }}
                 components={{
-                  DayContent: ({ date }) => (
-                    <div className="w-full h-full flex flex-col">
-                      <div className="text-sm p-2">{format(date, "d")}</div>
-                      {getDayContent(date)}
-                    </div>
-                  )
+                  DayContent: ({ date }) => {
+                    const presenter = getPresenterForDate(date);
+                    return (
+                      <div className="w-full h-full flex flex-col">
+                        <div className="text-sm p-2 flex items-center justify-between">
+                          {format(date, "d")}
+                          {presenter && (
+                            <User className="w-3 h-3 text-blue-600" />
+                          )}
+                        </div>
+                        {getDayContent(date)}
+                      </div>
+                    );
+                  }
                 }}
               />
 
@@ -170,8 +232,52 @@ export default function Calendar() {
             </Card>
           </div>
 
-          {/* Projects List for Current Month */}
-          <div>
+          {/* Projects List and Presenter Assignment */}
+          <div className="space-y-6">
+            {/* Presenter Assignment */}
+            <Card className="p-6 bg-white border-0 shadow-sm">
+              <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <User className="w-5 h-5 text-blue-600" />
+                Meeting Presenter
+              </h2>
+              {selectedDate ? (
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm text-slate-600">
+                      Date: {format(selectedDate, "MMM d, yyyy")}
+                    </Label>
+                  </div>
+                  <div>
+                    <Label htmlFor="presenter">Presenter Name</Label>
+                    <Input
+                      id="presenter"
+                      value={presenterName}
+                      onChange={(e) => setPresenterName(e.target.value)}
+                      placeholder="Enter presenter name"
+                      className="mt-1"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleSetPresenter}
+                    disabled={!presenterName}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                  >
+                    Set Presenter
+                  </Button>
+                  {getPresenterForDate(selectedDate) && (
+                    <p className="text-xs text-slate-500">
+                      Current: {getPresenterForDate(selectedDate).presenter_name}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  Select a date on the calendar to assign a presenter
+                </p>
+              )}
+            </Card>
+
+            {/* Projects List */}
             <Card className="p-6 bg-white border-0 shadow-sm">
               <h2 className="text-lg font-semibold text-slate-900 mb-4">
                 This Month ({projectsInMonth.length})

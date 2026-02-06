@@ -75,9 +75,19 @@ const priorityColors = {
 };
 
 export default function MorningMeeting() {
+  const today = format(new Date(), "yyyy-MM-dd");
+
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: () => base44.entities.Project.list("-created_date")
+  });
+
+  const { data: presenterData } = useQuery({
+    queryKey: ["presenter", today],
+    queryFn: async () => {
+      const presenters = await base44.entities.MeetingPresenter.filter({ date: today });
+      return presenters[0];
+    }
   });
 
   // Get daily quote based on day of year
@@ -90,8 +100,12 @@ export default function MorningMeeting() {
     return motivationalQuotes[dayOfYear % motivationalQuotes.length];
   };
 
-  // Get today's presenter based on day of year
+  // Get today's presenter from calendar or fallback to rotation
   const getTodayPresenter = () => {
+    if (presenterData?.presenter_name) {
+      return presenterData.presenter_name;
+    }
+    // Fallback to rotation if not set in calendar
     const now = new Date();
     const start = new Date(now.getFullYear(), 0, 0);
     const diff = now - start;
