@@ -96,7 +96,7 @@ export default function StretchingRoutine() {
         </div>
 
         {/* Tips */}
-        <Card className="mt-12 bg-indigo-50 border-indigo-200">
+         <Card className="mt-12 bg-indigo-50 border-indigo-200">
           <CardHeader>
             <CardTitle className="text-slate-900">Tips for Best Results</CardTitle>
           </CardHeader>
@@ -107,7 +107,16 @@ export default function StretchingRoutine() {
             <p>✓ Do this routine 2-3 minutes before your meeting</p>
           </CardContent>
         </Card>
-      </div>
-    </div>
+
+        {/* Done Button */}
+        <div className="text-center mt-8">
+          <Link to={createPageUrl("MorningMeeting")}>
+            <Button size="lg" className="bg-green-600 hover:bg-green-700">
+              ✓ Done Stretching - Back to Meeting
+            </Button>
+          </Link>
+        </div>
+        </div>
+        </div>
   );
 }
