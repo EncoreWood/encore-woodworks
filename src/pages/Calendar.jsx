@@ -365,6 +365,22 @@ export default function Calendar() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Project Calendar</h1>
           <p className="text-slate-500 mt-1">View projects by their scheduled dates</p>
+          
+          {/* Filter Buttons */}
+          <div className="flex flex-wrap gap-2 mt-4">
+            {filterOptions.map((filter) => (
+              <Button
+                key={filter.id}
+                variant={activeFilter === filter.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveFilter(filter.id)}
+                className={activeFilter === filter.id ? "bg-amber-600 hover:bg-amber-700" : ""}
+              >
+                <span className="mr-1.5">{filter.icon}</span>
+                {filter.label}
+              </Button>
+            ))}
+          </div>
         </div>
 
         {/* Calendar */}
