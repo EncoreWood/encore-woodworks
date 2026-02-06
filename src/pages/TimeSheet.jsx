@@ -15,6 +15,7 @@ export default function TimeSheet() {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [showAddEntry, setShowAddEntry] = useState(false);
   const [currentTab, setCurrentTab] = useState("overview");
+  const [currentUser, setCurrentUser] = useState(null);
   const [formData, setFormData] = useState({
     clock_in: "",
     clock_out: "",
