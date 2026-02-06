@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import ProductionItemForm from "../components/production/ProductionItemForm";
+import WoodworkingCalculator from "../components/production/WoodworkingCalculator";
 
 const productionColumns = [
   { id: "face_frame", label: "Face Frame", color: "bg-blue-50" },
@@ -63,6 +64,10 @@ export default function ShopProduction() {
             <Plus className="w-4 h-4 mr-2" />
             Add Item
           </Button>
+        </div>
+
+        <div className="mb-6">
+          <WoodworkingCalculator />
         </div>
 
         <DragDropContext onDragEnd={handleDragEnd}>
