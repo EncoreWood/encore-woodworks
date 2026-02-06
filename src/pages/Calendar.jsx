@@ -24,6 +24,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import ProjectForm from "../components/projects/ProjectForm";
 
@@ -71,6 +78,11 @@ export default function Calendar() {
   const { data: tasks = [] } = useQuery({
     queryKey: ["tasks"],
     queryFn: () => base44.entities.MeetingTask.list()
+  });
+
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees"],
+    queryFn: () => base44.entities.Employee.list()
   });
 
   const createPresenterMutation = useMutation({
@@ -713,12 +725,21 @@ export default function Calendar() {
                 <>
                   <div>
                     <Label htmlFor="presenter_name">Presenter Name</Label>
-                    <Input
-                      id="presenter_name"
+                    <Select
                       value={formData.presenter_name || ""}
-                      onChange={(e) => setFormData({ ...formData, presenter_name: e.target.value })}
-                      placeholder="Enter presenter name"
-                    />
+                      onValueChange={(value) => setFormData({ ...formData, presenter_name: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select team member" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees.map((emp) => (
+                          <SelectItem key={emp.id} value={emp.full_name}>
+                            {emp.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div>
                     <Label htmlFor="time">Time</Label>

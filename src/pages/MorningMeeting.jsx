@@ -15,6 +15,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -116,6 +123,11 @@ export default function MorningMeeting() {
   const { data: tasks = [] } = useQuery({
     queryKey: ["tasks", dateString],
     queryFn: () => base44.entities.MeetingTask.filter({ date: dateString })
+  });
+
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ["employees"],
+    queryFn: () => base44.entities.Employee.list()
   });
 
   const savePresenterMutation = useMutation({
@@ -563,12 +575,21 @@ export default function MorningMeeting() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="presenter">Presenter Name</Label>
-                <Input
-                  id="presenter"
+                <Select
                   value={presenterName}
-                  onChange={(e) => setPresenterName(e.target.value)}
-                  placeholder="Enter presenter name"
-                />
+                  onValueChange={setPresenterName}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select team member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamMembers.map((member) => (
+                      <SelectItem key={member.id} value={member.full_name}>
+                        {member.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setShowPresenterDialog(false)}>
