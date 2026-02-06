@@ -16,6 +16,10 @@ export default function Layout({ children, currentPageName }) {
     operations: true,
     team: true
   });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [clockInTime, setClockInTime] = useState(null);
+  const [elapsedTime, setElapsedTime] = useState("00:00:00");
+  const [employees, setEmployees] = useState([]);
 
   const [navGroups, setNavGroups] = useState({
     projects: {
