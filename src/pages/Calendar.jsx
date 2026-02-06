@@ -256,6 +256,27 @@ export default function Calendar() {
                   {format(currentMonth, "MMMM yyyy")}
                 </h2>
                 <div className="flex gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button size="icon" variant="outline" className="h-9 w-9">
+                        <Plus className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleOpenAdd("presenter")} disabled={!selectedDate}>
+                        <User className="w-4 h-4 mr-2" />
+                        Meeting Presenter
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenAdd("project")} disabled={!selectedDate}>
+                        <Briefcase className="w-4 h-4 mr-2" />
+                        New Project
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenAdd("designMeeting")} disabled={!selectedDate}>
+                        <Users className="w-4 h-4 mr-2" />
+                        Design Meeting
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
                     variant="outline"
                     size="icon"
