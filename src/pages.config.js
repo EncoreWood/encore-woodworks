@@ -52,6 +52,7 @@ import Dashboard from './pages/Dashboard';
 import Kanban from './pages/Kanban';
 import ProjectDetails from './pages/ProjectDetails';
 import ShopProduction from './pages/ShopProduction';
+import MorningMeeting from './pages/MorningMeeting';
 import __Layout from './Layout.jsx';
 
 
@@ -61,6 +62,7 @@ export const PAGES = {
     "Kanban": Kanban,
     "ProjectDetails": ProjectDetails,
     "ShopProduction": ShopProduction,
+    "MorningMeeting": MorningMeeting,
 }
 
 export const pagesConfig = {
