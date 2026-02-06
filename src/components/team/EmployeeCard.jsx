@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Mail, Phone, Briefcase, Calendar, Cake, Pencil, ListTodo, ShieldCheck } from "lucide-react";
+import { User, Mail, Phone, Briefcase, Calendar, Cake, Pencil, ListTodo, ShieldCheck, FileText, Paperclip } from "lucide-react";
 import { format } from "date-fns";
 
 const departmentColors = {
@@ -97,6 +97,12 @@ export default function EmployeeCard({ employee, onEdit, onAssignTask }) {
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Cake className="w-3 h-3" />
               <span>Birthday {format(new Date(employee.birthday), "MMM d")}</span>
+            </div>
+          )}
+          {employee.files && employee.files.length > 0 && (
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <Paperclip className="w-3 h-3" />
+              <span>{employee.files.length} file{employee.files.length !== 1 ? 's' : ''}</span>
             </div>
           )}
         </div>

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Upload, X, User } from "lucide-react";
+import { Loader2, Upload, X, User, FileText, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { base44 } from "@/api/base44Client";
 
@@ -21,9 +21,11 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
     profile_image: "",
     user_email: "",
     user_role: "user",
+    files: [],
     notes: ""
   });
   const [uploading, setUploading] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
   const [inviteAsUser, setInviteAsUser] = useState(false);
 
   useEffect(() => {
@@ -39,6 +41,7 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
         profile_image: employee.profile_image || "",
         user_email: employee.user_email || "",
         user_role: employee.user_role || "user",
+        files: employee.files || [],
         notes: employee.notes || ""
       });
       setInviteAsUser(!!employee.user_email);
@@ -54,6 +57,7 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
         profile_image: "",
         user_email: "",
         user_role: "user",
+        files: [],
         notes: ""
       });
       setInviteAsUser(false);
@@ -78,6 +82,31 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingFile(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setFormData({
+        ...formData,
+        files: [...formData.files, { name: file.name, url: file_url }]
+      });
+    } catch (error) {
+      console.error("Failed to upload file:", error);
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const removeFile = (index) => {
+    setFormData({
+      ...formData,
+      files: formData.files.filter((_, i) => i !== index)
+    });
   };
 
   return (
@@ -281,6 +310,62 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
                 </div>
               </div>
             )}
+          </div>
+
+          <div>
+            <Label>Files</Label>
+            <div className="space-y-2">
+              {formData.files.map((file, index) => (
+                <div key={index} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                  <FileText className="w-4 h-4 text-slate-500" />
+                  <a 
+                    href={file.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-slate-700 hover:text-amber-600 flex-1 truncate"
+                  >
+                    {file.name}
+                  </a>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => removeFile(index)}
+                    className="h-6 w-6 text-red-500 hover:text-red-700"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+              <div>
+                <input
+                  type="file"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="file_upload"
+                  disabled={uploadingFile}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => document.getElementById("file_upload").click()}
+                  disabled={uploadingFile}
+                  className="w-full"
+                >
+                  {uploadingFile ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4 mr-2" />
+                      Add File
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
           </div>
 
           <div>
