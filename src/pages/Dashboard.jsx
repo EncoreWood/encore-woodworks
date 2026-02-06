@@ -174,6 +174,35 @@ export default function Dashboard() {
           />
         </div>
 
+        {/* Clock In/Out - Users Only */}
+        {currentUser?.role === "user" && (
+          <Card className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-slate-900">Work Time</h3>
+                <p className="text-sm text-slate-600">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
+              </div>
+              {clockInTime ? (
+                <Button
+                  onClick={handleClockOut}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <Square className="w-4 h-4 mr-2" />
+                  Clock Out ({elapsedTime})
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleClockIn}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Play className="w-4 h-4 mr-2" />
+                  Clock In
+                </Button>
+              )}
+            </div>
+          </Card>
+        )}
+
         {/* Filters */}
         <div className="mb-6">
           <ProjectFilters filters={filters} setFilters={setFilters} onClear={clearFilters} />
