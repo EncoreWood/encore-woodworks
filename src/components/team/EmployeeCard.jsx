@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Mail, Phone, Briefcase, Calendar, Cake, Pencil, ListTodo, ShieldCheck, FileText, Paperclip } from "lucide-react";
+import { User, Users, Mail, Phone, Briefcase, Calendar, Cake, Pencil, ListTodo, ShieldCheck, FileText, Paperclip } from "lucide-react";
 import { format } from "date-fns";
 
 const departmentColors = {
