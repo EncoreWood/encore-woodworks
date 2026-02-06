@@ -215,6 +215,8 @@ export default function TimeSheet() {
     ? timeEntries.filter(e => e.employee_id === selectedEmployee.id)
     : [];
 
+  const { periodStart, periodEnd } = getPayPeriodDates();
+
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -224,32 +226,138 @@ export default function TimeSheet() {
           <p className="text-slate-600">Track working hours, PTO, and vacation days</p>
         </div>
 
-        {/* Date Navigation */}
-        <div className="flex items-center gap-4 mb-8">
-          <Button
-            variant="outline"
-            onClick={() => setSelectedDate(addDays(selectedDate, -1))}
-          >
-            ← Previous
-          </Button>
-          <Input
-            type="date"
-            value={format(selectedDate, "yyyy-MM-dd")}
-            onChange={(e) => setSelectedDate(new Date(e.target.value))}
-            className="max-w-xs"
-          />
-          <Button
-            variant="outline"
-            onClick={() => setSelectedDate(addDays(selectedDate, 1))}
-          >
-            Next →
-          </Button>
-          <span className="text-sm text-slate-600 ml-auto">
-            {format(selectedDate, "EEEE, MMMM d, yyyy")}
-          </span>
-        </div>
+        {/* Tabs */}
+        <Tabs value={currentTab} onValueChange={setCurrentTab} className="mb-8">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="employee">Employee Details</TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              Settings
+            </TabsTrigger>
+          </TabsList>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* OVERVIEW TAB */}
+          <TabsContent value="overview" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-slate-900">
+                Pay Period: {format(periodStart, "MMM d")} - {format(periodEnd, "MMM d, yyyy")}
+              </h2>
+            </div>
+
+            {/* Currently Clocked In */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Circle className="w-4 h-4 fill-green-500 text-green-500" />
+                  Currently Clocked In
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {getClockedInEmployees()
+                    .filter((e) => e.isClockedIn)
+                    .length > 0 ? (
+                    getClockedInEmployees()
+                      .filter((e) => e.isClockedIn)
+                      .map((e) => (
+                        <div
+                          key={e.employee.id}
+                          className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
+                        >
+                          <div>
+                            <p className="font-semibold text-slate-900">{e.employee.full_name}</p>
+                            <p className="text-sm text-slate-600">Clocked in at {e.clockInTime}</p>
+                          </div>
+                          <Circle className="w-3 h-3 fill-green-500 text-green-500" />
+                        </div>
+                      ))
+                  ) : (
+                    <p className="text-slate-500 text-center py-4">No employees currently clocked in</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Employee Hours Summary */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Employee Hours Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200">
+                        <th className="text-left py-3 px-2 font-semibold text-slate-900">Employee</th>
+                        <th className="text-center py-3 px-2 font-semibold text-slate-900">Regular Hours</th>
+                        <th className="text-center py-3 px-2 font-semibold text-slate-900">Overtime Hours</th>
+                        <th className="text-center py-3 px-2 font-semibold text-slate-900">Total Hours</th>
+                        <th className="text-center py-3 px-2 font-semibold text-slate-900">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {employees.map((emp) => {
+                        const hours = getEmployeeHoursForPeriod(emp.id);
+                        const clockedIn = getClockedInEmployees().find(
+                          (e) => e.employee.id === emp.id
+                        );
+                        return (
+                          <tr key={emp.id} className="border-b border-slate-100 hover:bg-slate-50">
+                            <td className="py-3 px-2 text-slate-900 font-medium">{emp.full_name}</td>
+                            <td className="text-center py-3 px-2 text-slate-700">{hours.regularHours.toFixed(2)}</td>
+                            <td className="text-center py-3 px-2 text-orange-600 font-semibold">
+                              {hours.overtimeHours.toFixed(2)}
+                            </td>
+                            <td className="text-center py-3 px-2 text-slate-900 font-semibold">{hours.totalHours.toFixed(2)}</td>
+                            <td className="text-center py-3 px-2">
+                              {clockedIn?.isClockedIn ? (
+                                <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">
+                                  <Circle className="w-2 h-2 fill-green-600" />
+                                  Clocked In
+                                </span>
+                              ) : (
+                                <span className="text-slate-500 text-xs">Clocked Out</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* EMPLOYEE DETAILS TAB */}
+          <TabsContent value="employee">
+            {/* Date Navigation */}
+            <div className="flex items-center gap-4 mb-8">
+              <Button
+                variant="outline"
+                onClick={() => setSelectedDate(addDays(selectedDate, -1))}
+              >
+                ← Previous
+              </Button>
+              <Input
+                type="date"
+                value={format(selectedDate, "yyyy-MM-dd")}
+                onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                className="max-w-xs"
+              />
+              <Button
+                variant="outline"
+                onClick={() => setSelectedDate(addDays(selectedDate, 1))}
+              >
+                Next →
+              </Button>
+              <span className="text-sm text-slate-600 ml-auto">
+                {format(selectedDate, "EEEE, MMMM d, yyyy")}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Employee List */}
           <div className="lg:col-span-1">
             <Card>
