@@ -14,7 +14,7 @@ const departmentColors = {
 
 export default function EmployeeCard({ employee, onClick, onEdit, onAssignTask }) {
   return (
-    <Card className="p-6 bg-white border-0 shadow-sm hover:shadow-md transition-all">
+    <Card className="p-6 bg-white border-0 shadow-sm hover:shadow-md transition-all cursor-pointer" onClick={onClick}>
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           {employee.profile_image ? (
@@ -39,7 +39,10 @@ export default function EmployeeCard({ employee, onClick, onEdit, onAssignTask }
           <Button
             size="icon"
             variant="ghost"
-            onClick={() => onAssignTask(employee)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onAssignTask(employee);
+            }}
             className="text-slate-400 hover:text-slate-700"
             title="Assign Task"
           >
@@ -48,7 +51,10 @@ export default function EmployeeCard({ employee, onClick, onEdit, onAssignTask }
           <Button
             size="icon"
             variant="ghost"
-            onClick={() => onEdit(employee)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(employee);
+            }}
             className="text-slate-400 hover:text-slate-700"
             title="Edit"
           >

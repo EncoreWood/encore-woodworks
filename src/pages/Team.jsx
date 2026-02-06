@@ -3,7 +3,10 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Users, UserPlus, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Users, UserPlus, Loader2, User, Mail, Phone, Calendar, Cake, FileText, ShieldCheck, Pencil, ListTodo } from "lucide-react";
+import { format } from "date-fns";
 import EmployeeCard from "../components/team/EmployeeCard";
 import EmployeeForm from "../components/team/EmployeeForm";
 import AssignTaskDialog from "../components/team/AssignTaskDialog";
@@ -14,6 +17,8 @@ export default function Team() {
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
   const [assigningEmployee, setAssigningEmployee] = useState(null);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
+  const [viewingEmployee, setViewingEmployee] = useState(null);
+  const [showEmployeeDetails, setShowEmployeeDetails] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: employees = [], isLoading } = useQuery({
@@ -206,6 +211,10 @@ export default function Team() {
             <EmployeeCard
               key={employee.id}
               employee={employee}
+              onClick={() => {
+                setViewingEmployee(employee);
+                setShowEmployeeDetails(true);
+              }}
               onEdit={handleEdit}
               onAssignTask={handleAssignTask}
             />
@@ -244,6 +253,155 @@ export default function Team() {
           employee={assigningEmployee}
           isLoading={assignTaskMutation.isPending}
         />
+
+        {/* Employee Details Dialog */}
+        <Dialog open={showEmployeeDetails} onOpenChange={setShowEmployeeDetails}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Employee Details</DialogTitle>
+            </DialogHeader>
+            {viewingEmployee && (
+              <div className="space-y-6">
+                {/* Profile Section */}
+                <div className="flex items-start gap-4">
+                  <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-100 flex-shrink-0">
+                    {viewingEmployee.profile_image ? (
+                      <img src={viewingEmployee.profile_image} alt={viewingEmployee.full_name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <User className="w-12 h-12 text-slate-400" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-2xl font-bold text-slate-900">{viewingEmployee.full_name}</h3>
+                    {viewingEmployee.position && (
+                      <p className="text-slate-600 mt-1">{viewingEmployee.position}</p>
+                    )}
+                    {viewingEmployee.department && (
+                      <Badge className="mt-2 border-0 bg-amber-100 text-amber-700">
+                        {viewingEmployee.department.charAt(0).toUpperCase() + viewingEmployee.department.slice(1)}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Contact Info */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-slate-700 mb-3">Contact Information</h4>
+                  <div className="space-y-2">
+                    {viewingEmployee.email && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Mail className="w-4 h-4 text-slate-400" />
+                        <a href={`mailto:${viewingEmployee.email}`} className="text-slate-600 hover:text-amber-600">
+                          {viewingEmployee.email}
+                        </a>
+                      </div>
+                    )}
+                    {viewingEmployee.phone && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Phone className="w-4 h-4 text-slate-400" />
+                        <a href={`tel:${viewingEmployee.phone}`} className="text-slate-600 hover:text-amber-600">
+                          {viewingEmployee.phone}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Dates */}
+                <div className="border-t pt-4">
+                  <h4 className="text-sm font-semibold text-slate-700 mb-3">Important Dates</h4>
+                  <div className="space-y-2">
+                    {viewingEmployee.hire_date && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="w-4 h-4 text-slate-400" />
+                        <span className="text-slate-600">
+                          Hired: {format(new Date(viewingEmployee.hire_date), "MMMM d, yyyy")}
+                        </span>
+                      </div>
+                    )}
+                    {viewingEmployee.birthday && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Cake className="w-4 h-4 text-slate-400" />
+                        <span className="text-slate-600">
+                          Birthday: {format(new Date(viewingEmployee.birthday), "MMMM d")}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* User Access */}
+                {viewingEmployee.user_email && (
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-semibold text-slate-700 mb-3">User Access</h4>
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-green-600" />
+                      <span className="text-sm text-slate-600">
+                        {viewingEmployee.user_role === 'admin' ? 'Admin User' : 'User'} - {viewingEmployee.user_email}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Files */}
+                {viewingEmployee.files && viewingEmployee.files.length > 0 && (
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-semibold text-slate-700 mb-3">Files</h4>
+                    <div className="space-y-2">
+                      {viewingEmployee.files.map((file, index) => (
+                        <a
+                          key={index}
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+                        >
+                          <FileText className="w-4 h-4 text-slate-500" />
+                          <span className="text-sm text-slate-700">{file.name}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {viewingEmployee.notes && (
+                  <div className="border-t pt-4">
+                    <h4 className="text-sm font-semibold text-slate-700 mb-3">Notes</h4>
+                    <p className="text-sm text-slate-600 whitespace-pre-wrap">{viewingEmployee.notes}</p>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="border-t pt-4 flex gap-2">
+                  <Button
+                    onClick={() => {
+                      setShowEmployeeDetails(false);
+                      handleEdit(viewingEmployee);
+                    }}
+                    className="flex-1"
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowEmployeeDetails(false);
+                      handleAssignTask(viewingEmployee);
+                    }}
+                    className="flex-1"
+                  >
+                    <ListTodo className="w-4 h-4 mr-2" />
+                    Assign Task
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
