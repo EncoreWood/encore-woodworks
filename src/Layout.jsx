@@ -35,7 +35,6 @@ export default function Layout({ children, currentPageName }) {
       name: "Team",
       items: [
         { name: "Morning Meeting", icon: Coffee, page: "MorningMeeting" },
-        { name: "Stretching", icon: Users, page: "StretchingRoutine" },
         { name: "Team", icon: Users, page: "Team" },
         { name: "Chat", icon: MessageSquare, page: "ChatBoard" }
       ]
