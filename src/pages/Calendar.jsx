@@ -387,6 +387,10 @@ export default function Calendar() {
                         <Users className="w-4 h-4 mr-2" />
                         Design Meeting
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenAdd("bathroomCleaning")}>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Bathroom Cleaning
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Button
