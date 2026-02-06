@@ -16,45 +16,43 @@ export default function Layout({ children, currentPageName }) {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Top Navigation */}
-      <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center shadow-sm">
-                <Hammer className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-lg font-semibold text-slate-900 tracking-tight hidden sm:block">
-                Encore Woodworks
-              </span>
-            </Link>
-
-            {/* Nav Items */}
-            <div className="flex items-center gap-1">
-              {navItems.map((item) => (
-                <Link
-                  key={item.page}
-                  to={createPageUrl(item.page)}
-                  className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                    currentPageName === item.page
-                      ? "bg-amber-50 text-amber-700"
-                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
-                  )}
-                >
-                  <item.icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{item.name}</span>
-                </Link>
-              ))}
-            </div>
+    <div className="min-h-screen bg-slate-50 flex">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white border-r border-slate-200 sticky top-0 h-screen overflow-y-auto">
+        {/* Logo */}
+        <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3 p-6 border-b border-slate-200">
+          <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center shadow-sm">
+            <Hammer className="w-5 h-5 text-white" />
           </div>
-        </div>
-      </nav>
+          <span className="text-lg font-semibold text-slate-900 tracking-tight">
+            Encore Woodworks
+          </span>
+        </Link>
+
+        {/* Nav Items */}
+        <nav className="p-4 space-y-2">
+          {navItems.map((item) => (
+            <Link
+              key={item.page}
+              to={createPageUrl(item.page)}
+              className={cn(
+                "flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
+                currentPageName === item.page
+                  ? "bg-amber-50 text-amber-700"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+              )}
+            >
+              <item.icon className="w-4 h-4 flex-shrink-0" />
+              <span>{item.name}</span>
+            </Link>
+          ))}
+        </nav>
+      </aside>
 
       {/* Page Content */}
-      <main>{children}</main>
+      <main className="flex-1 overflow-auto">
+        {children}
+      </main>
     </div>
   );
 }
