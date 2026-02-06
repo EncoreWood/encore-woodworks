@@ -214,6 +214,49 @@ export default function Dashboard() {
           onSubmit={(data) => createMutation.mutate(data)}
           isLoading={createMutation.isPending}
         />
+
+        {/* Dashboard Settings Dialog */}
+        <Dialog open={showSettings} onOpenChange={setShowSettings}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Dashboard Visibility Settings</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6">
+              {["stats", "projects", "google_sheet"].map((section) => {
+                const setting = dashboardSettings.find(s => s.section === section);
+                const sectionLabel = section === "google_sheet" ? "Google Sheet" : section.charAt(0).toUpperCase() + section.slice(1);
+                
+                return (
+                  <div key={section} className="space-y-3">
+                    <h3 className="font-semibold text-slate-900">{sectionLabel}</h3>
+                    <div className="space-y-2 ml-2">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id={`users-${section}`}
+                          checked={setting?.visible_to_users ?? true}
+                          onCheckedChange={(checked) => handleToggleSectionVisibility(section, "user", checked)}
+                        />
+                        <Label htmlFor={`users-${section}`} className="cursor-pointer">
+                          Visible to Regular Users
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id={`admins-${section}`}
+                          checked={setting?.visible_to_admins ?? true}
+                          onCheckedChange={(checked) => handleToggleSectionVisibility(section, "admin", checked)}
+                        />
+                        <Label htmlFor={`admins-${section}`} className="cursor-pointer">
+                          Visible to Admins
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
