@@ -601,7 +601,7 @@ export default function Calendar() {
                   )}
 
                   {/* Projects */}
-                  {getProjectsForDate(selectedDate).map((project) => (
+                  {(activeFilter === "all" || activeFilter === "projects") && getProjectsForDate(selectedDate).map((project) => (
                     <div key={project.id} className="p-3 bg-amber-50 rounded-lg">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
