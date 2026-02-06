@@ -33,20 +33,14 @@ export default function FileViewer({ file, className = "" }) {
     return (
       <div className={className}>
         <iframe
-          src={`${file.url}#view=FitH`}
+          src={`https://docs.google.com/viewer?url=${encodeURIComponent(file.url)}&embedded=true`}
           className="w-full h-96 rounded-lg border border-slate-200"
           title={file.name}
         />
-        <a 
-          href={`${file.url}#view=FitH`}
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 mt-2 text-xs text-amber-600 hover:text-amber-700"
-        >
+        <div className="flex items-center gap-2 mt-2 text-xs text-slate-600">
           <FileIcon className="w-3 h-3" />
           <span className="flex-1 truncate">{file.name}</span>
-          <ExternalLink className="w-3 h-3" />
-        </a>
+        </div>
       </div>
     );
   }
