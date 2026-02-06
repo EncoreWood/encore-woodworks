@@ -25,6 +25,8 @@ export default function ChatBoard() {
   const [currentUser, setCurrentUser] = useState(null);
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [showFilesDialog, setShowFilesDialog] = useState(false);
+  const [showPhotosDialog, setShowPhotosDialog] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch current user
