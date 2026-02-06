@@ -536,12 +536,126 @@ export default function TimeSheet() {
             </TabsContent>
 
           {/* SETTINGS TAB */}
-          <TabsContent value="settings">
+          <TabsContent value="settings" className="space-y-6">
+            {/* Pay Period Settings */}
             <Card>
               <CardHeader>
-                <CardTitle>PTO Calculation Settings</CardTitle>
+                <CardTitle>Pay Period Settings</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Pay Period Start Day</label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={settingsData.pay_period_start_day}
+                      onChange={(e) =>
+                        setSettingsData({
+                          ...settingsData,
+                          pay_period_start_day: parseInt(e.target.value)
+                        })
+                      }
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Pay Period End Day</label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={settingsData.pay_period_end_day}
+                      onChange={(e) =>
+                        setSettingsData({
+                          ...settingsData,
+                          pay_period_end_day: parseInt(e.target.value)
+                        })
+                      }
+                      className="mt-2"
+                    />
+                  </div>
+                </div>
+                <p className="text-sm text-slate-600">
+                  Current: {settingsData.pay_period_start_day}th - {settingsData.pay_period_end_day}th of each month
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Work Schedule Settings */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Work Schedule</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-slate-700 block mb-3">Work Days</label>
+                  <div className="space-y-2">
+                    {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day, idx) => (
+                      <label key={day} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={settingsData.work_days.includes(idx + 1)}
+                          onChange={(e) => {
+                            const dayNum = idx + 1;
+                            const newWorkDays = e.target.checked
+                              ? [...settingsData.work_days, dayNum].sort()
+                              : settingsData.work_days.filter(d => d !== dayNum);
+                            setSettingsData({ ...settingsData, work_days: newWorkDays });
+                          }}
+                          className="rounded"
+                        />
+                        <span className="text-sm text-slate-700">{day}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Start Time</label>
+                    <Input
+                      type="time"
+                      value={settingsData.work_start_time}
+                      onChange={(e) =>
+                        setSettingsData({ ...settingsData, work_start_time: e.target.value })
+                      }
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">End Time</label>
+                    <Input
+                      type="time"
+                      value={settingsData.work_end_time}
+                      onChange={(e) =>
+                        setSettingsData({ ...settingsData, work_end_time: e.target.value })
+                      }
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Lunch Break (mins)</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={settingsData.lunch_break_minutes}
+                      onChange={(e) =>
+                        setSettingsData({ ...settingsData, lunch_break_minutes: parseInt(e.target.value) })
+                      }
+                      className="mt-2"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* PTO Settings */}
+            <Card>
+              <CardHeader>
+                <CardTitle>PTO Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-slate-700">Total PTO Hours Per Year</label>
                   <Input
@@ -555,13 +669,10 @@ export default function TimeSheet() {
                     }
                     className="mt-2"
                   />
-                  <p className="text-xs text-slate-500 mt-1">
-                    Total PTO hours accrued annually
-                  </p>
                 </div>
 
                 <div>
-                  <label className="text-sm font-medium text-slate-700">PTO Accrual Rate (Hours per Hour Worked)</label>
+                  <label className="text-sm font-medium text-slate-700">Accrual Rate (Hours per Hour Worked)</label>
                   <Input
                     type="number"
                     step="0.001"
@@ -575,37 +686,19 @@ export default function TimeSheet() {
                     className="mt-2"
                   />
                   <p className="text-xs text-slate-500 mt-1">
-                    For {settingsData.hours_per_year} hours/year, accrual rate is{" "}
-                    {(settingsData.hours_per_year / 2080).toFixed(4)} per hour
+                    {(settingsData.hours_per_year / 2080).toFixed(4)} hrs/hour
                   </p>
                 </div>
-
-                <div>
-                  <label className="text-sm font-medium text-slate-700">Pay Period Length (Days)</label>
-                  <Input
-                    type="number"
-                    value={settingsData.pay_period_days}
-                    onChange={(e) =>
-                      setSettingsData({
-                        ...settingsData,
-                        pay_period_days: parseInt(e.target.value)
-                      })
-                    }
-                    className="mt-2"
-                  />
-                  <p className="text-xs text-slate-500 mt-1">
-                    Number of days in each pay period
-                  </p>
-                </div>
-
-                <Button
-                  onClick={() => updateSettingsMutation.mutate(settingsData)}
-                  className="bg-amber-600 hover:bg-amber-700 w-full"
-                >
-                  Save Settings
-                </Button>
               </CardContent>
             </Card>
+
+            <Button
+              onClick={() => updateSettingsMutation.mutate(settingsData)}
+              className="bg-amber-600 hover:bg-amber-700 w-full"
+              size="lg"
+            >
+              Save All Settings
+            </Button>
           </TabsContent>
         </Tabs>
 
