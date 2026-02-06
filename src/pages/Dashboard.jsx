@@ -108,16 +108,28 @@ export default function Dashboard() {
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Projects</h1>
             <p className="text-slate-500 mt-1">Manage your cabinet projects</p>
           </div>
-          <Button
-            onClick={() => setShowForm(true)}
-            className="bg-amber-600 hover:bg-amber-700 shadow-sm"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Project
-          </Button>
+          <div className="flex gap-2">
+            {currentUser?.role === "admin" && (
+              <Button
+                onClick={() => setShowSettings(true)}
+                variant="outline"
+                size="icon"
+              >
+                <Settings className="w-4 h-4" />
+              </Button>
+            )}
+            <Button
+              onClick={() => setShowForm(true)}
+              className="bg-amber-600 hover:bg-amber-700 shadow-sm"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Project
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
+        {getSectionVisibility("stats") && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatsCard
             title="Total Projects"
