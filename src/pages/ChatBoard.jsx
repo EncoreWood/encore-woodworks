@@ -273,12 +273,9 @@ export default function ChatBoard() {
               </div>
             </Card>
 
-            {/* Employees and Folders */}
+            {/* Employees */}
             {selectedRoom && (
-              <>
-                <ChatEmployees room={selectedRoom} />
-                <ChatFolders roomId={selectedRoom.id} />
-              </>
+              <ChatEmployees room={selectedRoom} />
             )}
           </div>
 
