@@ -174,37 +174,37 @@ export default function Dashboard() {
 
         {/* Projects Grid */}
         {getSectionVisibility("projects") && (
-        <>
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="bg-white rounded-xl h-64 animate-pulse" />
-            ))}
-          </div>
-        ) : filteredProjects.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-xl border border-dashed border-slate-200">
-            <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-slate-700 mb-2">No projects found</h3>
-            <p className="text-slate-500 mb-4">
-              {projects.length === 0
-                ? "Get started by creating your first project"
-                : "Try adjusting your filters"}
-            </p>
-            {projects.length === 0 && (
-              <Button onClick={() => setShowForm(true)} className="bg-amber-600 hover:bg-amber-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Project
-              </Button>
+          <>
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="bg-white rounded-xl h-64 animate-pulse" />
+                ))}
+              </div>
+            ) : filteredProjects.length === 0 ? (
+              <div className="text-center py-16 bg-white rounded-xl border border-dashed border-slate-200">
+                <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-slate-700 mb-2">No projects found</h3>
+                <p className="text-slate-500 mb-4">
+                  {projects.length === 0
+                    ? "Get started by creating your first project"
+                    : "Try adjusting your filters"}
+                </p>
+                {projects.length === 0 && (
+                  <Button onClick={() => setShowForm(true)} className="bg-amber-600 hover:bg-amber-700">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create Project
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredProjects.map((project) => (
+                  <ProjectCard key={project.id} project={project} />
+                ))}
+              </div>
             )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        )}
-        </>
+          </>
         )}
 
         {/* Create Form */}
