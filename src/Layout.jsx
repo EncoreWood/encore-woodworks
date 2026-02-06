@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Box, Kanban as KanbanIcon, Calendar, Factory } from "lucide-react";
+import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Layout({ children, currentPageName }) {
@@ -20,10 +20,10 @@ export default function Layout({ children, currentPageName }) {
             {/* Logo */}
             <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3">
               <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center shadow-sm">
-                <Box className="w-5 h-5 text-white" />
+                <Hammer className="w-5 h-5 text-white" />
               </div>
               <span className="text-lg font-semibold text-slate-900 tracking-tight hidden sm:block">
-                Cabinet Projects
+                Encore Woodworks
               </span>
             </Link>
 
