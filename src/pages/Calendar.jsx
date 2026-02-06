@@ -626,7 +626,7 @@ export default function Calendar() {
                   ))}
 
                   {/* Design Meetings */}
-                  {getDesignMeetingsForDate(selectedDate).map((meeting) => (
+                  {(activeFilter === "all" || activeFilter === "meetings") && getDesignMeetingsForDate(selectedDate).map((meeting) => (
                     <div key={meeting.id} className="p-3 bg-violet-50 rounded-lg">
                       <div className="flex items-center gap-2 text-sm font-medium text-violet-900">
                         <Users className="w-4 h-4" />
