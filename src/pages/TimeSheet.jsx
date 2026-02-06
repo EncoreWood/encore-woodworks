@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Clock, Plus, Trash2, CheckCircle2, Play, Square } from "lucide-react";
-import { format, addDays, startOfWeek, endOfWeek } from "date-fns";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Clock, Plus, Trash2, CheckCircle2, Play, Square, Settings, Circle } from "lucide-react";
+import { format, addDays, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 
 export default function TimeSheet() {
   const [selectedDate, setSelectedDate] = useState(new Date());
