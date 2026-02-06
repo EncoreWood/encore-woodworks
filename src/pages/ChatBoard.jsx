@@ -252,39 +252,57 @@ export default function ChatBoard() {
                     ) : (
                       chatRooms.filter(r => r.project_id).map((room) => (
                         <div
-                          key={room.id}
-                          className={`p-3 rounded-lg cursor-pointer transition-all flex items-center justify-between group ${
-                            selectedRoom?.id === room.id
-                              ? 'bg-blue-100 text-blue-900'
-                              : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-                          }`}
-                        >
-                          <button
-                            onClick={() => setSelectedRoom(room)}
-                            className="flex-1 text-left font-medium text-sm truncate"
-                          >
-                            {room.name}
-                          </button>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {room.project_id && (
-                              <Link to={createPageUrl("ProjectDetails") + "?id=" + room.project_id}>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <ExternalLink className="w-3 h-3 text-blue-600" />
-                                </Button>
-                              </Link>
-                            )}
-                            <button
-                              onClick={() => deleteRoomMutation.mutate(room.id)}
-                            >
-                              <Trash2 className="w-4 h-4 text-red-600 hover:text-red-700" />
-                            </button>
-                          </div>
-                        </div>
+                           key={room.id}
+                           className={`p-3 rounded-lg cursor-pointer transition-all flex items-center justify-between group ${
+                             selectedRoom?.id === room.id
+                               ? 'bg-blue-100 text-blue-900'
+                               : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                           }`}
+                         >
+                           <button
+                             onClick={() => setSelectedRoom(room)}
+                             className="flex-1 text-left font-medium text-sm truncate"
+                           >
+                             {room.name}
+                           </button>
+                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                             {room.project_id && (
+                               <Link to={createPageUrl("ProjectDetails") + "?id=" + room.project_id}>
+                                 <Button
+                                   variant="ghost"
+                                   size="icon"
+                                   className="h-6 w-6"
+                                   onClick={(e) => e.stopPropagation()}
+                                 >
+                                   <ExternalLink className="w-3 h-3 text-blue-600" />
+                                 </Button>
+                               </Link>
+                             )}
+                             {selectedRoom?.id === room.id && (
+                               <>
+                                 <button
+                                   onClick={() => setShowFilesDialog(true)}
+                                   className="p-1 hover:bg-slate-200 rounded transition-colors"
+                                   title="Files"
+                                 >
+                                   <FileText className="w-4 h-4" />
+                                 </button>
+                                 <button
+                                   onClick={() => setShowPhotosDialog(true)}
+                                   className="p-1 hover:bg-slate-200 rounded transition-colors"
+                                   title="Photos"
+                                 >
+                                   <Image className="w-4 h-4" />
+                                 </button>
+                               </>
+                             )}
+                             <button
+                               onClick={() => deleteRoomMutation.mutate(room.id)}
+                             >
+                               <Trash2 className="w-4 h-4 text-red-600 hover:text-red-700" />
+                             </button>
+                           </div>
+                         </div>
                       ))
                     )}
                   </div>
