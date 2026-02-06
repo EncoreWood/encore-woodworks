@@ -210,7 +210,7 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Settings Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Board Groups Settings</DialogTitle>
           </DialogHeader>
@@ -255,14 +255,79 @@ export default function Layout({ children, currentPageName }) {
                     </div>
                   </div>
                 )}
-                <div className="space-y-1">
-                  {group.items.map((item) => (
+                <div className="space-y-2">
+                  {group.items.map((item, itemIndex) => (
                     <div
-                      key={item.page}
-                      className="text-sm text-slate-600 flex items-center gap-2 px-2 py-1"
+                      key={itemIndex}
+                      className="text-sm flex items-center gap-2 px-3 py-2.5 bg-slate-50 rounded border border-slate-200"
                     >
-                      <item.icon className="w-3 h-3" />
-                      {item.name}
+                      <item.icon className="w-4 h-4 flex-shrink-0 text-slate-600" />
+                      {editingBoardGroupKey === groupKey && editingBoardKey === itemIndex ? (
+                        <div className="flex gap-2 flex-1">
+                          <Input
+                            value={editingBoardName}
+                            onChange={(e) => setEditingBoardName(e.target.value)}
+                            placeholder="Board name"
+                            autoFocus
+                            className="h-7 text-xs flex-1"
+                          />
+                          <Button
+                            onClick={saveBoardName}
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="flex-1 text-slate-900 font-medium">{item.name}</span>
+                          <Select
+                            value={groupKey}
+                            onValueChange={(newGroupKey) =>
+                              moveBoard(groupKey, itemIndex, newGroupKey)
+                            }
+                          >
+                            <SelectTrigger className="h-7 w-28 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(navGroups).map(([key]) => (
+                                <SelectItem key={key} value={key}>
+                                  {navGroups[key].name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startEditBoard(groupKey, itemIndex)}
+                            className="h-7 px-2 text-xs"
+                          >
+                            Rename
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => reorderBoard(groupKey, itemIndex, "up")}
+                            disabled={itemIndex === 0}
+                            className="h-7 w-7 p-0"
+                          >
+                            <ArrowUp className="w-3 h-3" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => reorderBoard(groupKey, itemIndex, "down")}
+                            disabled={itemIndex === group.items.length - 1}
+                            className="h-7 w-7 p-0"
+                          >
+                            <ArrowDown className="w-3 h-3" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
