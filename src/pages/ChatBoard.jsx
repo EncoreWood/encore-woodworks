@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, Send } from 'lucide-react';
+import { Plus, Trash2, Send, Paperclip, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,8 @@ export default function ChatBoard() {
   const [newRoomName, setNewRoomName] = useState('');
   const [newMessage, setNewMessage] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  const [attachments, setAttachments] = useState([]);
+  const [uploading, setUploading] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch current user
@@ -68,15 +70,17 @@ export default function ChatBoard() {
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: (message) =>
+    mutationFn: (payload) =>
       base44.entities.ChatMessage.create({
         room_id: selectedRoom.id,
-        message,
-        user_name: currentUser?.full_name || currentUser?.email
+        message: payload.message,
+        user_name: currentUser?.full_name || currentUser?.email,
+        attachments: payload.attachments
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chatMessages', selectedRoom?.id] });
       setNewMessage('');
+      setAttachments([]);
     }
   });
 
@@ -87,9 +91,41 @@ export default function ChatBoard() {
   };
 
   const handleSendMessage = () => {
-    if (newMessage.trim() && selectedRoom) {
-      sendMessageMutation.mutate(newMessage.trim());
+    if ((newMessage.trim() || attachments.length > 0) && selectedRoom) {
+      sendMessageMutation.mutate({
+        message: newMessage.trim(),
+        attachments
+      });
     }
+  };
+
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    setUploading(true);
+    try {
+      for (const file of files) {
+        const { url } = await base44.integrations.Core.UploadFile({ file });
+        const isPhoto = file.type.startsWith('image/');
+        setAttachments(prev => [
+          ...prev,
+          {
+            name: file.name,
+            url,
+            type: isPhoto ? 'photo' : 'file'
+          }
+        ]);
+      }
+    } catch (error) {
+      console.error('Upload failed:', error);
+    }
+    setUploading(false);
+    e.target.value = '';
+  };
+
+  const removeAttachment = (index) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
