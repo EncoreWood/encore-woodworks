@@ -5,8 +5,11 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { User, MapPin, Calendar, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { User, MapPin, Calendar, DollarSign, MessageCircle } from "lucide-react";
 import { format } from "date-fns";
+import { useState } from "react";
 
 const statusColumns = [
   { id: "inquiry", label: "Inquiry", color: "bg-slate-100" },
@@ -29,10 +32,17 @@ const priorityColors = {
 
 export default function Kanban() {
   const queryClient = useQueryClient();
+  const [chatDialogOpen, setChatDialogOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState(null);
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: () => base44.entities.Project.list("-created_date")
+  });
+
+  const { data: chatRooms = [] } = useQuery({
+    queryKey: ["chatRooms"],
+    queryFn: () => base44.entities.ChatRoom.list()
   });
 
   const updateMutation = useMutation({
@@ -41,6 +51,32 @@ export default function Kanban() {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     }
   });
+
+  const createChatMutation = useMutation({
+    mutationFn: (chatData) => base44.entities.ChatRoom.create(chatData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chatRooms"] });
+      setChatDialogOpen(false);
+    }
+  });
+
+  const linkChatMutation = useMutation({
+    mutationFn: ({ projectId, roomId }) => 
+      base44.entities.ChatRoom.update(roomId, { project_id: projectId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chatRooms"] });
+      setChatDialogOpen(false);
+    }
+  });
+
+  const handleChatClick = (e, project) => {
+    e.preventDefault();
+    setSelectedProject(project);
+    setChatDialogOpen(true);
+  };
+
+  const projectChat = chatRooms.find(r => r.project_id === selectedProject?.id);
+  const availableChats = chatRooms.filter(r => !r.project_id);
 
   const handleDragEnd = (result) => {
     if (!result.destination) return;
