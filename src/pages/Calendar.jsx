@@ -339,8 +339,45 @@ export default function Calendar() {
     );
   };
 
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
+  // Get date range based on view type
+  const getDateRange = () => {
+    switch (viewType) {
+      case "week":
+        return {
+          start: startOfWeek(currentMonth),
+          end: endOfWeek(currentMonth)
+        };
+      case "month":
+        return {
+          start: startOfMonth(currentMonth),
+          end: endOfMonth(currentMonth)
+        };
+      case "3months":
+        return {
+          start: startOfMonth(currentMonth),
+          end: endOfMonth(addMonths(currentMonth, 2))
+        };
+      case "6months":
+        return {
+          start: startOfMonth(currentMonth),
+          end: endOfMonth(addMonths(currentMonth, 5))
+        };
+      case "year":
+        return {
+          start: startOfYear(currentMonth),
+          end: endOfMonth(addMonths(currentMonth, 11))
+        };
+      default:
+        return {
+          start: startOfMonth(currentMonth),
+          end: endOfMonth(currentMonth)
+        };
+    }
+  };
+
+  const dateRange = getDateRange();
+  const monthStart = dateRange.start;
+  const monthEnd = dateRange.end;
 
   const projectsInMonth = projects.filter((project) => {
     const startDate = project.start_date ? new Date(project.start_date) : null;
