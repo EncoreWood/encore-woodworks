@@ -544,15 +544,26 @@ export default function Calendar() {
               </div>
 
               {addType === "presenter" && (
-                <div>
-                  <Label htmlFor="presenter_name">Presenter Name</Label>
-                  <Input
-                    id="presenter_name"
-                    value={formData.presenter_name || ""}
-                    onChange={(e) => setFormData({ ...formData, presenter_name: e.target.value })}
-                    placeholder="Enter presenter name"
-                  />
-                </div>
+                <>
+                  <div>
+                    <Label htmlFor="presenter_name">Presenter Name</Label>
+                    <Input
+                      id="presenter_name"
+                      value={formData.presenter_name || ""}
+                      onChange={(e) => setFormData({ ...formData, presenter_name: e.target.value })}
+                      placeholder="Enter presenter name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="time">Time</Label>
+                    <Input
+                      id="time"
+                      type="time"
+                      value={formData.time || ""}
+                      onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    />
+                  </div>
+                </>
               )}
 
               {addType === "designMeeting" && (
@@ -573,6 +584,15 @@ export default function Calendar() {
                       value={formData.project_name || ""}
                       onChange={(e) => setFormData({ ...formData, project_name: e.target.value })}
                       placeholder="Enter project name"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="time">Time</Label>
+                    <Input
+                      id="time"
+                      type="time"
+                      value={formData.time || ""}
+                      onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                     />
                   </div>
                   <div>
