@@ -83,11 +83,11 @@ export default function Team() {
               <p className="text-slate-500 mt-1">Manage your team members</p>
             </div>
             <Button
-              onClick={() => setShowInviteDialog(true)}
+              onClick={handleAddNew}
               className="bg-amber-600 hover:bg-amber-700"
             >
               <UserPlus className="w-4 h-4 mr-2" />
-              Invite Member
+              Add Employee
             </Button>
           </div>
         </div>
