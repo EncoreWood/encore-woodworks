@@ -151,34 +151,74 @@ export default function ChatBoard() {
             {/* Chat Rooms List */}
             <Card className="p-4 bg-white border-0 shadow-lg">
               <h2 className="text-lg font-semibold text-slate-900 mb-4">Rooms</h2>
-              <div className="space-y-2">
-                {chatRooms.length === 0 ? (
-                  <p className="text-sm text-slate-500">No chat rooms yet</p>
-                ) : (
-                  chatRooms.map((room) => (
-                    <div
-                      key={room.id}
-                      className={`p-3 rounded-lg cursor-pointer transition-all flex items-center justify-between group ${
-                        selectedRoom?.id === room.id
-                          ? 'bg-amber-100 text-amber-900'
-                          : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <button
-                        onClick={() => setSelectedRoom(room)}
-                        className="flex-1 text-left font-medium text-sm truncate"
-                      >
-                        {room.name}
-                      </button>
-                      <button
-                        onClick={() => deleteRoomMutation.mutate(room.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-600 hover:text-red-700" />
-                      </button>
-                    </div>
-                  ))
-                )}
+              <div className="space-y-6">
+                {/* Project Chats */}
+                <div>
+                  <h3 className="text-xs font-semibold text-slate-600 uppercase mb-2">Project Chats</h3>
+                  <div className="space-y-2">
+                    {chatRooms.filter(r => r.project_id).length === 0 ? (
+                      <p className="text-xs text-slate-500">No project chats</p>
+                    ) : (
+                      chatRooms.filter(r => r.project_id).map((room) => (
+                        <div
+                          key={room.id}
+                          className={`p-3 rounded-lg cursor-pointer transition-all flex items-center justify-between group ${
+                            selectedRoom?.id === room.id
+                              ? 'bg-blue-100 text-blue-900'
+                              : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          <button
+                            onClick={() => setSelectedRoom(room)}
+                            className="flex-1 text-left font-medium text-sm truncate"
+                          >
+                            {room.name}
+                          </button>
+                          <button
+                            onClick={() => deleteRoomMutation.mutate(room.id)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600 hover:text-red-700" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Encore Chats */}
+                <div>
+                  <h3 className="text-xs font-semibold text-slate-600 uppercase mb-2">Encore Chats</h3>
+                  <div className="space-y-2">
+                    {chatRooms.filter(r => !r.project_id).length === 0 ? (
+                      <p className="text-xs text-slate-500">No encore chats</p>
+                    ) : (
+                      chatRooms.filter(r => !r.project_id).map((room) => (
+                        <div
+                          key={room.id}
+                          className={`p-3 rounded-lg cursor-pointer transition-all flex items-center justify-between group ${
+                            selectedRoom?.id === room.id
+                              ? 'bg-amber-100 text-amber-900'
+                              : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          <button
+                            onClick={() => setSelectedRoom(room)}
+                            className="flex-1 text-left font-medium text-sm truncate"
+                          >
+                            {room.name}
+                          </button>
+                          <button
+                            onClick={() => deleteRoomMutation.mutate(room.id)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600 hover:text-red-700" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
               </div>
             </Card>
 
