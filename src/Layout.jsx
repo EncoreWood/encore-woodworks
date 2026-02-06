@@ -246,6 +246,32 @@ export default function Layout({ children, currentPageName }) {
               <Settings className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Clock In/Out - Users Only */}
+          {currentUser?.role === "user" && (
+            <div className="px-4 py-3 border-t border-slate-200">
+              {clockInTime ? (
+                <button
+                  onClick={handleClockOut}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-all"
+                >
+                  <Square className="w-4 h-4" />
+                  <span>Clock Out</span>
+                  <span className="text-xs font-mono bg-red-700/50 px-2 py-1 rounded">
+                    {elapsedTime}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  onClick={handleClockIn}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition-all"
+                >
+                  <Play className="w-4 h-4" />
+                  Clock In
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Nav Groups */}
