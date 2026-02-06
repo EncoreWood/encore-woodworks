@@ -75,6 +75,30 @@ export default function Dashboard() {
     setFilters({ search: "", status: "all", type: "all", priority: "all" });
   };
 
+  useEffect(() => {
+    const fetchUser = async () => {
+      const user = await base44.auth.me();
+      setCurrentUser(user);
+    };
+    fetchUser();
+  }, []);
+
+  const getSectionVisibility = (section) => {
+    const setting = dashboardSettings.find(s => s.section === section);
+    if (!setting) return true;
+    return currentUser?.role === "admin" ? setting.visible_to_admins : setting.visible_to_users;
+  };
+
+  const handleToggleSectionVisibility = (section, role, value) => {
+    const setting = dashboardSettings.find(s => s.section === section);
+    if (!setting) return;
+    const field = role === "admin" ? "visible_to_admins" : "visible_to_users";
+    updateSettingMutation.mutate({
+      id: setting.id,
+      data: { [field]: value }
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
