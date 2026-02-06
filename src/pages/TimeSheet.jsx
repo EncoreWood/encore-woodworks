@@ -19,6 +19,8 @@ export default function TimeSheet() {
     entry_type: "work",
     notes: ""
   });
+  const [clockInTime, setClockInTime] = useState(null);
+  const [elapsedTime, setElapsedTime] = useState("00:00:00");
 
   const queryClient = useQueryClient();
 
