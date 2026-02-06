@@ -717,17 +717,18 @@ export default function Calendar() {
                         </div>
                       ))}
                     </div>
-                  </div>
+                    </div>
+                    )}
 
-                  {!getPresenterForDate(selectedDate) && 
-                   getProjectsForDate(selectedDate).length === 0 && 
-                   getDesignMeetingsForDate(selectedDate).length === 0 &&
-                   getTasksForDate(selectedDate).length === 0 &&
-                   getBathroomCleaningsForDate(selectedDate).length === 0 && (
+                    {!getPresenterForDate(selectedDate) && 
+                    getProjectsForDate(selectedDate).length === 0 && 
+                    getDesignMeetingsForDate(selectedDate).length === 0 &&
+                    getTasksForDate(selectedDate).length === 0 &&
+                    getBathroomCleaningsForDate(selectedDate).length === 0 && (
                     <p className="text-sm text-slate-500 text-center py-4">
                       No items for this date
                     </p>
-                  )}
+                    )}
                 </div>
               ) : (
                 <p className="text-sm text-slate-500 text-center py-4">
