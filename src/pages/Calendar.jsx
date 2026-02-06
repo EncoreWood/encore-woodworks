@@ -406,18 +406,39 @@ export default function Calendar() {
           
           {/* Filter Buttons */}
           <div className="flex flex-wrap gap-2 mt-4">
-            {filterOptions.map((filter) => (
-              <Button
-                key={filter.id}
-                variant={activeFilter === filter.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveFilter(filter.id)}
-                className={activeFilter === filter.id ? "bg-amber-600 hover:bg-amber-700" : ""}
-              >
-                <span className="mr-1.5">{filter.icon}</span>
-                {filter.label}
-              </Button>
-            ))}
+            <div className="flex flex-wrap gap-2">
+              {filterOptions.map((filter) => (
+                <Button
+                  key={filter.id}
+                  variant={activeFilter === filter.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setActiveFilter(filter.id)}
+                  className={activeFilter === filter.id ? "bg-amber-600 hover:bg-amber-700" : ""}
+                >
+                  <span className="mr-1.5">{filter.icon}</span>
+                  {filter.label}
+                </Button>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2 ml-auto">
+              {[
+                { id: "week", label: "Week" },
+                { id: "month", label: "Month" },
+                { id: "3months", label: "3 Months" },
+                { id: "6months", label: "6 Months" },
+                { id: "year", label: "Year" }
+              ].map((view) => (
+                <Button
+                  key={view.id}
+                  variant={viewType === view.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setViewType(view.id)}
+                  className={viewType === view.id ? "bg-blue-600 hover:bg-blue-700" : ""}
+                >
+                  {view.label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
 
