@@ -204,6 +204,8 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+        </>
+        )}
 
         {/* Create Form */}
         <ProjectForm
