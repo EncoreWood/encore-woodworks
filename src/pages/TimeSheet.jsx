@@ -747,9 +747,9 @@ export default function TimeSheet() {
               size="lg"
             >
               Save All Settings
-              </Button>
-              </TabsContent>
-              )}
+            </Button>
+            </TabsContent>
+            )}
         </Tabs>
 
         {/* Add Entry Dialog */}
