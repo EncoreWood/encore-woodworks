@@ -153,6 +153,64 @@ export default function TimeSheet() {
     sick: "bg-red-100 text-red-800"
   };
 
+  const getPayPeriodDates = () => {
+    const payPeriodDays = settings[0]?.pay_period_days || 14;
+    const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    const periodStart = addDays(weekStart, -((Math.floor((selectedDate - weekStart) / (1000 * 60 * 60 * 24)) % payPeriodDays) || 0));
+    const periodEnd = addDays(periodStart, payPeriodDays - 1);
+    return { periodStart, periodEnd };
+  };
+
+  const getEmployeeHoursForPeriod = (employeeId) => {
+    const { periodStart, periodEnd } = getPayPeriodDates();
+    const entries = timeEntries.filter(
+      (e) =>
+        e.employee_id === employeeId &&
+        isWithinInterval(new Date(e.date), { start: periodStart, end: periodEnd }) &&
+        e.entry_type === "work"
+    );
+
+    let totalHours = 0;
+    let regularHours = 0;
+    let overtimeHours = 0;
+    const weeklyHours = {};
+
+    entries.forEach((entry) => {
+      const weekNum = Math.floor(
+        (new Date(entry.date) - periodStart) / (1000 * 60 * 60 * 24 * 7)
+      );
+      if (!weeklyHours[weekNum]) weeklyHours[weekNum] = 0;
+      weeklyHours[weekNum] += entry.hours_worked || 0;
+      totalHours += entry.hours_worked || 0;
+    });
+
+    Object.values(weeklyHours).forEach((weekly) => {
+      if (weekly > 40) {
+        regularHours += 40;
+        overtimeHours += weekly - 40;
+      } else {
+        regularHours += weekly;
+      }
+    });
+
+    return { totalHours, regularHours, overtimeHours };
+  };
+
+  const getClockedInEmployees = () => {
+    const currentTime = new Date();
+    const todayStr = format(currentTime, "yyyy-MM-dd");
+    const todayEntries = timeEntries.filter((e) => e.date === todayStr && e.entry_type === "work");
+    return employees.map((emp) => {
+      const todayEntry = todayEntries.find((e) => e.employee_id === emp.id);
+      const isClockedIn = todayEntry && !todayEntry.clock_out;
+      return {
+        employee: emp,
+        isClockedIn,
+        clockInTime: todayEntry?.clock_in || null
+      };
+    });
+  };
+
   const employeeEntries = selectedEmployee
     ? timeEntries.filter(e => e.employee_id === selectedEmployee.id)
     : [];
