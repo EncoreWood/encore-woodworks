@@ -526,9 +526,7 @@ export default function TimeSheet() {
               </Card>
             )}
           </div>
-        </div>
-
-          </div>
+           </div>
           </TabsContent>
 
           {/* SETTINGS TAB */}
