@@ -201,13 +201,32 @@ export default function TimeSheet() {
                   <h2 className="text-2xl font-bold text-slate-900">
                     {selectedEmployee.full_name}'s Time Card
                   </h2>
-                  <Button
-                    onClick={() => setShowAddEntry(true)}
-                    className="bg-amber-600 hover:bg-amber-700"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Entry
-                  </Button>
+                  <div className="flex gap-2">
+                    {clockInTime ? (
+                      <Button
+                        onClick={handleClockOut}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        <Square className="w-4 h-4 mr-2" />
+                        Clock Out ({elapsedTime})
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleClockIn}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        <Play className="w-4 h-4 mr-2" />
+                        Clock In
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => setShowAddEntry(true)}
+                      variant="outline"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Entry
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Daily Summary */}
