@@ -277,7 +277,7 @@ export default function TimeSheet() {
 
           {/* OVERVIEW TAB - ADMIN ONLY */}
           {currentUser?.role === "admin" && (
-          <TabsContent value="overview" className="space-y-6">
+            <TabsContent value="overview" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-slate-900">
                 Pay Period: {format(periodStart, "MMM d")} - {format(periodEnd, "MMM d, yyyy")}
