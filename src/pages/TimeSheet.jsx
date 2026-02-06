@@ -682,8 +682,8 @@ export default function TimeSheet() {
               </div>
             </div>
           </DialogContent>
-        </Dialog>
-      </div>
-    </div>
-  );
-}
+          </Dialog>
+          </div>
+          </div>
+          );
+          }
