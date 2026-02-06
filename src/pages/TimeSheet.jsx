@@ -275,7 +275,8 @@ export default function TimeSheet() {
             )}
           </TabsList>
 
-          {/* OVERVIEW TAB */}
+          {/* OVERVIEW TAB - ADMIN ONLY */}
+          {currentUser?.role === "admin" && (
           <TabsContent value="overview" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold text-slate-900">
