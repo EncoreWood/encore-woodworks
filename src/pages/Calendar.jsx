@@ -342,6 +342,10 @@ export default function Calendar() {
                         <User className="w-4 h-4 mr-2" />
                         Meeting Presenter
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenAdd("task")}>
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Task
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleOpenAdd("project")}>
                         <Briefcase className="w-4 h-4 mr-2" />
                         New Project
@@ -486,6 +490,10 @@ export default function Calendar() {
                       <DropdownMenuItem onClick={() => handleOpenAdd("presenter")}>
                         <User className="w-4 h-4 mr-2" />
                         Meeting Presenter
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenAdd("task")}>
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Task
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleOpenAdd("project")}>
                         <Briefcase className="w-4 h-4 mr-2" />
