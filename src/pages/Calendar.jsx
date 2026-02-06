@@ -508,7 +508,7 @@ export default function Calendar() {
               <style>{`
                 .rdp-day {
                   position: relative;
-                  height: 100px;
+                  height: ${viewType === "week" ? "120px" : viewType === "month" ? "100px" : "60px"};
                 }
                 .rdp-day_button {
                   width: 100%;
@@ -517,72 +517,201 @@ export default function Calendar() {
                 .rdp-month {
                   width: 100%;
                 }
+                .rdp-months {
+                  ${(viewType === "3months" || viewType === "6months") ? "display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;" : ""}
+                  ${viewType === "year" ? "display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0.5rem;" : ""}
+                }
               `}</style>
 
-              <CalendarComponent
-                mode="single"
-                selected={selectedDate}
-                onSelect={(date) => {
-                  setSelectedDate(date);
-                  setDayDialogDate(date);
-                  setShowDayDialog(true);
-                }}
-                month={currentMonth}
-                onMonthChange={setCurrentMonth}
-                className="w-full"
-                classNames={{
-                  months: "w-full",
-                  month: "w-full",
-                  table: "w-full border-collapse table-fixed",
-                  head_cell: "text-slate-600 font-semibold text-base py-4 w-[14.28%]",
-                  cell: "relative p-0 text-center border-2 border-slate-100 w-[14.28%]",
-                  day: "relative h-24 w-full p-0 font-normal hover:bg-amber-50 transition-colors",
-                  day_selected: "bg-amber-100 text-amber-900 font-semibold",
-                  day_today: "bg-blue-50 font-bold border-2 border-blue-300",
-                  day_outside: "text-slate-300 opacity-50"
-                }}
-                components={{
-                  DayContent: ({ date }) => {
-                    const presenter = getPresenterForDate(date);
-                    const projectCount = getProjectsForDate(date).length;
-                    const meetingCount = getDesignMeetingsForDate(date).length;
-                    const taskCount = getTasksForDate(date).length;
-                    const cleaningCount = getBathroomCleaningsForDate(date).length;
-                    return (
-                      <div className="w-full h-full flex flex-col p-2">
-                        <div className="text-base font-semibold mb-auto flex items-center justify-between">
-                          {format(date, "d")}
-                          {presenter && activeFilter !== "cleaning" && activeFilter !== "meetings" && activeFilter !== "tasks" && activeFilter !== "projects" && (
-                            <User className="w-4 h-4 text-blue-600" />
-                          )}
+              {viewType === "week" ? (
+                <CalendarComponent
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => {
+                    setSelectedDate(date);
+                    setDayDialogDate(date);
+                    setShowDayDialog(true);
+                  }}
+                  month={currentMonth}
+                  onMonthChange={setCurrentMonth}
+                  disabled={(date) => {
+                    const weekStart = startOfWeek(currentMonth);
+                    const weekEnd = endOfWeek(currentMonth);
+                    return date < weekStart || date > weekEnd;
+                  }}
+                  className="w-full"
+                  classNames={{
+                    months: "w-full",
+                    month: "w-full",
+                    table: "w-full border-collapse table-fixed",
+                    head_cell: "text-slate-600 font-semibold text-base py-4 w-[14.28%]",
+                    cell: "relative p-0 text-center border-2 border-slate-100 w-[14.28%]",
+                    day: "relative h-30 w-full p-0 font-normal hover:bg-amber-50 transition-colors",
+                    day_selected: "bg-amber-100 text-amber-900 font-semibold",
+                    day_today: "bg-blue-50 font-bold border-2 border-blue-300",
+                    day_outside: "text-slate-300 opacity-50"
+                  }}
+                  components={{
+                    DayContent: ({ date }) => {
+                      const presenter = getPresenterForDate(date);
+                      const projectCount = getProjectsForDate(date).length;
+                      const meetingCount = getDesignMeetingsForDate(date).length;
+                      const taskCount = getTasksForDate(date).length;
+                      const cleaningCount = getBathroomCleaningsForDate(date).length;
+                      return (
+                        <div className="w-full h-full flex flex-col p-2">
+                          <div className="text-base font-semibold mb-auto flex items-center justify-between">
+                            {format(date, "d")}
+                            {presenter && activeFilter !== "cleaning" && activeFilter !== "meetings" && activeFilter !== "tasks" && activeFilter !== "projects" && (
+                              <User className="w-4 h-4 text-blue-600" />
+                            )}
+                          </div>
+                          <div className="flex gap-1 flex-wrap mt-1">
+                            {projectCount > 0 && (activeFilter === "all" || activeFilter === "projects") && (
+                              <div className="text-xs px-1.5 py-0.5 bg-amber-500 text-white rounded font-medium">
+                                {projectCount}
+                              </div>
+                            )}
+                            {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
+                              <div className="text-xs px-1.5 py-0.5 bg-violet-500 text-white rounded font-medium">
+                                {meetingCount}
+                              </div>
+                            )}
+                            {taskCount > 0 && (activeFilter === "all" || activeFilter === "tasks") && (
+                              <div className="text-xs px-1.5 py-0.5 bg-purple-500 text-white rounded font-medium">
+                                {taskCount}
+                              </div>
+                            )}
+                            {cleaningCount > 0 && (activeFilter === "all" || activeFilter === "cleaning") && (
+                              <div className="text-xs px-1.5 py-0.5 bg-cyan-500 text-white rounded font-medium">
+                                {cleaningCount}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex gap-1 flex-wrap mt-1">
-                          {projectCount > 0 && (activeFilter === "all" || activeFilter === "projects") && (
-                            <div className="text-xs px-1.5 py-0.5 bg-amber-500 text-white rounded font-medium">
-                              {projectCount}
-                            </div>
-                          )}
-                          {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
-                            <div className="text-xs px-1.5 py-0.5 bg-violet-500 text-white rounded font-medium">
-                              {meetingCount}
-                            </div>
-                          )}
-                          {taskCount > 0 && (activeFilter === "all" || activeFilter === "tasks") && (
-                            <div className="text-xs px-1.5 py-0.5 bg-purple-500 text-white rounded font-medium">
-                              {taskCount}
-                            </div>
-                          )}
-                          {cleaningCount > 0 && (activeFilter === "all" || activeFilter === "cleaning") && (
-                            <div className="text-xs px-1.5 py-0.5 bg-cyan-500 text-white rounded font-medium">
-                              {cleaningCount}
-                            </div>
-                          )}
+                      );
+                    }
+                  }}
+                />
+              ) : (viewType === "month") ? (
+                <CalendarComponent
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => {
+                    setSelectedDate(date);
+                    setDayDialogDate(date);
+                    setShowDayDialog(true);
+                  }}
+                  month={currentMonth}
+                  onMonthChange={setCurrentMonth}
+                  className="w-full"
+                  classNames={{
+                    months: "w-full",
+                    month: "w-full",
+                    table: "w-full border-collapse table-fixed",
+                    head_cell: "text-slate-600 font-semibold text-base py-4 w-[14.28%]",
+                    cell: "relative p-0 text-center border-2 border-slate-100 w-[14.28%]",
+                    day: "relative h-24 w-full p-0 font-normal hover:bg-amber-50 transition-colors",
+                    day_selected: "bg-amber-100 text-amber-900 font-semibold",
+                    day_today: "bg-blue-50 font-bold border-2 border-blue-300",
+                    day_outside: "text-slate-300 opacity-50"
+                  }}
+                  components={{
+                    DayContent: ({ date }) => {
+                      const presenter = getPresenterForDate(date);
+                      const projectCount = getProjectsForDate(date).length;
+                      const meetingCount = getDesignMeetingsForDate(date).length;
+                      const taskCount = getTasksForDate(date).length;
+                      const cleaningCount = getBathroomCleaningsForDate(date).length;
+                      return (
+                        <div className="w-full h-full flex flex-col p-2">
+                          <div className="text-base font-semibold mb-auto flex items-center justify-between">
+                            {format(date, "d")}
+                            {presenter && activeFilter !== "cleaning" && activeFilter !== "meetings" && activeFilter !== "tasks" && activeFilter !== "projects" && (
+                              <User className="w-4 h-4 text-blue-600" />
+                            )}
+                          </div>
+                          <div className="flex gap-1 flex-wrap mt-1">
+                            {projectCount > 0 && (activeFilter === "all" || activeFilter === "projects") && (
+                              <div className="text-xs px-1.5 py-0.5 bg-amber-500 text-white rounded font-medium">
+                                {projectCount}
+                              </div>
+                            )}
+                            {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
+                              <div className="text-xs px-1.5 py-0.5 bg-violet-500 text-white rounded font-medium">
+                                {meetingCount}
+                              </div>
+                            )}
+                            {taskCount > 0 && (activeFilter === "all" || activeFilter === "tasks") && (
+                              <div className="text-xs px-1.5 py-0.5 bg-purple-500 text-white rounded font-medium">
+                                {taskCount}
+                              </div>
+                            )}
+                            {cleaningCount > 0 && (activeFilter === "all" || activeFilter === "cleaning") && (
+                              <div className="text-xs px-1.5 py-0.5 bg-cyan-500 text-white rounded font-medium">
+                                {cleaningCount}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  }
-                }}
-              />
+                      );
+                    }
+                  }}
+                />
+              ) : (
+                <CalendarComponent
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => {
+                    setSelectedDate(date);
+                    setDayDialogDate(date);
+                    setShowDayDialog(true);
+                  }}
+                  month={currentMonth}
+                  onMonthChange={setCurrentMonth}
+                  className="w-full"
+                  classNames={{
+                    months: "w-full",
+                    month: "w-full",
+                    table: "w-full border-collapse table-fixed",
+                    head_cell: "text-slate-500 font-semibold text-xs py-2 w-[14.28%]",
+                    cell: "relative p-0 text-center border border-slate-100 w-[14.28%]",
+                    day: "relative h-16 w-full p-0 font-normal hover:bg-amber-50 transition-colors text-sm",
+                    day_selected: "bg-amber-100 text-amber-900 font-semibold",
+                    day_today: "bg-blue-50 font-bold border border-blue-300",
+                    day_outside: "text-slate-300 opacity-50"
+                  }}
+                  components={{
+                    DayContent: ({ date }) => {
+                      const projectCount = getProjectsForDate(date).length;
+                      const meetingCount = getDesignMeetingsForDate(date).length;
+                      const taskCount = getTasksForDate(date).length;
+                      return (
+                        <div className="w-full h-full flex flex-col p-1">
+                          <div className="text-sm font-semibold">{format(date, "d")}</div>
+                          <div className="flex gap-0.5 flex-wrap mt-0.5 text-xs">
+                            {projectCount > 0 && (activeFilter === "all" || activeFilter === "projects") && (
+                              <div className="px-1 py-0 bg-amber-500 text-white rounded">
+                                {projectCount}P
+                              </div>
+                            )}
+                            {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
+                              <div className="px-1 py-0 bg-violet-500 text-white rounded">
+                                {meetingCount}M
+                              </div>
+                            )}
+                            {taskCount > 0 && (activeFilter === "all" || activeFilter === "tasks") && (
+                              <div className="px-1 py-0 bg-purple-500 text-white rounded">
+                                {taskCount}T
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+                  }}
+                />
+              )}
 
               <div className="mt-6 flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-2">
