@@ -65,6 +65,20 @@ export default function TimeSheet() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["timeEntries"] })
   });
 
+  const updateSettingsMutation = useMutation({
+    mutationFn: (data) => {
+      if (settings[0]) {
+        return base44.entities.Settings.update(settings[0].id, data);
+      } else {
+        return base44.entities.Settings.create({
+          setting_type: "pto_calculation",
+          ...data
+        });
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["settings"] })
+  });
+
   useEffect(() => {
     if (!clockInTime) return;
     const interval = setInterval(() => {
