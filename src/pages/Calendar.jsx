@@ -443,11 +443,15 @@ export default function Calendar() {
         </div>
 
         {/* Calendar */}
-        <Card className="p-8 bg-white border-0 shadow-lg mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-slate-900">
-                  {format(currentMonth, "MMMM yyyy")}
-                </h2>
+         <Card className="p-8 bg-white border-0 shadow-lg mb-6">
+               <div className="flex items-center justify-between mb-4">
+                 <h2 className="text-xl font-semibold text-slate-900">
+                   {viewType === "week" && format(startOfWeek(currentMonth), "MMM d") + " - " + format(endOfWeek(currentMonth), "MMM d, yyyy")}
+                   {viewType === "month" && format(currentMonth, "MMMM yyyy")}
+                   {viewType === "3months" && format(currentMonth, "MMMM yyyy") + " - " + format(addMonths(currentMonth, 2), "MMMM yyyy")}
+                   {viewType === "6months" && format(currentMonth, "MMMM yyyy") + " - " + format(addMonths(currentMonth, 5), "MMMM yyyy")}
+                   {viewType === "year" && format(currentMonth, "yyyy")}
+                 </h2>
                 <div className="flex gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
