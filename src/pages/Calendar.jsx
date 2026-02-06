@@ -304,9 +304,10 @@ export default function Calendar() {
                   <Button
                     onClick={handleSetPresenter}
                     disabled={!presenterName}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    size="icon"
+                    className="bg-blue-600 hover:bg-blue-700"
                   >
-                    Set Presenter
+                    <Plus className="w-4 h-4" />
                   </Button>
                   {getPresenterForDate(selectedDate) && (
                     <p className="text-xs text-slate-500">
@@ -329,11 +330,11 @@ export default function Calendar() {
                 </h2>
                 <Button
                   onClick={handleCreateProject}
-                  size="sm"
-                  className="bg-amber-600 hover:bg-amber-700"
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
                 >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add
+                  <Plus className="w-4 h-4" />
                 </Button>
               </div>
               <div className="space-y-3 max-h-[600px] overflow-y-auto">
