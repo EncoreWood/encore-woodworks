@@ -28,11 +28,23 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Project.list("-created_date")
   });
 
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees"],
+    queryFn: () => base44.entities.Employee.list()
+  });
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Project.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setShowForm(false);
+    }
+  });
+
+  const createEntryMutation = useMutation({
+    mutationFn: (data) => base44.entities.TimeEntry.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
     }
   });
 
