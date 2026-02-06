@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, Briefcase, Clock, CheckCircle, AlertTriangle } from "lucide-react";
+import { Plus, Briefcase, Clock, CheckCircle, AlertTriangle, Settings } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import StatsCard from "../components/dashboard/StatsCard";
 import ProjectCard from "../components/projects/ProjectCard";
 import ProjectFilters from "../components/projects/ProjectFilters";
@@ -12,6 +15,8 @@ import ProjectForm from "../components/projects/ProjectForm";
 export default function Dashboard() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [filters, setFilters] = useState({
     search: "",
     status: "all",
