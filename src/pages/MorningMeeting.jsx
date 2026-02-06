@@ -345,6 +345,14 @@ export default function MorningMeeting() {
               "{getDailyQuote()}"
             </p>
           </div>
+
+          <div className="mt-6">
+            <Link to={createPageUrl("StretchingRoutine")}>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                ✨ Quick Stretch Before Meeting
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Tasks Section */}
