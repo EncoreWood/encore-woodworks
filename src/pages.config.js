@@ -56,7 +56,6 @@ import ShopProduction from './pages/ShopProduction';
 import Team from './pages/Team';
 import ChatBoard from './pages/ChatBoard';
 import Inventory from './pages/Inventory';
-import BoardSettings from './pages/BoardSettings';
 import __Layout from './Layout.jsx';
 
 
@@ -70,7 +69,6 @@ export const PAGES = {
     "Team": Team,
     "ChatBoard": ChatBoard,
     "Inventory": Inventory,
-    "BoardSettings": BoardSettings,
 }
 
 export const pagesConfig = {

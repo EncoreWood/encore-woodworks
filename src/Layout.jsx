@@ -1,32 +1,16 @@
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, Settings } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Layout({ children, currentPageName }) {
-  const { data: boardGroups = [] } = useQuery({
-    queryKey: ["boardGroups"],
-    queryFn: () => base44.entities.BoardGroup.list('-order'),
-    initialData: []
-  });
-
-  const defaultGroups = [
-    {
-      name: "Boards",
-      boards: [
-        { name: "Calendar", icon: "Calendar", page: "Calendar" },
-        { name: "Production", icon: "Factory", page: "ShopProduction" },
-        { name: "Inventory", icon: "Coffee", page: "Inventory" },
-        { name: "Chat", icon: "MessageSquare", page: "ChatBoard" },
-        { name: "Team", icon: "Users", page: "Team" }
-      ],
-      order: 0
-    }
+  const sidebarItems = [
+    { name: "Calendar", icon: Calendar, page: "Calendar" },
+    { name: "Production", icon: Factory, page: "ShopProduction" },
+    { name: "Inventory", icon: Coffee, page: "Inventory" },
+    { name: "Chat", icon: MessageSquare, page: "ChatBoard" },
+    { name: "Team", icon: Users, page: "Team" }
   ];
-
-  const allGroups = boardGroups.length > 0 ? boardGroups : defaultGroups;
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -42,50 +26,22 @@ export default function Layout({ children, currentPageName }) {
             </span>
           </Link>
 
-          <nav className="space-y-6">
-            {allGroups.map((group) => (
-              <div key={group.name}>
-                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-4 mb-2">
-                  {group.name}
-                </h3>
-                <div className="space-y-1">
-                  {group.boards?.map((item) => {
-                    const IconMap = { Calendar, Factory, Coffee, MessageSquare, Users };
-                    const ItemIcon = IconMap[item.icon] || Coffee;
-                    return (
-                      <Link
-                        key={item.page}
-                        to={createPageUrl(item.page)}
-                        className={cn(
-                          "flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all text-sm",
-                          currentPageName === item.page
-                            ? "bg-amber-100 text-amber-700"
-                            : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
-                        )}
-                      >
-                        <ItemIcon className="w-5 h-5 flex-shrink-0" />
-                        <span>{item.name}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-            
-            <div className="border-t border-slate-200 pt-4">
+          <nav className="space-y-2">
+            {sidebarItems.map((item) => (
               <Link
-                to={createPageUrl("BoardSettings")}
+                key={item.page}
+                to={createPageUrl(item.page)}
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all text-sm",
-                  currentPageName === "BoardSettings"
+                  currentPageName === item.page
                     ? "bg-amber-100 text-amber-700"
                     : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                 )}
               >
-                <Settings className="w-5 h-5 flex-shrink-0" />
-                <span>Board Settings</span>
+                <item.icon className="w-5 h-5 flex-shrink-0" />
+                <span>{item.name}</span>
               </Link>
-            </div>
+            ))}
           </nav>
         </div>
       </aside>
