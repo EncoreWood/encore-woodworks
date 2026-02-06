@@ -29,6 +29,18 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Project.list("-created_date")
   });
 
+  const { data: dashboardSettings = [] } = useQuery({
+    queryKey: ["dashboardSettings"],
+    queryFn: () => base44.entities.DashboardSettings.list()
+  });
+
+  const updateSettingMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.DashboardSettings.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboardSettings"] });
+    }
+  });
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Project.create(data),
     onSuccess: () => {
