@@ -231,7 +231,7 @@ export default function Layout({ children, currentPageName }) {
         <div className="border-b border-slate-200">
           <div className="flex items-center gap-3 p-6">
             <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3 flex-1">
-              <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png" alt="Encore Woodworks" className="h-12 w-auto" />
+              <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png" alt="Encore Woodworks" className="h-24 w-auto" />
             </Link>
           </div>
 
