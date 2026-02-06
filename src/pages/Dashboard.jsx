@@ -2,6 +2,7 @@ import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Plus, Briefcase, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 import StatsCard from "../components/dashboard/StatsCard";
 import ProjectCard from "../components/projects/ProjectCard";
@@ -105,6 +106,15 @@ export default function Dashboard() {
         <div className="mb-6">
           <ProjectFilters filters={filters} setFilters={setFilters} onClear={clearFilters} />
         </div>
+
+        {/* Google Sheet */}
+        <Card className="mb-6 p-0 overflow-hidden">
+          <iframe
+            src="https://docs.google.com/spreadsheets/d/e/2PACX-1vQfSWHN8kNIqPBqrqXOmVDhLGlWLFJXGmXvC7KdPjJHQNqaWNmC5ZHZxZZXZxZxZZxZxZ/pubhtml?widget=true&amp;headers=false"
+            className="w-full h-[600px] border-0"
+            title="Project Sheet"
+          />
+        </Card>
 
         {/* Projects Grid */}
         {isLoading ? (
