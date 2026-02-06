@@ -13,6 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import ChatEmployees from '@/components/chat/ChatEmployees';
+import ChatFolders from '@/components/chat/ChatFolders';
 
 export default function ChatBoard() {
   const [selectedRoom, setSelectedRoom] = useState(null);
@@ -107,9 +109,10 @@ export default function ChatBoard() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Chat Rooms List */}
-          <div className="lg:col-span-1">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Sidebar */}
+          <div className="lg:col-span-1 space-y-4">
+            {/* Chat Rooms List */}
             <Card className="p-4 bg-white border-0 shadow-lg">
               <h2 className="text-lg font-semibold text-slate-900 mb-4">Rooms</h2>
               <div className="space-y-2">
@@ -142,6 +145,14 @@ export default function ChatBoard() {
                 )}
               </div>
             </Card>
+
+            {/* Employees and Folders */}
+            {selectedRoom && (
+              <>
+                <ChatEmployees room={selectedRoom} />
+                <ChatFolders roomId={selectedRoom.id} />
+              </>
+            )}
           </div>
 
           {/* Messages */}
