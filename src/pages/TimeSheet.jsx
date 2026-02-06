@@ -585,7 +585,7 @@ export default function TimeSheet() {
 
           {/* SETTINGS TAB - ADMIN ONLY */}
           {currentUser?.role === "admin" && (
-          <TabsContent value="settings" className="space-y-6">
+            <TabsContent value="settings" className="space-y-6">
             {/* Pay Period Settings */}
             <Card>
               <CardHeader>
