@@ -604,7 +604,7 @@ export default function TimeSheet() {
         </Tabs>
 
         {/* Add Entry Dialog */}
-        <Dialog open={showAddEntry} onOpenChange={setShowAddEntry}>
+        <Dialog open={showAddEntry} onOpenChange={setShowAddEntry} className="z-50">
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Time Entry</DialogTitle>
