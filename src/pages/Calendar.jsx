@@ -46,6 +46,8 @@ export default function Calendar() {
   const [formData, setFormData] = useState({});
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [showDayDialog, setShowDayDialog] = useState(false);
+  const [dayDialogDate, setDayDialogDate] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: projects = [], isLoading } = useQuery({
@@ -317,7 +319,11 @@ export default function Calendar() {
               <CalendarComponent
                 mode="single"
                 selected={selectedDate}
-                onSelect={setSelectedDate}
+                onSelect={(date) => {
+                  setSelectedDate(date);
+                  setDayDialogDate(date);
+                  setShowDayDialog(true);
+                }}
                 month={currentMonth}
                 onMonthChange={setCurrentMonth}
                 className="w-full"
@@ -637,6 +643,96 @@ export default function Calendar() {
           initialData={editingProject}
           isLoading={createProjectMutation.isPending || updateProjectMutation.isPending}
         />
+
+        {/* Day Events Dialog */}
+        <Dialog open={showDayDialog} onOpenChange={setShowDayDialog}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                {dayDialogDate && format(dayDialogDate, "EEEE, MMMM d, yyyy")}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 max-h-[500px] overflow-y-auto">
+              {dayDialogDate && (
+                <>
+                  {/* Presenter */}
+                  {getPresenterForDate(dayDialogDate) && (
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm font-medium text-blue-900 mb-2">
+                        <User className="w-4 h-4" />
+                        Meeting Presenter
+                      </div>
+                      <p className="text-sm text-blue-700">
+                        {getPresenterForDate(dayDialogDate).presenter_name}
+                      </p>
+                      {getPresenterForDate(dayDialogDate).time && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          {getPresenterForDate(dayDialogDate).time}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Projects */}
+                  {getProjectsForDate(dayDialogDate).map((project) => (
+                    <Link
+                      key={project.id}
+                      to={createPageUrl("ProjectDetails") + "?id=" + project.id}
+                      className="block p-4 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors"
+                      onClick={() => setShowDayDialog(false)}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Briefcase className="w-4 h-4 text-amber-700" />
+                          <span className="text-sm font-medium text-amber-900">
+                            {project.project_name}
+                          </span>
+                        </div>
+                        <Badge
+                          className={`text-xs border-0 ${statusConfig[project.status]?.color || "bg-slate-500"} text-white`}
+                        >
+                          {statusConfig[project.status]?.label || project.status}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-amber-700">{project.client_name}</p>
+                      {project.address && (
+                        <p className="text-xs text-amber-600 mt-1">{project.address}</p>
+                      )}
+                    </Link>
+                  ))}
+
+                  {/* Design Meetings */}
+                  {getDesignMeetingsForDate(dayDialogDate).map((meeting) => (
+                    <div key={meeting.id} className="p-4 bg-violet-50 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm font-medium text-violet-900 mb-2">
+                        <Users className="w-4 h-4" />
+                        Design Meeting
+                      </div>
+                      <p className="text-sm text-violet-700">{meeting.client_name}</p>
+                      {meeting.project_name && (
+                        <p className="text-xs text-violet-600 mt-1">{meeting.project_name}</p>
+                      )}
+                      {meeting.time && (
+                        <p className="text-xs text-violet-600 mt-1">{meeting.time}</p>
+                      )}
+                      {meeting.notes && (
+                        <p className="text-xs text-violet-600 mt-2 italic">{meeting.notes}</p>
+                      )}
+                    </div>
+                  ))}
+
+                  {!getPresenterForDate(dayDialogDate) && 
+                   getProjectsForDate(dayDialogDate).length === 0 && 
+                   getDesignMeetingsForDate(dayDialogDate).length === 0 && (
+                    <p className="text-sm text-slate-500 text-center py-8">
+                      No events scheduled for this day
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
