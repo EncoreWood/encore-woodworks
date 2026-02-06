@@ -56,6 +56,7 @@ import ShopProduction from './pages/ShopProduction';
 import Team from './pages/Team';
 import GoogleSheets from './pages/GoogleSheets';
 import ChatBoard from './pages/ChatBoard';
+import Inventory from './pages/Inventory';
 import __Layout from './Layout.jsx';
 
 
@@ -69,6 +70,7 @@ export const PAGES = {
     "Team": Team,
     "GoogleSheets": GoogleSheets,
     "ChatBoard": ChatBoard,
+    "Inventory": Inventory,
 }
 
 export const pagesConfig = {

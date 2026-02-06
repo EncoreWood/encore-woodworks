@@ -9,6 +9,7 @@ export default function Layout({ children, currentPageName }) {
     { name: "Board", icon: KanbanIcon, page: "Kanban" },
     { name: "Calendar", icon: Calendar, page: "Calendar" },
     { name: "Production", icon: Factory, page: "ShopProduction" },
+    { name: "Inventory", icon: Coffee, page: "Inventory" },
     { name: "Morning Meeting", icon: Coffee, page: "MorningMeeting" },
     { name: "Team", icon: Users, page: "Team" },
     { name: "Chat", icon: MessageSquare, page: "ChatBoard" },
