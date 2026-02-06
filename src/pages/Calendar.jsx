@@ -201,10 +201,10 @@ export default function Calendar() {
           <p className="text-slate-500 mt-1">View projects by their scheduled dates</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Calendar */}
-          <div className="lg:col-span-2">
-            <Card className="p-6 bg-white border-0 shadow-sm">
+          <div className="lg:col-span-3">
+            <Card className="p-8 bg-white border-0 shadow-lg">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-slate-900">
                   {format(currentMonth, "MMMM yyyy")}
@@ -236,11 +236,14 @@ export default function Calendar() {
               <style>{`
                 .rdp-day {
                   position: relative;
-                  height: 80px;
+                  height: 100px;
                 }
                 .rdp-day_button {
                   width: 100%;
                   height: 100%;
+                }
+                .rdp-month {
+                  width: 100%;
                 }
               `}</style>
 
@@ -255,39 +258,56 @@ export default function Calendar() {
                   months: "w-full",
                   month: "w-full",
                   table: "w-full border-collapse",
-                  head_cell: "text-slate-500 font-medium w-14",
-                  cell: "relative p-0 text-center border border-slate-100",
-                  day: "relative h-20 w-full p-0 font-normal hover:bg-slate-50",
-                  day_selected: "bg-amber-50 text-amber-900",
-                  day_today: "bg-slate-100 font-semibold",
-                  day_outside: "text-slate-300"
+                  head_cell: "text-slate-600 font-semibold text-base py-4",
+                  cell: "relative p-0 text-center border-2 border-slate-100",
+                  day: "relative h-24 w-full p-0 font-normal hover:bg-amber-50 transition-colors",
+                  day_selected: "bg-amber-100 text-amber-900 font-semibold",
+                  day_today: "bg-blue-50 font-bold border-2 border-blue-300",
+                  day_outside: "text-slate-300 opacity-50"
                 }}
                 components={{
                   DayContent: ({ date }) => {
                     const presenter = getPresenterForDate(date);
+                    const projectCount = getProjectsForDate(date).length;
+                    const meetingCount = getDesignMeetingsForDate(date).length;
                     return (
-                      <div className="w-full h-full flex flex-col">
-                        <div className="text-sm p-2 flex items-center justify-between">
+                      <div className="w-full h-full flex flex-col p-2">
+                        <div className="text-base font-semibold mb-auto flex items-center justify-between">
                           {format(date, "d")}
                           {presenter && (
-                            <User className="w-3 h-3 text-blue-600" />
+                            <User className="w-4 h-4 text-blue-600" />
                           )}
                         </div>
-                        {getDayContent(date)}
+                        <div className="flex gap-1 flex-wrap mt-1">
+                          {projectCount > 0 && (
+                            <div className="text-xs px-1.5 py-0.5 bg-amber-500 text-white rounded font-medium">
+                              {projectCount}
+                            </div>
+                          )}
+                          {meetingCount > 0 && (
+                            <div className="text-xs px-1.5 py-0.5 bg-violet-500 text-white rounded font-medium">
+                              {meetingCount}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   }
                 }}
               />
 
-              <div className="mt-4 flex flex-wrap gap-3 text-xs">
+              <div className="mt-6 flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-slate-400" />
-                  <span className="text-slate-600">Start Date</span>
+                  <div className="px-2 py-1 bg-amber-500 text-white rounded font-medium text-xs">1</div>
+                  <span className="text-slate-700">Project</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                  <span className="text-slate-600">Completion Date</span>
+                  <div className="px-2 py-1 bg-violet-500 text-white rounded font-medium text-xs">1</div>
+                  <span className="text-slate-700">Design Meeting</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-blue-600" />
+                  <span className="text-slate-700">Presenter</span>
                 </div>
               </div>
             </Card>
@@ -295,7 +315,7 @@ export default function Calendar() {
 
           {/* Selected Date Info */}
           <div className="space-y-6">
-            <Card className="p-6 bg-white border-0 shadow-sm">
+            <Card className="p-6 bg-white border-0 shadow-lg">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-slate-900">
                   {selectedDate ? format(selectedDate, "MMM d, yyyy") : "Select a date"}
@@ -395,7 +415,7 @@ export default function Calendar() {
             </Card>
 
             {/* This Month Projects */}
-            <Card className="p-6 bg-white border-0 shadow-sm">
+            <Card className="p-6 bg-white border-0 shadow-lg">
               <h2 className="text-lg font-semibold text-slate-900 mb-4">
                 This Month ({projectsInMonth.length})
               </h2>
