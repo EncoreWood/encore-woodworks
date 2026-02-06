@@ -12,7 +12,7 @@ const departmentColors = {
   management: "bg-amber-100 text-amber-700"
 };
 
-export default function EmployeeCard({ employee, onEdit, onAssignTask }) {
+export default function EmployeeCard({ employee, onClick, onEdit, onAssignTask }) {
   return (
     <Card className="p-6 bg-white border-0 shadow-sm hover:shadow-md transition-all">
       <div className="flex items-start justify-between mb-4">
