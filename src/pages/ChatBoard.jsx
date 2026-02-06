@@ -54,6 +54,16 @@ export default function ChatBoard() {
     enabled: !!selectedRoom
   });
 
+  // Fetch folders for selected room
+  const { data: folders = [] } = useQuery({
+    queryKey: ['chatFolders', selectedRoom?.id],
+    queryFn: () => {
+      if (!selectedRoom) return [];
+      return base44.entities.ChatFolder.filter({ room_id: selectedRoom.id });
+    },
+    enabled: !!selectedRoom
+  });
+
   // Mutations
   const createRoomMutation = useMutation({
     mutationFn: (name) => base44.entities.ChatRoom.create({ name }),
