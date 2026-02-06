@@ -489,27 +489,27 @@ export default function Calendar() {
                       <div className="w-full h-full flex flex-col p-2">
                         <div className="text-base font-semibold mb-auto flex items-center justify-between">
                           {format(date, "d")}
-                          {presenter && (
+                          {presenter && activeFilter !== "cleaning" && activeFilter !== "meetings" && activeFilter !== "tasks" && activeFilter !== "projects" && (
                             <User className="w-4 h-4 text-blue-600" />
                           )}
                         </div>
                         <div className="flex gap-1 flex-wrap mt-1">
-                          {projectCount > 0 && (
+                          {projectCount > 0 && (activeFilter === "all" || activeFilter === "projects") && (
                             <div className="text-xs px-1.5 py-0.5 bg-amber-500 text-white rounded font-medium">
                               {projectCount}
                             </div>
                           )}
-                          {meetingCount > 0 && (
+                          {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
                             <div className="text-xs px-1.5 py-0.5 bg-violet-500 text-white rounded font-medium">
                               {meetingCount}
                             </div>
                           )}
-                          {taskCount > 0 && (
+                          {taskCount > 0 && (activeFilter === "all" || activeFilter === "tasks") && (
                             <div className="text-xs px-1.5 py-0.5 bg-purple-500 text-white rounded font-medium">
                               {taskCount}
                             </div>
                           )}
-                          {cleaningCount > 0 && (
+                          {cleaningCount > 0 && (activeFilter === "all" || activeFilter === "cleaning") && (
                             <div className="text-xs px-1.5 py-0.5 bg-cyan-500 text-white rounded font-medium">
                               {cleaningCount}
                             </div>
