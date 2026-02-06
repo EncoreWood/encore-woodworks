@@ -286,8 +286,12 @@ export default function TimeSheet() {
                               </div>
                               {entry.entry_type === "work" && (
                                 <div className="text-sm text-slate-600">
+                                  <p className="font-medium text-slate-700">{format(new Date(entry.date), "MMM d, yyyy")}</p>
                                   <p>{entry.clock_in} - {entry.clock_out} ({entry.hours_worked} hrs)</p>
                                 </div>
+                              )}
+                              {entry.entry_type !== "work" && (
+                                <p className="text-sm text-slate-600 font-medium">{format(new Date(entry.date), "MMM d, yyyy")}</p>
                               )}
                               {entry.notes && (
                                 <p className="text-sm text-slate-600 mt-1">{entry.notes}</p>
