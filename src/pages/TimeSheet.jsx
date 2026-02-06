@@ -26,7 +26,13 @@ export default function TimeSheet() {
   const [settingsData, setSettingsData] = useState({
     hours_per_year: 160,
     accrual_rate: 0.0192,
-    pay_period_days: 14
+    pay_period_start_day: 16,
+    pay_period_end_day: 15,
+    pay_period_days: 30,
+    work_days: [1, 2, 3, 4],
+    work_start_time: "07:00",
+    work_end_time: "17:30",
+    lunch_break_minutes: 30
   });
 
   const queryClient = useQueryClient();
