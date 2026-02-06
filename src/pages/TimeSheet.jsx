@@ -38,9 +38,12 @@ export default function TimeSheet() {
 
   const { data: timeEntries = [] } = useQuery({
     queryKey: ["timeEntries", selectedDate],
-    queryFn: () => base44.entities.TimeEntry.filter({
-      date: format(selectedDate, "yyyy-MM-dd")
-    })
+    queryFn: () => base44.entities.TimeEntry.list()
+  });
+
+  const { data: settings = [] } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => base44.entities.Settings.filter({ setting_type: "pto_calculation" })
   });
 
   const createEntryMutation = useMutation({
