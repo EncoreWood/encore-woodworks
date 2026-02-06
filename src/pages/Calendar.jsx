@@ -148,12 +148,12 @@ export default function Calendar() {
   });
 
   const handleOpenAdd = (type) => {
-    if (!selectedDate) return;
+    const defaultDate = selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd");
     setAddType(type);
-    setFormData({ date: format(selectedDate, "yyyy-MM-dd") });
+    setFormData({ date: defaultDate });
     
     if (type === "project") {
-      setEditingProject({ start_date: format(selectedDate, "yyyy-MM-dd") });
+      setEditingProject({ start_date: defaultDate });
       setShowProjectForm(true);
     } else {
       setShowAddDialog(true);
@@ -263,15 +263,15 @@ export default function Calendar() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleOpenAdd("presenter")} disabled={!selectedDate}>
+                      <DropdownMenuItem onClick={() => handleOpenAdd("presenter")}>
                         <User className="w-4 h-4 mr-2" />
                         Meeting Presenter
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleOpenAdd("project")} disabled={!selectedDate}>
+                      <DropdownMenuItem onClick={() => handleOpenAdd("project")}>
                         <Briefcase className="w-4 h-4 mr-2" />
                         New Project
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleOpenAdd("designMeeting")} disabled={!selectedDate}>
+                      <DropdownMenuItem onClick={() => handleOpenAdd("designMeeting")}>
                         <Users className="w-4 h-4 mr-2" />
                         Design Meeting
                       </DropdownMenuItem>
@@ -538,9 +538,13 @@ export default function Calendar() {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label className="text-sm text-slate-600">
-                  Date: {formData.date && format(new Date(formData.date), "MMM d, yyyy")}
-                </Label>
+                <Label htmlFor="date">Date</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={formData.date || ""}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
               </div>
 
               {addType === "presenter" && (
