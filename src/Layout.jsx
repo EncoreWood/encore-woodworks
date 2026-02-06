@@ -1,8 +1,11 @@
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, Settings } from "lucide-react";
+import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, Settings, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export default function Layout({ children, currentPageName }) {
   const [expandedGroups, setExpandedGroups] = useState({
@@ -11,7 +14,7 @@ export default function Layout({ children, currentPageName }) {
     team: true
   });
 
-  const navGroups = {
+  const [navGroups, setNavGroups] = useState({
     projects: {
       name: "Projects",
       items: [
@@ -35,7 +38,11 @@ export default function Layout({ children, currentPageName }) {
         { name: "Chat", icon: MessageSquare, page: "ChatBoard" }
       ]
     }
-  };
+  });
+
+  const [showSettings, setShowSettings] = useState(false);
+  const [editingGroupKey, setEditingGroupKey] = useState(null);
+  const [editingGroupName, setEditingGroupName] = useState("");
 
   const toggleGroup = (groupKey) => {
     setExpandedGroups(prev => ({
@@ -44,22 +51,65 @@ export default function Layout({ children, currentPageName }) {
     }));
   };
 
+  const startEditGroup = (groupKey) => {
+    setEditingGroupKey(groupKey);
+    setEditingGroupName(navGroups[groupKey].name);
+  };
+
+  const saveGroupName = () => {
+    if (editingGroupKey && editingGroupName.trim()) {
+      setNavGroups(prev => ({
+        ...prev,
+        [editingGroupKey]: {
+          ...prev[editingGroupKey],
+          name: editingGroupName.trim()
+        }
+      }));
+      setEditingGroupKey(null);
+      setEditingGroupName("");
+    }
+  };
+
+  const deleteGroup = (groupKey) => {
+    setNavGroups(prev => {
+      const newGroups = { ...prev };
+      delete newGroups[groupKey];
+      return newGroups;
+    });
+    setExpandedGroups(prev => {
+      const newExpanded = { ...prev };
+      delete newExpanded[groupKey];
+      return newExpanded;
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-slate-200 sticky top-0 h-screen overflow-y-auto">
-        {/* Logo */}
-        <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3 p-6 border-b border-slate-200">
-          <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center shadow-sm">
-            <Hammer className="w-5 h-5 text-white" />
+      <aside className="w-64 bg-white border-r border-slate-200 sticky top-0 h-screen overflow-y-auto flex flex-col">
+        {/* Logo & Settings */}
+        <div className="border-b border-slate-200">
+          <div className="flex items-center gap-3 p-6">
+            <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3 flex-1">
+              <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center shadow-sm">
+                <Hammer className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-lg font-semibold text-slate-900 tracking-tight">
+                Encore Woodworks
+              </span>
+            </Link>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="p-1.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-all"
+              title="Settings"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
           </div>
-          <span className="text-lg font-semibold text-slate-900 tracking-tight">
-            Encore Woodworks
-          </span>
-        </Link>
+        </div>
 
         {/* Nav Groups */}
-        <nav className="p-4 space-y-4">
+        <nav className="p-4 space-y-4 flex-1">
           {Object.entries(navGroups).map(([groupKey, group]) => (
             <div key={groupKey}>
               <button
@@ -103,6 +153,70 @@ export default function Layout({ children, currentPageName }) {
       <main className="flex-1 overflow-auto">
         {children}
       </main>
+
+      {/* Settings Dialog */}
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Board Groups Settings</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {Object.entries(navGroups).map(([groupKey, group]) => (
+              <div key={groupKey} className="border rounded-lg p-4 space-y-3">
+                {editingGroupKey === groupKey ? (
+                  <div className="flex gap-2">
+                    <Input
+                      value={editingGroupName}
+                      onChange={(e) => setEditingGroupName(e.target.value)}
+                      placeholder="Group name"
+                      autoFocus
+                    />
+                    <Button
+                      onClick={saveGroupName}
+                      size="sm"
+                      className="bg-amber-600 hover:bg-amber-700"
+                    >
+                      Save
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-slate-900">{group.name}</h3>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => startEditGroup(groupKey)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteGroup(groupKey)}
+                        className="text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                <div className="space-y-1">
+                  {group.items.map((item) => (
+                    <div
+                      key={item.page}
+                      className="text-sm text-slate-600 flex items-center gap-2 px-2 py-1"
+                    >
+                      <item.icon className="w-3 h-3" />
+                      {item.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
