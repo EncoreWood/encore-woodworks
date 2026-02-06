@@ -1,12 +1,26 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Calendar, AlertCircle, Coffee, Sun, Target, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { User, Calendar, AlertCircle, Coffee, Sun, Target, CheckCircle2, ChevronLeft, ChevronRight, Edit, MoreVertical } from "lucide-react";
 import { format, addDays, subDays } from "date-fns";
 
 const employees = [
@@ -78,7 +92,10 @@ const priorityColors = {
 
 export default function MorningMeeting() {
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showPresenterDialog, setShowPresenterDialog] = useState(false);
+  const [presenterName, setPresenterName] = useState("");
   const dateString = format(selectedDate, "yyyy-MM-dd");
+  const queryClient = useQueryClient();
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
@@ -92,6 +109,52 @@ export default function MorningMeeting() {
       return presenters[0];
     }
   });
+
+  const savePresenterMutation = useMutation({
+    mutationFn: async (name) => {
+      if (presenterData?.id) {
+        return base44.entities.MeetingPresenter.update(presenterData.id, {
+          presenter_name: name,
+          date: dateString
+        });
+      } else {
+        return base44.entities.MeetingPresenter.create({
+          presenter_name: name,
+          date: dateString
+        });
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["presenter", dateString] });
+      setShowPresenterDialog(false);
+    }
+  });
+
+  const updateProjectMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Project.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+    }
+  });
+
+  const handleEditPresenter = () => {
+    setPresenterName(presenterData?.presenter_name || "");
+    setShowPresenterDialog(true);
+  };
+
+  const handleSavePresenter = () => {
+    if (presenterName.trim()) {
+      savePresenterMutation.mutate(presenterName.trim());
+    }
+  };
+
+  const handleUpdateProjectStatus = (project, newStatus) => {
+    updateProjectMutation.mutate({ id: project.id, data: { status: newStatus } });
+  };
+
+  const handleUpdateProjectPriority = (project, newPriority) => {
+    updateProjectMutation.mutate({ id: project.id, data: { priority: newPriority } });
+  };
 
   // Get daily quote based on day of year
   const getDailyQuote = () => {
@@ -189,6 +252,14 @@ export default function MorningMeeting() {
               <User className="w-5 h-5" />
               <span className="font-semibold">Presenter:</span>
               <span className="font-bold text-lg">{getPresenter()}</span>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 ml-2 text-white hover:bg-blue-700"
+                onClick={handleEditPresenter}
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
             </div>
           </div>
 
@@ -233,42 +304,78 @@ export default function MorningMeeting() {
                   ) : (
                     <div className="space-y-3">
                       {sectionProjects.map((project) => (
-                        <Link
-                          key={project.id}
-                          to={createPageUrl("ProjectDetails") + "?id=" + project.id}
-                        >
-                          <div className="bg-white rounded-lg p-4 border border-slate-200 hover:border-amber-300 hover:shadow-md transition-all">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <h3 className="text-lg font-semibold text-slate-900">
-                                    {project.project_name}
-                                  </h3>
-                                  <Badge className={`${priorityColors[project.priority]} border-0`}>
-                                    {project.priority}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-4 text-sm text-slate-600">
-                                  <div className="flex items-center gap-1">
-                                    <User className="w-4 h-4" />
-                                    <span>{project.client_name}</span>
-                                  </div>
-                                  {project.estimated_completion && (
-                                    <div className="flex items-center gap-1">
-                                      <Calendar className="w-4 h-4" />
-                                      <span>Due: {format(new Date(project.estimated_completion), "MMM d")}</span>
-                                    </div>
-                                  )}
-                                  {project.rooms && project.rooms.length > 0 && (
-                                    <span className="text-slate-500">
-                                      {project.rooms.length} room{project.rooms.length !== 1 ? 's' : ''}
-                                    </span>
-                                  )}
-                                </div>
+                        <div key={project.id} className="bg-white rounded-lg p-4 border border-slate-200 hover:border-amber-300 hover:shadow-md transition-all">
+                          <div className="flex items-start justify-between gap-4">
+                            <Link
+                              to={createPageUrl("ProjectDetails") + "?id=" + project.id}
+                              className="flex-1"
+                            >
+                              <div className="flex items-center gap-3 mb-2">
+                                <h3 className="text-lg font-semibold text-slate-900">
+                                  {project.project_name}
+                                </h3>
+                                <Badge className={`${priorityColors[project.priority]} border-0`}>
+                                  {project.priority}
+                                </Badge>
                               </div>
-                            </div>
+                              <div className="flex items-center gap-4 text-sm text-slate-600">
+                                <div className="flex items-center gap-1">
+                                  <User className="w-4 h-4" />
+                                  <span>{project.client_name}</span>
+                                </div>
+                                {project.estimated_completion && (
+                                  <div className="flex items-center gap-1">
+                                    <Calendar className="w-4 h-4" />
+                                    <span>Due: {format(new Date(project.estimated_completion), "MMM d")}</span>
+                                  </div>
+                                )}
+                                {project.rooms && project.rooms.length > 0 && (
+                                  <span className="text-slate-500">
+                                    {project.rooms.length} room{project.rooms.length !== 1 ? 's' : ''}
+                                  </span>
+                                )}
+                              </div>
+                            </Link>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-slate-400 hover:text-slate-600"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreVertical className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleUpdateProjectStatus(project, "in_production")}>
+                                  Move to Production
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleUpdateProjectStatus(project, "ready_for_install")}>
+                                  Mark Ready for Install
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleUpdateProjectStatus(project, "installing")}>
+                                  Mark Installing
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleUpdateProjectStatus(project, "completed")}>
+                                  Mark Completed
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleUpdateProjectStatus(project, "on_hold")}>
+                                  Put on Hold
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleUpdateProjectPriority(project, "urgent")}>
+                                  Set Priority: Urgent
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleUpdateProjectPriority(project, "high")}>
+                                  Set Priority: High
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleUpdateProjectPriority(project, "medium")}>
+                                  Set Priority: Medium
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                        </Link>
+                        </div>
                       ))}
                     </div>
                   )}
@@ -277,6 +384,37 @@ export default function MorningMeeting() {
             );
           })}
         </div>
+
+        {/* Edit Presenter Dialog */}
+        <Dialog open={showPresenterDialog} onOpenChange={setShowPresenterDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Set Presenter for {format(selectedDate, "MMM d, yyyy")}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="presenter">Presenter Name</Label>
+                <Input
+                  id="presenter"
+                  value={presenterName}
+                  onChange={(e) => setPresenterName(e.target.value)}
+                  placeholder="Enter presenter name"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowPresenterDialog(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSavePresenter}
+                  disabled={!presenterName.trim() || savePresenterMutation.isPending}
+                >
+                  {savePresenterMutation.isPending ? "Saving..." : "Save"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
