@@ -162,6 +162,7 @@ export default function Dashboard() {
         </div>
 
         {/* Google Sheet */}
+        {getSectionVisibility("google_sheet") && (
         <Card className="mb-6 p-0 overflow-hidden">
           <iframe
             src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRYO-e9zoCc7ECYLs_uT5l22Erc-ADwyIQTu8TP400oGYrA_ghl-nh4hqch_aVbectqPY5UIlE0pS8d/pubhtml?widget=true&amp;headers=false"
@@ -169,6 +170,7 @@ export default function Dashboard() {
             title="Project Sheet"
           />
         </Card>
+        )}
 
         {/* Projects Grid */}
         {isLoading ? (
