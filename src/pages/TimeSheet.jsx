@@ -528,6 +528,84 @@ export default function TimeSheet() {
           </div>
         </div>
 
+          </div>
+          </TabsContent>
+
+          {/* SETTINGS TAB */}
+          <TabsContent value="settings">
+            <Card>
+              <CardHeader>
+                <CardTitle>PTO Calculation Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Total PTO Hours Per Year</label>
+                  <Input
+                    type="number"
+                    value={settingsData.hours_per_year}
+                    onChange={(e) =>
+                      setSettingsData({
+                        ...settingsData,
+                        hours_per_year: parseFloat(e.target.value)
+                      })
+                    }
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Total PTO hours accrued annually
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700">PTO Accrual Rate (Hours per Hour Worked)</label>
+                  <Input
+                    type="number"
+                    step="0.001"
+                    value={settingsData.accrual_rate}
+                    onChange={(e) =>
+                      setSettingsData({
+                        ...settingsData,
+                        accrual_rate: parseFloat(e.target.value)
+                      })
+                    }
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    For {settingsData.hours_per_year} hours/year, accrual rate is{" "}
+                    {(settingsData.hours_per_year / 2080).toFixed(4)} per hour
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Pay Period Length (Days)</label>
+                  <Input
+                    type="number"
+                    value={settingsData.pay_period_days}
+                    onChange={(e) =>
+                      setSettingsData({
+                        ...settingsData,
+                        pay_period_days: parseInt(e.target.value)
+                      })
+                    }
+                    className="mt-2"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Number of days in each pay period
+                  </p>
+                </div>
+
+                <Button
+                  onClick={() => updateSettingsMutation.mutate(settingsData)}
+                  className="bg-amber-600 hover:bg-amber-700 w-full"
+                >
+                  Save Settings
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+
         {/* Add Entry Dialog */}
         <Dialog open={showAddEntry} onOpenChange={setShowAddEntry}>
           <DialogContent>
