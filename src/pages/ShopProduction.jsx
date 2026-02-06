@@ -5,7 +5,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Pencil } from "lucide-react";
 import ProductionItemForm from "../components/production/ProductionItemForm";
 import WoodworkingCalculator from "../components/production/WoodworkingCalculator";
 
@@ -18,6 +18,7 @@ const productionColumns = [
 export default function ShopProduction() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
 
   const { data: items = [] } = useQuery({
     queryKey: ["productionItems"],
@@ -30,6 +31,7 @@ export default function ShopProduction() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["productionItems"] });
       setShowForm(false);
+      setEditingItem(null);
     }
   });
 
@@ -37,6 +39,8 @@ export default function ShopProduction() {
     mutationFn: ({ id, data }) => base44.entities.ProductionItem.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+      setShowForm(false);
+      setEditingItem(null);
     }
   });
 
@@ -109,18 +113,32 @@ export default function ShopProduction() {
                                   >
                                     <div className="flex items-start justify-between mb-2">
                                       <h3 className="font-medium text-slate-900">{item.name}</h3>
-                                      <Badge
-                                        variant="outline"
-                                        className={
-                                          item.type === "cabinet"
-                                            ? "bg-blue-50 text-blue-700 border-blue-200"
-                                            : item.type === "misc"
-                                            ? "bg-purple-50 text-purple-700 border-purple-200"
-                                            : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                        }
-                                      >
-                                        {item.type === "cabinet" ? "Cabinet" : item.type === "misc" ? "Misc" : "Pick up"}
-                                      </Badge>
+                                      <div className="flex items-center gap-2">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingItem(item);
+                                            setShowForm(true);
+                                          }}
+                                        >
+                                          <Pencil className="w-3 h-3" />
+                                        </Button>
+                                        <Badge
+                                          variant="outline"
+                                          className={
+                                            item.type === "cabinet"
+                                              ? "bg-blue-50 text-blue-700 border-blue-200"
+                                              : item.type === "misc"
+                                              ? "bg-purple-50 text-purple-700 border-purple-200"
+                                              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                          }
+                                        >
+                                          {item.type === "cabinet" ? "Cabinet" : item.type === "misc" ? "Misc" : "Pick up"}
+                                        </Badge>
+                                      </div>
                                     </div>
                                     
                                     {item.notes && (
@@ -175,9 +193,19 @@ export default function ShopProduction() {
 
         <ProductionItemForm
           open={showForm}
-          onOpenChange={setShowForm}
-          onSubmit={(data) => createMutation.mutate(data)}
-          isLoading={createMutation.isPending}
+          onOpenChange={(open) => {
+            setShowForm(open);
+            if (!open) setEditingItem(null);
+          }}
+          onSubmit={(data) => {
+            if (editingItem) {
+              updateMutation.mutate({ id: editingItem.id, data });
+            } else {
+              createMutation.mutate(data);
+            }
+          }}
+          initialData={editingItem}
+          isLoading={createMutation.isPending || updateMutation.isPending}
         />
       </div>
     </div>
