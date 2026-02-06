@@ -640,7 +640,7 @@ export default function Calendar() {
                   ))}
 
                   {/* Bathroom Cleanings */}
-                  {getBathroomCleaningsForDate(selectedDate).map((cleaning) => (
+                  {(activeFilter === "all" || activeFilter === "cleaning") && getBathroomCleaningsForDate(selectedDate).map((cleaning) => (
                     <div key={cleaning.id} className="p-3 bg-cyan-50 rounded-lg">
                       <div className="flex items-center gap-2 text-sm font-medium text-cyan-900">
                         <Sparkles className="w-4 h-4" />
