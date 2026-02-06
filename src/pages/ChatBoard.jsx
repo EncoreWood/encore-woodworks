@@ -152,19 +152,19 @@ export default function ChatBoard() {
             <Card className="p-4 bg-white border-0 shadow-lg">
               <h2 className="text-lg font-semibold text-slate-900 mb-4">Rooms</h2>
               <div className="space-y-6">
-                {/* Project Chats */}
+                {/* Encore Chats */}
                 <div>
-                  <h3 className="text-xs font-semibold text-slate-600 uppercase mb-2">Project Chats</h3>
+                  <h3 className="text-xs font-semibold text-slate-600 uppercase mb-2">Encore Chats</h3>
                   <div className="space-y-2">
-                    {chatRooms.filter(r => r.project_id).length === 0 ? (
-                      <p className="text-xs text-slate-500">No project chats</p>
+                    {chatRooms.filter(r => !r.project_id).length === 0 ? (
+                      <p className="text-xs text-slate-500">No encore chats</p>
                     ) : (
-                      chatRooms.filter(r => r.project_id).map((room) => (
+                      chatRooms.filter(r => !r.project_id).map((room) => (
                         <div
                           key={room.id}
                           className={`p-3 rounded-lg cursor-pointer transition-all flex items-center justify-between group ${
                             selectedRoom?.id === room.id
-                              ? 'bg-blue-100 text-blue-900'
+                              ? 'bg-amber-100 text-amber-900'
                               : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
                           }`}
                         >
@@ -186,19 +186,19 @@ export default function ChatBoard() {
                   </div>
                 </div>
 
-                {/* Encore Chats */}
+                {/* Project Chats */}
                 <div>
-                  <h3 className="text-xs font-semibold text-slate-600 uppercase mb-2">Encore Chats</h3>
+                  <h3 className="text-xs font-semibold text-slate-600 uppercase mb-2">Project Chats</h3>
                   <div className="space-y-2">
-                    {chatRooms.filter(r => !r.project_id).length === 0 ? (
-                      <p className="text-xs text-slate-500">No encore chats</p>
+                    {chatRooms.filter(r => r.project_id).length === 0 ? (
+                      <p className="text-xs text-slate-500">No project chats</p>
                     ) : (
-                      chatRooms.filter(r => !r.project_id).map((room) => (
+                      chatRooms.filter(r => r.project_id).map((room) => (
                         <div
                           key={room.id}
                           className={`p-3 rounded-lg cursor-pointer transition-all flex items-center justify-between group ${
                             selectedRoom?.id === room.id
-                              ? 'bg-amber-100 text-amber-900'
+                              ? 'bg-blue-100 text-blue-900'
                               : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
                           }`}
                         >
