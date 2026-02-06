@@ -7,7 +7,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Plus, Pencil, Briefcase, Users, CheckCircle2, Trash2, Sparkles } from "lucide-react";
-import { format, isSameDay, startOfMonth, endOfMonth } from "date-fns";
+import { format, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addMonths, addDays, startOfYear } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
