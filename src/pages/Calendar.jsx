@@ -249,10 +249,8 @@ export default function Calendar() {
           <p className="text-slate-500 mt-1">View projects by their scheduled dates</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Calendar */}
-          <div className="lg:col-span-3">
-            <Card className="p-8 bg-white border-0 shadow-lg">
+        {/* Calendar */}
+        <Card className="p-8 bg-white border-0 shadow-lg mb-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-semibold text-slate-900">
                   {format(currentMonth, "MMMM yyyy")}
@@ -359,10 +357,9 @@ export default function Calendar() {
                 </div>
               </div>
             </Card>
-          </div>
 
-          {/* Selected Date Info */}
-          <div className="space-y-6">
+        {/* Info Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="p-6 bg-white border-0 shadow-lg">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-slate-900">
@@ -462,12 +459,12 @@ export default function Calendar() {
               )}
             </Card>
 
-            {/* This Month Projects */}
-            <Card className="p-6 bg-white border-0 shadow-lg">
-              <h2 className="text-lg font-semibold text-slate-900 mb-4">
-                This Month ({projectsInMonth.length})
-              </h2>
-              <div className="space-y-3 max-h-[500px] overflow-y-auto">
+          {/* This Month Projects */}
+          <Card className="p-6 bg-white border-0 shadow-lg">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">
+              This Month ({projectsInMonth.length})
+            </h2>
+            <div className="space-y-3 max-h-[600px] overflow-y-auto">
                 {projectsInMonth.length === 0 ? (
                   <p className="text-sm text-slate-500">No projects scheduled this month</p>
                 ) : (
@@ -505,9 +502,8 @@ export default function Calendar() {
                     </Link>
                   ))
                 )}
-              </div>
-            </Card>
-          </div>
+            </div>
+          </Card>
         </div>
 
         {/* Add Dialog */}
