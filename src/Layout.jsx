@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, Sheet, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function Layout({ children, currentPageName }) {
@@ -12,8 +12,7 @@ export default function Layout({ children, currentPageName }) {
     { name: "Inventory", icon: Coffee, page: "Inventory" },
     { name: "Morning Meeting", icon: Coffee, page: "MorningMeeting" },
     { name: "Team", icon: Users, page: "Team" },
-    { name: "Chat", icon: MessageSquare, page: "ChatBoard" },
-    { name: "Sheets", icon: Sheet, page: "GoogleSheets" }
+    { name: "Chat", icon: MessageSquare, page: "ChatBoard" }
   ];
 
   return (
