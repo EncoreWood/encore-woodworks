@@ -154,6 +154,7 @@ export default function Dashboard() {
             className={urgentProjects > 0 ? "border-l-4 border-l-amber-500" : ""}
           />
         </div>
+        )}
 
         {/* Filters */}
         <div className="mb-6">
