@@ -1,11 +1,12 @@
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, Settings, Trash2 } from "lucide-react";
+import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, Settings, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Layout({ children, currentPageName }) {
   const [expandedGroups, setExpandedGroups] = useState({
@@ -43,6 +44,9 @@ export default function Layout({ children, currentPageName }) {
   const [showSettings, setShowSettings] = useState(false);
   const [editingGroupKey, setEditingGroupKey] = useState(null);
   const [editingGroupName, setEditingGroupName] = useState("");
+  const [editingBoardKey, setEditingBoardKey] = useState(null);
+  const [editingBoardGroupKey, setEditingBoardGroupKey] = useState(null);
+  const [editingBoardName, setEditingBoardName] = useState("");
 
   const toggleGroup = (groupKey) => {
     setExpandedGroups(prev => ({
@@ -80,6 +84,56 @@ export default function Layout({ children, currentPageName }) {
       const newExpanded = { ...prev };
       delete newExpanded[groupKey];
       return newExpanded;
+    });
+  };
+
+  const startEditBoard = (groupKey, itemIndex) => {
+    setEditingBoardGroupKey(groupKey);
+    setEditingBoardKey(itemIndex);
+    setEditingBoardName(navGroups[groupKey].items[itemIndex].name);
+  };
+
+  const saveBoardName = () => {
+    if (editingBoardGroupKey !== null && editingBoardKey !== null && editingBoardName.trim()) {
+      setNavGroups(prev => ({
+        ...prev,
+        [editingBoardGroupKey]: {
+          ...prev[editingBoardGroupKey],
+          items: prev[editingBoardGroupKey].items.map((item, idx) =>
+            idx === editingBoardKey ? { ...item, name: editingBoardName.trim() } : item
+          )
+        }
+      }));
+      setEditingBoardKey(null);
+      setEditingBoardGroupKey(null);
+      setEditingBoardName("");
+    }
+  };
+
+  const moveBoard = (fromGroupKey, itemIndex, toGroupKey) => {
+    if (fromGroupKey === toGroupKey) return;
+
+    setNavGroups(prev => {
+      const newGroups = { ...prev };
+      const board = newGroups[fromGroupKey].items[itemIndex];
+      newGroups[fromGroupKey].items.splice(itemIndex, 1);
+      newGroups[toGroupKey].items.push(board);
+      return newGroups;
+    });
+    setEditingBoardKey(null);
+    setEditingBoardGroupKey(null);
+  };
+
+  const reorderBoard = (groupKey, itemIndex, direction) => {
+    setNavGroups(prev => {
+      const newGroups = { ...prev };
+      const items = newGroups[groupKey].items;
+      const newIndex = direction === "up" ? itemIndex - 1 : itemIndex + 1;
+
+      if (newIndex >= 0 && newIndex < items.length) {
+        [items[itemIndex], items[newIndex]] = [items[newIndex], items[itemIndex]];
+      }
+      return newGroups;
     });
   };
 
