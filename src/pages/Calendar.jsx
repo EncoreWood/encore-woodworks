@@ -303,9 +303,9 @@ export default function Calendar() {
                 classNames={{
                   months: "w-full",
                   month: "w-full",
-                  table: "w-full border-collapse",
-                  head_cell: "text-slate-600 font-semibold text-base py-4",
-                  cell: "relative p-0 text-center border-2 border-slate-100",
+                  table: "w-full border-collapse table-fixed",
+                  head_cell: "text-slate-600 font-semibold text-base py-4 w-[14.28%]",
+                  cell: "relative p-0 text-center border-2 border-slate-100 w-[14.28%]",
                   day: "relative h-24 w-full p-0 font-normal hover:bg-amber-50 transition-colors",
                   day_selected: "bg-amber-100 text-amber-900 font-semibold",
                   day_today: "bg-blue-50 font-bold border-2 border-blue-300",
