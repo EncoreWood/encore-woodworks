@@ -133,75 +133,87 @@ export default function Kanban() {
                         <div className="space-y-3">
                           {columnProjects.map((project, index) => (
                             <Draggable
-                              key={project.id}
-                              draggableId={project.id}
-                              index={index}
-                            >
-                              {(provided, snapshot) => (
-                                <Link to={createPageUrl("ProjectDetails") + "?id=" + project.id}>
-                                  <Card
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                    className={`p-4 cursor-pointer hover:shadow-md transition-all ${
-                                      snapshot.isDragging ? "shadow-lg rotate-2" : ""
-                                    }`}
-                                  >
-                                    <div className="space-y-3">
-                                      <div>
-                                        <h3 className="font-semibold text-slate-900 mb-1 line-clamp-1">
-                                          {project.project_name}
-                                        </h3>
-                                        <div className="flex items-center gap-2">
-                                          <Badge
-                                            className={`text-xs border-0 ${
-                                              priorityColors[project.priority]
-                                            }`}
-                                          >
-                                            {project.priority}
-                                          </Badge>
-                                        </div>
-                                      </div>
+                               key={project.id}
+                               draggableId={project.id}
+                               index={index}
+                             >
+                               {(provided, snapshot) => (
+                                 <div
+                                   ref={provided.innerRef}
+                                   {...provided.draggableProps}
+                                   {...provided.dragHandleProps}
+                                 >
+                                   <Link to={createPageUrl("ProjectDetails") + "?id=" + project.id}>
+                                     <Card
+                                       className={`p-4 cursor-pointer hover:shadow-md transition-all ${
+                                         snapshot.isDragging ? "shadow-lg rotate-2" : ""
+                                       }`}
+                                     >
+                                       <div className="space-y-3">
+                                         <div>
+                                           <h3 className="font-semibold text-slate-900 mb-1 line-clamp-1">
+                                             {project.project_name}
+                                           </h3>
+                                           <div className="flex items-center gap-2">
+                                             <Badge
+                                               className={`text-xs border-0 ${
+                                                 priorityColors[project.priority]
+                                               }`}
+                                             >
+                                               {project.priority}
+                                             </Badge>
+                                           </div>
+                                         </div>
 
-                                      <div className="space-y-2 text-xs text-slate-600">
-                                        <div className="flex items-center gap-2">
-                                          <User className="w-3 h-3 flex-shrink-0" />
-                                          <span className="truncate">{project.client_name}</span>
-                                        </div>
-                                        {project.address && (
-                                          <div className="flex items-center gap-2">
-                                            <MapPin className="w-3 h-3 flex-shrink-0" />
-                                            <span className="truncate">{project.address}</span>
-                                          </div>
-                                        )}
-                                        {project.estimated_completion && (
-                                          <div className="flex items-center gap-2">
-                                            <Calendar className="w-3 h-3 flex-shrink-0" />
-                                            <span>
-                                              {format(new Date(project.estimated_completion), "MMM d")}
-                                            </span>
-                                          </div>
-                                        )}
-                                        {project.estimated_budget && (
-                                          <div className="flex items-center gap-2">
-                                            <DollarSign className="w-3 h-3 flex-shrink-0" />
-                                            <span>${project.estimated_budget.toLocaleString()}</span>
-                                          </div>
-                                        )}
-                                      </div>
+                                         <div className="space-y-2 text-xs text-slate-600">
+                                           <div className="flex items-center gap-2">
+                                             <User className="w-3 h-3 flex-shrink-0" />
+                                             <span className="truncate">{project.client_name}</span>
+                                           </div>
+                                           {project.address && (
+                                             <div className="flex items-center gap-2">
+                                               <MapPin className="w-3 h-3 flex-shrink-0" />
+                                               <span className="truncate">{project.address}</span>
+                                             </div>
+                                           )}
+                                           {project.estimated_completion && (
+                                             <div className="flex items-center gap-2">
+                                               <Calendar className="w-3 h-3 flex-shrink-0" />
+                                               <span>
+                                                 {format(new Date(project.estimated_completion), "MMM d")}
+                                               </span>
+                                             </div>
+                                           )}
+                                           {project.estimated_budget && (
+                                             <div className="flex items-center gap-2">
+                                               <DollarSign className="w-3 h-3 flex-shrink-0" />
+                                               <span>${project.estimated_budget.toLocaleString()}</span>
+                                             </div>
+                                           )}
+                                         </div>
 
-                                      {project.rooms && project.rooms.length > 0 && (
-                                        <div className="pt-2 border-t border-slate-100">
-                                          <span className="text-xs text-slate-500">
-                                            {project.rooms.length} room{project.rooms.length !== 1 ? 's' : ''}
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </Card>
-                                </Link>
-                              )}
-                            </Draggable>
+                                         {project.rooms && project.rooms.length > 0 && (
+                                           <div className="pt-2 border-t border-slate-100">
+                                             <span className="text-xs text-slate-500">
+                                               {project.rooms.length} room{project.rooms.length !== 1 ? 's' : ''}
+                                             </span>
+                                           </div>
+                                         )}
+                                       </div>
+                                     </Card>
+                                   </Link>
+                                   <Button
+                                     variant="outline"
+                                     size="sm"
+                                     className="w-full mt-2"
+                                     onClick={(e) => handleChatClick(e, project)}
+                                   >
+                                     <MessageCircle className="w-3 h-3 mr-2" />
+                                     {chatRooms.find(r => r.project_id === project.id) ? 'View Chat' : 'Add Chat'}
+                                   </Button>
+                                 </div>
+                               )}
+                             </Draggable>
                           ))}
                         </div>
                         {provided.placeholder}
