@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Mail, Phone, Briefcase, Calendar, Cake, Pencil, ListTodo } from "lucide-react";
+import { User, Mail, Phone, Briefcase, Calendar, Cake, Pencil, ListTodo, ShieldCheck } from "lucide-react";
 import { format } from "date-fns";
 
 const departmentColors = {
@@ -72,11 +72,19 @@ export default function EmployeeCard({ employee, onEdit, onAssignTask }) {
           </div>
         )}
 
-        {employee.department && (
-          <Badge className={`border-0 ${departmentColors[employee.department]}`}>
-            {employee.department.charAt(0).toUpperCase() + employee.department.slice(1)}
-          </Badge>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {employee.department && (
+            <Badge className={`border-0 ${departmentColors[employee.department]}`}>
+              {employee.department.charAt(0).toUpperCase() + employee.department.slice(1)}
+            </Badge>
+          )}
+          {employee.user_email && (
+            <Badge className="border-0 bg-slate-100 text-slate-700">
+              <ShieldCheck className="w-3 h-3 mr-1" />
+              {employee.user_role === 'admin' ? 'Admin User' : 'User'}
+            </Badge>
+          )}
+        </div>
 
         <div className="pt-3 border-t border-slate-100 space-y-1">
           {employee.hire_date && (

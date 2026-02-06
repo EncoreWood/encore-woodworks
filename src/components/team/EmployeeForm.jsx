@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Upload, X, User } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { base44 } from "@/api/base44Client";
 
 export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading }) {
@@ -18,9 +19,12 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
     hire_date: "",
     birthday: "",
     profile_image: "",
+    user_email: "",
+    user_role: "user",
     notes: ""
   });
   const [uploading, setUploading] = useState(false);
+  const [inviteAsUser, setInviteAsUser] = useState(false);
 
   useEffect(() => {
     if (employee) {
@@ -33,8 +37,11 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
         hire_date: employee.hire_date || "",
         birthday: employee.birthday || "",
         profile_image: employee.profile_image || "",
+        user_email: employee.user_email || "",
+        user_role: employee.user_role || "user",
         notes: employee.notes || ""
       });
+      setInviteAsUser(!!employee.user_email);
     } else {
       setFormData({
         full_name: "",
@@ -45,8 +52,11 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
         hire_date: "",
         birthday: "",
         profile_image: "",
+        user_email: "",
+        user_role: "user",
         notes: ""
       });
+      setInviteAsUser(false);
     }
   }, [employee, open]);
 
@@ -216,6 +226,61 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
                 onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
               />
             </div>
+          </div>
+
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Checkbox
+                id="invite_as_user"
+                checked={inviteAsUser}
+                onCheckedChange={(checked) => {
+                  setInviteAsUser(checked);
+                  if (!checked) {
+                    setFormData({ ...formData, user_email: "", user_role: "user" });
+                  } else if (formData.email) {
+                    setFormData({ ...formData, user_email: formData.email });
+                  }
+                }}
+              />
+              <Label htmlFor="invite_as_user" className="cursor-pointer font-normal">
+                Create user account for this employee
+              </Label>
+            </div>
+
+            {inviteAsUser && (
+              <div className="space-y-3 pl-6 border-l-2 border-amber-200">
+                <div>
+                  <Label htmlFor="user_email">User Email *</Label>
+                  <Input
+                    id="user_email"
+                    type="email"
+                    value={formData.user_email}
+                    onChange={(e) => setFormData({ ...formData, user_email: e.target.value })}
+                    placeholder="email@example.com"
+                    required={inviteAsUser}
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    An invitation will be sent to this email
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="user_role">User Role</Label>
+                  <Select
+                    value={formData.user_role}
+                    onValueChange={(value) => setFormData({ ...formData, user_role: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>

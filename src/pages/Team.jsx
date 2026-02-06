@@ -22,7 +22,21 @@ export default function Team() {
   });
 
   const createEmployeeMutation = useMutation({
-    mutationFn: (data) => base44.entities.Employee.create(data),
+    mutationFn: async (data) => {
+      const employee = await base44.entities.Employee.create(data);
+      
+      // If user_email is provided, invite them as a user
+      if (data.user_email) {
+        try {
+          await base44.users.inviteUser(data.user_email, data.user_role || "user");
+        } catch (error) {
+          console.error("Failed to invite user:", error);
+          throw new Error("Employee created but failed to send user invitation");
+        }
+      }
+      
+      return employee;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       setShowEmployeeForm(false);
@@ -35,7 +49,21 @@ export default function Team() {
   });
 
   const updateEmployeeMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Employee.update(id, data),
+    mutationFn: async ({ id, data, originalEmployee }) => {
+      const employee = await base44.entities.Employee.update(id, data);
+      
+      // If user_email is newly added, invite them
+      if (data.user_email && data.user_email !== originalEmployee.user_email) {
+        try {
+          await base44.users.inviteUser(data.user_email, data.user_role || "user");
+        } catch (error) {
+          console.error("Failed to invite user:", error);
+          throw new Error("Employee updated but failed to send user invitation");
+        }
+      }
+      
+      return employee;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       setShowEmployeeForm(false);
@@ -79,7 +107,11 @@ export default function Team() {
 
   const handleSubmitEmployee = (data) => {
     if (editingEmployee) {
-      updateEmployeeMutation.mutate({ id: editingEmployee.id, data });
+      updateEmployeeMutation.mutate({ 
+        id: editingEmployee.id, 
+        data,
+        originalEmployee: editingEmployee 
+      });
     } else {
       createEmployeeMutation.mutate(data);
     }
