@@ -213,24 +213,6 @@ export default function ChatBoard() {
                              {room.name}
                            </button>
                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                             {selectedRoom?.id === room.id && (
-                               <>
-                                 <button
-                                   onClick={() => setShowFilesDialog(true)}
-                                   className="p-1 hover:bg-slate-200 rounded transition-colors"
-                                   title="Files"
-                                 >
-                                   <FileText className="w-4 h-4" />
-                                 </button>
-                                 <button
-                                   onClick={() => setShowPhotosDialog(true)}
-                                   className="p-1 hover:bg-slate-200 rounded transition-colors"
-                                   title="Photos"
-                                 >
-                                   <Image className="w-4 h-4" />
-                                 </button>
-                               </>
-                             )}
                              <button
                                onClick={() => deleteRoomMutation.mutate(room.id)}
                              >
