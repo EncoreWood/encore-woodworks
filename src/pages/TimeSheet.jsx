@@ -371,9 +371,12 @@ export default function TimeSheet() {
             )}
 
             {/* EMPLOYEE DETAILS TAB */}
-          <TabsContent value="employee">
-            {/* Date Navigation */}
-            <div className="flex items-center gap-4 mb-8">
+            <TabsContent value="employee">
+              {currentUser?.role === "user" && (
+                <p className="text-sm text-slate-600 mb-4">You can only view and manage your own time entries.</p>
+              )}
+              {/* Date Navigation */}
+              <div className="flex items-center gap-4 mb-8">
               <Button
                 variant="outline"
                 onClick={() => setSelectedDate(addDays(selectedDate, -1))}
