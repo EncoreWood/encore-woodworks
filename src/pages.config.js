@@ -57,6 +57,7 @@ import ProjectDetails from './pages/ProjectDetails';
 import ShopProduction from './pages/ShopProduction';
 import Team from './pages/Team';
 import StretchingRoutine from './pages/StretchingRoutine';
+import TimeSheet from './pages/TimeSheet';
 import __Layout from './Layout.jsx';
 
 
@@ -71,6 +72,7 @@ export const PAGES = {
     "ShopProduction": ShopProduction,
     "Team": Team,
     "StretchingRoutine": StretchingRoutine,
+    "TimeSheet": TimeSheet,
 }
 
 export const pagesConfig = {
