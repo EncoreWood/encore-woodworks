@@ -161,108 +161,108 @@ export default function WoodworkingCalculator() {
   };
 
   return (
-    <Card className="bg-white border-0 shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg font-semibold text-slate-900">
-          <Calculator className="w-5 h-5 text-amber-600" />
+    <Card className="bg-white border-0 shadow-sm max-w-md">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-900">
+          <Calculator className="w-4 h-4 text-amber-600" />
           Calculator & Converter
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4">
         <Tabs defaultValue="calculator" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="calculator" className="text-xs">Calculator</TabsTrigger>
-            <TabsTrigger value="converter" className="text-xs">Unit Converter</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 mb-3">
+            <TabsTrigger value="calculator" className="text-xs h-8">Calculator</TabsTrigger>
+            <TabsTrigger value="converter" className="text-xs h-8">Unit Converter</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="calculator" className="space-y-3">
-            <div className="bg-slate-900 text-white p-4 rounded-lg text-right text-3xl font-mono mb-3 min-h-[60px] flex items-center justify-end break-all">
+          <TabsContent value="calculator" className="space-y-2">
+            <div className="bg-slate-900 text-white p-3 rounded-lg text-right text-2xl font-mono mb-2 min-h-[50px] flex items-center justify-end break-all">
               {display}
             </div>
             
-            <div className="grid grid-cols-4 gap-2">
-              <Button variant="outline" onClick={handleClear} className="h-12 text-red-600">
+            <div className="grid grid-cols-4 gap-1.5">
+              <Button variant="outline" onClick={handleClear} className="h-10 text-xs text-red-600">
                 AC
               </Button>
-              <Button variant="outline" onClick={handleBackspace} className="h-12">
-                <Delete className="w-4 h-4" />
+              <Button variant="outline" onClick={handleBackspace} className="h-10 text-xs">
+                <Delete className="w-3 h-3" />
               </Button>
-              <Button variant="outline" onClick={() => handleOperation("/")} className="h-12 text-amber-600">
+              <Button variant="outline" onClick={() => handleOperation("/")} className="h-10 text-xs text-amber-600">
                 ÷
               </Button>
-              <Button variant="outline" onClick={() => handleOperation("*")} className="h-12 text-amber-600">
+              <Button variant="outline" onClick={() => handleOperation("*")} className="h-10 text-xs text-amber-600">
                 ×
               </Button>
 
-              <Button variant="outline" onClick={() => handleNumber(7)} className="h-12">
+              <Button variant="outline" onClick={() => handleNumber(7)} className="h-10 text-xs">
                 7
               </Button>
-              <Button variant="outline" onClick={() => handleNumber(8)} className="h-12">
+              <Button variant="outline" onClick={() => handleNumber(8)} className="h-10 text-xs">
                 8
               </Button>
-              <Button variant="outline" onClick={() => handleNumber(9)} className="h-12">
+              <Button variant="outline" onClick={() => handleNumber(9)} className="h-10 text-xs">
                 9
               </Button>
-              <Button variant="outline" onClick={() => handleOperation("-")} className="h-12 text-amber-600">
+              <Button variant="outline" onClick={() => handleOperation("-")} className="h-10 text-xs text-amber-600">
                 −
               </Button>
 
-              <Button variant="outline" onClick={() => handleNumber(4)} className="h-12">
+              <Button variant="outline" onClick={() => handleNumber(4)} className="h-10 text-xs">
                 4
               </Button>
-              <Button variant="outline" onClick={() => handleNumber(5)} className="h-12">
+              <Button variant="outline" onClick={() => handleNumber(5)} className="h-10 text-xs">
                 5
               </Button>
-              <Button variant="outline" onClick={() => handleNumber(6)} className="h-12">
+              <Button variant="outline" onClick={() => handleNumber(6)} className="h-10 text-xs">
                 6
               </Button>
-              <Button variant="outline" onClick={() => handleOperation("+")} className="h-12 text-amber-600">
+              <Button variant="outline" onClick={() => handleOperation("+")} className="h-10 text-xs text-amber-600">
                 +
               </Button>
 
-              <Button variant="outline" onClick={() => handleNumber(1)} className="h-12">
+              <Button variant="outline" onClick={() => handleNumber(1)} className="h-10 text-xs">
                 1
               </Button>
-              <Button variant="outline" onClick={() => handleNumber(2)} className="h-12">
+              <Button variant="outline" onClick={() => handleNumber(2)} className="h-10 text-xs">
                 2
               </Button>
-              <Button variant="outline" onClick={() => handleNumber(3)} className="h-12">
+              <Button variant="outline" onClick={() => handleNumber(3)} className="h-10 text-xs">
                 3
               </Button>
               <Button 
                 variant="default" 
                 onClick={handleEquals} 
-                className="h-12 row-span-2 bg-amber-600 hover:bg-amber-700"
+                className="h-10 row-span-2 bg-amber-600 hover:bg-amber-700 text-xs"
               >
                 =
               </Button>
 
-              <Button variant="outline" onClick={() => handleNumber(0)} className="h-12 col-span-2">
+              <Button variant="outline" onClick={() => handleNumber(0)} className="h-10 text-xs col-span-2">
                 0
               </Button>
-              <Button variant="outline" onClick={handleDecimal} className="h-12">
+              <Button variant="outline" onClick={handleDecimal} className="h-10 text-xs">
                 .
               </Button>
             </div>
           </TabsContent>
 
-          <TabsContent value="converter" className="space-y-3">
-            <div className="space-y-3">
+          <TabsContent value="converter" className="space-y-2">
+            <div className="space-y-2">
               <div className="space-y-1">
                 <Label className="text-xs">Value to Convert</Label>
                 <Input
                   value={convertValue}
                   onChange={(e) => setConvertValue(e.target.value)}
-                  placeholder="Enter value (e.g., 25.4 or 1 1/2)"
-                  className="h-10"
+                  placeholder="e.g., 25.4 or 1 1/2"
+                  className="h-9 text-sm"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs">From</Label>
                   <Select value={fromUnit} onValueChange={setFromUnit}>
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger className="h-9 text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -276,7 +276,7 @@ export default function WoodworkingCalculator() {
                 <div className="space-y-1">
                   <Label className="text-xs">To</Label>
                   <Select value={toUnit} onValueChange={setToUnit}>
-                    <SelectTrigger className="h-10">
+                    <SelectTrigger className="h-9 text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -289,10 +289,10 @@ export default function WoodworkingCalculator() {
               </div>
             </div>
 
-            <div className="pt-3 border-t">
+            <div className="pt-2 border-t">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-slate-600">Result:</span>
-                <span className="text-2xl font-bold text-amber-600">{convertUnits()}</span>
+                <span className="text-xs text-slate-600">Result:</span>
+                <span className="text-xl font-bold text-amber-600">{convertUnits()}</span>
               </div>
             </div>
           </TabsContent>
