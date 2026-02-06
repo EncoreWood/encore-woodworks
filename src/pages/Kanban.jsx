@@ -225,6 +225,77 @@ export default function Kanban() {
             })}
           </div>
         </DragDropContext>
+
+        {/* Chat Dialog */}
+        <Dialog open={chatDialogOpen} onOpenChange={setChatDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedProject?.project_name} - Chat Management
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {projectChat ? (
+                <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200">
+                  <p className="text-sm font-medium text-emerald-900 mb-2">
+                    Chat: {projectChat.name}
+                  </p>
+                  <Link to={createPageUrl("ChatBoard") + "?room=" + projectChat.id}>
+                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
+                      Open Chat
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-slate-700 mb-2">
+                      Create New Chat
+                    </p>
+                    <Button
+                      className="w-full"
+                      onClick={() =>
+                        createChatMutation.mutate({
+                          name: selectedProject?.project_name,
+                          project_id: selectedProject?.id
+                        })
+                      }
+                      disabled={createChatMutation.isPending}
+                    >
+                      Create Chat
+                    </Button>
+                  </div>
+
+                  {availableChats.length > 0 && (
+                    <div>
+                      <p className="text-sm font-medium text-slate-700 mb-2">
+                        Or Link Existing Chat
+                      </p>
+                      <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {availableChats.map((chat) => (
+                          <Button
+                            key={chat.id}
+                            variant="outline"
+                            className="w-full justify-start"
+                            onClick={() =>
+                              linkChatMutation.mutate({
+                                projectId: selectedProject?.id,
+                                roomId: chat.id
+                              })
+                            }
+                            disabled={linkChatMutation.isPending}
+                          >
+                            {chat.name}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
