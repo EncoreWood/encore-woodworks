@@ -220,13 +220,58 @@ export default function ChatBoard() {
                               new Date(msg.created_date).toLocaleTimeString()}
                           </span>
                         </div>
-                        <p className="text-sm text-slate-700 bg-slate-50 p-2 rounded">
-                          {msg.message}
-                        </p>
+                        {msg.message && (
+                          <p className="text-sm text-slate-700 bg-slate-50 p-2 rounded">
+                            {msg.message}
+                          </p>
+                        )}
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="space-y-2">
+                            {msg.attachments.map((att, idx) => (
+                              <a
+                                key={idx}
+                                href={att.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 p-2 bg-slate-100 rounded text-xs hover:bg-slate-200 transition-colors"
+                              >
+                                {att.type === 'photo' ? (
+                                  <img src={att.url} alt={att.name} className="h-12 w-12 object-cover rounded" />
+                                ) : (
+                                  <Paperclip className="w-4 h-4 text-slate-600" />
+                                )}
+                                <span className="text-slate-700 truncate flex-1">{att.name}</span>
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))
                   )}
                 </div>
+
+                {/* Attachments Preview */}
+                {attachments.length > 0 && (
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {attachments.map((att, idx) => (
+                      <div key={idx} className="relative">
+                        {att.type === 'photo' ? (
+                          <img src={att.url} alt={att.name} className="h-16 w-16 object-cover rounded" />
+                        ) : (
+                          <div className="h-16 w-16 bg-slate-200 rounded flex items-center justify-center">
+                            <Paperclip className="w-6 h-6 text-slate-600" />
+                          </div>
+                        )}
+                        <button
+                          onClick={() => removeAttachment(idx)}
+                          className="absolute -top-2 -right-2 bg-red-600 rounded-full p-1"
+                        >
+                          <X className="w-3 h-3 text-white" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Message Input */}
                 <div className="flex gap-2">
@@ -242,13 +287,36 @@ export default function ChatBoard() {
                     className="text-sm resize-none"
                     rows={3}
                   />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                    className="bg-blue-600 hover:bg-blue-700 h-fit"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
+                  <div className="flex flex-col gap-2">
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        multiple
+                        onChange={handleFileUpload}
+                        disabled={uploading}
+                        className="hidden"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        disabled={uploading}
+                        className="h-9"
+                        asChild
+                      >
+                        <span>
+                          <Paperclip className="w-4 h-4" />
+                        </span>
+                      </Button>
+                    </label>
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={(newMessage.trim() === '' && attachments.length === 0) || sendMessageMutation.isPending}
+                      className="bg-blue-600 hover:bg-blue-700"
+                      size="icon"
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </Card>
             ) : (
