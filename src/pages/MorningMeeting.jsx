@@ -20,8 +20,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Calendar, AlertCircle, Coffee, Sun, Target, CheckCircle2, ChevronLeft, ChevronRight, Edit, MoreVertical } from "lucide-react";
+import { User, Calendar, AlertCircle, Coffee, Sun, Target, CheckCircle2, ChevronLeft, ChevronRight, Edit, MoreVertical, Plus, Trash2, Check } from "lucide-react";
 import { format, addDays, subDays } from "date-fns";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const employees = [
   "Mike Johnson",
@@ -94,6 +95,8 @@ export default function MorningMeeting() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showPresenterDialog, setShowPresenterDialog] = useState(false);
   const [presenterName, setPresenterName] = useState("");
+  const [newTask, setNewTask] = useState("");
+  const [newAssignee, setNewAssignee] = useState("");
   const dateString = format(selectedDate, "yyyy-MM-dd");
   const queryClient = useQueryClient();
 
@@ -108,6 +111,11 @@ export default function MorningMeeting() {
       const presenters = await base44.entities.MeetingPresenter.filter({ date: dateString });
       return presenters[0];
     }
+  });
+
+  const { data: tasks = [] } = useQuery({
+    queryKey: ["tasks", dateString],
+    queryFn: () => base44.entities.MeetingTask.filter({ date: dateString })
   });
 
   const savePresenterMutation = useMutation({
@@ -154,6 +162,44 @@ export default function MorningMeeting() {
 
   const handleUpdateProjectPriority = (project, newPriority) => {
     updateProjectMutation.mutate({ id: project.id, data: { priority: newPriority } });
+  };
+
+  const createTaskMutation = useMutation({
+    mutationFn: (data) => base44.entities.MeetingTask.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", dateString] });
+      setNewTask("");
+      setNewAssignee("");
+    }
+  });
+
+  const updateTaskMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.MeetingTask.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", dateString] });
+    }
+  });
+
+  const deleteTaskMutation = useMutation({
+    mutationFn: (id) => base44.entities.MeetingTask.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", dateString] });
+    }
+  });
+
+  const handleAddTask = () => {
+    if (newTask.trim()) {
+      createTaskMutation.mutate({
+        task: newTask.trim(),
+        date: dateString,
+        assignee: newAssignee.trim() || undefined,
+        completed: false
+      });
+    }
+  };
+
+  const handleToggleTask = (task) => {
+    updateTaskMutation.mutate({ id: task.id, data: { completed: !task.completed } });
   };
 
   // Get daily quote based on day of year
@@ -269,6 +315,101 @@ export default function MorningMeeting() {
             </p>
           </div>
         </div>
+
+        {/* Tasks Section */}
+        <Card className="mb-6 overflow-hidden border-l-4 border-l-purple-500 shadow-lg">
+          <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-6 h-6 text-purple-700" />
+                <h2 className="text-xl font-bold text-purple-700">
+                  📋 Tasks & Action Items
+                </h2>
+              </div>
+              <Badge className="text-base px-4 py-1 text-purple-700 bg-white">
+                {tasks.filter(t => !t.completed).length} remaining
+              </Badge>
+            </div>
+          </div>
+
+          <div className="p-4">
+            {/* Add New Task */}
+            <div className="mb-4 flex gap-2">
+              <Input
+                placeholder="Add a task..."
+                value={newTask}
+                onChange={(e) => setNewTask(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleAddTask()}
+                className="flex-1"
+              />
+              <Input
+                placeholder="Assignee (optional)"
+                value={newAssignee}
+                onChange={(e) => setNewAssignee(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleAddTask()}
+                className="w-48"
+              />
+              <Button
+                onClick={handleAddTask}
+                disabled={!newTask.trim() || createTaskMutation.isPending}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add
+              </Button>
+            </div>
+
+            {/* Tasks List */}
+            <div className="space-y-2">
+              {tasks.length === 0 ? (
+                <div className="text-center py-8 text-slate-400">
+                  No tasks yet. Add one above!
+                </div>
+              ) : (
+                tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                      task.completed
+                        ? "bg-slate-50 border-slate-200"
+                        : "bg-white border-slate-200 hover:border-purple-300"
+                    }`}
+                  >
+                    <Checkbox
+                      checked={task.completed}
+                      onCheckedChange={() => handleToggleTask(task)}
+                      className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                    />
+                    <div className="flex-1">
+                      <p
+                        className={`font-medium ${
+                          task.completed
+                            ? "text-slate-400 line-through"
+                            : "text-slate-700"
+                        }`}
+                      >
+                        {task.task}
+                      </p>
+                      {task.assignee && (
+                        <p className="text-sm text-slate-500">
+                          Assigned to: {task.assignee}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => deleteTaskMutation.mutate(task.id)}
+                      className="text-slate-400 hover:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </Card>
 
         {/* Agenda Sections */}
         <div className="space-y-6">
