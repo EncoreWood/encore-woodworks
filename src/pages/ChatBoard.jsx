@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, Send, Paperclip, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { createPageUrl } from '@/utils';
+import { Plus, Trash2, Send, Paperclip, X, ExternalLink } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -208,12 +210,25 @@ export default function ChatBoard() {
                           >
                             {room.name}
                           </button>
-                          <button
-                            onClick={() => deleteRoomMutation.mutate(room.id)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-600 hover:text-red-700" />
-                          </button>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {room.project_id && (
+                              <Link to={createPageUrl("ProjectDetails") + "?id=" + room.project_id}>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <ExternalLink className="w-3 h-3 text-blue-600" />
+                                </Button>
+                              </Link>
+                            )}
+                            <button
+                              onClick={() => deleteRoomMutation.mutate(room.id)}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-600 hover:text-red-700" />
+                            </button>
+                          </div>
                         </div>
                       ))
                     )}
