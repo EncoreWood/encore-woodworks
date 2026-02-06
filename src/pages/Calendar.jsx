@@ -6,7 +6,7 @@ import { createPageUrl } from "@/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Plus, Pencil, Briefcase, Users, CheckCircle2, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Plus, Pencil, Briefcase, Users, CheckCircle2, Trash2, Sparkles } from "lucide-react";
 import { format, isSameDay, startOfMonth, endOfMonth } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -85,6 +85,11 @@ export default function Calendar() {
     queryFn: () => base44.entities.Employee.list()
   });
 
+  const { data: bathroomCleanings = [] } = useQuery({
+    queryKey: ["bathroomCleanings"],
+    queryFn: () => base44.entities.BathroomCleaning.list()
+  });
+
   const createPresenterMutation = useMutation({
     mutationFn: async (data) => {
       const presenter = await base44.entities.MeetingPresenter.create(data);
@@ -122,6 +127,15 @@ export default function Calendar() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["designMeetings"] });
+      setShowAddDialog(false);
+      setFormData({});
+    }
+  });
+
+  const createBathroomCleaningMutation = useMutation({
+    mutationFn: (data) => base44.entities.BathroomCleaning.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bathroomCleanings"] });
       setShowAddDialog(false);
       setFormData({});
     }
@@ -187,6 +201,8 @@ export default function Calendar() {
       createPresenterMutation.mutate(formData);
     } else if (addType === "designMeeting" && formData.client_name) {
       createDesignMeetingMutation.mutate(formData);
+    } else if (addType === "bathroomCleaning" && formData.assigned_to && formData.assigned_to.length > 0) {
+      createBathroomCleaningMutation.mutate(formData);
     } else if (addType === "task" && formData.task) {
       createTaskMutation.mutate({
         task: formData.task,
@@ -212,6 +228,11 @@ export default function Calendar() {
   const getTasksForDate = (date) => {
     const dateStr = format(date, "yyyy-MM-dd");
     return tasks.filter(t => t.date === dateStr);
+  };
+
+  const getBathroomCleaningsForDate = (date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return bathroomCleanings.filter(c => c.date === dateStr);
   };
 
   const createTaskMutation = useMutation({
@@ -433,6 +454,7 @@ export default function Calendar() {
                     const projectCount = getProjectsForDate(date).length;
                     const meetingCount = getDesignMeetingsForDate(date).length;
                     const taskCount = getTasksForDate(date).length;
+                    const cleaningCount = getBathroomCleaningsForDate(date).length;
                     return (
                       <div className="w-full h-full flex flex-col p-2">
                         <div className="text-base font-semibold mb-auto flex items-center justify-between">
@@ -455,6 +477,11 @@ export default function Calendar() {
                           {taskCount > 0 && (
                             <div className="text-xs px-1.5 py-0.5 bg-purple-500 text-white rounded font-medium">
                               {taskCount}
+                            </div>
+                          )}
+                          {cleaningCount > 0 && (
+                            <div className="text-xs px-1.5 py-0.5 bg-cyan-500 text-white rounded font-medium">
+                              {cleaningCount}
                             </div>
                           )}
                         </div>
@@ -480,6 +507,10 @@ export default function Calendar() {
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-blue-600" />
                   <span className="text-slate-700">Presenter</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="px-2 py-1 bg-cyan-500 text-white rounded font-medium text-xs">1</div>
+                  <span className="text-slate-700">Bathroom Cleaning</span>
                 </div>
               </div>
             </Card>
@@ -514,6 +545,10 @@ export default function Calendar() {
                       <DropdownMenuItem onClick={() => handleOpenAdd("designMeeting")}>
                         <Users className="w-4 h-4 mr-2" />
                         Design Meeting
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenAdd("bathroomCleaning")}>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Bathroom Cleaning
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -570,6 +605,22 @@ export default function Calendar() {
                       <p className="text-sm text-violet-700 mt-1">{meeting.client_name}</p>
                       {meeting.project_name && (
                         <p className="text-xs text-violet-600">{meeting.project_name}</p>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Bathroom Cleanings */}
+                  {getBathroomCleaningsForDate(selectedDate).map((cleaning) => (
+                    <div key={cleaning.id} className="p-3 bg-cyan-50 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm font-medium text-cyan-900">
+                        <Sparkles className="w-4 h-4" />
+                        Bathroom Cleaning
+                      </div>
+                      <p className="text-sm text-cyan-700 mt-1">
+                        {cleaning.assigned_to.join(", ")}
+                      </p>
+                      {cleaning.notes && (
+                        <p className="text-xs text-cyan-600 mt-1">{cleaning.notes}</p>
                       )}
                     </div>
                   ))}
@@ -640,7 +691,8 @@ export default function Calendar() {
                   {!getPresenterForDate(selectedDate) && 
                    getProjectsForDate(selectedDate).length === 0 && 
                    getDesignMeetingsForDate(selectedDate).length === 0 &&
-                   getTasksForDate(selectedDate).length === 0 && (
+                   getTasksForDate(selectedDate).length === 0 &&
+                   getBathroomCleaningsForDate(selectedDate).length === 0 && (
                     <p className="text-sm text-slate-500 text-center py-4">
                       No items for this date
                     </p>
@@ -708,6 +760,7 @@ export default function Calendar() {
                 {addType === "presenter" && "Add Meeting Presenter"}
                 {addType === "designMeeting" && "Add Design Meeting"}
                 {addType === "task" && "Add Task"}
+                {addType === "bathroomCleaning" && "Add Bathroom Cleaning"}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -817,6 +870,45 @@ export default function Calendar() {
                 </>
               )}
 
+              {addType === "bathroomCleaning" && (
+                <>
+                  <div>
+                    <Label>Assign To *</Label>
+                    <div className="space-y-2 mt-2 max-h-48 overflow-y-auto">
+                      {employees.map((emp) => (
+                        <div key={emp.id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`cleaning-${emp.id}`}
+                            checked={formData.assigned_to?.includes(emp.full_name) || false}
+                            onCheckedChange={(checked) => {
+                              const current = formData.assigned_to || [];
+                              setFormData({
+                                ...formData,
+                                assigned_to: checked
+                                  ? [...current, emp.full_name]
+                                  : current.filter(n => n !== emp.full_name)
+                              });
+                            }}
+                          />
+                          <Label htmlFor={`cleaning-${emp.id}`} className="cursor-pointer font-normal">
+                            {emp.full_name}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      value={formData.notes || ""}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Additional notes..."
+                    />
+                  </div>
+                </>
+              )}
+
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setShowAddDialog(false)}>
                   Cancel
@@ -826,7 +918,8 @@ export default function Calendar() {
                   disabled={
                     (addType === "presenter" && !formData.presenter_name) ||
                     (addType === "designMeeting" && !formData.client_name) ||
-                    (addType === "task" && !formData.task)
+                    (addType === "task" && !formData.task) ||
+                    (addType === "bathroomCleaning" && (!formData.assigned_to || formData.assigned_to.length === 0))
                   }
                 >
                   Add
@@ -956,10 +1049,27 @@ export default function Calendar() {
                     </div>
                   )}
 
+                  {/* Bathroom Cleanings */}
+                  {getBathroomCleaningsForDate(dayDialogDate).map((cleaning) => (
+                    <div key={cleaning.id} className="p-4 bg-cyan-50 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm font-medium text-cyan-900 mb-2">
+                        <Sparkles className="w-4 h-4" />
+                        Bathroom Cleaning
+                      </div>
+                      <p className="text-sm text-cyan-700">
+                        Assigned to: {cleaning.assigned_to.join(", ")}
+                      </p>
+                      {cleaning.notes && (
+                        <p className="text-xs text-cyan-600 mt-2 italic">{cleaning.notes}</p>
+                      )}
+                    </div>
+                  ))}
+
                   {!getPresenterForDate(dayDialogDate) && 
                    getProjectsForDate(dayDialogDate).length === 0 && 
                    getDesignMeetingsForDate(dayDialogDate).length === 0 &&
-                   getTasksForDate(dayDialogDate).length === 0 && (
+                   getTasksForDate(dayDialogDate).length === 0 &&
+                   getBathroomCleaningsForDate(dayDialogDate).length === 0 && (
                     <p className="text-sm text-slate-500 text-center py-8">
                       No events scheduled for this day
                     </p>
