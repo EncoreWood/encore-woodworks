@@ -401,30 +401,41 @@ export default function TimeSheet() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Employee List */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Employees</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 max-h-96 overflow-y-auto">
-                {employees.map((emp) => (
-                  <button
-                    key={emp.id}
-                    onClick={() => setSelectedEmployee(emp)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all ${
-                      selectedEmployee?.id === emp.id
-                        ? "bg-amber-50 border-amber-200 font-semibold text-amber-900"
-                        : "border-slate-200 hover:bg-slate-50 text-slate-700"
-                    }`}
-                  >
-                    {emp.full_name}
-                    <span className="text-xs text-slate-500 block">{emp.position}</span>
-                  </button>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
+            {/* Employee List */}
+            {currentUser?.role === "admin" && (
+             <div className="lg:col-span-1">
+               <Card>
+                 <CardHeader>
+                   <CardTitle className="text-lg">Employees</CardTitle>
+                 </CardHeader>
+                 <CardContent className="space-y-2 max-h-96 overflow-y-auto">
+                   {employees.map((emp) => (
+                     <button
+                       key={emp.id}
+                       onClick={() => setSelectedEmployee(emp)}
+                       className={`w-full text-left p-3 rounded-lg border transition-all ${
+                         selectedEmployee?.id === emp.id
+                           ? "bg-amber-50 border-amber-200 font-semibold text-amber-900"
+                           : "border-slate-200 hover:bg-slate-50 text-slate-700"
+                       }`}
+                     >
+                       {emp.full_name}
+                       <span className="text-xs text-slate-500 block">{emp.position}</span>
+                     </button>
+                   ))}
+                 </CardContent>
+               </Card>
+             </div>
+            )}
+            {currentUser?.role === "user" && !selectedEmployee && (
+             <div className="lg:col-span-1">
+               <Card className="bg-amber-50 border-amber-200">
+                 <CardContent className="pt-6 text-center">
+                   <p className="text-slate-600 font-medium">Loading your profile...</p>
+                 </CardContent>
+               </Card>
+             </div>
+            )}
 
           {/* Time Entries */}
           <div className="lg:col-span-2 space-y-4">
