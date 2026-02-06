@@ -7,6 +7,14 @@ import { Card } from "@/components/ui/card";
 import { User, Calendar, AlertCircle, Coffee, Sun, Target, CheckCircle2 } from "lucide-react";
 import { format } from "date-fns";
 
+const employees = [
+  "Mike Johnson",
+  "Sarah Chen",
+  "David Martinez",
+  "Emily Rodriguez",
+  "James Wilson"
+];
+
 const motivationalQuotes = [
   "Excellence is not a skill, it's an attitude.",
   "Quality is not an act, it is a habit.",
@@ -82,6 +90,16 @@ export default function MorningMeeting() {
     return motivationalQuotes[dayOfYear % motivationalQuotes.length];
   };
 
+  // Get today's presenter based on day of year
+  const getTodayPresenter = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const diff = now - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    const dayOfYear = Math.floor(diff / oneDay);
+    return employees[dayOfYear % employees.length];
+  };
+
   const getProjectsBySection = (sectionId) => {
     switch (sectionId) {
       case "urgent":
@@ -119,6 +137,16 @@ export default function MorningMeeting() {
           <p className="text-lg text-slate-600 font-medium mb-4">
             {format(new Date(), "EEEE, MMMM d, yyyy")}
           </p>
+          
+          {/* Presenter Badge */}
+          <div className="mb-4">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-full shadow-lg">
+              <User className="w-5 h-5" />
+              <span className="font-semibold">Today's Presenter:</span>
+              <span className="font-bold text-lg">{getTodayPresenter()}</span>
+            </div>
+          </div>
+
           <div className="max-w-2xl mx-auto bg-gradient-to-r from-amber-100 to-orange-100 rounded-lg p-6 shadow-md border-l-4 border-amber-500">
             <p className="text-xl font-semibold text-slate-700 italic">
               "{getDailyQuote()}"
