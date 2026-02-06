@@ -454,6 +454,77 @@ export default function ChatBoard() {
           </div>
         </div>
 
+        {/* Files Dialog */}
+        <Dialog open={showFilesDialog} onOpenChange={setShowFilesDialog}>
+          <DialogContent className="max-w-2xl max-h-[70vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Files</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              {(() => {
+                const filesFolder = folders.find(f => f.type === 'files');
+                const files = filesFolder?.files || [];
+                return files.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-8 text-center">No files uploaded yet</p>
+                ) : (
+                  files.map((file, idx) => (
+                    <a
+                      key={idx}
+                      href={file.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 bg-slate-50 hover:bg-slate-100 rounded transition-colors"
+                    >
+                      <FileText className="w-4 h-4 text-slate-600 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-900 truncate">{file.name}</p>
+                        <p className="text-xs text-slate-500">{file.uploaded_by}</p>
+                      </div>
+                    </a>
+                  ))
+                );
+              })()}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Photos Dialog */}
+        <Dialog open={showPhotosDialog} onOpenChange={setShowPhotosDialog}>
+          <DialogContent className="max-w-2xl max-h-[70vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Photos</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-3 gap-3">
+              {(() => {
+                const photosFolder = folders.find(f => f.type === 'photos');
+                const photos = photosFolder?.files || [];
+                return photos.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-8 text-center col-span-3">No photos uploaded yet</p>
+                ) : (
+                  photos.map((photo, idx) => (
+                    <a
+                      key={idx}
+                      href={photo.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative overflow-hidden rounded"
+                    >
+                      <img
+                        src={photo.url}
+                        alt={photo.name}
+                        className="w-full h-32 object-cover group-hover:opacity-80 transition-opacity"
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <span className="text-xs text-white text-center px-2">{photo.uploaded_by}</span>
+                      </div>
+                    </a>
+                  ))
+                );
+              })()}
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Add Room Dialog */}
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
           <DialogContent>
