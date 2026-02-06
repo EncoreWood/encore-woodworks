@@ -53,7 +53,7 @@ export default function StretchingRoutine() {
           <h1 className="text-3xl font-bold text-slate-900 mb-2">Pre-Meeting Stretch Routine</h1>
           <p className="text-sm text-slate-600 flex items-center justify-center gap-2">
             <Clock className="w-4 h-4" />
-            3 minutes • 6 stretches
+            3 minutes • 6 standing stretches
           </p>
         </div>
 
