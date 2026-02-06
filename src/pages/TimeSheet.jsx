@@ -525,9 +525,9 @@ export default function TimeSheet() {
                 <p className="text-slate-600 font-medium">Select an employee to view their time card</p>
               </Card>
             )}
-          </div>
-           </div>
-          </TabsContent>
+            </div>
+            </div>
+            </TabsContent>
 
           {/* SETTINGS TAB */}
           <TabsContent value="settings">
