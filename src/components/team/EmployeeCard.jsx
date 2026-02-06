@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Mail, Phone, Briefcase, Calendar, Pencil } from "lucide-react";
+import { User, Mail, Phone, Briefcase, Calendar, Cake, Pencil, ListTodo } from "lucide-react";
 import { format } from "date-fns";
 
 const departmentColors = {
@@ -12,7 +12,7 @@ const departmentColors = {
   management: "bg-amber-100 text-amber-700"
 };
 
-export default function EmployeeCard({ employee, onEdit }) {
+export default function EmployeeCard({ employee, onEdit, onAssignTask }) {
   return (
     <Card className="p-6 bg-white border-0 shadow-sm hover:shadow-md transition-all">
       <div className="flex items-start justify-between mb-4">
@@ -27,14 +27,26 @@ export default function EmployeeCard({ employee, onEdit }) {
             )}
           </div>
         </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={() => onEdit(employee)}
-          className="text-slate-400 hover:text-slate-700"
-        >
-          <Pencil className="w-4 h-4" />
-        </Button>
+        <div className="flex gap-1">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => onAssignTask(employee)}
+            className="text-slate-400 hover:text-slate-700"
+            title="Assign Task"
+          >
+            <ListTodo className="w-4 h-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => onEdit(employee)}
+            className="text-slate-400 hover:text-slate-700"
+            title="Edit"
+          >
+            <Pencil className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-3">
@@ -58,13 +70,20 @@ export default function EmployeeCard({ employee, onEdit }) {
           </Badge>
         )}
 
-        {employee.hire_date && (
-          <div className="pt-3 border-t border-slate-100">
-            <p className="text-xs text-slate-500">
-              Hired {format(new Date(employee.hire_date), "MMM d, yyyy")}
-            </p>
-          </div>
-        )}
+        <div className="pt-3 border-t border-slate-100 space-y-1">
+          {employee.hire_date && (
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <Calendar className="w-3 h-3" />
+              <span>Hired {format(new Date(employee.hire_date), "MMM d, yyyy")}</span>
+            </div>
+          )}
+          {employee.birthday && (
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <Cake className="w-3 h-3" />
+              <span>Birthday {format(new Date(employee.birthday), "MMM d")}</span>
+            </div>
+          )}
+        </div>
       </div>
     </Card>
   );

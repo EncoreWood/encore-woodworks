@@ -6,11 +6,14 @@ import { Card } from "@/components/ui/card";
 import { Users, UserPlus, Loader2 } from "lucide-react";
 import EmployeeCard from "../components/team/EmployeeCard";
 import EmployeeForm from "../components/team/EmployeeForm";
+import AssignTaskDialog from "../components/team/AssignTaskDialog";
 import { toast } from "sonner";
 
 export default function Team() {
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
+  const [assigningEmployee, setAssigningEmployee] = useState(null);
+  const [showTaskDialog, setShowTaskDialog] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: employees = [], isLoading } = useQuery({
@@ -44,6 +47,26 @@ export default function Team() {
     }
   });
 
+  const assignTaskMutation = useMutation({
+    mutationFn: (taskData) => base44.entities.MeetingTask.create(taskData),
+    onSuccess: async (data) => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setShowTaskDialog(false);
+      setAssigningEmployee(null);
+      
+      // Sync to Google Calendar
+      await base44.functions.invoke("syncToGoogleCalendar", {
+        type: "task",
+        data: data
+      });
+      
+      toast.success("Task assigned successfully");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to assign task");
+    }
+  });
+
   const handleEdit = (employee) => {
     setEditingEmployee(employee);
     setShowEmployeeForm(true);
@@ -60,6 +83,20 @@ export default function Team() {
     } else {
       createEmployeeMutation.mutate(data);
     }
+  };
+
+  const handleAssignTask = (employee) => {
+    setAssigningEmployee(employee);
+    setShowTaskDialog(true);
+  };
+
+  const handleSubmitTask = (taskData) => {
+    assignTaskMutation.mutate({
+      task: taskData.task,
+      date: taskData.date,
+      assignee: assigningEmployee.full_name,
+      completed: false
+    });
   };
 
   const departmentCount = (dept) => employees.filter(e => e.department === dept).length;
@@ -138,6 +175,7 @@ export default function Team() {
               key={employee.id}
               employee={employee}
               onEdit={handleEdit}
+              onAssignTask={handleAssignTask}
             />
           ))}
         </div>
@@ -164,6 +202,15 @@ export default function Team() {
           onSubmit={handleSubmitEmployee}
           employee={editingEmployee}
           isLoading={createEmployeeMutation.isPending || updateEmployeeMutation.isPending}
+        />
+
+        {/* Assign Task Dialog */}
+        <AssignTaskDialog
+          open={showTaskDialog}
+          onOpenChange={setShowTaskDialog}
+          onSubmit={handleSubmitTask}
+          employee={assigningEmployee}
+          isLoading={assignTaskMutation.isPending}
         />
       </div>
     </div>

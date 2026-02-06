@@ -15,6 +15,7 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
     position: "",
     department: "",
     hire_date: "",
+    birthday: "",
     notes: ""
   });
 
@@ -27,6 +28,7 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
         position: employee.position || "",
         department: employee.department || "",
         hire_date: employee.hire_date || "",
+        birthday: employee.birthday || "",
         notes: employee.notes || ""
       });
     } else {
@@ -37,6 +39,7 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
         position: "",
         department: "",
         hire_date: "",
+        birthday: "",
         notes: ""
       });
     }
@@ -119,14 +122,26 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
             </div>
           </div>
 
-          <div>
-            <Label htmlFor="hire_date">Hire Date</Label>
-            <Input
-              id="hire_date"
-              type="date"
-              value={formData.hire_date}
-              onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="hire_date">Hire Date</Label>
+              <Input
+                id="hire_date"
+                type="date"
+                value={formData.hire_date}
+                onChange={(e) => setFormData({ ...formData, hire_date: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="birthday">Birthday</Label>
+              <Input
+                id="birthday"
+                type="date"
+                value={formData.birthday}
+                onChange={(e) => setFormData({ ...formData, birthday: e.target.value })}
+              />
+            </div>
           </div>
 
           <div>
