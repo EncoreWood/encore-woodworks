@@ -59,6 +59,7 @@ export default function Calendar() {
   const [newTask, setNewTask] = useState("");
   const [newAssignee, setNewAssignee] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const [viewType, setViewType] = useState("month");
   const queryClient = useQueryClient();
 
   const filterOptions = [
