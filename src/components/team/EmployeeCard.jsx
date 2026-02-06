@@ -1,12 +1,18 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Mail, Crown, Pencil } from "lucide-react";
+import { User, Mail, Phone, Briefcase, Calendar, Pencil } from "lucide-react";
 import { format } from "date-fns";
 
-export default function EmployeeCard({ employee, onEdit }) {
-  const isAdmin = employee.role === "admin";
+const departmentColors = {
+  production: "bg-blue-100 text-blue-700",
+  design: "bg-purple-100 text-purple-700",
+  installation: "bg-orange-100 text-orange-700",
+  sales: "bg-green-100 text-green-700",
+  management: "bg-amber-100 text-amber-700"
+};
 
+export default function EmployeeCard({ employee, onEdit }) {
   return (
     <Card className="p-6 bg-white border-0 shadow-sm hover:shadow-md transition-all">
       <div className="flex items-start justify-between mb-4">
@@ -16,11 +22,8 @@ export default function EmployeeCard({ employee, onEdit }) {
           </div>
           <div>
             <h3 className="font-semibold text-slate-900">{employee.full_name}</h3>
-            {isAdmin && (
-              <Badge className="bg-amber-100 text-amber-700 border-0 mt-1">
-                <Crown className="w-3 h-3 mr-1" />
-                Admin
-              </Badge>
+            {employee.position && (
+              <p className="text-sm text-slate-500">{employee.position}</p>
             )}
           </div>
         </div>
@@ -35,16 +38,33 @@ export default function EmployeeCard({ employee, onEdit }) {
       </div>
 
       <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm text-slate-600">
-          <Mail className="w-4 h-4 text-slate-400" />
-          <span>{employee.email}</span>
-        </div>
+        {employee.email && (
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <Mail className="w-4 h-4 text-slate-400" />
+            <span>{employee.email}</span>
+          </div>
+        )}
 
-        <div className="pt-3 border-t border-slate-100">
-          <p className="text-xs text-slate-500">
-            Joined {format(new Date(employee.created_date), "MMM d, yyyy")}
-          </p>
-        </div>
+        {employee.phone && (
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <Phone className="w-4 h-4 text-slate-400" />
+            <span>{employee.phone}</span>
+          </div>
+        )}
+
+        {employee.department && (
+          <Badge className={`border-0 ${departmentColors[employee.department]}`}>
+            {employee.department.charAt(0).toUpperCase() + employee.department.slice(1)}
+          </Badge>
+        )}
+
+        {employee.hire_date && (
+          <div className="pt-3 border-t border-slate-100">
+            <p className="text-xs text-slate-500">
+              Hired {format(new Date(employee.hire_date), "MMM d, yyyy")}
+            </p>
+          </div>
+        )}
       </div>
     </Card>
   );

@@ -6,30 +6,36 @@ import { Card } from "@/components/ui/card";
 import { Users, UserPlus, Loader2 } from "lucide-react";
 import EmployeeCard from "../components/team/EmployeeCard";
 import EmployeeForm from "../components/team/EmployeeForm";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 export default function Team() {
   const [editingEmployee, setEditingEmployee] = useState(null);
-  const [showEditForm, setShowEditForm] = useState(false);
-  const [showInviteDialog, setShowInviteDialog] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("user");
+  const [showEmployeeForm, setShowEmployeeForm] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees"],
-    queryFn: () => base44.entities.User.list()
+    queryFn: () => base44.entities.Employee.list("-created_date")
+  });
+
+  const createEmployeeMutation = useMutation({
+    mutationFn: (data) => base44.entities.Employee.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      setShowEmployeeForm(false);
+      setEditingEmployee(null);
+      toast.success("Employee added successfully");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to add employee");
+    }
   });
 
   const updateEmployeeMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.User.update(id, data),
+    mutationFn: ({ id, data }) => base44.entities.Employee.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
-      setShowEditForm(false);
+      setShowEmployeeForm(false);
       setEditingEmployee(null);
       toast.success("Employee updated successfully");
     },
@@ -38,47 +44,25 @@ export default function Team() {
     }
   });
 
-  const inviteUserMutation = useMutation({
-    mutationFn: async ({ email, role }) => {
-      await base44.users.inviteUser(email, role);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["employees"] });
-      setShowInviteDialog(false);
-      setInviteEmail("");
-      setInviteRole("user");
-      toast.success("Invitation sent successfully");
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to send invitation");
-    }
-  });
-
   const handleEdit = (employee) => {
     setEditingEmployee(employee);
-    setShowEditForm(true);
+    setShowEmployeeForm(true);
   };
 
-  const handleSubmitEdit = (data) => {
+  const handleAddNew = () => {
+    setEditingEmployee(null);
+    setShowEmployeeForm(true);
+  };
+
+  const handleSubmitEmployee = (data) => {
     if (editingEmployee) {
-      updateEmployeeMutation.mutate({ 
-        id: editingEmployee.id, 
-        data: {
-          full_name: data.full_name,
-          role: data.role
-        }
-      });
+      updateEmployeeMutation.mutate({ id: editingEmployee.id, data });
+    } else {
+      createEmployeeMutation.mutate(data);
     }
   };
 
-  const handleInvite = () => {
-    if (inviteEmail.trim()) {
-      inviteUserMutation.mutate({ email: inviteEmail.trim(), role: inviteRole });
-    }
-  };
-
-  const adminCount = employees.filter(e => e.role === "admin").length;
-  const userCount = employees.filter(e => e.role === "user").length;
+  const departmentCount = (dept) => employees.filter(e => e.department === dept).length;
 
   if (isLoading) {
     return (
@@ -116,7 +100,7 @@ export default function Team() {
                 <Users className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-slate-500">Total Members</p>
+                <p className="text-sm text-slate-500">Total Employees</p>
                 <p className="text-2xl font-bold text-slate-900">{employees.length}</p>
               </div>
             </div>
@@ -128,8 +112,8 @@ export default function Team() {
                 <Users className="w-5 h-5 text-amber-600" />
               </div>
               <div>
-                <p className="text-sm text-slate-500">Admins</p>
-                <p className="text-2xl font-bold text-slate-900">{adminCount}</p>
+                <p className="text-sm text-slate-500">Production</p>
+                <p className="text-2xl font-bold text-slate-900">{departmentCount("production")}</p>
               </div>
             </div>
           </Card>
@@ -140,8 +124,8 @@ export default function Team() {
                 <Users className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-slate-500">Users</p>
-                <p className="text-2xl font-bold text-slate-900">{userCount}</p>
+                <p className="text-sm text-slate-500">Design</p>
+                <p className="text-2xl font-bold text-slate-900">{departmentCount("design")}</p>
               </div>
             </div>
           </Card>
@@ -161,87 +145,26 @@ export default function Team() {
         {employees.length === 0 && (
           <Card className="p-12 bg-white border-0 shadow-sm text-center">
             <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">No team members yet</h3>
-            <p className="text-slate-500 mb-4">Get started by inviting your first team member</p>
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">No employees yet</h3>
+            <p className="text-slate-500 mb-4">Get started by adding your first employee</p>
             <Button
-              onClick={() => setShowInviteDialog(true)}
+              onClick={handleAddNew}
               className="bg-amber-600 hover:bg-amber-700"
             >
               <UserPlus className="w-4 h-4 mr-2" />
-              Invite Member
+              Add Employee
             </Button>
           </Card>
         )}
 
-        {/* Edit Form */}
+        {/* Employee Form */}
         <EmployeeForm
-          open={showEditForm}
-          onOpenChange={setShowEditForm}
-          onSubmit={handleSubmitEdit}
+          open={showEmployeeForm}
+          onOpenChange={setShowEmployeeForm}
+          onSubmit={handleSubmitEmployee}
           employee={editingEmployee}
-          isLoading={updateEmployeeMutation.isPending}
+          isLoading={createEmployeeMutation.isPending || updateEmployeeMutation.isPending}
         />
-
-        {/* Invite Dialog */}
-        <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Invite Team Member</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="invite_email">Email Address</Label>
-                <Input
-                  id="invite_email"
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  placeholder="email@example.com"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="invite_role">Role</Label>
-                <Select value={inviteRole} onValueChange={setInviteRole}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user">User</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex gap-2 justify-end pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowInviteDialog(false);
-                    setInviteEmail("");
-                    setInviteRole("user");
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleInvite}
-                  disabled={!inviteEmail.trim() || inviteUserMutation.isPending}
-                  className="bg-amber-600 hover:bg-amber-700"
-                >
-                  {inviteUserMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    "Send Invitation"
-                  )}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );
