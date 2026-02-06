@@ -64,7 +64,19 @@ export default function Calendar() {
   });
 
   const createPresenterMutation = useMutation({
-    mutationFn: (data) => base44.entities.MeetingPresenter.create(data),
+    mutationFn: async (data) => {
+      const presenter = await base44.entities.MeetingPresenter.create(data);
+      // Sync to Google Calendar
+      try {
+        await base44.functions.invoke('syncToGoogleCalendar', {
+          type: 'presenter',
+          data
+        });
+      } catch (error) {
+        console.error('Failed to sync to Google Calendar:', error);
+      }
+      return presenter;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["presenters"] });
       setShowAddDialog(false);
@@ -73,7 +85,19 @@ export default function Calendar() {
   });
 
   const createDesignMeetingMutation = useMutation({
-    mutationFn: (data) => base44.entities.DesignMeeting.create(data),
+    mutationFn: async (data) => {
+      const meeting = await base44.entities.DesignMeeting.create(data);
+      // Sync to Google Calendar
+      try {
+        await base44.functions.invoke('syncToGoogleCalendar', {
+          type: 'designMeeting',
+          data
+        });
+      } catch (error) {
+        console.error('Failed to sync to Google Calendar:', error);
+      }
+      return meeting;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["designMeetings"] });
       setShowAddDialog(false);
@@ -82,7 +106,19 @@ export default function Calendar() {
   });
 
   const createProjectMutation = useMutation({
-    mutationFn: (data) => base44.entities.Project.create(data),
+    mutationFn: async (data) => {
+      const project = await base44.entities.Project.create(data);
+      // Sync to Google Calendar
+      try {
+        await base44.functions.invoke('syncToGoogleCalendar', {
+          type: 'project',
+          data: { ...data, project_name: data.project_name }
+        });
+      } catch (error) {
+        console.error('Failed to sync to Google Calendar:', error);
+      }
+      return project;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setShowProjectForm(false);
@@ -91,7 +127,19 @@ export default function Calendar() {
   });
 
   const updateProjectMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Project.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      const project = await base44.entities.Project.update(id, data);
+      // Sync to Google Calendar
+      try {
+        await base44.functions.invoke('syncToGoogleCalendar', {
+          type: 'project',
+          data: { ...data, project_name: data.project_name }
+        });
+      } catch (error) {
+        console.error('Failed to sync to Google Calendar:', error);
+      }
+      return project;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setShowProjectForm(false);
