@@ -64,7 +64,7 @@ export default function ShopProduction() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200">
       <div className="px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
           <div>
