@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, Settings, Trash2, ArrowUp, ArrowDown, Play, Square } from "lucide-react";
+import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, Settings, Trash2, ArrowUp, ArrowDown, Play, Square, Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
@@ -55,6 +55,7 @@ export default function Layout({ children, currentPageName }) {
   const [editingBoardKey, setEditingBoardKey] = useState(null);
   const [editingBoardGroupKey, setEditingBoardGroupKey] = useState(null);
   const [editingBoardName, setEditingBoardName] = useState("");
+  const [editingBoardIcon, setEditingBoardIcon] = useState("KanbanIcon");
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [creatingBoardInGroup, setCreatingBoardInGroup] = useState(null);
@@ -99,10 +100,18 @@ export default function Layout({ children, currentPageName }) {
     });
   };
 
+  const iconMap = {
+    KanbanIcon, LayoutDashboard, Calendar, Factory, Coffee, Users, MessageSquare,
+    Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, 
+    PieChart, BarChart3, Hammer
+  };
+
   const startEditBoard = (groupKey, itemIndex) => {
     setEditingBoardGroupKey(groupKey);
     setEditingBoardKey(itemIndex);
     setEditingBoardName(navGroups[groupKey].items[itemIndex].name);
+    const currentIcon = navGroups[groupKey].items[itemIndex].iconName || "KanbanIcon";
+    setEditingBoardIcon(currentIcon);
   };
 
   const saveBoardName = () => {
@@ -112,13 +121,19 @@ export default function Layout({ children, currentPageName }) {
         [editingBoardGroupKey]: {
           ...prev[editingBoardGroupKey],
           items: prev[editingBoardGroupKey].items.map((item, idx) =>
-            idx === editingBoardKey ? { ...item, name: editingBoardName.trim() } : item
+            idx === editingBoardKey ? { 
+              ...item, 
+              name: editingBoardName.trim(),
+              icon: iconMap[editingBoardIcon],
+              iconName: editingBoardIcon
+            } : item
           )
         }
       }));
       setEditingBoardKey(null);
       setEditingBoardGroupKey(null);
       setEditingBoardName("");
+      setEditingBoardIcon("KanbanIcon");
     }
   };
 
@@ -485,22 +500,45 @@ export default function Layout({ children, currentPageName }) {
                     >
                       <item.icon className="w-4 h-4 flex-shrink-0 text-slate-600" />
                       {editingBoardGroupKey === groupKey && editingBoardKey === itemIndex ? (
-                        <div className="flex gap-2 flex-1">
+                        <div className="flex flex-col gap-2 flex-1">
                           <Input
                             value={editingBoardName}
                             onChange={(e) => setEditingBoardName(e.target.value)}
                             placeholder="Board name"
                             autoFocus
-                            className="h-7 text-xs flex-1"
-                          />
-                          <Button
-                            onClick={saveBoardName}
-                            size="sm"
-                            variant="outline"
                             className="h-7 text-xs"
-                          >
-                            Save
-                          </Button>
+                          />
+                          <div className="flex gap-2 items-center">
+                            <Select
+                              value={editingBoardIcon}
+                              onValueChange={setEditingBoardIcon}
+                            >
+                              <SelectTrigger className="h-7 text-xs flex-1">
+                                <SelectValue placeholder="Icon" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.keys(iconMap).map((iconName) => {
+                                  const Icon = iconMap[iconName];
+                                  return (
+                                    <SelectItem key={iconName} value={iconName}>
+                                      <div className="flex items-center gap-2">
+                                        <Icon className="w-3 h-3" />
+                                        <span>{iconName.replace(/Icon$/, '')}</span>
+                                      </div>
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              onClick={saveBoardName}
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                            >
+                              Save
+                            </Button>
+                          </div>
                         </div>
                       ) : (
                         <>
