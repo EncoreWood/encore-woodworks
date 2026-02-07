@@ -266,33 +266,12 @@ export default function Layout({ children, currentPageName }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200 flex">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-amber-900 sticky top-0 h-screen overflow-y-auto flex flex-col shadow-2xl" style={{ 
-        background: 'linear-gradient(135deg, #8B5A3C 0%, #6B4423 25%, #8B5A3C 50%, #6B4423 75%, #8B5A3C 100%)',
-        backgroundSize: '40px 40px',
-        position: 'relative'
+      <aside className="w-64 bg-gradient-to-b from-slate-300 via-gray-200 to-slate-300 border-r border-slate-400 sticky top-0 h-screen overflow-y-auto flex flex-col shadow-2xl" style={{ 
+        backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 100%), repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px)'
       }}>
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: `
-            linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px),
-            linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
-            repeating-linear-gradient(90deg, rgba(101,67,33,0.3) 0px, rgba(101,67,33,0.3) 2px, transparent 2px, transparent 8px),
-            repeating-linear-gradient(0deg, rgba(101,67,33,0.2) 0px, transparent 3px, transparent 6px)
-          `,
-          backgroundSize: '80px 80px, 80px 80px, 40px 100%, 100% 20px',
-          opacity: 0.4,
-          pointerEvents: 'none'
-        }} />
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)',
-          pointerEvents: 'none'
-        }} />
         {/* Logo & Settings */}
-        <div className="border-b border-amber-900/30 relative z-10">
-          <div className="flex items-center gap-3 p-6 bg-black/10">
+        <div className="border-b border-slate-400">
+          <div className="flex items-center gap-3 p-6">
             <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3 flex-1">
               <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png" alt="Encore Woodworks" className="h-24 w-auto" />
             </Link>
@@ -300,7 +279,7 @@ export default function Layout({ children, currentPageName }) {
 
           {/* Clock In/Out - Users Only */}
           {currentUser?.role === "user" && (
-            <div className="px-4 py-3 border-t border-amber-900/30 bg-black/5 relative z-10">
+            <div className="px-4 py-3 border-t border-slate-400">
               {clockInTime ? (
                 <button
                   onClick={handleClockOut}
@@ -326,12 +305,12 @@ export default function Layout({ children, currentPageName }) {
         </div>
 
         {/* Nav Groups */}
-        <nav className="p-4 space-y-4 flex-1 relative z-10">
+        <nav className="p-4 space-y-4 flex-1">
           {Object.entries(navGroups).map(([groupKey, group]) => (
             <div key={groupKey}>
               <button
                 onClick={() => toggleGroup(groupKey)}
-                className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-amber-50 hover:bg-black/20 transition-all group backdrop-blur-sm"
+                className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-400/50 transition-all group"
               >
                 <ChevronDown
                   className={cn(
@@ -349,10 +328,10 @@ export default function Layout({ children, currentPageName }) {
                       key={item.page}
                       to={createPageUrl(item.page)}
                       className={cn(
-                        "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all backdrop-blur-sm",
+                        "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all",
                         currentPageName === item.page
-                          ? "bg-amber-700 text-white shadow-md"
-                          : "text-amber-100 hover:bg-black/20 hover:text-white"
+                          ? "bg-slate-600 text-white shadow-md"
+                          : "text-slate-700 hover:bg-slate-400/50 hover:text-slate-900"
                       )}
                       >
                       <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -367,10 +346,10 @@ export default function Layout({ children, currentPageName }) {
 
         {/* Settings Button */}
         {currentUser?.role === "admin" && (
-          <div className="p-4 border-t border-amber-900/30 bg-black/5 relative z-10">
+          <div className="p-4 border-t border-slate-400">
             <button
               onClick={() => setShowSettings(true)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-black/20 hover:bg-black/30 text-amber-50 text-sm font-medium transition-all backdrop-blur-sm"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-400 hover:bg-slate-500 text-slate-800 text-sm font-medium transition-all"
               title="Settings"
             >
               <Settings className="w-4 h-4" />
