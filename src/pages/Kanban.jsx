@@ -7,9 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { User, MapPin, Calendar, DollarSign, MessageCircle } from "lucide-react";
+import { User, MapPin, Calendar, DollarSign, MessageCircle, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
+import ProjectForm from "../components/projects/ProjectForm";
 
 const statusColumns = [
   { id: "inquiry", label: "Inquiry", color: "bg-slate-100" },
@@ -34,6 +35,7 @@ export default function Kanban() {
   const queryClient = useQueryClient();
   const [chatDialogOpen, setChatDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [showProjectForm, setShowProjectForm] = useState(false);
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
@@ -103,9 +105,18 @@ export default function Kanban() {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Project Board</h1>
-          <p className="text-slate-500 mt-1">Drag projects to update their status</p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Project Board</h1>
+            <p className="text-slate-500 mt-1">Drag projects to update their status</p>
+          </div>
+          <Button
+            onClick={() => setShowProjectForm(true)}
+            className="bg-amber-600 hover:bg-amber-700"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Project
+          </Button>
         </div>
 
         <DragDropContext onDragEnd={handleDragEnd}>
@@ -296,6 +307,17 @@ export default function Kanban() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Project Form */}
+        <ProjectForm
+          open={showProjectForm}
+          onClose={() => setShowProjectForm(false)}
+          onSubmit={async (projectData) => {
+            await base44.entities.Project.create(projectData);
+            queryClient.invalidateQueries({ queryKey: ["projects"] });
+            setShowProjectForm(false);
+          }}
+        />
       </div>
     </div>
   );
