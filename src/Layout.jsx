@@ -56,6 +56,8 @@ export default function Layout({ children, currentPageName }) {
   const [editingBoardName, setEditingBoardName] = useState("");
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
+  const [creatingBoardInGroup, setCreatingBoardInGroup] = useState(null);
+  const [newBoardName, setNewBoardName] = useState("");
 
   const toggleGroup = (groupKey) => {
     setExpandedGroups(prev => ({
@@ -162,6 +164,28 @@ export default function Layout({ children, currentPageName }) {
       }));
       setNewGroupName("");
       setCreatingGroup(false);
+    }
+  };
+
+  const createNewBoard = (groupKey) => {
+    if (newBoardName.trim()) {
+      const pageName = newBoardName.trim().replace(/\s+/g, "");
+      setNavGroups(prev => ({
+        ...prev,
+        [groupKey]: {
+          ...prev[groupKey],
+          items: [
+            ...prev[groupKey].items,
+            {
+              name: newBoardName.trim(),
+              icon: KanbanIcon,
+              page: pageName
+            }
+          ]
+        }
+      }));
+      setNewBoardName("");
+      setCreatingBoardInGroup(null);
     }
   };
 
@@ -395,6 +419,14 @@ export default function Layout({ children, currentPageName }) {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => setCreatingBoardInGroup(groupKey)}
+                        className="text-amber-600"
+                      >
+                        + Board
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => startEditGroup(groupKey)}
                       >
                         Edit
@@ -410,6 +442,40 @@ export default function Layout({ children, currentPageName }) {
                     </div>
                   </div>
                 )}
+
+                {creatingBoardInGroup === groupKey && (
+                  <div className="mb-3 border rounded-lg p-3 bg-amber-50">
+                    <div className="flex gap-2">
+                      <Input
+                        value={newBoardName}
+                        onChange={(e) => setNewBoardName(e.target.value)}
+                        placeholder="Board name"
+                        autoFocus
+                        className="h-8 text-sm"
+                      />
+                      <Button
+                        onClick={() => createNewBoard(groupKey)}
+                        size="sm"
+                        className="h-8 bg-amber-600 hover:bg-amber-700"
+                        disabled={!newBoardName.trim()}
+                      >
+                        Create
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setCreatingBoardInGroup(null);
+                          setNewBoardName("");
+                        }}
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   {group.items.map((item, itemIndex) => (
                     <div
