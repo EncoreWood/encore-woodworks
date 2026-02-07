@@ -35,6 +35,7 @@ export default function Layout({ children, currentPageName }) {
         { name: "Calendar", icon: Calendar, page: "Calendar" },
         { name: "Production", icon: Factory, page: "ShopProduction" },
         { name: "Inventory", icon: Coffee, page: "Inventory" },
+        { name: "Order Board", icon: KanbanIcon, page: "OrdersBoard" },
       ]
     },
     team: {
