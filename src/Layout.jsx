@@ -266,10 +266,33 @@ export default function Layout({ children, currentPageName }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200 flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-gradient-to-b from-slate-200 via-gray-100 to-slate-200 border-r border-slate-300 sticky top-0 h-screen overflow-y-auto flex flex-col shadow-xl" style={{ backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(100,116,139,0.05) 3px, rgba(100,116,139,0.05) 6px)' }}>
+      <aside className="w-64 border-r border-amber-900 sticky top-0 h-screen overflow-y-auto flex flex-col shadow-2xl" style={{ 
+        background: 'linear-gradient(135deg, #8B5A3C 0%, #6B4423 25%, #8B5A3C 50%, #6B4423 75%, #8B5A3C 100%)',
+        backgroundSize: '40px 40px',
+        position: 'relative'
+      }}>
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage: `
+            linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px),
+            linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
+            repeating-linear-gradient(90deg, rgba(101,67,33,0.3) 0px, rgba(101,67,33,0.3) 2px, transparent 2px, transparent 8px),
+            repeating-linear-gradient(0deg, rgba(101,67,33,0.2) 0px, transparent 3px, transparent 6px)
+          `,
+          backgroundSize: '80px 80px, 80px 80px, 40px 100%, 100% 20px',
+          opacity: 0.4,
+          pointerEvents: 'none'
+        }} />
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px)',
+          pointerEvents: 'none'
+        }} />
         {/* Logo & Settings */}
-        <div className="border-b border-slate-300">
-          <div className="flex items-center gap-3 p-6">
+        <div className="border-b border-amber-900/30 relative z-10">
+          <div className="flex items-center gap-3 p-6 bg-black/10">
             <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3 flex-1">
               <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png" alt="Encore Woodworks" className="h-24 w-auto" />
             </Link>
@@ -277,7 +300,7 @@ export default function Layout({ children, currentPageName }) {
 
           {/* Clock In/Out - Users Only */}
           {currentUser?.role === "user" && (
-            <div className="px-4 py-3 border-t border-slate-300">
+            <div className="px-4 py-3 border-t border-amber-900/30 bg-black/5 relative z-10">
               {clockInTime ? (
                 <button
                   onClick={handleClockOut}
@@ -303,12 +326,12 @@ export default function Layout({ children, currentPageName }) {
         </div>
 
         {/* Nav Groups */}
-        <nav className="p-4 space-y-4 flex-1">
+        <nav className="p-4 space-y-4 flex-1 relative z-10">
           {Object.entries(navGroups).map(([groupKey, group]) => (
             <div key={groupKey}>
               <button
                 onClick={() => toggleGroup(groupKey)}
-                className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-300/50 transition-all group"
+                className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-amber-50 hover:bg-black/20 transition-all group backdrop-blur-sm"
               >
                 <ChevronDown
                   className={cn(
@@ -326,10 +349,10 @@ export default function Layout({ children, currentPageName }) {
                       key={item.page}
                       to={createPageUrl(item.page)}
                       className={cn(
-                        "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                        "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all backdrop-blur-sm",
                         currentPageName === item.page
-                          ? "bg-slate-600 text-white shadow-md"
-                          : "text-slate-700 hover:bg-slate-300/50 hover:text-slate-900"
+                          ? "bg-amber-700 text-white shadow-md"
+                          : "text-amber-100 hover:bg-black/20 hover:text-white"
                       )}
                       >
                       <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -344,18 +367,18 @@ export default function Layout({ children, currentPageName }) {
 
         {/* Settings Button */}
         {currentUser?.role === "admin" && (
-          <div className="p-4 border-t border-slate-300">
+          <div className="p-4 border-t border-amber-900/30 bg-black/5 relative z-10">
             <button
               onClick={() => setShowSettings(true)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-300 hover:bg-slate-400 text-slate-800 text-sm font-medium transition-all"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-black/20 hover:bg-black/30 text-amber-50 text-sm font-medium transition-all backdrop-blur-sm"
               title="Settings"
             >
               <Settings className="w-4 h-4" />
               Settings
             </button>
           </div>
-        )}
-      </aside>
+          )}
+          </aside>
 
       {/* Page Content */}
       <main className="flex-1 overflow-auto">
