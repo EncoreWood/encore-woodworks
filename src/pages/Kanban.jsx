@@ -203,6 +203,23 @@ export default function Kanban() {
                                            )}
                                          </div>
 
+                                         {(project.project_manager_name || project.shop_manager_name) && (
+                                           <div className="pt-2 border-t border-slate-100 space-y-1 text-xs">
+                                             {project.project_manager_name && (
+                                               <div className="flex items-center gap-1">
+                                                 <span className="text-slate-500 font-medium">PM:</span>
+                                                 <span className="text-slate-700">{project.project_manager_name}</span>
+                                               </div>
+                                             )}
+                                             {project.shop_manager_name && (
+                                               <div className="flex items-center gap-1">
+                                                 <span className="text-slate-500 font-medium">SM:</span>
+                                                 <span className="text-slate-700">{project.shop_manager_name}</span>
+                                               </div>
+                                             )}
+                                           </div>
+                                         )}
+
                                          {project.rooms && project.rooms.length > 0 && (
                                            <div className="pt-2 border-t border-slate-100">
                                              <span className="text-xs text-slate-500">
