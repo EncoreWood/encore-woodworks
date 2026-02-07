@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +19,10 @@ const initialFormState = {
   project_type: "kitchen",
   status: "inquiry",
   priority: "medium",
+  project_manager: "",
+  project_manager_name: "",
+  shop_manager: "",
+  shop_manager_name: "",
   address: "",
   estimated_budget: "",
   start_date: "",
@@ -31,6 +37,12 @@ const initialFormState = {
 
 export default function ProjectForm({ open, onOpenChange, onSubmit, initialData, isLoading }) {
   const [formData, setFormData] = useState(initialData || initialFormState);
+
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees"],
+    queryFn: () => base44.entities.Employee.list(),
+    enabled: open
+  });
 
   useEffect(() => {
     if (open) {
@@ -49,6 +61,23 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleManagerChange = (field, employeeId) => {
+    const employee = employees.find(e => e.id === employeeId);
+    if (field === "project_manager") {
+      setFormData((prev) => ({
+        ...prev,
+        project_manager: employeeId,
+        project_manager_name: employee?.full_name || ""
+      }));
+    } else if (field === "shop_manager") {
+      setFormData((prev) => ({
+        ...prev,
+        shop_manager: employeeId,
+        shop_manager_name: employee?.full_name || ""
+      }));
+    }
   };
 
   return (
@@ -112,21 +141,53 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="priority">Priority</Label>
-                <Select value={formData.priority} onValueChange={(v) => handleChange("priority", v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                  </SelectContent>
-                </Select>
+               <Label htmlFor="priority">Priority</Label>
+               <Select value={formData.priority} onValueChange={(v) => handleChange("priority", v)}>
+                 <SelectTrigger>
+                   <SelectValue />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value="low">Low</SelectItem>
+                   <SelectItem value="medium">Medium</SelectItem>
+                   <SelectItem value="high">High</SelectItem>
+                   <SelectItem value="urgent">Urgent</SelectItem>
+                 </SelectContent>
+               </Select>
               </div>
-            </div>
-          </div>
+              <div className="space-y-2">
+               <Label htmlFor="project_manager">Project Manager</Label>
+               <Select value={formData.project_manager} onValueChange={(v) => handleManagerChange("project_manager", v)}>
+                 <SelectTrigger>
+                   <SelectValue placeholder="Select manager" />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value={null}>None</SelectItem>
+                   {employees.map((emp) => (
+                     <SelectItem key={emp.id} value={emp.id}>
+                       {emp.full_name}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+              </div>
+              <div className="space-y-2">
+               <Label htmlFor="shop_manager">Shop Manager</Label>
+               <Select value={formData.shop_manager} onValueChange={(v) => handleManagerChange("shop_manager", v)}>
+                 <SelectTrigger>
+                   <SelectValue placeholder="Select manager" />
+                 </SelectTrigger>
+                 <SelectContent>
+                   <SelectItem value={null}>None</SelectItem>
+                   {employees.map((emp) => (
+                     <SelectItem key={emp.id} value={emp.id}>
+                       {emp.full_name}
+                     </SelectItem>
+                   ))}
+                 </SelectContent>
+               </Select>
+              </div>
+              </div>
+              </div>
 
           {/* Client Info */}
           <div className="space-y-4">
