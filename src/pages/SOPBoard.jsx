@@ -23,8 +23,12 @@ export default function SOPBoard() {
   const [newSOP, setNewSOP] = useState({
     title: "",
     category: "Office",
-    description: "",
-    steps: [],
+    purpose: "",
+    scope: "",
+    materials: "",
+    steps: [{ step_number: 1, instruction: "" }],
+    safety_precautions: "",
+    quality_checkpoints: "",
     notes: ""
   });
 
@@ -40,7 +44,17 @@ export default function SOPBoard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sops"] });
       setShowNewSOPDialog(false);
-      setNewSOP({ title: "", category: "Office", description: "", steps: [], notes: "" });
+      setNewSOP({
+        title: "",
+        category: "Office",
+        purpose: "",
+        scope: "",
+        materials: "",
+        steps: [{ step_number: 1, instruction: "" }],
+        safety_precautions: "",
+        quality_checkpoints: "",
+        notes: ""
+      });
       toast.success("SOP created successfully");
     },
     onError: () => toast.error("Failed to create SOP")
@@ -51,7 +65,17 @@ export default function SOPBoard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["sops"] });
       setEditingSOP(null);
-      setNewSOP({ title: "", category: "Office", description: "", steps: [], notes: "" });
+      setNewSOP({
+        title: "",
+        category: "Office",
+        purpose: "",
+        scope: "",
+        materials: "",
+        steps: [{ step_number: 1, instruction: "" }],
+        safety_precautions: "",
+        quality_checkpoints: "",
+        notes: ""
+      });
       toast.success("SOP updated successfully");
     },
     onError: () => toast.error("Failed to update SOP")
@@ -107,11 +131,36 @@ export default function SOPBoard() {
     setNewSOP({
       title: sop.title || "",
       category: sop.category || "Office",
-      description: sop.description || "",
-      steps: sop.steps || [],
+      purpose: sop.purpose || "",
+      scope: sop.scope || "",
+      materials: sop.materials || "",
+      steps: sop.steps && sop.steps.length > 0 ? sop.steps : [{ step_number: 1, instruction: "" }],
+      safety_precautions: sop.safety_precautions || "",
+      quality_checkpoints: sop.quality_checkpoints || "",
       notes: sop.notes || ""
     });
     setShowNewSOPDialog(true);
+  };
+
+  const addStep = () => {
+    const newStepNumber = (newSOP.steps?.length || 0) + 1;
+    setNewSOP({
+      ...newSOP,
+      steps: [...(newSOP.steps || []), { step_number: newStepNumber, instruction: "" }]
+    });
+  };
+
+  const removeStep = (index) => {
+    setNewSOP({
+      ...newSOP,
+      steps: newSOP.steps.filter((_, i) => i !== index)
+    });
+  };
+
+  const updateStep = (index, instruction) => {
+    const updatedSteps = [...newSOP.steps];
+    updatedSteps[index] = { step_number: index + 1, instruction };
+    setNewSOP({ ...newSOP, steps: updatedSteps });
   };
 
   return (
@@ -204,7 +253,7 @@ export default function SOPBoard() {
                                 </CardHeader>
                                 <CardContent className="pt-0">
                                   <p className="text-xs text-slate-600 line-clamp-3">
-                                    {sop.description || "No description"}
+                                    {sop.purpose || "No description"}
                                   </p>
                                   {sop.files && sop.files.length > 0 && (
                                     <div className="mt-2 flex items-center gap-1 text-xs text-slate-500">
@@ -265,24 +314,110 @@ export default function SOPBoard() {
               </div>
 
               <div>
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="purpose">Purpose/Objective *</Label>
                 <Textarea
-                  id="description"
-                  value={newSOP.description}
-                  onChange={(e) => setNewSOP({ ...newSOP, description: e.target.value })}
-                  placeholder="Describe this SOP"
-                  rows={4}
+                  id="purpose"
+                  value={newSOP.purpose}
+                  onChange={(e) => setNewSOP({ ...newSOP, purpose: e.target.value })}
+                  placeholder="What is the goal of this procedure?"
+                  rows={2}
                 />
               </div>
 
               <div>
-                <Label htmlFor="notes">Notes</Label>
+                <Label htmlFor="scope">Scope</Label>
+                <Textarea
+                  id="scope"
+                  value={newSOP.scope}
+                  onChange={(e) => setNewSOP({ ...newSOP, scope: e.target.value })}
+                  placeholder="When and where is this procedure used?"
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="materials">Required Materials/Tools</Label>
+                <Textarea
+                  id="materials"
+                  value={newSOP.materials}
+                  onChange={(e) => setNewSOP({ ...newSOP, materials: e.target.value })}
+                  placeholder="List all materials and tools needed"
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <Label className="mb-2">Step-by-Step Instructions</Label>
+                <div className="space-y-3 max-h-48 overflow-y-auto">
+                  {newSOP.steps.map((step, index) => (
+                    <div key={index} className="flex gap-2">
+                      <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-amber-100 rounded-full text-sm font-semibold text-amber-700">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <Textarea
+                          value={step.instruction}
+                          onChange={(e) => updateStep(index, e.target.value)}
+                          placeholder={`Step ${index + 1} instruction`}
+                          rows={2}
+                          className="resize-none"
+                        />
+                      </div>
+                      {newSOP.steps.length > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-600 flex-shrink-0 h-8 w-8 p-0"
+                          onClick={() => removeStep(index)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={addStep}
+                >
+                  <Plus className="w-3 h-3 mr-1" />
+                  Add Step
+                </Button>
+              </div>
+
+              <div>
+                <Label htmlFor="safety">Safety Precautions</Label>
+                <Textarea
+                  id="safety"
+                  value={newSOP.safety_precautions}
+                  onChange={(e) => setNewSOP({ ...newSOP, safety_precautions: e.target.value })}
+                  placeholder="Any safety warnings or precautions"
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="quality">Quality Checkpoints</Label>
+                <Textarea
+                  id="quality"
+                  value={newSOP.quality_checkpoints}
+                  onChange={(e) => setNewSOP({ ...newSOP, quality_checkpoints: e.target.value })}
+                  placeholder="Quality checks and acceptance criteria"
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="notes">Additional Notes</Label>
                 <Textarea
                   id="notes"
                   value={newSOP.notes}
                   onChange={(e) => setNewSOP({ ...newSOP, notes: e.target.value })}
-                  placeholder="Additional notes"
-                  rows={3}
+                  placeholder="Any additional information"
+                  rows={2}
                 />
               </div>
             </div>
@@ -294,6 +429,7 @@ export default function SOPBoard() {
               <Button
                 onClick={handleSaveSOP}
                 className="bg-amber-600 hover:bg-amber-700"
+                disabled={!newSOP.title.trim() || !newSOP.purpose.trim()}
               >
                 {editingSOP ? "Update SOP" : "Create SOP"}
               </Button>
