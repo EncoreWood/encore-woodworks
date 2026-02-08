@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Upload, X } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 
 export default function ProposalTemplateForm({ template, onSave, onCancel }) {
   const [formData, setFormData] = useState({
@@ -19,10 +20,13 @@ export default function ProposalTemplateForm({ template, onSave, onCancel }) {
     hinges: "",
     rooms: [],
     options: [],
+    files: [],
     payment_terms: "Payment Schedule\n50% Deposit required before Job Production Starts\n40% Payment will be required upon Completion of cabinet Production\nFinal 10% Will be due at completion of Installation\nAdditional work will be addressed only by a change order form and will not affect payment in this contract.",
     notes: "",
     ...template
   });
+
+  const [uploading, setUploading] = useState(false);
 
   const addRoom = () => {
     setFormData(prev => ({
@@ -56,6 +60,28 @@ export default function ProposalTemplateForm({ template, onSave, onCancel }) {
 
   const removeOption = (index) => {
     setFormData(prev => ({ ...prev, options: prev.options.filter((_, i) => i !== index) }));
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setFormData(prev => ({
+        ...prev,
+        files: [...prev.files, { name: file.name, url: file_url }]
+      }));
+    } catch (error) {
+      console.error("Upload failed:", error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeFile = (index) => {
+    setFormData(prev => ({ ...prev, files: prev.files.filter((_, i) => i !== index) }));
   };
 
   const handleSubmit = (e) => {
@@ -244,6 +270,39 @@ export default function ProposalTemplateForm({ template, onSave, onCancel }) {
               </div>
             </div>
           ))}
+        </div>
+      </Card>
+
+      {/* Files */}
+      <Card className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-lg">Attachments</h3>
+          <Button type="button" size="sm" className="bg-amber-600 hover:bg-amber-700" disabled={uploading} asChild>
+            <label>
+              <Upload className="w-4 h-4 mr-1" />
+              {uploading ? "Uploading..." : "Upload File"}
+              <input type="file" className="hidden" onChange={handleFileUpload} />
+            </label>
+          </Button>
+        </div>
+        <div className="space-y-2">
+          {formData.files?.map((file, index) => (
+            <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded border">
+              <span className="text-sm">{file.name}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => removeFile(index)}
+                className="text-red-600"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          ))}
+          {(!formData.files || formData.files.length === 0) && (
+            <p className="text-sm text-slate-500">No files attached</p>
+          )}
         </div>
       </Card>
 
