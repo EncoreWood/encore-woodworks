@@ -9,11 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit } from "lucide-react";
+import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye } from "lucide-react";
+import ProposalViewer from "../components/proposals/ProposalViewer";
 
 export default function Invoicing() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingProject, setEditingProject] = useState(null);
+  const [viewingProposal, setViewingProposal] = useState(null);
   const [editForm, setEditForm] = useState({
     estimated_budget: 0,
     deposit_paid: 0,
@@ -25,6 +27,11 @@ export default function Invoicing() {
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: () => base44.entities.Project.list(),
+  });
+
+  const { data: proposals = [] } = useQuery({
+    queryKey: ["proposals"],
+    queryFn: () => base44.entities.Proposal.list(),
   });
 
   const updateProjectMutation = useMutation({
@@ -51,6 +58,13 @@ export default function Invoicing() {
       id: editingProject.id,
       data: editForm
     });
+  };
+
+  const handleViewProposal = (project, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const proposal = proposals.find(p => p.project_id === project.id);
+    setViewingProposal(proposal);
   };
 
   // Calculate invoicing status for each project
@@ -169,6 +183,7 @@ export default function Invoicing() {
                     const deposit = project.deposit_paid || 0;
                     const actualCost = project.actual_cost || 0;
                     const remaining = budget - deposit;
+                    const hasProposal = proposals.some(p => p.project_id === project.id);
 
                     return (
                       <div key={project.id} className="relative group">
@@ -182,14 +197,28 @@ export default function Invoicing() {
                                   </CardTitle>
                                   <p className="text-sm text-slate-500">{project.client_name}</p>
                                 </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={(e) => handleEdit(project, e)}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  {hasProposal && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      onClick={(e) => handleViewProposal(project, e)}
+                                      title="View Proposal"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                    onClick={(e) => handleEdit(project, e)}
+                                    title="Edit Financial Details"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                </div>
                               </div>
                             </CardHeader>
                             <CardContent className="pt-0">
@@ -239,6 +268,16 @@ export default function Invoicing() {
             );
           })}
         </div>
+
+        {/* View Proposal Dialog */}
+        <Dialog open={!!viewingProposal} onOpenChange={() => setViewingProposal(null)}>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Proposal</DialogTitle>
+            </DialogHeader>
+            <ProposalViewer proposal={viewingProposal} />
+          </DialogContent>
+        </Dialog>
 
         {/* Edit Dialog */}
         <Dialog open={!!editingProject} onOpenChange={() => setEditingProject(null)}>
