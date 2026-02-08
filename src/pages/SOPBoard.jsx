@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Edit, Eye, FileText } from "lucide-react";
+import { Plus, Trash2, Edit, Eye, FileText, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import { useState as useStateImport } from "react";
 
 const CATEGORIES = ["Office", "Face Frame", "Spray", "Build", "Cut"];
 
@@ -29,8 +30,10 @@ export default function SOPBoard() {
     steps: [{ step_number: 1, instruction: "" }],
     safety_precautions: "",
     quality_checkpoints: "",
+    files: [],
     notes: ""
   });
+  const [uploading, setUploading] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -53,6 +56,7 @@ export default function SOPBoard() {
         steps: [{ step_number: 1, instruction: "" }],
         safety_precautions: "",
         quality_checkpoints: "",
+        files: [],
         notes: ""
       });
       toast.success("SOP created successfully");
@@ -74,6 +78,7 @@ export default function SOPBoard() {
         steps: [{ step_number: 1, instruction: "" }],
         safety_precautions: "",
         quality_checkpoints: "",
+        files: [],
         notes: ""
       });
       toast.success("SOP updated successfully");
@@ -137,9 +142,38 @@ export default function SOPBoard() {
       steps: sop.steps && sop.steps.length > 0 ? sop.steps : [{ step_number: 1, instruction: "" }],
       safety_precautions: sop.safety_precautions || "",
       quality_checkpoints: sop.quality_checkpoints || "",
+      files: sop.files || [],
       notes: sop.notes || ""
     });
     setShowNewSOPDialog(true);
+  };
+
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setUploading(true);
+    try {
+      for (const file of files) {
+        const result = await base44.integrations.Core.UploadFile({ file });
+        setNewSOP(prev => ({
+          ...prev,
+          files: [...(prev.files || []), { name: file.name, url: result.file_url }]
+        }));
+      }
+      toast.success("File(s) uploaded successfully");
+    } catch (error) {
+      toast.error("Failed to upload file: " + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeFile = (index) => {
+    setNewSOP(prev => ({
+      ...prev,
+      files: prev.files.filter((_, i) => i !== index)
+    }));
   };
 
   const addStep = () => {
@@ -258,7 +292,7 @@ export default function SOPBoard() {
                                   {sop.files && sop.files.length > 0 && (
                                     <div className="mt-2 flex items-center gap-1 text-xs text-slate-500">
                                       <FileText className="w-3 h-3" />
-                                      {sop.files.length} file(s)
+                                      <span>{sop.files.length} file(s) attached</span>
                                     </div>
                                   )}
                                 </CardContent>
@@ -419,6 +453,56 @@ export default function SOPBoard() {
                   placeholder="Any additional information"
                   rows={2}
                 />
+              </div>
+
+              <div>
+                <Label>Attachments (Files, Videos, etc.)</Label>
+                <div className="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition-colors">
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                    className="hidden"
+                    id="file-upload"
+                    accept="*/*"
+                  />
+                  <label htmlFor="file-upload" className="cursor-pointer">
+                    <Upload className="w-5 h-5 text-slate-400 mx-auto mb-2" />
+                    <p className="text-sm text-slate-600">
+                      {uploading ? "Uploading..." : "Click to upload or drag files"}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">Photos, videos, PDFs, etc.</p>
+                  </label>
+                </div>
+
+                {newSOP.files && newSOP.files.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {newSOP.files.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-slate-50 rounded border border-slate-200">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                          <a
+                            href={file.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:underline truncate"
+                          >
+                            {file.name}
+                          </a>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 text-red-600 flex-shrink-0"
+                          onClick={() => removeFile(index)}
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
