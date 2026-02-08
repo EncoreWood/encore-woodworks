@@ -7,7 +7,7 @@ import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Plus, Pencil, Briefcase, Users, CheckCircle2, Trash2, Sparkles } from "lucide-react";
-import { format, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addMonths, addDays, startOfYear } from "date-fns";
+import { format, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addMonths, addDays, startOfYear, isWithinInterval } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +68,8 @@ export default function Calendar() {
     { id: "meetings", label: "Design Meetings", icon: "👥" },
     { id: "tasks", label: "Tasks", icon: "✓" },
     { id: "presenter", label: "Presenters", icon: "👤" },
-    { id: "cleaning", label: "Cleaning", icon: "✨" }
+    { id: "cleaning", label: "Cleaning", icon: "✨" },
+    { id: "vacations", label: "Vacations", icon: "🏖️" }
   ];
 
   const { data: projects = [], isLoading } = useQuery({
@@ -99,6 +100,11 @@ export default function Calendar() {
   const { data: bathroomCleanings = [] } = useQuery({
     queryKey: ["bathroomCleanings"],
     queryFn: () => base44.entities.BathroomCleaning.list()
+  });
+
+  const { data: vacations = [] } = useQuery({
+    queryKey: ["vacations"],
+    queryFn: () => base44.entities.Vacation.list()
   });
 
   const createPresenterMutation = useMutation({
@@ -147,6 +153,15 @@ export default function Calendar() {
     mutationFn: (data) => base44.entities.BathroomCleaning.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bathroomCleanings"] });
+      setShowAddDialog(false);
+      setFormData({});
+    }
+  });
+
+  const createVacationMutation = useMutation({
+    mutationFn: (data) => base44.entities.Vacation.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vacations"] });
       setShowAddDialog(false);
       setFormData({});
     }
@@ -214,6 +229,16 @@ export default function Calendar() {
       createDesignMeetingMutation.mutate(formData);
     } else if (addType === "bathroomCleaning" && formData.assigned_to && formData.assigned_to.length > 0) {
       createBathroomCleaningMutation.mutate(formData);
+    } else if (addType === "vacation" && formData.employee_id && formData.start_date && formData.end_date) {
+      const employee = employees.find(e => e.id === formData.employee_id);
+      createVacationMutation.mutate({
+        employee_id: formData.employee_id,
+        employee_name: employee?.full_name || "",
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        status: "approved",
+        notes: formData.notes || undefined
+      });
     } else if (addType === "task" && formData.task) {
       createTaskMutation.mutate({
         task: formData.task,
@@ -244,6 +269,14 @@ export default function Calendar() {
   const getBathroomCleaningsForDate = (date) => {
     const dateStr = format(date, "yyyy-MM-dd");
     return bathroomCleanings.filter(c => c.date === dateStr);
+  };
+
+  const getVacationsForDate = (date) => {
+    return vacations.filter(v => {
+      const start = new Date(v.start_date);
+      const end = new Date(v.end_date);
+      return isWithinInterval(date, { start, end });
+    });
   };
 
   const createTaskMutation = useMutation({
@@ -687,6 +720,7 @@ export default function Calendar() {
                       const projectCount = getProjectsForDate(date).length;
                       const meetingCount = getDesignMeetingsForDate(date).length;
                       const taskCount = getTasksForDate(date).length;
+                      const vacationCount = getVacationsForDate(date).length;
                       return (
                         <div className="w-full h-full flex flex-col p-1">
                           <div className="text-sm font-semibold">{format(date, "d")}</div>
@@ -704,6 +738,11 @@ export default function Calendar() {
                             {taskCount > 0 && (activeFilter === "all" || activeFilter === "tasks") && (
                               <div className="px-1 py-0 bg-purple-500 text-white rounded">
                                 {taskCount}T
+                              </div>
+                            )}
+                            {vacationCount > 0 && (activeFilter === "all" || activeFilter === "vacations") && (
+                              <div className="px-1 py-0 bg-pink-500 text-white rounded">
+                                {vacationCount}V
                               </div>
                             )}
                           </div>
@@ -734,6 +773,10 @@ export default function Calendar() {
                 <div className="flex items-center gap-2">
                   <div className="px-2 py-1 bg-cyan-500 text-white rounded font-medium text-xs">1</div>
                   <span className="text-slate-700">Bathroom Cleaning</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="px-2 py-1 bg-pink-500 text-white rounded font-medium text-xs">1</div>
+                  <span className="text-slate-700">Vacation</span>
                 </div>
               </div>
             </Card>
@@ -848,6 +891,25 @@ export default function Calendar() {
                     </div>
                   ))}
 
+                  {/* Vacations */}
+                  {(activeFilter === "all" || activeFilter === "vacations") && getVacationsForDate(selectedDate).map((vacation) => (
+                    <div key={vacation.id} className="p-3 bg-pink-50 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm font-medium text-pink-900">
+                        <CalendarIcon className="w-4 h-4" />
+                        Vacation
+                      </div>
+                      <p className="text-sm text-pink-700 mt-1">
+                        {vacation.employee_name}
+                      </p>
+                      <p className="text-xs text-pink-600 mt-1">
+                        {format(new Date(vacation.start_date), "MMM d")} - {format(new Date(vacation.end_date), "MMM d")}
+                      </p>
+                      {vacation.notes && (
+                        <p className="text-xs text-pink-600 mt-1">{vacation.notes}</p>
+                      )}
+                    </div>
+                  ))}
+
                   {/* Tasks Section */}
                   {(activeFilter === "all" || activeFilter === "tasks") && (
                   <div className="border-t pt-4 mt-4">
@@ -917,7 +979,8 @@ export default function Calendar() {
                     getProjectsForDate(selectedDate).length === 0 && 
                     getDesignMeetingsForDate(selectedDate).length === 0 &&
                     getTasksForDate(selectedDate).length === 0 &&
-                    getBathroomCleaningsForDate(selectedDate).length === 0 && (
+                    getBathroomCleaningsForDate(selectedDate).length === 0 &&
+                    getVacationsForDate(selectedDate).length === 0 && (
                     <p className="text-sm text-slate-500 text-center py-4">
                       No items for this date
                     </p>
@@ -986,6 +1049,7 @@ export default function Calendar() {
                 {addType === "designMeeting" && "Add Design Meeting"}
                 {addType === "task" && "Add Task"}
                 {addType === "bathroomCleaning" && "Add Bathroom Cleaning"}
+                {addType === "vacation" && "Add Vacation"}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -1134,6 +1198,56 @@ export default function Calendar() {
                 </>
               )}
 
+              {addType === "vacation" && (
+                <>
+                  <div>
+                    <Label htmlFor="employee_id">Employee *</Label>
+                    <Select
+                      value={formData.employee_id || ""}
+                      onValueChange={(value) => setFormData({ ...formData, employee_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select employee" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {employees.map((emp) => (
+                          <SelectItem key={emp.id} value={emp.id}>
+                            {emp.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="start_date">Start Date *</Label>
+                    <Input
+                      id="start_date"
+                      type="date"
+                      value={formData.start_date || ""}
+                      onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end_date">End Date *</Label>
+                    <Input
+                      id="end_date"
+                      type="date"
+                      value={formData.end_date || ""}
+                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      value={formData.notes || ""}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      placeholder="Vacation notes..."
+                    />
+                  </div>
+                </>
+              )}
+
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setShowAddDialog(false)}>
                   Cancel
@@ -1144,7 +1258,8 @@ export default function Calendar() {
                     (addType === "presenter" && !formData.presenter_name) ||
                     (addType === "designMeeting" && !formData.client_name) ||
                     (addType === "task" && !formData.task) ||
-                    (addType === "bathroomCleaning" && (!formData.assigned_to || formData.assigned_to.length === 0))
+                    (addType === "bathroomCleaning" && (!formData.assigned_to || formData.assigned_to.length === 0)) ||
+                    (addType === "vacation" && (!formData.employee_id || !formData.start_date || !formData.end_date))
                   }
                 >
                   Add
@@ -1290,11 +1405,29 @@ export default function Calendar() {
                     </div>
                   ))}
 
-                  {!getPresenterForDate(dayDialogDate) && 
+                  {/* Vacations */}
+                  {getVacationsForDate(dayDialogDate).map((vacation) => (
+                    <div key={vacation.id} className="p-4 bg-pink-50 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm font-medium text-pink-900 mb-2">
+                        <CalendarIcon className="w-4 h-4" />
+                        Vacation
+                      </div>
+                      <p className="text-sm text-pink-700">{vacation.employee_name}</p>
+                      <p className="text-xs text-pink-600 mt-1">
+                        {format(new Date(vacation.start_date), "MMM d")} - {format(new Date(vacation.end_date), "MMM d")}
+                      </p>
+                      {vacation.notes && (
+                        <p className="text-xs text-pink-600 mt-2 italic">{vacation.notes}</p>
+                      )}
+                    </div>
+                  ))}
+
+                   {!getPresenterForDate(dayDialogDate) && 
                    getProjectsForDate(dayDialogDate).length === 0 && 
                    getDesignMeetingsForDate(dayDialogDate).length === 0 &&
                    getTasksForDate(dayDialogDate).length === 0 &&
-                   getBathroomCleaningsForDate(dayDialogDate).length === 0 && (
+                   getBathroomCleaningsForDate(dayDialogDate).length === 0 &&
+                   getVacationsForDate(dayDialogDate).length === 0 && (
                     <p className="text-sm text-slate-500 text-center py-8">
                       No events scheduled for this day
                     </p>
