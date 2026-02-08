@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -131,6 +132,21 @@ export default function Invoicing() {
     }
   };
 
+  const handleDragEnd = (result) => {
+    const { source, destination, draggableId } = result;
+    
+    if (!destination) return;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+
+    const project = projects.find(p => p.id === draggableId);
+    if (!project) return;
+
+    updateProjectMutation.mutate({
+      id: project.id,
+      data: { invoice_status: destination.droppableId }
+    });
+  };
+
   // Calculate invoicing status for each project
   const getInvoicingStatus = (project) => {
     // Use project's invoice_status field if set, otherwise default to first column
@@ -231,32 +247,50 @@ export default function Invoicing() {
         </div>
 
         {/* Invoicing Columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {Object.entries(groupedProjects).map(([status, projectList]) => {
-            const config = statusConfig[status];
-            const Icon = config.icon;
-            const filtered = filterProjects(projectList);
+         <DragDropContext onDragEnd={handleDragEnd}>
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+             {Object.entries(groupedProjects).map(([status, projectList]) => {
+               const config = statusConfig[status];
+               const Icon = config.icon;
+               const filtered = filterProjects(projectList);
 
-            return (
-              <div key={status} className="flex flex-col">
-                <div className={`flex items-center gap-2 p-3 rounded-lg ${config.bg} ${config.border} border mb-4`}>
-                  <Icon className={`w-5 h-5 ${config.color}`} />
-                  <h2 className={`font-semibold ${config.color}`}>{config.title}</h2>
-                  <Badge variant="secondary" className="ml-auto">
-                    {filtered.length}
-                  </Badge>
-                </div>
+               return (
+                 <Droppable droppableId={status} key={status}>
+                   {(provided, snapshot) => (
+                     <div
+                       ref={provided.innerRef}
+                       {...provided.droppableProps}
+                       className={`flex flex-col rounded-lg transition-colors ${
+                         snapshot.isDraggingOver ? 'bg-slate-100' : ''
+                       }`}
+                     >
+                       <div className={`flex items-center gap-2 p-3 rounded-lg ${config.bg} ${config.border} border mb-4`}>
+                         <Icon className={`w-5 h-5 ${config.color}`} />
+                         <h2 className={`font-semibold ${config.color}`}>{config.title}</h2>
+                         <Badge variant="secondary" className="ml-auto">
+                           {filtered.length}
+                         </Badge>
+                       </div>
 
-                <div className="space-y-3 flex-1">
-                  {filtered.map((project) => {
-                    const budget = project.estimated_budget || 0;
-                    const deposit = project.deposit_paid || 0;
-                    const actualCost = project.actual_cost || 0;
-                    const remaining = budget - deposit;
-                    const hasProposal = proposals.some(p => p.project_id === project.id);
+                       <div className="space-y-3 flex-1">
+                         {filtered.map((project, index) => {
+                           const budget = project.estimated_budget || 0;
+                           const deposit = project.deposit_paid || 0;
+                           const actualCost = project.actual_cost || 0;
+                           const remaining = budget - deposit;
+                           const hasProposal = proposals.some(p => p.project_id === project.id);
 
-                    return (
-                      <div key={project.id} className="relative group">
+                           return (
+                             <Draggable draggableId={project.id} index={index} key={project.id}>
+                               {(provided, snapshot) => (
+                                 <div
+                                   ref={provided.innerRef}
+                                   {...provided.draggableProps}
+                                   {...provided.dragHandleProps}
+                                   className={`relative group transition-all ${
+                                     snapshot.isDragging ? 'opacity-50' : ''
+                                   }`}
+                                 >
                         <Card 
                           className="hover:shadow-lg transition-shadow cursor-pointer"
                           onClick={(e) => handleCardClick(project, e)}
@@ -366,20 +400,26 @@ export default function Invoicing() {
                                   </div>
                                 </CardContent>
                         </Card>
-                      </div>
-                    );
-                  })}
+                                </div>
+                              )}
+                            </Draggable>
+                          );
+                        })}
 
-                  {filtered.length === 0 && (
-                    <div className="text-center py-8 text-slate-400 text-sm">
-                      No projects
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                        {filtered.length === 0 && (
+                          <div className="text-center py-8 text-slate-400 text-sm">
+                            No projects
+                          </div>
+                        )}
+                        {provided.placeholder}
+                        </div>
+                        </div>
+                        )}
+                        </Droppable>
+                        );
+                        })}
+                        </div>
+                        </DragDropContext>
 
         {/* Project Details Dialog */}
         <Dialog open={!!viewingDetails} onOpenChange={() => setViewingDetails(null)}>
