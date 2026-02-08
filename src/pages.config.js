@@ -50,6 +50,7 @@
 import Calendar from './pages/Calendar';
 import ChatBoard from './pages/ChatBoard';
 import Dashboard from './pages/Dashboard';
+import Forms from './pages/Forms';
 import Inventory from './pages/Inventory';
 import Kanban from './pages/Kanban';
 import MorningMeeting from './pages/MorningMeeting';
@@ -58,10 +59,9 @@ import ProjectDetails from './pages/ProjectDetails';
 import PurchaseOrders from './pages/PurchaseOrders';
 import ShopProduction from './pages/ShopProduction';
 import StretchingRoutine from './pages/StretchingRoutine';
+import Suppliers from './pages/Suppliers';
 import Team from './pages/Team';
 import TimeSheet from './pages/TimeSheet';
-import Forms from './pages/Forms';
-import Suppliers from './pages/Suppliers';
 import __Layout from './Layout.jsx';
 
 
@@ -69,6 +69,7 @@ export const PAGES = {
     "Calendar": Calendar,
     "ChatBoard": ChatBoard,
     "Dashboard": Dashboard,
+    "Forms": Forms,
     "Inventory": Inventory,
     "Kanban": Kanban,
     "MorningMeeting": MorningMeeting,
@@ -77,10 +78,9 @@ export const PAGES = {
     "PurchaseOrders": PurchaseOrders,
     "ShopProduction": ShopProduction,
     "StretchingRoutine": StretchingRoutine,
+    "Suppliers": Suppliers,
     "Team": Team,
     "TimeSheet": TimeSheet,
-    "Forms": Forms,
-    "Suppliers": Suppliers,
 }
 
 export const pagesConfig = {
