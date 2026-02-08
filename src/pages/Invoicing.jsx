@@ -133,26 +133,16 @@ export default function Invoicing() {
 
   // Calculate invoicing status for each project
   const getInvoicingStatus = (project) => {
-    const budget = project.estimated_budget || 0;
-    const deposit = project.deposit_paid || 0;
-    const actualCost = project.actual_cost || 0;
-    const remaining = budget - deposit;
-
-    if (project.status === "completed") {
-      return actualCost <= deposit ? "paid" : "balance_due";
-    } else if (deposit > 0) {
-      return "deposit_received";
-    } else {
-      return "not_invoiced";
-    }
+    // Use project's invoice_status field if set, otherwise default to first column
+    return project.invoice_status || "deposit_invoice_sent";
   };
 
   // Group projects by invoicing status
   const groupedProjects = {
-    not_invoiced: projects.filter(p => getInvoicingStatus(p) === "not_invoiced"),
-    deposit_received: projects.filter(p => getInvoicingStatus(p) === "deposit_received"),
-    balance_due: projects.filter(p => getInvoicingStatus(p) === "balance_due"),
-    paid: projects.filter(p => getInvoicingStatus(p) === "paid"),
+    deposit_invoice_sent: projects.filter(p => getInvoicingStatus(p) === "deposit_invoice_sent"),
+    ninety_percent_sent: projects.filter(p => getInvoicingStatus(p) === "ninety_percent_sent"),
+    ninety_percent_received: projects.filter(p => getInvoicingStatus(p) === "ninety_percent_received"),
+    final_sent: projects.filter(p => getInvoicingStatus(p) === "final_sent"),
   };
 
   // Filter projects by search term
@@ -165,29 +155,29 @@ export default function Invoicing() {
   };
 
   const statusConfig = {
-    not_invoiced: {
-      title: "Not Invoiced",
-      icon: AlertCircle,
-      color: "text-red-600",
-      bg: "bg-red-50",
-      border: "border-red-200"
-    },
-    deposit_received: {
-      title: "Deposit Received",
-      icon: Clock,
+    deposit_invoice_sent: {
+      title: "Deposit Invoice Sent",
+      icon: FileText,
       color: "text-blue-600",
       bg: "bg-blue-50",
       border: "border-blue-200"
     },
-    balance_due: {
-      title: "Balance Due",
+    ninety_percent_sent: {
+      title: "90% Sent",
       icon: DollarSign,
       color: "text-amber-600",
       bg: "bg-amber-50",
       border: "border-amber-200"
     },
-    paid: {
-      title: "Paid in Full",
+    ninety_percent_received: {
+      title: "90% Received",
+      icon: Clock,
+      color: "text-purple-600",
+      bg: "bg-purple-50",
+      border: "border-purple-200"
+    },
+    final_sent: {
+      title: "Final Sent",
       icon: CheckCircle,
       color: "text-green-600",
       bg: "bg-green-50",
@@ -310,49 +300,43 @@ export default function Invoicing() {
                                     </Button>
                                   </>
                                 )}
-                                  <Button
+                                <Button
                                   variant="ghost"
                                   size="sm"
                                   className="h-8 w-8 p-0"
                                   onClick={(e) => handleEdit(project, e)}
                                   title="Edit Financial Details"
-                                  >
+                                >
                                   <Edit className="w-4 h-4" />
-                                  </Button>
-                              </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="pt-0">
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
+                                </Button>
+                                </div>
+                                </div>
+                                </CardHeader>
+                                <CardContent className="pt-0">
+                                <div className="space-y-2 text-sm">
+                                <div className="flex justify-between">
                                 <span className="text-slate-600">Budget:</span>
                                 <span className="font-medium">${budget.toLocaleString()}</span>
-                              </div>
-                              {deposit > 0 && (
+                                </div>
+                                {deposit > 0 && (
                                 <div className="flex justify-between">
                                   <span className="text-slate-600">Deposit:</span>
                                   <span className="font-medium text-green-600">${deposit.toLocaleString()}</span>
                                 </div>
-                              )}
-                              {status === "deposit_received" && (
+                                )}
+                                {actualCost > 0 && (
                                 <div className="flex justify-between">
-                                  <span className="text-slate-600">Remaining:</span>
-                                  <span className="font-medium text-amber-600">${remaining.toLocaleString()}</span>
+                                  <span className="text-slate-600">Actual Cost:</span>
+                                  <span className="font-medium">${actualCost.toLocaleString()}</span>
                                 </div>
-                              )}
-                              {status === "balance_due" && actualCost > 0 && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-600">Balance Due:</span>
-                                  <span className="font-medium text-red-600">${(actualCost - deposit).toLocaleString()}</span>
-                                </div>
-                              )}
-                              <div className="pt-2 border-t">
+                                )}
+                                <div className="pt-2 border-t">
                                 <Badge variant="outline" className="text-xs">
                                   {project.status?.replace(/_/g, ' ')}
                                 </Badge>
-                              </div>
-                            </div>
-                          </CardContent>
+                                </div>
+                                </div>
+                                </CardContent>
                         </Card>
                       </div>
                     );
