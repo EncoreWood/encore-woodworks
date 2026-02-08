@@ -19,10 +19,21 @@ Deno.serve(async (req) => {
     const proposal = await base44.entities.Proposal.get(proposal_id);
     const doc = new jsPDF();
 
-    let yPos = 25;
+    // Fetch and add logo
+    const logoUrl = 'https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png';
+    const logoResponse = await fetch(logoUrl);
+    const logoBlob = await logoResponse.arrayBuffer();
+    const logoBase64 = btoa(String.fromCharCode(...new Uint8Array(logoBlob)));
+    const logoDataUrl = `data:image/png;base64,${logoBase64}`;
+
+    let yPos = 20;
     const leftMargin = 20;
     const rightMargin = 190;
     const pageWidth = 210;
+
+    // Add logo centered
+    doc.addImage(logoDataUrl, 'PNG', 85, yPos, 40, 16);
+    yPos += 20;
 
     // Company Info Header
     doc.setFontSize(9);
