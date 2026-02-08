@@ -9,14 +9,19 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink } from "lucide-react";
+import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import ProposalViewer from "../components/proposals/ProposalViewer";
+import { toast } from "sonner";
 
 export default function Invoicing() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingProject, setEditingProject] = useState(null);
   const [viewingProposal, setViewingProposal] = useState(null);
   const [viewingDetails, setViewingDetails] = useState(null);
+  const [sendingProposal, setSendingProposal] = useState(null);
+  const [emailForm, setEmailForm] = useState({ to_email: "", subject: "", message: "" });
+  const [sending, setSending] = useState(false);
   const [editForm, setEditForm] = useState({
     estimated_budget: 0,
     deposit_paid: 0,
@@ -73,6 +78,30 @@ export default function Invoicing() {
   const handleCardClick = (project, e) => {
     e.preventDefault();
     setViewingDetails(project);
+  };
+
+  const handleSendEmail = async () => {
+    if (!emailForm.to_email) {
+      toast.error("Please enter recipient email");
+      return;
+    }
+
+    setSending(true);
+    try {
+      await base44.functions.invoke('sendProposal', {
+        to_email: emailForm.to_email,
+        proposal_id: sendingProposal.id,
+        subject: emailForm.subject,
+        message: emailForm.message
+      });
+      toast.success("Proposal sent successfully!");
+      setSendingProposal(null);
+      setEmailForm({ to_email: "", subject: "", message: "" });
+    } catch (error) {
+      toast.error("Failed to send proposal: " + error.message);
+    } finally {
+      setSending(false);
+    }
   };
 
   // Calculate invoicing status for each project
@@ -218,16 +247,37 @@ export default function Invoicing() {
                                   >
                                     <Eye className="w-4 h-4" />
                                   </Button>
-                                )}
-                                <Button
+                                  )}
+                                  {hasProposal && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-blue-600"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      const proposal = proposals.find(p => p.project_id === project.id);
+                                      setSendingProposal(proposal);
+                                      setEmailForm({ 
+                                        to_email: project.client_email || "", 
+                                        subject: `Proposal: ${proposal.job_name || project.project_name}`, 
+                                        message: "" 
+                                      });
+                                    }}
+                                    title="Send via Email"
+                                  >
+                                    <Mail className="w-4 h-4" />
+                                  </Button>
+                                  )}
+                                  <Button
                                   variant="ghost"
                                   size="sm"
                                   className="h-8 w-8 p-0"
                                   onClick={(e) => handleEdit(project, e)}
                                   title="Edit Financial Details"
-                                >
+                                  >
                                   <Edit className="w-4 h-4" />
-                                </Button>
+                                  </Button>
                               </div>
                             </div>
                           </CardHeader>
@@ -456,9 +506,77 @@ export default function Invoicing() {
         <Dialog open={!!viewingProposal} onOpenChange={() => setViewingProposal(null)}>
           <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Proposal</DialogTitle>
+              <DialogTitle className="flex items-center justify-between">
+                <span>Proposal</span>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setSendingProposal(viewingProposal);
+                    const project = projects.find(p => p.id === viewingProposal.project_id);
+                    setEmailForm({ 
+                      to_email: project?.client_email || "", 
+                      subject: `Proposal: ${viewingProposal.job_name || viewingProposal.project_name}`, 
+                      message: "" 
+                    });
+                  }}
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Send via Email
+                </Button>
+              </DialogTitle>
             </DialogHeader>
             <ProposalViewer proposal={viewingProposal} />
+          </DialogContent>
+        </Dialog>
+
+        {/* Send Email Dialog */}
+        <Dialog open={!!sendingProposal} onOpenChange={() => setSendingProposal(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Send Proposal via Email</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Recipient Email *</Label>
+                <Input
+                  type="email"
+                  value={emailForm.to_email}
+                  onChange={(e) => setEmailForm({ ...emailForm, to_email: e.target.value })}
+                  placeholder="client@example.com"
+                />
+              </div>
+              <div>
+                <Label>Subject</Label>
+                <Input
+                  value={emailForm.subject}
+                  onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })}
+                  placeholder="Email subject"
+                />
+              </div>
+              <div>
+                <Label>Message (Optional)</Label>
+                <Textarea
+                  value={emailForm.message}
+                  onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })}
+                  rows={4}
+                  placeholder="Add a personal message..."
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setSendingProposal(null)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSendEmail} 
+                  disabled={sending}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  {sending ? "Sending..." : "Send Email"}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 
