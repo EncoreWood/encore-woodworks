@@ -20,7 +20,7 @@ export default function Team() {
   const [viewingEmployee, setViewingEmployee] = useState(null);
   const [showEmployeeDetails, setShowEmployeeDetails] = useState(false);
   const [showDepartmentSettings, setShowDepartmentSettings] = useState(false);
-  const [departments, setDepartments] = useState(["production", "design", "installation", "sales", "management"]);
+  const [departments, setDepartments] = useState(["production", "design", "installation", "sales", "shop", "management"]);
   const [newDepartment, setNewDepartment] = useState("");
   const [editingDept, setEditingDept] = useState(null);
   const [editingDeptName, setEditingDeptName] = useState("");
