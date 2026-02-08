@@ -6,57 +6,54 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Plus, Edit, Trash2, Copy, Eye, Search } from "lucide-react";
-import ProposalForm from "../components/proposals/ProposalForm";
-import ProposalViewer from "../components/proposals/ProposalViewer";
+import { FileText, Plus, Edit, Trash2, Copy, Search } from "lucide-react";
+import ProposalTemplateForm from "../components/proposals/ProposalTemplateForm";
 
 export default function EncoreDocs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingProposal, setEditingProposal] = useState(null);
-  const [viewingProposal, setViewingProposal] = useState(null);
+  const [editingTemplate, setEditingTemplate] = useState(null);
 
   const queryClient = useQueryClient();
 
-  const { data: proposals = [], isLoading } = useQuery({
-    queryKey: ["proposals"],
-    queryFn: () => base44.entities.Proposal.list(),
+  const { data: templates = [], isLoading } = useQuery({
+    queryKey: ["proposalTemplates"],
+    queryFn: () => base44.entities.ProposalTemplate.list(),
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Proposal.create(data),
+    mutationFn: (data) => base44.entities.ProposalTemplate.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["proposals"] });
+      queryClient.invalidateQueries({ queryKey: ["proposalTemplates"] });
       setShowCreateForm(false);
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Proposal.update(id, data),
+    mutationFn: ({ id, data }) => base44.entities.ProposalTemplate.update(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["proposals"] });
-      setEditingProposal(null);
+      queryClient.invalidateQueries({ queryKey: ["proposalTemplates"] });
+      setEditingTemplate(null);
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Proposal.delete(id),
+    mutationFn: (id) => base44.entities.ProposalTemplate.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["proposals"] });
+      queryClient.invalidateQueries({ queryKey: ["proposalTemplates"] });
     },
   });
 
   const duplicateMutation = useMutation({
-    mutationFn: (proposal) => {
-      const { id, created_date, updated_date, created_by, ...data } = proposal;
-      return base44.entities.Proposal.create({
+    mutationFn: (template) => {
+      const { id, created_date, updated_date, created_by, ...data } = template;
+      return base44.entities.ProposalTemplate.create({
         ...data,
-        job_name: `${data.job_name} (Copy)`,
-        project_name: `${data.project_name} (Copy)`,
+        template_name: `${data.template_name} (Copy)`,
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["proposals"] });
+      queryClient.invalidateQueries({ queryKey: ["proposalTemplates"] });
     },
   });
 
@@ -64,9 +61,8 @@ export default function EncoreDocs() {
     setShowCreateForm(true);
   };
 
-  const filteredProposals = proposals.filter(p =>
-    p.job_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.project_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredTemplates = templates.filter(t =>
+    t.template_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (isLoading) {
@@ -104,8 +100,8 @@ export default function EncoreDocs() {
 
         {/* Templates Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredProposals.map((proposal) => (
-            <Card key={proposal.id} className="hover:shadow-lg transition-shadow">
+          {filteredTemplates.map((template) => (
+            <Card key={template.id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <FileText className="w-8 h-8 text-amber-600" />
@@ -114,16 +110,7 @@ export default function EncoreDocs() {
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0"
-                      onClick={() => setViewingProposal(proposal)}
-                      title="View"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => setEditingProposal(proposal)}
+                      onClick={() => setEditingTemplate(template)}
                       title="Edit"
                     >
                       <Edit className="w-4 h-4" />
@@ -132,7 +119,7 @@ export default function EncoreDocs() {
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0"
-                      onClick={() => duplicateMutation.mutate(proposal)}
+                      onClick={() => duplicateMutation.mutate(template)}
                       title="Duplicate"
                     >
                       <Copy className="w-4 h-4" />
@@ -141,7 +128,7 @@ export default function EncoreDocs() {
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 text-red-600"
-                      onClick={() => deleteMutation.mutate(proposal.id)}
+                      onClick={() => deleteMutation.mutate(template.id)}
                       title="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -150,33 +137,27 @@ export default function EncoreDocs() {
                 </div>
               </CardHeader>
               <CardContent>
-                <CardTitle className="text-base font-semibold text-slate-900 mb-1">
-                  {proposal.job_name || "Untitled Template"}
+                <CardTitle className="text-base font-semibold text-slate-900 mb-3">
+                  {template.template_name || "Untitled Template"}
                 </CardTitle>
-                <p className="text-sm text-slate-500 mb-3">{proposal.project_name}</p>
                 <div className="space-y-2 text-xs text-slate-600">
-                  {proposal.cabinet_style && (
+                  {template.cabinet_style && (
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-xs">
-                        {proposal.cabinet_style}
+                        {template.cabinet_style}
                       </Badge>
                     </div>
                   )}
                   <div className="flex items-center justify-between pt-2 border-t">
-                    <span>Rooms: {proposal.rooms?.length || 0}</span>
-                    <span>Options: {proposal.options?.length || 0}</span>
+                    <span>Rooms: {template.rooms?.length || 0}</span>
+                    <span>Options: {template.options?.length || 0}</span>
                   </div>
-                  {proposal.overall_total > 0 && (
-                    <div className="font-semibold text-amber-700">
-                      ${proposal.overall_total.toLocaleString()}
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
           ))}
 
-          {filteredProposals.length === 0 && (
+          {filteredTemplates.length === 0 && (
             <div className="col-span-full text-center py-12">
               <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-500 mb-4">No templates found</p>
@@ -194,9 +175,8 @@ export default function EncoreDocs() {
             <DialogHeader>
               <DialogTitle>Create New Template</DialogTitle>
             </DialogHeader>
-            <ProposalForm
-              proposal={null}
-              project={{ project_name: "Template", id: "template" }}
+            <ProposalTemplateForm
+              template={null}
               onSave={(data) => createMutation.mutate(data)}
               onCancel={() => setShowCreateForm(false)}
             />
@@ -204,27 +184,16 @@ export default function EncoreDocs() {
         </Dialog>
 
         {/* Edit Template Dialog */}
-        <Dialog open={!!editingProposal} onOpenChange={() => setEditingProposal(null)}>
+        <Dialog open={!!editingTemplate} onOpenChange={() => setEditingTemplate(null)}>
           <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Template</DialogTitle>
             </DialogHeader>
-            <ProposalForm
-              proposal={editingProposal}
-              project={{ project_name: editingProposal?.project_name || "", id: editingProposal?.project_id || "" }}
-              onSave={(data) => updateMutation.mutate({ id: editingProposal.id, data })}
-              onCancel={() => setEditingProposal(null)}
+            <ProposalTemplateForm
+              template={editingTemplate}
+              onSave={(data) => updateMutation.mutate({ id: editingTemplate.id, data })}
+              onCancel={() => setEditingTemplate(null)}
             />
-          </DialogContent>
-        </Dialog>
-
-        {/* View Template Dialog */}
-        <Dialog open={!!viewingProposal} onOpenChange={() => setViewingProposal(null)}>
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Preview Template</DialogTitle>
-            </DialogHeader>
-            <ProposalViewer proposal={viewingProposal} />
           </DialogContent>
         </Dialog>
       </div>

@@ -50,8 +50,10 @@
 import Calendar from './pages/Calendar';
 import ChatBoard from './pages/ChatBoard';
 import Dashboard from './pages/Dashboard';
+import EncoreDocs from './pages/EncoreDocs';
 import Forms from './pages/Forms';
 import Inventory from './pages/Inventory';
+import Invoicing from './pages/Invoicing';
 import Kanban from './pages/Kanban';
 import MorningMeeting from './pages/MorningMeeting';
 import OrdersBoard from './pages/OrdersBoard';
@@ -62,8 +64,6 @@ import StretchingRoutine from './pages/StretchingRoutine';
 import Suppliers from './pages/Suppliers';
 import Team from './pages/Team';
 import TimeSheet from './pages/TimeSheet';
-import Invoicing from './pages/Invoicing';
-import EncoreDocs from './pages/EncoreDocs';
 import __Layout from './Layout.jsx';
 
 
@@ -71,8 +71,10 @@ export const PAGES = {
     "Calendar": Calendar,
     "ChatBoard": ChatBoard,
     "Dashboard": Dashboard,
+    "EncoreDocs": EncoreDocs,
     "Forms": Forms,
     "Inventory": Inventory,
+    "Invoicing": Invoicing,
     "Kanban": Kanban,
     "MorningMeeting": MorningMeeting,
     "OrdersBoard": OrdersBoard,
@@ -83,8 +85,6 @@ export const PAGES = {
     "Suppliers": Suppliers,
     "Team": Team,
     "TimeSheet": TimeSheet,
-    "Invoicing": Invoicing,
-    "EncoreDocs": EncoreDocs,
 }
 
 export const pagesConfig = {
