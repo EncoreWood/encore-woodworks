@@ -313,29 +313,41 @@ export default function Invoicing() {
                                 </div>
                                 </CardHeader>
                                 <CardContent className="pt-0">
-                                <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                <span className="text-slate-600">Budget:</span>
-                                <span className="font-medium">${budget.toLocaleString()}</span>
-                                </div>
-                                {deposit > 0 && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-600">Deposit:</span>
-                                  <span className="font-medium text-green-600">${deposit.toLocaleString()}</span>
-                                </div>
-                                )}
-                                {actualCost > 0 && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-600">Actual Cost:</span>
-                                  <span className="font-medium">${actualCost.toLocaleString()}</span>
-                                </div>
-                                )}
-                                <div className="pt-2 border-t">
-                                <Badge variant="outline" className="text-xs">
-                                  {project.status?.replace(/_/g, ' ')}
-                                </Badge>
-                                </div>
-                                </div>
+                                  <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-600">Budget:</span>
+                                      <span className="font-medium">${budget.toLocaleString()}</span>
+                                    </div>
+                                    {deposit > 0 && (
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-600">Deposit:</span>
+                                        <span className="font-medium text-green-600">${deposit.toLocaleString()}</span>
+                                      </div>
+                                    )}
+                                    {deposit > 0 && (
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-600">Remaining:</span>
+                                        <span className="font-medium text-amber-600">${remaining.toLocaleString()}</span>
+                                      </div>
+                                    )}
+                                    {actualCost > 0 && (
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-600">Actual Cost:</span>
+                                        <span className="font-medium">${actualCost.toLocaleString()}</span>
+                                      </div>
+                                    )}
+                                    {actualCost > deposit && deposit > 0 && (
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-600">Balance Due:</span>
+                                        <span className="font-medium text-red-600">${(actualCost - deposit).toLocaleString()}</span>
+                                      </div>
+                                    )}
+                                    <div className="pt-2 border-t">
+                                      <Badge variant="outline" className="text-xs">
+                                        {project.status?.replace(/_/g, ' ')}
+                                      </Badge>
+                                    </div>
+                                  </div>
                                 </CardContent>
                         </Card>
                       </div>
