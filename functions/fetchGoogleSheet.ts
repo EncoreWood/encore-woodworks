@@ -9,8 +9,34 @@ Deno.serve(async (req) => {
             return Response.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { spreadsheetId, getAllSheets } = await req.json();
+        const { spreadsheetId, getAllSheets, updateCell } = await req.json();
         const accessToken = await base44.asServiceRole.connectors.getAccessToken("googlesheets");
+
+        if (updateCell) {
+            const { sheetName, row, col, value } = updateCell;
+            const range = `${sheetName}!${String.fromCharCode(65 + col)}${row + 1}`;
+            
+            const response = await fetch(
+                `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
+                {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        values: [[value]]
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                const error = await response.text();
+                return Response.json({ error: `Failed to update cell: ${error}` }, { status: response.status });
+            }
+
+            return Response.json({ success: true });
+        }
 
         if (getAllSheets) {
             // Get spreadsheet metadata to list all sheets

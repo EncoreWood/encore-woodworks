@@ -13,6 +13,8 @@ export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
   const [activeTab, setActiveTab] = useState("");
+  const [editingCell, setEditingCell] = useState(null);
+  const [editValue, setEditValue] = useState("");
 
   const spreadsheetId = "1RjYIJyNTIFs9oCp-l3klH53ZbUd0aKRPu4JmW2agDw0";
 
@@ -91,6 +93,46 @@ export default function Inventory() {
       return url.toString();
     }
     return null;
+  };
+
+  const startEdit = (sheetName, rowIndex, colIndex, currentValue) => {
+    setEditingCell({ sheetName, rowIndex, colIndex });
+    setEditValue(currentValue || "");
+  };
+
+  const saveEdit = async () => {
+    if (!editingCell) return;
+    
+    const { sheetName, rowIndex, colIndex } = editingCell;
+    
+    try {
+      await base44.functions.invoke('fetchGoogleSheet', {
+        spreadsheetId,
+        updateCell: {
+          sheetName,
+          row: rowIndex + 1, // +1 for header row
+          col: colIndex,
+          value: editValue
+        }
+      });
+
+      // Update local state
+      setAllSheets(prev => {
+        const newSheets = { ...prev };
+        newSheets[sheetName][rowIndex + 1][colIndex] = editValue;
+        return newSheets;
+      });
+
+      setEditingCell(null);
+      setEditValue("");
+    } catch (error) {
+      console.error('Error updating cell:', error);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingCell(null);
+    setEditValue("");
   };
 
   const exportToCSV = (sheetName) => {
@@ -227,13 +269,45 @@ export default function Inventory() {
                                   const header = headers[cellIndex];
                                   const isStatus = header === "Status";
                                   const isNotes = header === "Notes";
+                                  const isEditing = editingCell?.sheetName === sheetName && 
+                                                   editingCell?.rowIndex === rowIndex && 
+                                                   editingCell?.colIndex === cellIndex;
                                   
                                   return (
                                     <td
                                       key={cellIndex}
                                       className="py-3 px-4 text-sm text-slate-700"
+                                      onDoubleClick={() => startEdit(sheetName, rowIndex, cellIndex, cell)}
                                     >
-                                      {isStatus && cell ? (
+                                      {isEditing ? (
+                                        <div className="flex gap-1">
+                                          <Input
+                                            value={editValue}
+                                            onChange={(e) => setEditValue(e.target.value)}
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') saveEdit();
+                                              if (e.key === 'Escape') cancelEdit();
+                                            }}
+                                            className="h-8 text-sm"
+                                            autoFocus
+                                          />
+                                          <Button
+                                            size="sm"
+                                            onClick={saveEdit}
+                                            className="h-8 px-2 bg-green-600 hover:bg-green-700"
+                                          >
+                                            Save
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={cancelEdit}
+                                            className="h-8 px-2"
+                                          >
+                                            Cancel
+                                          </Button>
+                                        </div>
+                                      ) : isStatus && cell ? (
                                         <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cell)}`}>
                                           {cell}
                                         </span>
@@ -248,7 +322,9 @@ export default function Inventory() {
                                           <ExternalLink className="w-3 h-3" />
                                         </a>
                                       ) : (
-                                        cell || '-'
+                                        <span className="cursor-pointer hover:bg-slate-100 px-2 py-1 rounded">
+                                          {cell || '-'}
+                                        </span>
                                       )}
                                     </td>
                                   );
