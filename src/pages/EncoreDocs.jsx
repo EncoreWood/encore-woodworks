@@ -6,13 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Plus, Edit, Trash2, Copy, Search } from "lucide-react";
+import { FileText, Plus, Edit } from "lucide-react";
 import ProposalTemplateForm from "../components/proposals/ProposalTemplateForm";
 
 export default function EncoreDocs() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [editingTemplate, setEditingTemplate] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -21,11 +19,13 @@ export default function EncoreDocs() {
     queryFn: () => base44.entities.ProposalTemplate.list(),
   });
 
+  const template = templates[0] || null;
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.ProposalTemplate.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["proposalTemplates"] });
-      setShowCreateForm(false);
+      setEditingTemplate(false);
     },
   });
 
@@ -33,166 +33,154 @@ export default function EncoreDocs() {
     mutationFn: ({ id, data }) => base44.entities.ProposalTemplate.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["proposalTemplates"] });
-      setEditingTemplate(null);
+      setEditingTemplate(false);
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.ProposalTemplate.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["proposalTemplates"] });
-    },
-  });
-
-  const duplicateMutation = useMutation({
-    mutationFn: (template) => {
-      const { id, created_date, updated_date, created_by, ...data } = template;
-      return base44.entities.ProposalTemplate.create({
-        ...data,
-        template_name: `${data.template_name} (Copy)`,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["proposalTemplates"] });
-    },
-  });
-
-  const handleCreateBlank = () => {
-    setShowCreateForm(true);
+  const handleSave = (data) => {
+    if (template) {
+      updateMutation.mutate({ id: template.id, data });
+    } else {
+      createMutation.mutate(data);
+    }
   };
-
-  const filteredTemplates = templates.filter(t =>
-    t.template_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-lg text-slate-600">Loading templates...</div>
+        <div className="text-lg text-slate-600">Loading template...</div>
+      </div>
+    );
+  }
+
+  if (!template) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 p-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Encore Docs</h1>
+            <p className="text-slate-500 mt-1">Proposal template</p>
+          </div>
+          <Card className="p-12 text-center">
+            <FileText className="w-20 h-20 text-amber-600 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-slate-900 mb-2">No Template Found</h2>
+            <p className="text-slate-500 mb-6">Create your proposal template to get started</p>
+            <Button onClick={() => setEditingTemplate(true)} className="bg-amber-600 hover:bg-amber-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Proposal Template
+            </Button>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Encore Docs</h1>
-          <p className="text-slate-500 mt-1">Manage proposal templates and documents</p>
+          <p className="text-slate-500 mt-1">Proposal template</p>
         </div>
 
-        {/* Search and Create */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Search templates..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Button onClick={handleCreateBlank} className="bg-amber-600 hover:bg-amber-700">
-            <Plus className="w-4 h-4 mr-2" />
-            New Template
-          </Button>
-        </div>
-
-        {/* Templates Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTemplates.map((template) => (
-            <Card key={template.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <FileText className="w-8 h-8 text-amber-600" />
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => setEditingTemplate(template)}
-                      title="Edit"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => duplicateMutation.mutate(template)}
-                      title="Duplicate"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0 text-red-600"
-                      onClick={() => deleteMutation.mutate(template.id)}
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <CardTitle className="text-base font-semibold text-slate-900 mb-3">
-                  {template.template_name || "Untitled Template"}
-                </CardTitle>
-                <div className="space-y-2 text-xs text-slate-600">
-                  {template.cabinet_style && (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {template.cabinet_style}
-                      </Badge>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <span>Rooms: {template.rooms?.length || 0}</span>
-                    <span>Options: {template.options?.length || 0}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-
-          {filteredTemplates.length === 0 && (
-            <div className="col-span-full text-center py-12">
-              <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500 mb-4">No templates found</p>
-              <Button onClick={handleCreateBlank} className="bg-amber-600 hover:bg-amber-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Your First Template
-              </Button>
+        <Card className="p-6">
+          <div className="flex items-start justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-semibold text-slate-900">{template.template_name}</h2>
+              {template.cabinet_style && (
+                <Badge variant="outline" className="mt-2">{template.cabinet_style}</Badge>
+              )}
             </div>
-          )}
-        </div>
+            <Button onClick={() => setEditingTemplate(true)} className="bg-amber-600 hover:bg-amber-700">
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Template
+            </Button>
+          </div>
 
-        {/* Create Template Dialog */}
-        <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create New Template</DialogTitle>
-            </DialogHeader>
-            <ProposalTemplateForm
-              template={null}
-              onSave={(data) => createMutation.mutate(data)}
-              onCancel={() => setShowCreateForm(false)}
-            />
-          </DialogContent>
-        </Dialog>
+          <div className="space-y-6">
+            {/* Specifications */}
+            {(template.wood_species || template.door_style || template.handles || template.drawerbox || template.drawer_glides || template.hinges) && (
+              <div>
+                <h3 className="font-semibold text-lg mb-3">Specifications</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  {template.wood_species && <div><span className="text-slate-500">Wood Species:</span> {template.wood_species}</div>}
+                  {template.door_style && <div><span className="text-slate-500">Door Style:</span> {template.door_style}</div>}
+                  {template.handles && <div><span className="text-slate-500">Handles:</span> {template.handles}</div>}
+                  {template.drawerbox && <div><span className="text-slate-500">Drawerbox:</span> {template.drawerbox}</div>}
+                  {template.drawer_glides && <div><span className="text-slate-500">Drawer Glides:</span> {template.drawer_glides}</div>}
+                  {template.hinges && <div><span className="text-slate-500">Hinges:</span> {template.hinges}</div>}
+                </div>
+              </div>
+            )}
+
+            {/* Rooms */}
+            {template.rooms?.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-lg mb-3">Default Rooms ({template.rooms.length})</h3>
+                <div className="space-y-2">
+                  {template.rooms.map((room, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg text-sm">
+                      <div>
+                        <div className="font-medium">{room.room_name}</div>
+                        {room.finish && <div className="text-slate-500 text-xs">{room.finish}</div>}
+                      </div>
+                      {room.price > 0 && <div className="font-semibold">${room.price.toLocaleString()}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Options */}
+            {template.options?.length > 0 && (
+              <div>
+                <h3 className="font-semibold text-lg mb-3">Default Options ({template.options.length})</h3>
+                <div className="space-y-2">
+                  {template.options.map((option, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg text-sm">
+                      <div className="flex items-center gap-2">
+                        {option.selected && <Badge className="bg-green-600">Selected</Badge>}
+                        <span>{option.description}</span>
+                      </div>
+                      {option.price > 0 && <div className="font-semibold">${option.price.toLocaleString()}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Payment Terms */}
+            {template.payment_terms && (
+              <div>
+                <h3 className="font-semibold text-lg mb-3">Payment Terms</h3>
+                <div className="p-4 bg-slate-50 rounded-lg text-sm whitespace-pre-line">
+                  {template.payment_terms}
+                </div>
+              </div>
+            )}
+
+            {/* Notes */}
+            {template.notes && (
+              <div>
+                <h3 className="font-semibold text-lg mb-3">Notes</h3>
+                <div className="p-4 bg-slate-50 rounded-lg text-sm whitespace-pre-line">
+                  {template.notes}
+                </div>
+              </div>
+            )}
+          </div>
+        </Card>
 
         {/* Edit Template Dialog */}
-        <Dialog open={!!editingTemplate} onOpenChange={() => setEditingTemplate(null)}>
+        <Dialog open={editingTemplate} onOpenChange={setEditingTemplate}>
           <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Edit Template</DialogTitle>
+              <DialogTitle>{template ? 'Edit' : 'Create'} Proposal Template</DialogTitle>
             </DialogHeader>
             <ProposalTemplateForm
-              template={editingTemplate}
-              onSave={(data) => updateMutation.mutate({ id: editingTemplate.id, data })}
-              onCancel={() => setEditingTemplate(null)}
+              template={template}
+              onSave={handleSave}
+              onCancel={() => setEditingTemplate(false)}
             />
           </DialogContent>
         </Dialog>
