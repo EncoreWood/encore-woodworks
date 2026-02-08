@@ -19,6 +19,7 @@ export default function Forms() {
   const [showNewFormDialog, setShowNewFormDialog] = useState(false);
   const [newFormName, setNewFormName] = useState("");
   const [newFormDescription, setNewFormDescription] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState("");
   const [editingFields, setEditingFields] = useState([]);
   const [formData, setFormData] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
@@ -54,6 +55,7 @@ export default function Forms() {
       setShowNewFormDialog(false);
       setNewFormName("");
       setNewFormDescription("");
+      setSelectedTemplate("");
     }
   });
 
@@ -86,10 +88,19 @@ export default function Forms() {
 
   const handleCreateForm = () => {
     if (!newFormName.trim()) return;
+    
+    let fields = [];
+    if (selectedTemplate) {
+      const template = forms.find(f => f.id === selectedTemplate);
+      if (template) {
+        fields = template.fields || [];
+      }
+    }
+    
     createFormMutation.mutate({
       name: newFormName,
       description: newFormDescription,
-      fields: [],
+      fields: fields,
       active: true
     });
   };
@@ -509,6 +520,22 @@ export default function Forms() {
               <DialogTitle>Create New Form</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              <div>
+                <Label>Use Template (optional)</Label>
+                <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Start from blank or choose template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>Blank Form</SelectItem>
+                    {forms.map((form) => (
+                      <SelectItem key={form.id} value={form.id}>
+                        {form.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label>Form Name</Label>
                 <Input
