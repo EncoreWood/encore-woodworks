@@ -3,34 +3,38 @@ import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RefreshCw, Search, Download } from "lucide-react";
 
 export default function Inventory() {
-  const [sheetData, setSheetData] = useState([]);
-  const [headers, setHeaders] = useState([]);
+  const [allSheets, setAllSheets] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [activeTab, setActiveTab] = useState("");
 
   const spreadsheetId = "1RjYIJyNTIFs9oCp-l3klH53ZbUd0aKRPu4JmW2agDw0";
-  const range = "A:Z";
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const response = await base44.functions.invoke('fetchGoogleSheet', {
         spreadsheetId,
-        range
+        getAllSheets: true
       });
 
-      if (response.data.values && response.data.values.length > 0) {
-        const [headerRow, ...dataRows] = response.data.values;
-        setHeaders(headerRow);
-        setSheetData(dataRows);
+      if (response.data.sheets) {
+        setAllSheets(response.data.sheets);
         setLastUpdated(new Date());
+        
+        // Set first sheet as active tab
+        const sheetNames = Object.keys(response.data.sheets);
+        if (sheetNames.length > 0 && !activeTab) {
+          setActiveTab(sheetNames[0]);
+        }
       }
     } catch (error) {
-      console.error('Error fetching sheet:', error);
+      console.error('Error fetching sheets:', error);
     } finally {
       setLoading(false);
     }
@@ -40,12 +44,20 @@ export default function Inventory() {
     fetchData();
   }, []);
 
-  const filteredData = sheetData.filter(row => {
-    if (!searchTerm) return true;
-    return row.some(cell => 
-      cell?.toString().toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
+  const getFilteredSheetData = (sheetName) => {
+    const sheetData = allSheets[sheetName] || [];
+    if (sheetData.length === 0) return { headers: [], data: [] };
+    
+    const [headers, ...rows] = sheetData;
+    const filteredRows = rows.filter(row => {
+      if (!searchTerm) return true;
+      return row.some(cell => 
+        cell?.toString().toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    });
+    
+    return { headers, data: filteredRows };
+  };
 
   const getStatusColor = (status) => {
     if (!status) return "bg-gray-100 text-gray-800";
@@ -56,24 +68,25 @@ export default function Inventory() {
     return "bg-gray-100 text-gray-800";
   };
 
-  const exportToCSV = () => {
+  const exportToCSV = (sheetName) => {
+    const { headers, data } = getFilteredSheetData(sheetName);
     const csvContent = [
       headers.join(','),
-      ...filteredData.map(row => row.map(cell => `"${cell || ''}"`).join(','))
+      ...data.map(row => row.map(cell => `"${cell || ''}"`).join(','))
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `inventory-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `${sheetName}-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(a);
     a.click();
     window.URL.revokeObjectURL(url);
     a.remove();
   };
 
-  if (loading && sheetData.length === 0) {
+  if (loading && Object.keys(allSheets).length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200 p-6">
         <div className="max-w-7xl mx-auto">
@@ -87,6 +100,8 @@ export default function Inventory() {
       </div>
     );
   }
+
+  const sheetNames = Object.keys(allSheets);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200 p-6">
@@ -102,9 +117,10 @@ export default function Inventory() {
           </div>
           <div className="flex gap-2">
             <Button
-              onClick={exportToCSV}
+              onClick={() => exportToCSV(activeTab)}
               variant="outline"
               className="bg-white"
+              disabled={!activeTab}
             >
               <Download className="w-4 h-4 mr-2" />
               Export CSV
@@ -132,65 +148,87 @@ export default function Inventory() {
           </div>
         </div>
 
-        <Card className="bg-white shadow-lg">
-          <CardHeader>
-            <CardTitle>
-              {filteredData.length} {filteredData.length === 1 ? 'Item' : 'Items'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b-2 border-slate-300">
-                    {headers.map((header, index) => (
-                      <th
-                        key={index}
-                        className="text-left py-3 px-4 text-sm font-semibold text-slate-900 bg-slate-100 whitespace-nowrap"
-                      >
-                        {header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredData.map((row, rowIndex) => (
-                    <tr
-                      key={rowIndex}
-                      className="border-b border-slate-100 hover:bg-amber-50 transition-colors"
-                    >
-                      {row.map((cell, cellIndex) => {
-                        const header = headers[cellIndex];
-                        const isStatus = header === "Status";
-                        
-                        return (
-                          <td
-                            key={cellIndex}
-                            className="py-3 px-4 text-sm text-slate-700"
-                          >
-                            {isStatus && cell ? (
-                              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cell)}`}>
-                                {cell}
-                              </span>
-                            ) : (
-                              cell || '-'
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="bg-white border border-slate-200 mb-4">
+            {sheetNames.map((sheetName) => (
+              <TabsTrigger
+                key={sheetName}
+                value={sheetName}
+                className="data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+              >
+                {sheetName}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-            {filteredData.length === 0 && (
-              <div className="text-center py-12 text-slate-500">
-                {searchTerm ? 'No items match your search' : 'No data available'}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          {sheetNames.map((sheetName) => {
+            const { headers, data } = getFilteredSheetData(sheetName);
+            
+            return (
+              <TabsContent key={sheetName} value={sheetName}>
+                <Card className="bg-white shadow-lg">
+                  <CardHeader>
+                    <CardTitle>
+                      {data.length} {data.length === 1 ? 'Item' : 'Items'}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b-2 border-slate-300">
+                            {headers.map((header, index) => (
+                              <th
+                                key={index}
+                                className="text-left py-3 px-4 text-sm font-semibold text-slate-900 bg-slate-100 whitespace-nowrap"
+                              >
+                                {header}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {data.map((row, rowIndex) => (
+                            <tr
+                              key={rowIndex}
+                              className="border-b border-slate-100 hover:bg-amber-50 transition-colors"
+                            >
+                              {row.map((cell, cellIndex) => {
+                                const header = headers[cellIndex];
+                                const isStatus = header === "Status";
+                                
+                                return (
+                                  <td
+                                    key={cellIndex}
+                                    className="py-3 px-4 text-sm text-slate-700"
+                                  >
+                                    {isStatus && cell ? (
+                                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cell)}`}>
+                                        {cell}
+                                      </span>
+                                    ) : (
+                                      cell || '-'
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {data.length === 0 && (
+                      <div className="text-center py-12 text-slate-500">
+                        {searchTerm ? 'No items match your search' : 'No data available'}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            );
+          })}
+        </Tabs>
       </div>
     </div>
   );
