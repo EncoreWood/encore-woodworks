@@ -63,6 +63,7 @@ import Suppliers from './pages/Suppliers';
 import Team from './pages/Team';
 import TimeSheet from './pages/TimeSheet';
 import Invoicing from './pages/Invoicing';
+import EncoreDocs from './pages/EncoreDocs';
 import __Layout from './Layout.jsx';
 
 
@@ -83,6 +84,7 @@ export const PAGES = {
     "Team": Team,
     "TimeSheet": TimeSheet,
     "Invoicing": Invoicing,
+    "EncoreDocs": EncoreDocs,
 }
 
 export const pagesConfig = {

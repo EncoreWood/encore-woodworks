@@ -28,6 +28,7 @@ export default function Layout({ children, currentPageName }) {
         { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
         { name: "Board", icon: KanbanIcon, page: "Kanban" },
         { name: "Invoicing", icon: FileTextIcon, page: "Invoicing" },
+        { name: "Encore Docs", icon: FileText, page: "EncoreDocs" },
       ]
     },
     operations: {
