@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Search, Download } from "lucide-react";
+import { RefreshCw, Search, Download, ExternalLink } from "lucide-react";
 
 export default function Inventory() {
   const [allSheets, setAllSheets] = useState({});
@@ -14,6 +15,12 @@ export default function Inventory() {
   const [activeTab, setActiveTab] = useState("");
 
   const spreadsheetId = "1RjYIJyNTIFs9oCp-l3klH53ZbUd0aKRPu4JmW2agDw0";
+
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ['suppliers'],
+    queryFn: () => base44.entities.Supplier.list(),
+    initialData: []
+  });
 
   const fetchData = async () => {
     setLoading(true);
@@ -66,6 +73,20 @@ export default function Inventory() {
     if (statusLower.includes("low stock") || statusLower.includes("need order")) return "bg-red-100 text-red-800";
     if (statusLower.includes("over")) return "bg-blue-100 text-blue-800";
     return "bg-gray-100 text-gray-800";
+  };
+
+  const getSupplierLink = (itemId, notes) => {
+    if (!notes) return null;
+    const notesLower = notes.toLowerCase();
+    
+    const supplier = suppliers.find(s => 
+      notesLower.includes(s.name.toLowerCase())
+    );
+    
+    if (supplier && supplier.ordering_url && itemId) {
+      return `${supplier.ordering_url}?search=${encodeURIComponent(itemId)}`;
+    }
+    return null;
   };
 
   const exportToCSV = (sheetName) => {
@@ -188,32 +209,49 @@ export default function Inventory() {
                           </tr>
                         </thead>
                         <tbody>
-                          {data.map((row, rowIndex) => (
-                            <tr
-                              key={rowIndex}
-                              className="border-b border-slate-100 hover:bg-amber-50 transition-colors"
-                            >
-                              {row.map((cell, cellIndex) => {
-                                const header = headers[cellIndex];
-                                const isStatus = header === "Status";
-                                
-                                return (
-                                  <td
-                                    key={cellIndex}
-                                    className="py-3 px-4 text-sm text-slate-700"
-                                  >
-                                    {isStatus && cell ? (
-                                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cell)}`}>
-                                        {cell}
-                                      </span>
-                                    ) : (
-                                      cell || '-'
-                                    )}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          ))}
+                          {data.map((row, rowIndex) => {
+                            const itemId = row[0];
+                            const notes = row[headers.indexOf("Notes")];
+                            const supplierLink = getSupplierLink(itemId, notes);
+                            
+                            return (
+                              <tr
+                                key={rowIndex}
+                                className="border-b border-slate-100 hover:bg-amber-50 transition-colors"
+                              >
+                                {row.map((cell, cellIndex) => {
+                                  const header = headers[cellIndex];
+                                  const isStatus = header === "Status";
+                                  const isNotes = header === "Notes";
+                                  
+                                  return (
+                                    <td
+                                      key={cellIndex}
+                                      className="py-3 px-4 text-sm text-slate-700"
+                                    >
+                                      {isStatus && cell ? (
+                                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cell)}`}>
+                                          {cell}
+                                        </span>
+                                      ) : isNotes && supplierLink ? (
+                                        <a
+                                          href={supplierLink}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="flex items-center gap-1 text-amber-600 hover:text-amber-700 font-medium"
+                                        >
+                                          {cell}
+                                          <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                      ) : (
+                                        cell || '-'
+                                      )}
+                                    </td>
+                                  );
+                                })}
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
