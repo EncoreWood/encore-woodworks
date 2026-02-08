@@ -13,7 +13,7 @@ export default function Inventory() {
   const [lastUpdated, setLastUpdated] = useState(null);
 
   const spreadsheetId = "1RjYIJyNTIFs9oCp-l3klH53ZbUd0aKRPu4JmW2agDw0";
-  const range = "Sheet1"; // Adjust if needed
+  const range = "A:Z";
 
   const fetchData = async () => {
     setLoading(true);
@@ -46,6 +46,15 @@ export default function Inventory() {
       cell?.toString().toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
+
+  const getStatusColor = (status) => {
+    if (!status) return "bg-gray-100 text-gray-800";
+    const statusLower = status.toLowerCase();
+    if (statusLower.includes("full stock")) return "bg-green-100 text-green-800";
+    if (statusLower.includes("low stock") || statusLower.includes("need order")) return "bg-red-100 text-red-800";
+    if (statusLower.includes("over")) return "bg-blue-100 text-blue-800";
+    return "bg-gray-100 text-gray-800";
+  };
 
   const exportToCSV = () => {
     const csvContent = [
@@ -133,11 +142,11 @@ export default function Inventory() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-slate-200">
+                  <tr className="border-b-2 border-slate-300">
                     {headers.map((header, index) => (
                       <th
                         key={index}
-                        className="text-left py-3 px-4 text-sm font-semibold text-slate-700 bg-slate-50"
+                        className="text-left py-3 px-4 text-sm font-semibold text-slate-900 bg-slate-100 whitespace-nowrap"
                       >
                         {header}
                       </th>
@@ -148,16 +157,27 @@ export default function Inventory() {
                   {filteredData.map((row, rowIndex) => (
                     <tr
                       key={rowIndex}
-                      className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                      className="border-b border-slate-100 hover:bg-amber-50 transition-colors"
                     >
-                      {row.map((cell, cellIndex) => (
-                        <td
-                          key={cellIndex}
-                          className="py-3 px-4 text-sm text-slate-700"
-                        >
-                          {cell || '-'}
-                        </td>
-                      ))}
+                      {row.map((cell, cellIndex) => {
+                        const header = headers[cellIndex];
+                        const isStatus = header === "Status";
+                        
+                        return (
+                          <td
+                            key={cellIndex}
+                            className="py-3 px-4 text-sm text-slate-700"
+                          >
+                            {isStatus && cell ? (
+                              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cell)}`}>
+                                {cell}
+                              </span>
+                            ) : (
+                              cell || '-'
+                            )}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>
