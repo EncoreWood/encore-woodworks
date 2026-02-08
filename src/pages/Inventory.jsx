@@ -84,7 +84,11 @@ export default function Inventory() {
     );
     
     if (supplier && supplier.ordering_url && itemId) {
-      return `${supplier.ordering_url}?search=${encodeURIComponent(itemId)}`;
+      // For Wurth and most suppliers, append search query
+      const url = new URL(supplier.ordering_url);
+      url.searchParams.append('search', itemId);
+      url.searchParams.append('q', itemId);
+      return url.toString();
     }
     return null;
   };
