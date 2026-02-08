@@ -15,12 +15,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ChatEmployees from '@/components/chat/ChatEmployees';
 
 export default function ChatBoard() {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
+  const [newRoomGroup, setNewRoomGroup] = useState('encore');
   const [newMessage, setNewMessage] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [attachments, setAttachments] = useState([]);
@@ -66,11 +68,12 @@ export default function ChatBoard() {
 
   // Mutations
   const createRoomMutation = useMutation({
-    mutationFn: (name) => base44.entities.ChatRoom.create({ name }),
+    mutationFn: (data) => base44.entities.ChatRoom.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chatRooms'] });
       setShowAddDialog(false);
       setNewRoomName('');
+      setNewRoomGroup('encore');
     }
   });
 
@@ -99,7 +102,10 @@ export default function ChatBoard() {
 
   const handleAddRoom = () => {
     if (newRoomName.trim()) {
-      createRoomMutation.mutate(newRoomName.trim());
+      createRoomMutation.mutate({
+        name: newRoomName.trim(),
+        project_id: newRoomGroup === 'project' ? 'manual' : undefined
+      });
     }
   };
 
@@ -535,6 +541,18 @@ export default function ChatBoard() {
                   placeholder="Enter room name"
                   className="mt-1"
                 />
+              </div>
+              <div>
+                <Label htmlFor="roomGroup">Group</Label>
+                <Select value={newRoomGroup} onValueChange={setNewRoomGroup}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="encore">Encore Chats</SelectItem>
+                    <SelectItem value="project">Project Chats</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="flex gap-2 justify-end">
                 <Button
