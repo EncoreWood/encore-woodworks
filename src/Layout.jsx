@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, Settings, Trash2, ArrowUp, ArrowDown, Play, Square, Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3 } from "lucide-react";
+import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, Settings, Trash2, ArrowUp, ArrowDown, Play, Square, Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
@@ -45,7 +45,8 @@ export default function Layout({ children, currentPageName }) {
         { name: "Morning Meeting", icon: Coffee, page: "MorningMeeting" },
         { name: "Team", icon: Users, page: "Team" },
         { name: "Time Sheet", icon: Coffee, page: "TimeSheet" },
-        { name: "Chat", icon: MessageSquare, page: "ChatBoard" }
+        { name: "Chat", icon: MessageSquare, page: "ChatBoard" },
+        { name: "Forms", icon: FileText, page: "Forms" }
       ]
     }
   });
@@ -103,7 +104,7 @@ export default function Layout({ children, currentPageName }) {
 
   const iconMap = {
     KanbanIcon, LayoutDashboard, Calendar, Factory, Coffee, Users, MessageSquare,
-    Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, 
+    Package, Clipboard, ShoppingCart, FileText: FileTextIcon, Wrench, Truck, Home, Building2, 
     PieChart, BarChart3, Hammer
   };
 

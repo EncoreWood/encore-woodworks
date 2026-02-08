@@ -60,6 +60,7 @@ import ShopProduction from './pages/ShopProduction';
 import StretchingRoutine from './pages/StretchingRoutine';
 import Team from './pages/Team';
 import TimeSheet from './pages/TimeSheet';
+import Forms from './pages/Forms';
 import __Layout from './Layout.jsx';
 
 
@@ -77,6 +78,7 @@ export const PAGES = {
     "StretchingRoutine": StretchingRoutine,
     "Team": Team,
     "TimeSheet": TimeSheet,
+    "Forms": Forms,
 }
 
 export const pagesConfig = {
