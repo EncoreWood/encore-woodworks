@@ -9,13 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye } from "lucide-react";
+import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink } from "lucide-react";
 import ProposalViewer from "../components/proposals/ProposalViewer";
 
 export default function Invoicing() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingProject, setEditingProject] = useState(null);
   const [viewingProposal, setViewingProposal] = useState(null);
+  const [viewingDetails, setViewingDetails] = useState(null);
   const [editForm, setEditForm] = useState({
     estimated_budget: 0,
     deposit_paid: 0,
@@ -61,10 +62,17 @@ export default function Invoicing() {
   };
 
   const handleViewProposal = (project, e) => {
-    e.preventDefault();
-    e.stopPropagation();
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const proposal = proposals.find(p => p.project_id === project.id);
     setViewingProposal(proposal);
+  };
+
+  const handleCardClick = (project, e) => {
+    e.preventDefault();
+    setViewingDetails(project);
   };
 
   // Calculate invoicing status for each project
@@ -187,73 +195,74 @@ export default function Invoicing() {
 
                     return (
                       <div key={project.id} className="relative group">
-                        <Link to={createPageUrl(`ProjectDetails?id=${project.id}`)}>
-                          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                            <CardHeader className="pb-3">
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <CardTitle className="text-base font-semibold text-slate-900">
-                                    {project.project_name}
-                                  </CardTitle>
-                                  <p className="text-sm text-slate-500">{project.client_name}</p>
-                                </div>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  {hasProposal && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 w-8 p-0"
-                                      onClick={(e) => handleViewProposal(project, e)}
-                                      title="View Proposal"
-                                    >
-                                      <Eye className="w-4 h-4" />
-                                    </Button>
-                                  )}
+                        <Card 
+                          className="hover:shadow-lg transition-shadow cursor-pointer"
+                          onClick={(e) => handleCardClick(project, e)}
+                        >
+                          <CardHeader className="pb-3">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <CardTitle className="text-base font-semibold text-slate-900">
+                                  {project.project_name}
+                                </CardTitle>
+                                <p className="text-sm text-slate-500">{project.client_name}</p>
+                              </div>
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {hasProposal && (
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     className="h-8 w-8 p-0"
-                                    onClick={(e) => handleEdit(project, e)}
-                                    title="Edit Financial Details"
+                                    onClick={(e) => handleViewProposal(project, e)}
+                                    title="View Proposal"
                                   >
-                                    <Edit className="w-4 h-4" />
+                                    <Eye className="w-4 h-4" />
                                   </Button>
-                                </div>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                  onClick={(e) => handleEdit(project, e)}
+                                  title="Edit Financial Details"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
                               </div>
-                            </CardHeader>
-                            <CardContent className="pt-0">
-                              <div className="space-y-2 text-sm">
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0">
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">Budget:</span>
+                                <span className="font-medium">${budget.toLocaleString()}</span>
+                              </div>
+                              {deposit > 0 && (
                                 <div className="flex justify-between">
-                                  <span className="text-slate-600">Budget:</span>
-                                  <span className="font-medium">${budget.toLocaleString()}</span>
+                                  <span className="text-slate-600">Deposit:</span>
+                                  <span className="font-medium text-green-600">${deposit.toLocaleString()}</span>
                                 </div>
-                                {deposit > 0 && (
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-600">Deposit:</span>
-                                    <span className="font-medium text-green-600">${deposit.toLocaleString()}</span>
-                                  </div>
-                                )}
-                                {status === "deposit_received" && (
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-600">Remaining:</span>
-                                    <span className="font-medium text-amber-600">${remaining.toLocaleString()}</span>
-                                  </div>
-                                )}
-                                {status === "balance_due" && actualCost > 0 && (
-                                  <div className="flex justify-between">
-                                    <span className="text-slate-600">Balance Due:</span>
-                                    <span className="font-medium text-red-600">${(actualCost - deposit).toLocaleString()}</span>
-                                  </div>
-                                )}
-                                <div className="pt-2 border-t">
-                                  <Badge variant="outline" className="text-xs">
-                                    {project.status?.replace(/_/g, ' ')}
-                                  </Badge>
+                              )}
+                              {status === "deposit_received" && (
+                                <div className="flex justify-between">
+                                  <span className="text-slate-600">Remaining:</span>
+                                  <span className="font-medium text-amber-600">${remaining.toLocaleString()}</span>
                                 </div>
+                              )}
+                              {status === "balance_due" && actualCost > 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-slate-600">Balance Due:</span>
+                                  <span className="font-medium text-red-600">${(actualCost - deposit).toLocaleString()}</span>
+                                </div>
+                              )}
+                              <div className="pt-2 border-t">
+                                <Badge variant="outline" className="text-xs">
+                                  {project.status?.replace(/_/g, ' ')}
+                                </Badge>
                               </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
+                            </div>
+                          </CardContent>
+                        </Card>
                       </div>
                     );
                   })}
@@ -268,6 +277,180 @@ export default function Invoicing() {
             );
           })}
         </div>
+
+        {/* Project Details Dialog */}
+        <Dialog open={!!viewingDetails} onOpenChange={() => setViewingDetails(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between">
+                <span>{viewingDetails?.project_name}</span>
+                <Link to={createPageUrl(`ProjectDetails?id=${viewingDetails?.id}`)}>
+                  <Button variant="outline" size="sm">
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Open Project
+                  </Button>
+                </Link>
+              </DialogTitle>
+            </DialogHeader>
+            {viewingDetails && (() => {
+              const budget = viewingDetails.estimated_budget || 0;
+              const deposit = viewingDetails.deposit_paid || 0;
+              const actualCost = viewingDetails.actual_cost || 0;
+              const remaining = budget - deposit;
+              const balanceDue = actualCost - deposit;
+              const proposal = proposals.find(p => p.project_id === viewingDetails.id);
+
+              return (
+                <div className="space-y-6 py-4">
+                  {/* Pricing Breakdown */}
+                  <Card className="p-6">
+                    <h3 className="font-semibold text-lg mb-4">Pricing Breakdown</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span className="text-slate-600">Estimated Budget:</span>
+                        <span className="text-xl font-semibold">${budget.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span className="text-slate-600">Deposit Paid:</span>
+                        <span className="text-xl font-semibold text-green-600">${deposit.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-2 border-b">
+                        <span className="text-slate-600">Remaining Balance:</span>
+                        <span className="text-xl font-semibold text-amber-600">${remaining.toLocaleString()}</span>
+                      </div>
+                      {actualCost > 0 && (
+                        <>
+                          <div className="flex justify-between items-center py-2 border-b">
+                            <span className="text-slate-600">Actual Cost:</span>
+                            <span className="text-xl font-semibold">${actualCost.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-3 bg-slate-50 rounded-lg px-4">
+                            <span className="font-medium">Balance Due:</span>
+                            <span className={`text-2xl font-bold ${balanceDue > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              ${balanceDue.toLocaleString()}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    <div className="mt-4 pt-4 border-t">
+                      <Button 
+                        variant="outline" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(viewingDetails, { preventDefault: () => {}, stopPropagation: () => {} });
+                        }}
+                        className="w-full"
+                      >
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit Financial Details
+                      </Button>
+                    </div>
+                  </Card>
+
+                  {/* Proposal */}
+                  {proposal ? (
+                    <Card className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-semibold text-lg">Proposal</h3>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setViewingProposal(proposal);
+                            setViewingDetails(null);
+                          }}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Full Proposal
+                        </Button>
+                      </div>
+                      <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm">
+                        <div className="grid grid-cols-2 gap-4">
+                          {proposal.cabinet_style && (
+                            <div>
+                              <span className="text-slate-500">Cabinet Style:</span>
+                              <div className="font-medium">{proposal.cabinet_style}</div>
+                            </div>
+                          )}
+                          {proposal.wood_species && (
+                            <div>
+                              <span className="text-slate-500">Wood Species:</span>
+                              <div className="font-medium">{proposal.wood_species}</div>
+                            </div>
+                          )}
+                          {proposal.door_style && (
+                            <div>
+                              <span className="text-slate-500">Door Style:</span>
+                              <div className="font-medium">{proposal.door_style}</div>
+                            </div>
+                          )}
+                        </div>
+                        {proposal.rooms && proposal.rooms.length > 0 && (
+                          <div className="mt-4 pt-4 border-t">
+                            <div className="font-medium text-slate-700 mb-2">Rooms: {proposal.rooms.length}</div>
+                            <div className="space-y-1">
+                              {proposal.rooms.slice(0, 3).map((room, idx) => (
+                                <div key={idx} className="flex justify-between text-xs">
+                                  <span>{room.room_name}</span>
+                                  <span className="font-medium">${room.price?.toLocaleString()}</span>
+                                </div>
+                              ))}
+                              {proposal.rooms.length > 3 && (
+                                <div className="text-xs text-slate-500">+ {proposal.rooms.length - 3} more</div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </Card>
+                  ) : (
+                    <Card className="p-6">
+                      <div className="text-center py-6">
+                        <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                        <p className="text-slate-500 mb-4">No proposal created yet</p>
+                        <Link to={createPageUrl(`ProjectDetails?id=${viewingDetails.id}`)}>
+                          <Button className="bg-amber-600 hover:bg-amber-700">
+                            Create Proposal
+                          </Button>
+                        </Link>
+                      </div>
+                    </Card>
+                  )}
+
+                  {/* Client Info */}
+                  <Card className="p-6">
+                    <h3 className="font-semibold text-lg mb-4">Client Information</h3>
+                    <div className="space-y-2 text-sm">
+                      <div>
+                        <span className="text-slate-500">Name:</span>
+                        <div className="font-medium">{viewingDetails.client_name}</div>
+                      </div>
+                      {viewingDetails.client_email && (
+                        <div>
+                          <span className="text-slate-500">Email:</span>
+                          <div className="font-medium">{viewingDetails.client_email}</div>
+                        </div>
+                      )}
+                      {viewingDetails.client_phone && (
+                        <div>
+                          <span className="text-slate-500">Phone:</span>
+                          <div className="font-medium">{viewingDetails.client_phone}</div>
+                        </div>
+                      )}
+                      {viewingDetails.address && (
+                        <div>
+                          <span className="text-slate-500">Address:</span>
+                          <div className="font-medium">{viewingDetails.address}</div>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                </div>
+              );
+            })()}
+          </DialogContent>
+        </Dialog>
 
         {/* View Proposal Dialog */}
         <Dialog open={!!viewingProposal} onOpenChange={() => setViewingProposal(null)}>
