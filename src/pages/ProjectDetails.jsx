@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -35,11 +36,15 @@ import {
   Loader2,
   DoorOpen,
   FileIcon,
-  ExternalLink
+  ExternalLink,
+  Plus,
+  Eye
 } from "lucide-react";
 import { format } from "date-fns";
 import ProjectForm from "../components/projects/ProjectForm";
 import FileViewer from "../components/projects/FileViewer";
+import ProposalForm from "../components/proposals/ProposalForm";
+import ProposalViewer from "../components/proposals/ProposalViewer";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -70,10 +75,18 @@ export default function ProjectDetails() {
 
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showProposalForm, setShowProposalForm] = useState(false);
+  const [showProposalView, setShowProposalView] = useState(false);
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", projectId],
     queryFn: () => base44.entities.Project.filter({ id: projectId }).then((res) => res[0]),
+    enabled: !!projectId
+  });
+
+  const { data: proposal, isLoading: proposalLoading } = useQuery({
+    queryKey: ["proposal", projectId],
+    queryFn: () => base44.entities.Proposal.filter({ project_id: projectId }).then((res) => res[0]),
     enabled: !!projectId
   });
 
@@ -90,6 +103,19 @@ export default function ProjectDetails() {
     mutationFn: () => base44.entities.Project.delete(projectId),
     onSuccess: () => {
       window.location.href = createPageUrl("Dashboard");
+    }
+  });
+
+  const saveProposalMutation = useMutation({
+    mutationFn: (data) => {
+      if (proposal) {
+        return base44.entities.Proposal.update(proposal.id, data);
+      }
+      return base44.entities.Proposal.create(data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["proposal", projectId] });
+      setShowProposalForm(false);
     }
   });
 
@@ -154,9 +180,26 @@ export default function ProjectDetails() {
               <p className="text-slate-500">{type} Cabinets</p>
             </div>
             <div className="flex gap-2">
+              {proposal ? (
+                <>
+                  <Button variant="outline" onClick={() => setShowProposalView(true)}>
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Proposal
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowProposalForm(true)}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit Proposal
+                  </Button>
+                </>
+              ) : (
+                <Button onClick={() => setShowProposalForm(true)} className="bg-amber-600 hover:bg-amber-700">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Proposal
+                </Button>
+              )}
               <Button variant="outline" onClick={() => setShowEditForm(true)}>
                 <Edit className="w-4 h-4 mr-2" />
-                Edit
+                Edit Project
               </Button>
               <Button
                 variant="outline"
@@ -502,6 +545,31 @@ export default function ProjectDetails() {
           initialData={project}
           isLoading={updateMutation.isPending}
         />
+
+        {/* Proposal Form */}
+        <Dialog open={showProposalForm} onOpenChange={setShowProposalForm}>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{proposal ? "Edit Proposal" : "Create Proposal"}</DialogTitle>
+            </DialogHeader>
+            <ProposalForm
+              proposal={proposal}
+              project={project}
+              onSave={(data) => saveProposalMutation.mutate(data)}
+              onCancel={() => setShowProposalForm(false)}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* Proposal Viewer */}
+        <Dialog open={showProposalView} onOpenChange={setShowProposalView}>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Proposal - {project.project_name}</DialogTitle>
+            </DialogHeader>
+            <ProposalViewer proposal={proposal} />
+          </DialogContent>
+        </Dialog>
 
         {/* Delete Confirmation */}
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
