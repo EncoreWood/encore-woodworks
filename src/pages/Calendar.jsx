@@ -513,6 +513,10 @@ export default function Calendar() {
                         <Sparkles className="w-4 h-4 mr-2" />
                         Bathroom Cleaning
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleOpenAdd("vacation")}>
+                        <CalendarIcon className="w-4 h-4 mr-2" />
+                        Vacation
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Button
