@@ -143,6 +143,7 @@ export default function Invoicing() {
     ninety_percent_sent: projects.filter(p => getInvoicingStatus(p) === "ninety_percent_sent"),
     ninety_percent_received: projects.filter(p => getInvoicingStatus(p) === "ninety_percent_received"),
     final_sent: projects.filter(p => getInvoicingStatus(p) === "final_sent"),
+    paid_in_full: projects.filter(p => getInvoicingStatus(p) === "paid_in_full"),
   };
 
   // Filter projects by search term
@@ -178,6 +179,13 @@ export default function Invoicing() {
     },
     final_sent: {
       title: "Final Sent",
+      icon: CheckCircle,
+      color: "text-orange-600",
+      bg: "bg-orange-50",
+      border: "border-orange-200"
+    },
+    paid_in_full: {
+      title: "Paid in Full",
       icon: CheckCircle,
       color: "text-green-600",
       bg: "bg-green-50",
