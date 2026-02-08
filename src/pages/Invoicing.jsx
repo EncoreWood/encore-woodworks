@@ -140,6 +140,7 @@ export default function Invoicing() {
   // Group projects by invoicing status
   const groupedProjects = {
     deposit_invoice_sent: projects.filter(p => getInvoicingStatus(p) === "deposit_invoice_sent"),
+    deposit_received: projects.filter(p => getInvoicingStatus(p) === "deposit_received"),
     ninety_percent_sent: projects.filter(p => getInvoicingStatus(p) === "ninety_percent_sent"),
     ninety_percent_received: projects.filter(p => getInvoicingStatus(p) === "ninety_percent_received"),
     final_sent: projects.filter(p => getInvoicingStatus(p) === "final_sent"),
@@ -162,6 +163,13 @@ export default function Invoicing() {
       color: "text-blue-600",
       bg: "bg-blue-50",
       border: "border-blue-200"
+    },
+    deposit_received: {
+      title: "Deposit Received",
+      icon: CheckCircle,
+      color: "text-teal-600",
+      bg: "bg-teal-50",
+      border: "border-teal-200"
     },
     ninety_percent_sent: {
       title: "90% Sent",
