@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, UserPlus, Loader2, User, Mail, Phone, Calendar, Cake, FileText, ShieldCheck, Pencil, ListTodo } from "lucide-react";
+import { Users, UserPlus, Loader2, User, Mail, Phone, Calendar, Cake, FileText, ShieldCheck, Pencil, ListTodo, Settings, Trash2, Plus } from "lucide-react";
 import { format } from "date-fns";
 import EmployeeCard from "../components/team/EmployeeCard";
 import EmployeeForm from "../components/team/EmployeeForm";
@@ -19,6 +19,11 @@ export default function Team() {
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [viewingEmployee, setViewingEmployee] = useState(null);
   const [showEmployeeDetails, setShowEmployeeDetails] = useState(false);
+  const [showDepartmentSettings, setShowDepartmentSettings] = useState(false);
+  const [departments, setDepartments] = useState(["production", "design", "installation", "sales", "management"]);
+  const [newDepartment, setNewDepartment] = useState("");
+  const [editingDept, setEditingDept] = useState(null);
+  const [editingDeptName, setEditingDeptName] = useState("");
   const queryClient = useQueryClient();
 
   const { data: employees = [], isLoading } = useQuery({
@@ -153,6 +158,25 @@ export default function Team() {
 
   const departmentCount = (dept) => employees.filter(e => e.department === dept).length;
 
+  const handleAddDepartment = () => {
+    if (newDepartment.trim() && !departments.includes(newDepartment.toLowerCase())) {
+      setDepartments([...departments, newDepartment.toLowerCase()]);
+      setNewDepartment("");
+    }
+  };
+
+  const handleDeleteDepartment = (dept) => {
+    setDepartments(departments.filter(d => d !== dept));
+  };
+
+  const handleEditDepartment = (oldDept) => {
+    if (editingDeptName.trim() && !departments.includes(editingDeptName.toLowerCase())) {
+      setDepartments(departments.map(d => d === oldDept ? editingDeptName.toLowerCase() : d));
+      setEditingDept(null);
+      setEditingDeptName("");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -165,21 +189,31 @@ export default function Team() {
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Team</h1>
-              <p className="text-slate-500 mt-1">Manage your team members</p>
-            </div>
-            <Button
-              onClick={handleAddNew}
-              className="bg-amber-600 hover:bg-amber-700"
-            >
-              <UserPlus className="w-4 h-4 mr-2" />
-              Add Employee
-            </Button>
-          </div>
-        </div>
+         <div className="mb-8">
+           <div className="flex items-center justify-between">
+             <div>
+               <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Team</h1>
+               <p className="text-slate-500 mt-1">Manage your team members</p>
+             </div>
+             <div className="flex gap-2">
+               <Button
+                 onClick={() => setShowDepartmentSettings(true)}
+                 variant="outline"
+                 className="text-slate-600"
+               >
+                 <Settings className="w-4 h-4 mr-2" />
+                 Departments
+               </Button>
+               <Button
+                 onClick={handleAddNew}
+                 className="bg-amber-600 hover:bg-amber-700"
+               >
+                 <UserPlus className="w-4 h-4 mr-2" />
+                 Add Employee
+               </Button>
+             </div>
+           </div>
+         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
@@ -278,8 +312,105 @@ export default function Team() {
           isLoading={assignTaskMutation.isPending}
         />
 
+        {/* Department Settings Dialog */}
+         <Dialog open={showDepartmentSettings} onOpenChange={setShowDepartmentSettings}>
+           <DialogContent className="max-w-md">
+             <DialogHeader>
+               <DialogTitle>Department Management</DialogTitle>
+             </DialogHeader>
+             <div className="space-y-4 py-4">
+               {/* Add New Department */}
+               <div className="flex gap-2">
+                 <input
+                   type="text"
+                   value={newDepartment}
+                   onChange={(e) => setNewDepartment(e.target.value)}
+                   placeholder="New department name"
+                   className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                   onKeyPress={(e) => e.key === 'Enter' && handleAddDepartment()}
+                 />
+                 <Button
+                   onClick={handleAddDepartment}
+                   size="sm"
+                   className="bg-amber-600 hover:bg-amber-700"
+                 >
+                   <Plus className="w-4 h-4" />
+                 </Button>
+               </div>
+
+               {/* Department List */}
+               <div className="space-y-2 max-h-64 overflow-y-auto">
+                 {departments.map((dept) => (
+                   <div
+                     key={dept}
+                     className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200"
+                   >
+                     {editingDept === dept ? (
+                       <div className="flex gap-2 flex-1">
+                         <input
+                           type="text"
+                           value={editingDeptName}
+                           onChange={(e) => setEditingDeptName(e.target.value)}
+                           className="flex-1 px-2 py-1 border border-slate-200 rounded text-sm focus:outline-none focus:ring-2 focus:ring-amber-600"
+                           autoFocus
+                         />
+                         <Button
+                           onClick={() => handleEditDepartment(dept)}
+                           size="sm"
+                           variant="outline"
+                           className="h-8"
+                         >
+                           Save
+                         </Button>
+                         <Button
+                           onClick={() => {
+                             setEditingDept(null);
+                             setEditingDeptName("");
+                           }}
+                           size="sm"
+                           variant="outline"
+                           className="h-8"
+                         >
+                           Cancel
+                         </Button>
+                       </div>
+                     ) : (
+                       <>
+                         <span className="text-sm font-medium text-slate-700 capitalize">
+                           {dept}
+                         </span>
+                         <div className="flex gap-1">
+                           <Button
+                             onClick={() => {
+                               setEditingDept(dept);
+                               setEditingDeptName(dept);
+                             }}
+                             size="sm"
+                             variant="ghost"
+                             className="h-8 w-8 p-0"
+                           >
+                             <Pencil className="w-3 h-3" />
+                           </Button>
+                           <Button
+                             onClick={() => handleDeleteDepartment(dept)}
+                             size="sm"
+                             variant="ghost"
+                             className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                           >
+                             <Trash2 className="w-3 h-3" />
+                           </Button>
+                         </div>
+                       </>
+                     )}
+                   </div>
+                 ))}
+               </div>
+             </div>
+           </DialogContent>
+         </Dialog>
+
         {/* Employee Details Dialog */}
-        <Dialog open={showEmployeeDetails} onOpenChange={setShowEmployeeDetails}>
+         <Dialog open={showEmployeeDetails} onOpenChange={setShowEmployeeDetails}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Employee Details</DialogTitle>
