@@ -6,13 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { FileText, Plus, Edit, Trash2, Copy, Search } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { FileText, Plus, Edit, Trash2, Copy, Search, Mail } from "lucide-react";
 import ProposalTemplateForm from "../components/proposals/ProposalTemplateForm";
+import { toast } from "sonner";
 
 export default function EncoreDocs() {
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
+  const [sendingTemplate, setSendingTemplate] = useState(null);
+  const [emailForm, setEmailForm] = useState({ to_email: "", subject: "", message: "" });
+  const [sending, setSending] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -61,6 +67,30 @@ export default function EncoreDocs() {
     setShowCreateForm(true);
   };
 
+  const handleSendEmail = async () => {
+    if (!emailForm.to_email) {
+      toast.error("Please enter recipient email");
+      return;
+    }
+
+    setSending(true);
+    try {
+      await base44.functions.invoke('sendProposalEmail', {
+        to_email: emailForm.to_email,
+        template_id: sendingTemplate.id,
+        subject: emailForm.subject,
+        message: emailForm.message
+      });
+      toast.success("Email sent successfully!");
+      setSendingTemplate(null);
+      setEmailForm({ to_email: "", subject: "", message: "" });
+    } catch (error) {
+      toast.error("Failed to send email: " + error.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
   const filteredTemplates = templates.filter(t =>
     t.template_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -106,6 +136,22 @@ export default function EncoreDocs() {
                 <div className="flex items-start justify-between">
                   <FileText className="w-8 h-8 text-amber-600" />
                   <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-blue-600"
+                      onClick={() => {
+                        setSendingTemplate(template);
+                        setEmailForm({ 
+                          to_email: "", 
+                          subject: `Proposal Template: ${template.template_name}`, 
+                          message: "" 
+                        });
+                      }}
+                      title="Send via Email"
+                    >
+                      <Mail className="w-4 h-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -194,6 +240,56 @@ export default function EncoreDocs() {
               onSave={(data) => updateMutation.mutate({ id: editingTemplate.id, data })}
               onCancel={() => setEditingTemplate(null)}
             />
+          </DialogContent>
+        </Dialog>
+
+        {/* Send Email Dialog */}
+        <Dialog open={!!sendingTemplate} onOpenChange={() => setSendingTemplate(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Send Template via Email</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Recipient Email *</Label>
+                <Input
+                  type="email"
+                  value={emailForm.to_email}
+                  onChange={(e) => setEmailForm({ ...emailForm, to_email: e.target.value })}
+                  placeholder="client@example.com"
+                />
+              </div>
+              <div>
+                <Label>Subject</Label>
+                <Input
+                  value={emailForm.subject}
+                  onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })}
+                  placeholder="Email subject"
+                />
+              </div>
+              <div>
+                <Label>Message (Optional)</Label>
+                <Textarea
+                  value={emailForm.message}
+                  onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })}
+                  rows={4}
+                  placeholder="Add a personal message..."
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => setSendingTemplate(null)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSendEmail} 
+                  disabled={sending}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  {sending ? "Sending..." : "Send Email"}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
