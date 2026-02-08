@@ -18,6 +18,16 @@ Deno.serve(async (req) => {
     // Get the proposal
     const proposal = await base44.entities.Proposal.get(proposal_id);
 
+    // Generate PDF
+    const pdfResult = await base44.functions.invoke('generateProposalPDF', { proposal_id });
+    const pdfUrl = pdfResult.data.file_url;
+    const pdfName = pdfResult.data.file_name;
+
+    // Download PDF
+    const pdfResponse = await fetch(pdfUrl);
+    const pdfBytes = await pdfResponse.arrayBuffer();
+    const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfBytes)));
+
     // Get Gmail access token
     const accessToken = await base44.asServiceRole.connectors.getAccessToken("gmail");
 
@@ -69,13 +79,25 @@ Deno.serve(async (req) => {
       emailBody += `\n\nNotes:\n${proposal.notes}`;
     }
 
-    // Create email message
+    // Create multipart email with attachment
+    const boundary = '----=_Part_0_' + Date.now();
     const email = [
       `To: ${to_email}`,
       `Subject: ${subject || `Proposal: ${proposal.job_name || proposal.project_name}`}`,
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+      '',
+      `--${boundary}`,
       'Content-Type: text/plain; charset=utf-8',
       '',
-      emailBody
+      emailBody,
+      '',
+      `--${boundary}`,
+      `Content-Type: application/pdf; name="${pdfName}"`,
+      'Content-Transfer-Encoding: base64',
+      `Content-Disposition: attachment; filename="${pdfName}"`,
+      '',
+      pdfBase64,
+      `--${boundary}--`
     ].join('\n');
 
     const encodedEmail = btoa(email).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');

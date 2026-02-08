@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail, Edit3 } from "lucide-react";
+import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail, Edit3, Download } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import ProposalViewer from "../components/proposals/ProposalViewer";
 import ProposalForm from "../components/proposals/ProposalForm";
@@ -112,6 +112,22 @@ export default function Invoicing() {
       toast.error("Failed to send proposal: " + error.message);
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleDownloadPDF = async (proposal) => {
+    try {
+      toast.loading("Generating PDF...");
+      const result = await base44.functions.invoke('generateProposalPDF', { proposal_id: proposal.id });
+      const link = document.createElement('a');
+      link.href = result.data.file_url;
+      link.download = result.data.file_name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("PDF downloaded!");
+    } catch (error) {
+      toast.error("Failed to generate PDF: " + error.message);
     }
   };
 
@@ -534,6 +550,14 @@ export default function Invoicing() {
               <DialogTitle className="flex items-center justify-between">
                 <span>Proposal</span>
                 <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleDownloadPDF(viewingProposal)}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download PDF
+                  </Button>
                   <Button 
                     variant="outline" 
                     size="sm"
