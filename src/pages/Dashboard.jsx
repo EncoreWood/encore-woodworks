@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, Briefcase, Clock, CheckCircle, AlertTriangle, Settings } from "lucide-react";
+import { Plus, Briefcase, Clock, CheckCircle, AlertTriangle, Settings, DollarSign, Users, PauseCircle, TrendingUp, Home, Wrench } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -34,6 +34,11 @@ export default function Dashboard() {
     queryFn: () => base44.entities.DashboardSettings.list()
   });
 
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees"],
+    queryFn: () => base44.entities.Employee.list()
+  });
+
   const updateSettingMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.DashboardSettings.update(id, data),
     onSuccess: () => {
@@ -49,27 +54,30 @@ export default function Dashboard() {
     }
   });
 
-  // Filter projects
-  const filteredProjects = projects.filter((p) => {
-    const matchesSearch =
-      !filters.search ||
-      p.project_name?.toLowerCase().includes(filters.search.toLowerCase()) ||
-      p.client_name?.toLowerCase().includes(filters.search.toLowerCase());
-    const matchesStatus = filters.status === "all" || p.status === filters.status;
-    const matchesType = filters.type === "all" || p.project_type === filters.type;
-    const matchesPriority = filters.priority === "all" || p.priority === filters.priority;
-    return matchesSearch && matchesStatus && matchesType && matchesPriority;
-  });
-
-  // Calculate stats
+  // Calculate comprehensive business stats
   const totalProjects = projects.length;
   const activeProjects = projects.filter(
     (p) => !["completed", "on_hold", "inquiry"].includes(p.status)
   ).length;
   const completedProjects = projects.filter((p) => p.status === "completed").length;
-  const urgentProjects = projects.filter(
-    (p) => p.priority === "urgent" && p.status !== "completed"
-  ).length;
+  const onHoldProjects = projects.filter((p) => p.status === "on_hold").length;
+  
+  // Financial calculations
+  const totalEstimatedBudget = projects.reduce((sum, p) => sum + (p.estimated_budget || 0), 0);
+  const totalDeposits = projects.reduce((sum, p) => sum + (p.deposit_paid || 0), 0);
+  const completedProjectsValue = projects
+    .filter((p) => p.status === "completed")
+    .reduce((sum, p) => sum + (p.actual_cost || p.estimated_budget || 0), 0);
+  const receivable = totalEstimatedBudget - totalDeposits;
+  
+  // Project type breakdown
+  const kitchenProjects = projects.filter((p) => p.project_type === "kitchen").length;
+  const bathroomProjects = projects.filter((p) => p.project_type === "bathroom").length;
+  const customProjects = projects.filter((p) => p.project_type === "custom").length;
+  const otherProjects = totalProjects - kitchenProjects - bathroomProjects - customProjects;
+  
+  // Employee count
+  const totalEmployees = employees.length;
 
   const clearFilters = () => {
     setFilters({ search: "", status: "all", type: "all", priority: "all" });
@@ -128,75 +136,110 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Business Overview Stats */}
         {getSectionVisibility("stats") && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <StatsCard
-              title="Total Projects"
-              value={totalProjects}
-              icon={Briefcase}
-            />
-            <StatsCard
-              title="Active"
-              value={activeProjects}
-              icon={Clock}
-              subtitle="In progress"
-            />
-            <StatsCard
-              title="Completed"
-              value={completedProjects}
-              icon={CheckCircle}
-            />
-            <StatsCard
-              title="Urgent"
-              value={urgentProjects}
-              icon={AlertTriangle}
-              className={urgentProjects > 0 ? "border-l-4 border-l-amber-500" : ""}
-            />
-          </div>
-        )}
-
-        {/* Filters */}
-        <div className="mb-6">
-          <ProjectFilters filters={filters} setFilters={setFilters} onClear={clearFilters} />
-        </div>
-
-
-
-        {/* Projects Grid */}
-        {getSectionVisibility("projects") && (
           <>
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[...Array(6)].map((_, i) => (
-                  <div key={i} className="bg-white rounded-xl h-64 animate-pulse" />
-                ))}
+            {/* Financial Overview */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-slate-900 mb-4">Financial Overview</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatsCard
+                  title="Total Budget"
+                  value={`$${totalEstimatedBudget.toLocaleString()}`}
+                  icon={DollarSign}
+                  subtitle="All projects"
+                />
+                <StatsCard
+                  title="Deposits Received"
+                  value={`$${totalDeposits.toLocaleString()}`}
+                  icon={TrendingUp}
+                  subtitle="Paid deposits"
+                />
+                <StatsCard
+                  title="Receivable"
+                  value={`$${receivable.toLocaleString()}`}
+                  icon={AlertTriangle}
+                  subtitle="Outstanding"
+                  className="border-l-4 border-l-amber-500"
+                />
+                <StatsCard
+                  title="Completed Value"
+                  value={`$${completedProjectsValue.toLocaleString()}`}
+                  icon={CheckCircle}
+                  subtitle="Finished projects"
+                />
               </div>
-            ) : filteredProjects.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-xl border border-dashed border-slate-200">
-                <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-700 mb-2">No projects found</h3>
-                <p className="text-slate-500 mb-4">
-                  {projects.length === 0
-                    ? "Get started by creating your first project"
-                    : "Try adjusting your filters"}
-                </p>
-                {projects.length === 0 && (
-                  <Button onClick={() => setShowForm(true)} className="bg-amber-600 hover:bg-amber-700">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Project
-                  </Button>
-                )}
+            </div>
+
+            {/* Project Overview */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-slate-900 mb-4">Project Overview</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatsCard
+                  title="Total Projects"
+                  value={totalProjects}
+                  icon={Briefcase}
+                  subtitle="All time"
+                />
+                <StatsCard
+                  title="Active Projects"
+                  value={activeProjects}
+                  icon={Clock}
+                  subtitle="In progress"
+                />
+                <StatsCard
+                  title="Completed"
+                  value={completedProjects}
+                  icon={CheckCircle}
+                  subtitle="Finished"
+                />
+                <StatsCard
+                  title="On Hold"
+                  value={onHoldProjects}
+                  icon={PauseCircle}
+                  subtitle="Paused"
+                />
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredProjects.map((project) => (
-                  <ProjectCard key={project.id} project={project} />
-                ))}
+            </div>
+
+            {/* Project Types & Team */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold text-slate-900 mb-4">Breakdown</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <StatsCard
+                  title="Kitchen Projects"
+                  value={kitchenProjects}
+                  icon={Home}
+                />
+                <StatsCard
+                  title="Bathroom Projects"
+                  value={bathroomProjects}
+                  icon={Home}
+                />
+                <StatsCard
+                  title="Custom Projects"
+                  value={customProjects}
+                  icon={Wrench}
+                />
+                <StatsCard
+                  title="Other Projects"
+                  value={otherProjects}
+                  icon={Briefcase}
+                />
+                <StatsCard
+                  title="Total Employees"
+                  value={totalEmployees}
+                  icon={Users}
+                  subtitle="Current team"
+                />
               </div>
-            )}
+            </div>
           </>
         )}
+
+
+
+
 
         {/* Create Form */}
         <ProjectForm
