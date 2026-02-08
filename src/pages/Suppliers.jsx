@@ -14,6 +14,7 @@ export default function Suppliers() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState(null);
   const [filterCategory, setFilterCategory] = useState("all");
+  const [embeddedUrl, setEmbeddedUrl] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     website_url: "",
@@ -183,26 +184,22 @@ export default function Suppliers() {
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {supplier.ordering_url && (
-                      <a
-                        href={supplier.ordering_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
+                      <button
+                        onClick={() => setEmbeddedUrl(supplier.ordering_url)}
+                        className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors w-full"
                       >
                         <ExternalLink className="w-4 h-4" />
                         Order Now
-                      </a>
+                      </button>
                     )}
                     {supplier.website_url && !supplier.ordering_url && (
-                      <a
-                        href={supplier.website_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors"
+                      <button
+                        onClick={() => setEmbeddedUrl(supplier.website_url)}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors w-full"
                       >
                         <ExternalLink className="w-4 h-4" />
                         Visit Website
-                      </a>
+                      </button>
                     )}
                     {supplier.phone && (
                       <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -270,26 +267,22 @@ export default function Suppliers() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {supplier.ordering_url && (
-                    <a
-                      href={supplier.ordering_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors"
+                    <button
+                      onClick={() => setEmbeddedUrl(supplier.ordering_url)}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors w-full"
                     >
                       <ExternalLink className="w-4 h-4" />
                       Order Now
-                    </a>
+                    </button>
                   )}
                   {supplier.website_url && !supplier.ordering_url && (
-                    <a
-                      href={supplier.website_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors"
+                    <button
+                      onClick={() => setEmbeddedUrl(supplier.website_url)}
+                      className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors w-full"
                     >
                       <ExternalLink className="w-4 h-4" />
                       Visit Website
-                    </a>
+                    </button>
                   )}
                   {supplier.phone && (
                     <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -455,6 +448,21 @@ export default function Suppliers() {
                 </Button>
               </div>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!embeddedUrl} onOpenChange={() => setEmbeddedUrl(null)}>
+          <DialogContent className="max-w-[95vw] max-h-[95vh] h-[95vh] p-0">
+            <DialogHeader className="p-4 pb-2">
+              <DialogTitle>Supplier Website</DialogTitle>
+            </DialogHeader>
+            <div className="h-full pb-4 px-4">
+              <iframe
+                src={embeddedUrl}
+                className="w-full h-full border-0 rounded-lg"
+                title="Supplier Website"
+              />
+            </div>
           </DialogContent>
         </Dialog>
       </div>
