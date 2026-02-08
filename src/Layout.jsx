@@ -27,6 +27,7 @@ export default function Layout({ children, currentPageName }) {
       items: [
         { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
         { name: "Board", icon: KanbanIcon, page: "Kanban" },
+        { name: "Invoicing", icon: FileTextIcon, page: "Invoicing" },
       ]
     },
     operations: {
