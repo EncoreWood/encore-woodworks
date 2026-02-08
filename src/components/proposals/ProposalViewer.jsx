@@ -1,12 +1,22 @@
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function ProposalViewer({ proposal }) {
   if (!proposal) return null;
+
+  const selectedOptionsTotal = proposal.options
+    ?.filter(opt => opt.selected)
+    .reduce((sum, opt) => sum + (opt.price || 0), 0) || 0;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 bg-white p-8 rounded-lg shadow-lg">
       {/* Header */}
       <div className="text-center border-b pb-6">
+        <img 
+          src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png" 
+          alt="Encore Woodworks" 
+          className="h-24 mx-auto mb-4"
+        />
         <div className="text-sm text-slate-600 mb-4">
           736 S 5725 W Hurricane, Utah 84737<br/>
           (435)632-2903 - Mitch<br/>
@@ -81,10 +91,21 @@ export default function ProposalViewer({ proposal }) {
             <tbody>
               {proposal.options.map((option, index) => (
                 <tr key={index} className="border-b border-slate-200">
+                  <td className="p-3 w-10">
+                    <Checkbox checked={option.selected} disabled />
+                  </td>
                   <td className="p-3">{option.description}</td>
-                  <td className="p-3 text-right font-medium w-32">${option.price?.toLocaleString()}</td>
+                  <td className="p-3 text-right font-medium w-32">
+                    {option.selected && `$${option.price?.toLocaleString()}`}
+                  </td>
                 </tr>
               ))}
+              {selectedOptionsTotal > 0 && (
+                <tr className="bg-slate-50 font-semibold">
+                  <td colSpan="2" className="p-3 text-right">Options Total:</td>
+                  <td className="p-3 text-right">${selectedOptionsTotal.toLocaleString()}</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

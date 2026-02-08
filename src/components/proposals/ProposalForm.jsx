@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2 } from "lucide-react";
 
 export default function ProposalForm({ proposal, project, onSave, onCancel }) {
@@ -30,7 +31,9 @@ export default function ProposalForm({ proposal, project, onSave, onCancel }) {
 
   useEffect(() => {
     const roomsTotal = formData.rooms.reduce((sum, room) => sum + (room.price || 0), 0);
-    const optionsTotal = formData.options.reduce((sum, opt) => sum + (opt.price || 0), 0);
+    const optionsTotal = formData.options
+      .filter(opt => opt.selected)
+      .reduce((sum, opt) => sum + (opt.price || 0), 0);
     setFormData(prev => ({
       ...prev,
       standard_total: roomsTotal,
@@ -58,7 +61,7 @@ export default function ProposalForm({ proposal, project, onSave, onCancel }) {
   const addOption = () => {
     setFormData(prev => ({
       ...prev,
-      options: [...prev.options, { description: "", price: 0 }]
+      options: [...prev.options, { description: "", price: 0, selected: false }]
     }));
   };
 
@@ -233,7 +236,13 @@ export default function ProposalForm({ proposal, project, onSave, onCancel }) {
         <div className="space-y-3">
           {formData.options.map((option, index) => (
             <div key={index} className="grid grid-cols-12 gap-2 items-end">
-              <div className="col-span-9">
+              <div className="col-span-1 flex items-end pb-2">
+                <Checkbox
+                  checked={option.selected}
+                  onCheckedChange={(checked) => updateOption(index, "selected", checked)}
+                />
+              </div>
+              <div className="col-span-8">
                 <Label className="text-xs">Description</Label>
                 <Input
                   value={option.description}
