@@ -1,20 +1,57 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit } from "lucide-react";
 
 export default function Invoicing() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingProject, setEditingProject] = useState(null);
+  const [editForm, setEditForm] = useState({
+    estimated_budget: 0,
+    deposit_paid: 0,
+    actual_cost: 0
+  });
+
+  const queryClient = useQueryClient();
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: () => base44.entities.Project.list(),
   });
+
+  const updateProjectMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Project.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setEditingProject(null);
+    },
+  });
+
+  const handleEdit = (project, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setEditingProject(project);
+    setEditForm({
+      estimated_budget: project.estimated_budget || 0,
+      deposit_paid: project.deposit_paid || 0,
+      actual_cost: project.actual_cost || 0
+    });
+  };
+
+  const handleSave = () => {
+    updateProjectMutation.mutate({
+      id: editingProject.id,
+      data: editForm
+    });
+  };
 
   // Calculate invoicing status for each project
   const getInvoicingStatus = (project) => {
@@ -134,50 +171,61 @@ export default function Invoicing() {
                     const remaining = budget - deposit;
 
                     return (
-                      <Link
-                        key={project.id}
-                        to={createPageUrl(`ProjectDetails?id=${project.id}`)}
-                      >
-                        <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-base font-semibold text-slate-900">
-                              {project.project_name}
-                            </CardTitle>
-                            <p className="text-sm text-slate-500">{project.client_name}</p>
-                          </CardHeader>
-                          <CardContent className="pt-0">
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-slate-600">Budget:</span>
-                                <span className="font-medium">${budget.toLocaleString()}</span>
+                      <div key={project.id} className="relative group">
+                        <Link to={createPageUrl(`ProjectDetails?id=${project.id}`)}>
+                          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                            <CardHeader className="pb-3">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <CardTitle className="text-base font-semibold text-slate-900">
+                                    {project.project_name}
+                                  </CardTitle>
+                                  <p className="text-sm text-slate-500">{project.client_name}</p>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => handleEdit(project, e)}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
                               </div>
-                              {deposit > 0 && (
+                            </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                  <span className="text-slate-600">Deposit:</span>
-                                  <span className="font-medium text-green-600">${deposit.toLocaleString()}</span>
+                                  <span className="text-slate-600">Budget:</span>
+                                  <span className="font-medium">${budget.toLocaleString()}</span>
                                 </div>
-                              )}
-                              {status === "deposit_received" && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-600">Remaining:</span>
-                                  <span className="font-medium text-amber-600">${remaining.toLocaleString()}</span>
+                                {deposit > 0 && (
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-600">Deposit:</span>
+                                    <span className="font-medium text-green-600">${deposit.toLocaleString()}</span>
+                                  </div>
+                                )}
+                                {status === "deposit_received" && (
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-600">Remaining:</span>
+                                    <span className="font-medium text-amber-600">${remaining.toLocaleString()}</span>
+                                  </div>
+                                )}
+                                {status === "balance_due" && actualCost > 0 && (
+                                  <div className="flex justify-between">
+                                    <span className="text-slate-600">Balance Due:</span>
+                                    <span className="font-medium text-red-600">${(actualCost - deposit).toLocaleString()}</span>
+                                  </div>
+                                )}
+                                <div className="pt-2 border-t">
+                                  <Badge variant="outline" className="text-xs">
+                                    {project.status?.replace(/_/g, ' ')}
+                                  </Badge>
                                 </div>
-                              )}
-                              {status === "balance_due" && actualCost > 0 && (
-                                <div className="flex justify-between">
-                                  <span className="text-slate-600">Balance Due:</span>
-                                  <span className="font-medium text-red-600">${(actualCost - deposit).toLocaleString()}</span>
-                                </div>
-                              )}
-                              <div className="pt-2 border-t">
-                                <Badge variant="outline" className="text-xs">
-                                  {project.status?.replace(/_/g, ' ')}
-                                </Badge>
                               </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </Link>
+                            </CardContent>
+                          </Card>
+                        </Link>
+                      </div>
                     );
                   })}
 
@@ -191,6 +239,58 @@ export default function Invoicing() {
             );
           })}
         </div>
+
+        {/* Edit Dialog */}
+        <Dialog open={!!editingProject} onOpenChange={() => setEditingProject(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Financial Details</DialogTitle>
+            </DialogHeader>
+            {editingProject && (
+              <div className="space-y-4 py-4">
+                <div className="text-sm text-slate-600 mb-4">
+                  <div className="font-semibold text-slate-900">{editingProject.project_name}</div>
+                  <div>{editingProject.client_name}</div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="budget">Estimated Budget</Label>
+                  <Input
+                    id="budget"
+                    type="number"
+                    value={editForm.estimated_budget}
+                    onChange={(e) => setEditForm({ ...editForm, estimated_budget: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="deposit">Deposit Paid</Label>
+                  <Input
+                    id="deposit"
+                    type="number"
+                    value={editForm.deposit_paid}
+                    onChange={(e) => setEditForm({ ...editForm, deposit_paid: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="actual">Actual Cost</Label>
+                  <Input
+                    id="actual"
+                    type="number"
+                    value={editForm.actual_cost}
+                    onChange={(e) => setEditForm({ ...editForm, actual_cost: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEditingProject(null)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSave} className="bg-amber-600 hover:bg-amber-700">
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
