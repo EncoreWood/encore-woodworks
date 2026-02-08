@@ -9,15 +9,17 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail } from "lucide-react";
+import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail, Edit3 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import ProposalViewer from "../components/proposals/ProposalViewer";
+import ProposalForm from "../components/proposals/ProposalForm";
 import { toast } from "sonner";
 
 export default function Invoicing() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingProject, setEditingProject] = useState(null);
   const [viewingProposal, setViewingProposal] = useState(null);
+  const [editingProposal, setEditingProposal] = useState(null);
   const [viewingDetails, setViewingDetails] = useState(null);
   const [sendingProposal, setSendingProposal] = useState(null);
   const [emailForm, setEmailForm] = useState({ to_email: "", subject: "", message: "" });
@@ -45,6 +47,15 @@ export default function Invoicing() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setEditingProject(null);
+    },
+  });
+
+  const updateProposalMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Proposal.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["proposals"] });
+      setEditingProposal(null);
+      toast.success("Proposal updated successfully!");
     },
   });
 
@@ -238,37 +249,51 @@ export default function Invoicing() {
                               </div>
                               <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 {hasProposal && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0"
-                                    onClick={(e) => handleViewProposal(project, e)}
-                                    title="View Proposal"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                  </Button>
-                                  )}
-                                  {hasProposal && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 text-blue-600"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      const proposal = proposals.find(p => p.project_id === project.id);
-                                      setSendingProposal(proposal);
-                                      setEmailForm({ 
-                                        to_email: project.client_email || "", 
-                                        subject: `Proposal: ${proposal.job_name || project.project_name}`, 
-                                        message: "" 
-                                      });
-                                    }}
-                                    title="Send via Email"
-                                  >
-                                    <Mail className="w-4 h-4" />
-                                  </Button>
-                                  )}
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      onClick={(e) => handleViewProposal(project, e)}
+                                      title="View Proposal"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 text-amber-600"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const proposal = proposals.find(p => p.project_id === project.id);
+                                        setEditingProposal(proposal);
+                                      }}
+                                      title="Edit Proposal"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0 text-blue-600"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const proposal = proposals.find(p => p.project_id === project.id);
+                                        setSendingProposal(proposal);
+                                        setEmailForm({ 
+                                          to_email: project.client_email || "", 
+                                          subject: `Proposal: ${proposal.job_name || project.project_name}`, 
+                                          message: "" 
+                                        });
+                                      }}
+                                      title="Send via Email"
+                                    >
+                                      <Mail className="w-4 h-4" />
+                                    </Button>
+                                  </>
+                                )}
                                   <Button
                                   variant="ghost"
                                   size="sm"
@@ -508,25 +533,53 @@ export default function Invoicing() {
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between">
                 <span>Proposal</span>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => {
-                    setSendingProposal(viewingProposal);
-                    const project = projects.find(p => p.id === viewingProposal.project_id);
-                    setEmailForm({ 
-                      to_email: project?.client_email || "", 
-                      subject: `Proposal: ${viewingProposal.job_name || viewingProposal.project_name}`, 
-                      message: "" 
-                    });
-                  }}
-                >
-                  <Mail className="w-4 h-4 mr-2" />
-                  Send via Email
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setEditingProposal(viewingProposal);
+                      setViewingProposal(null);
+                    }}
+                  >
+                    <Edit3 className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setSendingProposal(viewingProposal);
+                      const project = projects.find(p => p.id === viewingProposal.project_id);
+                      setEmailForm({ 
+                        to_email: project?.client_email || "", 
+                        subject: `Proposal: ${viewingProposal.job_name || viewingProposal.project_name}`, 
+                        message: "" 
+                      });
+                    }}
+                  >
+                    <Mail className="w-4 h-4 mr-2" />
+                    Send via Email
+                  </Button>
+                </div>
               </DialogTitle>
             </DialogHeader>
             <ProposalViewer proposal={viewingProposal} />
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Proposal Dialog */}
+        <Dialog open={!!editingProposal} onOpenChange={() => setEditingProposal(null)}>
+          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Proposal</DialogTitle>
+            </DialogHeader>
+            <ProposalForm
+              proposal={editingProposal}
+              project={projects.find(p => p.id === editingProposal?.project_id)}
+              onSave={(data) => updateProposalMutation.mutate({ id: editingProposal.id, data })}
+              onCancel={() => setEditingProposal(null)}
+            />
           </DialogContent>
         </Dialog>
 
