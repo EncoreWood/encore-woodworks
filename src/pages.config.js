@@ -50,6 +50,7 @@
 import Calendar from './pages/Calendar';
 import ChatBoard from './pages/ChatBoard';
 import Dashboard from './pages/Dashboard';
+import EncoreDocs from './pages/EncoreDocs';
 import Forms from './pages/Forms';
 import Inventory from './pages/Inventory';
 import Invoicing from './pages/Invoicing';
@@ -63,7 +64,7 @@ import StretchingRoutine from './pages/StretchingRoutine';
 import Suppliers from './pages/Suppliers';
 import Team from './pages/Team';
 import TimeSheet from './pages/TimeSheet';
-import EncoreDocs from './pages/EncoreDocs';
+import SOPBoard from './pages/SOPBoard';
 import __Layout from './Layout.jsx';
 
 
@@ -71,6 +72,7 @@ export const PAGES = {
     "Calendar": Calendar,
     "ChatBoard": ChatBoard,
     "Dashboard": Dashboard,
+    "EncoreDocs": EncoreDocs,
     "Forms": Forms,
     "Inventory": Inventory,
     "Invoicing": Invoicing,
@@ -84,7 +86,7 @@ export const PAGES = {
     "Suppliers": Suppliers,
     "Team": Team,
     "TimeSheet": TimeSheet,
-    "EncoreDocs": EncoreDocs,
+    "SOPBoard": SOPBoard,
 }
 
 export const pagesConfig = {
