@@ -364,7 +364,7 @@ export default function Calendar() {
         };
       case "year":
         return {
-          start: startOfYear(currentMonth),
+          start: startOfMonth(currentMonth),
           end: endOfMonth(addMonths(currentMonth, 11))
         };
       default:
@@ -669,6 +669,7 @@ export default function Calendar() {
                   }}
                   month={currentMonth}
                   onMonthChange={setCurrentMonth}
+                  numberOfMonths={viewType === "3months" ? 3 : viewType === "6months" ? 6 : viewType === "year" ? 12 : 1}
                   className="w-full"
                   classNames={{
                     months: "w-full",

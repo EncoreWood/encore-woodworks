@@ -55,11 +55,11 @@ import Kanban from './pages/Kanban';
 import MorningMeeting from './pages/MorningMeeting';
 import OrdersBoard from './pages/OrdersBoard';
 import ProjectDetails from './pages/ProjectDetails';
+import PurchaseOrders from './pages/PurchaseOrders';
 import ShopProduction from './pages/ShopProduction';
 import StretchingRoutine from './pages/StretchingRoutine';
 import Team from './pages/Team';
 import TimeSheet from './pages/TimeSheet';
-import PurchaseOrders from './pages/PurchaseOrders';
 import __Layout from './Layout.jsx';
 
 
@@ -72,11 +72,11 @@ export const PAGES = {
     "MorningMeeting": MorningMeeting,
     "OrdersBoard": OrdersBoard,
     "ProjectDetails": ProjectDetails,
+    "PurchaseOrders": PurchaseOrders,
     "ShopProduction": ShopProduction,
     "StretchingRoutine": StretchingRoutine,
     "Team": Team,
     "TimeSheet": TimeSheet,
-    "PurchaseOrders": PurchaseOrders,
 }
 
 export const pagesConfig = {
