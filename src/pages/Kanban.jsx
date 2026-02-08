@@ -119,15 +119,6 @@ export default function Kanban() {
           </Button>
         </div>
 
-        {/* Project Tracking Sheet */}
-        <Card className="mb-6 p-0 overflow-hidden">
-          <iframe
-            src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRYO-e9zoCc7ECYLs_uT5l22Erc-ADwyIQTu8TP400oGYrA_ghl-nh4hqch_aVbectqPY5UIlE0pS8d/pubhtml?widget=true&amp;headers=false"
-            className="w-full h-[600px] border-0"
-            title="Project Sheet"
-          />
-        </Card>
-
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex gap-4 overflow-x-auto pb-4">
             {statusColumns.map((column) => {
