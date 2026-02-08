@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Clock, Plus, Trash2, CheckCircle2, Play, Square, Settings, Circle } from "lucide-react";
 import { format, addDays, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
+import VacationRequestForm from "../components/team/VacationRequestForm";
 
 export default function TimeSheet() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -262,11 +263,12 @@ export default function TimeSheet() {
 
         {/* Tabs */}
         <Tabs value={currentTab} onValueChange={setCurrentTab} className="mb-8">
-          <TabsList className={`grid w-full ${currentUser?.role === "admin" ? "grid-cols-3" : "grid-cols-2"}`}>
+          <TabsList className={`grid w-full ${currentUser?.role === "admin" ? "grid-cols-4" : "grid-cols-3"}`}>
             {currentUser?.role === "admin" && (
               <TabsTrigger value="overview">Overview</TabsTrigger>
             )}
             <TabsTrigger value="employee">Time Card</TabsTrigger>
+            <TabsTrigger value="vacation">Vacation</TabsTrigger>
             {currentUser?.role === "admin" && (
               <TabsTrigger value="settings" className="flex items-center gap-2">
                 <Settings className="w-4 h-4" />
@@ -581,6 +583,64 @@ export default function TimeSheet() {
             )}
             </div>
             </div>
+            </TabsContent>
+
+            {/* VACATION TAB */}
+            <TabsContent value="vacation">
+              {currentUser?.role === "user" && !selectedEmployee && (
+                <Card className="bg-amber-50 border-amber-200">
+                  <CardContent className="pt-6 text-center">
+                    <p className="text-slate-600 font-medium">Loading your profile...</p>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {currentUser?.role === "admin" && !selectedEmployee && (
+                <Card className="text-center py-12">
+                  <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-600 font-medium">Select an employee to manage their vacation</p>
+                </Card>
+              )}
+
+              {selectedEmployee && (
+                <div className="max-w-4xl mx-auto">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                      {selectedEmployee.full_name}'s Vacation
+                    </h2>
+                    <p className="text-slate-600">Request time off and track PTO balance</p>
+                  </div>
+                  <VacationRequestForm employee={selectedEmployee} currentUser={currentUser} />
+                </div>
+              )}
+
+              {currentUser?.role === "admin" && (
+                <div className="mt-6">
+                  <div className="lg:col-span-1">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Select Employee</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2 max-h-96 overflow-y-auto">
+                        {employees.map((emp) => (
+                          <button
+                            key={emp.id}
+                            onClick={() => setSelectedEmployee(emp)}
+                            className={`w-full text-left p-3 rounded-lg border transition-all ${
+                              selectedEmployee?.id === emp.id
+                                ? "bg-amber-50 border-amber-200 font-semibold text-amber-900"
+                                : "border-slate-200 hover:bg-slate-50 text-slate-700"
+                            }`}
+                          >
+                            {emp.full_name}
+                            <span className="text-xs text-slate-500 block">{emp.position}</span>
+                          </button>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              )}
             </TabsContent>
 
           {/* SETTINGS TAB - ADMIN ONLY */}
