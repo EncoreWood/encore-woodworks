@@ -1,11 +1,13 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Calendar, MapPin, User, ChevronRight, DoorOpen, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, User, ChevronRight, DoorOpen, ExternalLink, CheckCircle2, Circle } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -40,6 +42,14 @@ export default function ProjectCard({ project }) {
   const status = statusConfig[project.status] || statusConfig.inquiry;
   const type = typeConfig[project.project_type] || project.project_type;
   const priority = priorityConfig[project.priority] || priorityConfig.medium;
+  
+  // Fetch tasks for this project
+  const { data: tasks = [] } = useQuery({
+    queryKey: ["tasks", project.id],
+    queryFn: () => base44.entities.Task.filter({ project_id: project.id })
+  });
+
+  const completedTasks = tasks.filter(t => t.status === "completed").length;
   
   // Calculate progress
   const phases = [
@@ -97,6 +107,40 @@ export default function ProjectCard({ project }) {
             </div>
           )}
         </div>
+
+        {/* Tasks */}
+        {tasks.length > 0 && (
+          <div className="mb-4 p-3 bg-slate-50 rounded-lg">
+            <div className="flex items-center justify-between text-sm font-medium text-slate-700 mb-2">
+              <span>Tasks ({completedTasks}/{tasks.length})</span>
+            </div>
+            <div className="space-y-1.5">
+              {tasks.slice(0, 3).map((task) => (
+                <div key={task.id} className="flex items-center gap-2 text-sm">
+                  {task.status === "completed" ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                  ) : (
+                    <Circle className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                  )}
+                  <span className={cn(
+                    "truncate flex-1",
+                    task.status === "completed" ? "line-through text-slate-400" : "text-slate-700"
+                  )}>
+                    {task.title}
+                  </span>
+                  {task.priority === "high" && task.status !== "completed" && (
+                    <Badge variant="outline" className="text-xs py-0 bg-amber-50 text-amber-700 border-amber-200">
+                      High
+                    </Badge>
+                  )}
+                </div>
+              ))}
+              {tasks.length > 3 && (
+                <p className="text-xs text-slate-400">+{tasks.length - 3} more tasks</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Rooms List */}
         {project.rooms && project.rooms.length > 0 && (
