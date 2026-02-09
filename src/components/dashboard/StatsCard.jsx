@@ -1,12 +1,15 @@
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-export default function StatsCard({ title, value, subtitle, icon: Icon, trend, trendUp, className }) {
+export default function StatsCard({ title, value, subtitle, icon: Icon, trend, trendUp, className, onClick }) {
   return (
-    <Card className={cn(
-      "relative overflow-hidden p-6 bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300",
-      className
-    )}>
+    <Card 
+      className={cn(
+        "relative overflow-hidden p-6 bg-white border-0 shadow-sm hover:shadow-md transition-all duration-300",
+        className
+      )}
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <p className="text-sm font-medium text-slate-500 tracking-wide uppercase">{title}</p>
