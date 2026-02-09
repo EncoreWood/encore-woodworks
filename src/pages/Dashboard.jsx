@@ -183,7 +183,15 @@ export default function Dashboard() {
 
             {/* Project Overview */}
             <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">Project Overview</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-slate-900">Project Overview</h2>
+                <Link to={createPageUrl("Kanban")}>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    View Projects Board
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatsCard
                   title="Total Projects"
