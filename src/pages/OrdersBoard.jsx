@@ -8,8 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, FileText, X, Calendar } from "lucide-react";
+import { Upload, FileText, X, Calendar, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 
 const orderColumns = [
   { id: "drawer_boxes", label: "Drawer Boxes" },
@@ -212,7 +214,16 @@ export default function OrdersBoard() {
                 className="grid grid-cols-[250px_repeat(9,_1fr)] border-b border-slate-200 hover:bg-slate-50"
               >
                 <div className="p-4 font-medium text-slate-900 border-r-2 border-slate-200">
-                  <div className="font-semibold">{project.project_name}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">{project.project_name}</span>
+                    <Link 
+                      to={createPageUrl("Kanban") + `?project=${project.id}`}
+                      className="text-slate-400 hover:text-amber-600 transition-colors"
+                      title="View on Board"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                   <div className="text-xs text-slate-500">{project.client_name}</div>
                 </div>
                 {orderColumns.map((col) => {
