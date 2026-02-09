@@ -1,13 +1,16 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Calendar, MapPin, User, ChevronRight, DoorOpen, ExternalLink, CheckCircle2, Circle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar, MapPin, User, ChevronRight, DoorOpen, ExternalLink, CheckCircle2, Circle, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { useState } from "react";
+import TaskForm from "./TaskForm";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -39,6 +42,8 @@ const priorityConfig = {
 };
 
 export default function ProjectCard({ project }) {
+  const queryClient = useQueryClient();
+  const [showTaskForm, setShowTaskForm] = useState(false);
   const status = statusConfig[project.status] || statusConfig.inquiry;
   const type = typeConfig[project.project_type] || project.project_type;
   const priority = priorityConfig[project.priority] || priorityConfig.medium;
@@ -50,6 +55,14 @@ export default function ProjectCard({ project }) {
   });
 
   const completedTasks = tasks.filter(t => t.status === "completed").length;
+
+  const createTaskMutation = useMutation({
+    mutationFn: (data) => base44.entities.Task.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", project.id] });
+      setShowTaskForm(false);
+    }
+  });
   
   // Calculate progress
   const phases = [
@@ -109,11 +122,23 @@ export default function ProjectCard({ project }) {
         </div>
 
         {/* Tasks */}
-        {tasks.length > 0 && (
-          <div className="mb-4 p-3 bg-slate-50 rounded-lg">
-            <div className="flex items-center justify-between text-sm font-medium text-slate-700 mb-2">
-              <span>Tasks ({completedTasks}/{tasks.length})</span>
-            </div>
+        <div className="mb-4 p-3 bg-slate-50 rounded-lg">
+          <div className="flex items-center justify-between text-sm font-medium text-slate-700 mb-2">
+            <span>Tasks {tasks.length > 0 && `(${completedTasks}/${tasks.length})`}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+              onClick={(e) => {
+                e.preventDefault();
+                setShowTaskForm(true);
+              }}
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              Add
+            </Button>
+          </div>
+          {tasks.length > 0 ? (
             <div className="space-y-1.5">
               {tasks.slice(0, 3).map((task) => (
                 <div key={task.id} className="flex items-center gap-2 text-sm">
@@ -139,8 +164,10 @@ export default function ProjectCard({ project }) {
                 <p className="text-xs text-slate-400">+{tasks.length - 3} more tasks</p>
               )}
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="text-xs text-slate-400">No tasks yet</p>
+          )}
+        </div>
 
         {/* Rooms List */}
         {project.rooms && project.rooms.length > 0 && (
@@ -188,6 +215,15 @@ export default function ProjectCard({ project }) {
           <ChevronRight className="w-4 h-4 ml-1" />
         </div>
       </Card>
+
+      <TaskForm
+        open={showTaskForm}
+        onOpenChange={setShowTaskForm}
+        projectId={project.id}
+        projectName={project.project_name}
+        onSubmit={(data) => createTaskMutation.mutate(data)}
+        isLoading={createTaskMutation.isPending}
+      />
     </Link>
   );
 }
