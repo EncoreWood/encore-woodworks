@@ -8,97 +8,99 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Plus, Edit, Trash2, Copy, Search, Mail } from "lucide-react";
-import ProposalTemplateForm from "../components/proposals/ProposalTemplateForm";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FileText, Plus, Trash2, Search, Upload, Download, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 export default function EncoreDocs() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingTemplate, setEditingTemplate] = useState(null);
-  const [sendingTemplate, setSendingTemplate] = useState(null);
-  const [emailForm, setEmailForm] = useState({ to_email: "", subject: "", message: "" });
-  const [sending, setSending] = useState(false);
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadForm, setUploadForm] = useState({
+    name: "",
+    description: "",
+    category: "other",
+    tags: "",
+    project_id: ""
+  });
 
   const queryClient = useQueryClient();
 
-  const { data: templates = [], isLoading } = useQuery({
-    queryKey: ["proposalTemplates"],
-    queryFn: () => base44.entities.ProposalTemplate.list(),
+  const { data: documents = [], isLoading } = useQuery({
+    queryKey: ["documents"],
+    queryFn: () => base44.entities.Document.list("-created_date"),
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.ProposalTemplate.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["proposalTemplates"] });
-      setShowCreateForm(false);
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.ProposalTemplate.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["proposalTemplates"] });
-      setEditingTemplate(null);
-    },
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => base44.entities.Project.list(),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.ProposalTemplate.delete(id),
+    mutationFn: (id) => base44.entities.Document.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["proposalTemplates"] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      toast.success("Document deleted");
     },
   });
 
-  const duplicateMutation = useMutation({
-    mutationFn: (template) => {
-      const { id, created_date, updated_date, created_by, ...data } = template;
-      return base44.entities.ProposalTemplate.create({
-        ...data,
-        template_name: `${data.template_name} (Copy)`,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["proposalTemplates"] });
-    },
-  });
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const handleCreateBlank = () => {
-    setShowCreateForm(true);
-  };
-
-  const handleSendEmail = async () => {
-    if (!emailForm.to_email) {
-      toast.error("Please enter recipient email");
+    if (!uploadForm.name.trim()) {
+      toast.error("Please enter a document name");
       return;
     }
 
-    setSending(true);
+    setUploading(true);
     try {
-      await base44.functions.invoke('sendProposalEmail', {
-        to_email: emailForm.to_email,
-        template_id: sendingTemplate.id,
-        subject: emailForm.subject,
-        message: emailForm.message
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      
+      const selectedProject = projects.find(p => p.id === uploadForm.project_id);
+      const tags = uploadForm.tags.split(",").map(t => t.trim()).filter(Boolean);
+      
+      await base44.entities.Document.create({
+        name: uploadForm.name,
+        description: uploadForm.description,
+        file_url,
+        file_type: file.name.split(".").pop(),
+        category: uploadForm.category,
+        project_id: uploadForm.project_id || null,
+        project_name: selectedProject?.project_name || null,
+        tags
       });
-      toast.success("Email sent successfully!");
-      setSendingTemplate(null);
-      setEmailForm({ to_email: "", subject: "", message: "" });
+
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      setShowUploadDialog(false);
+      setUploadForm({
+        name: "",
+        description: "",
+        category: "other",
+        tags: "",
+        project_id: ""
+      });
+      toast.success("Document uploaded successfully!");
     } catch (error) {
-      toast.error("Failed to send email: " + error.message);
+      toast.error("Upload failed: " + error.message);
     } finally {
-      setSending(false);
+      setUploading(false);
     }
   };
 
-  const filteredTemplates = templates.filter(t =>
-    t.template_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredDocuments = documents.filter(doc => {
+    const matchesSearch = doc.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         doc.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || doc.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <div className="text-lg text-slate-600">Loading templates...</div>
+        <div className="text-lg text-slate-600">Loading documents...</div>
       </div>
     );
   }
@@ -108,30 +110,45 @@ export default function EncoreDocs() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Encore Docs</h1>
-          <p className="text-slate-500 mt-1">Manage proposal templates and documents</p>
+          <p className="text-slate-500 mt-1">Upload and manage project documents</p>
         </div>
 
-        {/* Search and Create */}
+        {/* Search, Filter and Upload */}
         <div className="flex items-center gap-4 mb-6">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
-              placeholder="Search templates..."
+              placeholder="Search documents..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
-          <Button onClick={handleCreateBlank} className="bg-amber-600 hover:bg-amber-700">
-            <Plus className="w-4 h-4 mr-2" />
-            New Template
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              <SelectItem value="contract">Contracts</SelectItem>
+              <SelectItem value="invoice">Invoices</SelectItem>
+              <SelectItem value="proposal">Proposals</SelectItem>
+              <SelectItem value="specification">Specifications</SelectItem>
+              <SelectItem value="drawing">Drawings</SelectItem>
+              <SelectItem value="photo">Photos</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button onClick={() => setShowUploadDialog(true)} className="bg-amber-600 hover:bg-amber-700">
+            <Upload className="w-4 h-4 mr-2" />
+            Upload Document
           </Button>
         </div>
 
-        {/* Templates Grid */}
+        {/* Documents Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTemplates.map((template) => (
-            <Card key={template.id} className="hover:shadow-lg transition-shadow">
+          {filteredDocuments.map((doc) => (
+            <Card key={doc.id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <FileText className="w-8 h-8 text-amber-600" />
@@ -139,42 +156,21 @@ export default function EncoreDocs() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-8 w-8 p-0 text-blue-600"
-                      onClick={() => {
-                        setSendingTemplate(template);
-                        setEmailForm({ 
-                          to_email: "", 
-                          subject: `Proposal Template: ${template.template_name}`, 
-                          message: "" 
-                        });
-                      }}
-                      title="Send via Email"
-                    >
-                      <Mail className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
                       className="h-8 w-8 p-0"
-                      onClick={() => setEditingTemplate(template)}
-                      title="Edit"
+                      onClick={() => window.open(doc.file_url, "_blank")}
+                      title="Open"
                     >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => duplicateMutation.mutate(template)}
-                      title="Duplicate"
-                    >
-                      <Copy className="w-4 h-4" />
+                      <ExternalLink className="w-4 h-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0 text-red-600"
-                      onClick={() => deleteMutation.mutate(template.id)}
+                      onClick={() => {
+                        if (confirm("Delete this document?")) {
+                          deleteMutation.mutate(doc.id);
+                        }
+                      }}
                       title="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -183,112 +179,154 @@ export default function EncoreDocs() {
                 </div>
               </CardHeader>
               <CardContent>
-                <CardTitle className="text-base font-semibold text-slate-900 mb-3">
-                  {template.template_name || "Untitled Template"}
+                <CardTitle className="text-base font-semibold text-slate-900 mb-2">
+                  {doc.name}
                 </CardTitle>
-                <div className="space-y-2 text-xs text-slate-600">
-                  {template.cabinet_style && (
-                    <div className="flex items-center gap-2">
+                {doc.description && (
+                  <p className="text-xs text-slate-600 mb-3 line-clamp-2">{doc.description}</p>
+                )}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {doc.category}
+                    </Badge>
+                    {doc.file_type && (
                       <Badge variant="outline" className="text-xs">
-                        {template.cabinet_style}
+                        .{doc.file_type}
                       </Badge>
+                    )}
+                  </div>
+                  {doc.project_name && (
+                    <p className="text-xs text-slate-500">Project: {doc.project_name}</p>
+                  )}
+                  {doc.tags && doc.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {doc.tags.map((tag, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
                     </div>
                   )}
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <span>Rooms: {template.rooms?.length || 0}</span>
-                    <span>Options: {template.options?.length || 0}</span>
-                  </div>
+                  <p className="text-xs text-slate-400 pt-2 border-t">
+                    {format(new Date(doc.created_date), "MMM d, yyyy")}
+                  </p>
                 </div>
               </CardContent>
             </Card>
           ))}
 
-          {filteredTemplates.length === 0 && (
+          {filteredDocuments.length === 0 && (
             <div className="col-span-full text-center py-12">
               <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500 mb-4">No templates found</p>
-              <Button onClick={handleCreateBlank} className="bg-amber-600 hover:bg-amber-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Your First Template
+              <p className="text-slate-500 mb-4">No documents found</p>
+              <Button onClick={() => setShowUploadDialog(true)} className="bg-amber-600 hover:bg-amber-700">
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Your First Document
               </Button>
             </div>
           )}
         </div>
 
-        {/* Create Template Dialog */}
-        <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create New Template</DialogTitle>
-            </DialogHeader>
-            <ProposalTemplateForm
-              template={null}
-              onSave={(data) => createMutation.mutate(data)}
-              onCancel={() => setShowCreateForm(false)}
-            />
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Template Dialog */}
-        <Dialog open={!!editingTemplate} onOpenChange={() => setEditingTemplate(null)}>
-          <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Edit Template</DialogTitle>
-            </DialogHeader>
-            <ProposalTemplateForm
-              template={editingTemplate}
-              onSave={(data) => updateMutation.mutate({ id: editingTemplate.id, data })}
-              onCancel={() => setEditingTemplate(null)}
-            />
-          </DialogContent>
-        </Dialog>
-
-        {/* Send Email Dialog */}
-        <Dialog open={!!sendingTemplate} onOpenChange={() => setSendingTemplate(null)}>
+        {/* Upload Dialog */}
+        <Dialog open={showUploadDialog} onOpenChange={setShowUploadDialog}>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Send Template via Email</DialogTitle>
+              <DialogTitle>Upload Document</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>Recipient Email *</Label>
+                <Label>Document Name *</Label>
                 <Input
-                  type="email"
-                  value={emailForm.to_email}
-                  onChange={(e) => setEmailForm({ ...emailForm, to_email: e.target.value })}
-                  placeholder="client@example.com"
+                  value={uploadForm.name}
+                  onChange={(e) => setUploadForm({ ...uploadForm, name: e.target.value })}
+                  placeholder="e.g., Contract for Smith Kitchen"
                 />
               </div>
               <div>
-                <Label>Subject</Label>
-                <Input
-                  value={emailForm.subject}
-                  onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })}
-                  placeholder="Email subject"
-                />
-              </div>
-              <div>
-                <Label>Message (Optional)</Label>
+                <Label>Description</Label>
                 <Textarea
-                  value={emailForm.message}
-                  onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })}
-                  rows={4}
-                  placeholder="Add a personal message..."
+                  value={uploadForm.description}
+                  onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
+                  placeholder="Optional description..."
+                  rows={3}
+                />
+              </div>
+              <div>
+                <Label>Category</Label>
+                <Select
+                  value={uploadForm.category}
+                  onValueChange={(value) => setUploadForm({ ...uploadForm, category: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="contract">Contract</SelectItem>
+                    <SelectItem value="invoice">Invoice</SelectItem>
+                    <SelectItem value="proposal">Proposal</SelectItem>
+                    <SelectItem value="specification">Specification</SelectItem>
+                    <SelectItem value="drawing">Drawing</SelectItem>
+                    <SelectItem value="photo">Photo</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Project (Optional)</Label>
+                <Select
+                  value={uploadForm.project_id}
+                  onValueChange={(value) => setUploadForm({ ...uploadForm, project_id: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select project (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>None</SelectItem>
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.project_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Tags (comma separated)</Label>
+                <Input
+                  value={uploadForm.tags}
+                  onChange={(e) => setUploadForm({ ...uploadForm, tags: e.target.value })}
+                  placeholder="e.g., urgent, pending review"
+                />
+              </div>
+              <div>
+                <Label>File *</Label>
+                <input
+                  type="file"
+                  onChange={handleFileUpload}
+                  className="mt-1 block w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
+                  disabled={uploading}
                 />
               </div>
               <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => setSendingTemplate(null)}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowUploadDialog(false);
+                    setUploadForm({
+                      name: "",
+                      description: "",
+                      category: "other",
+                      tags: "",
+                      project_id: ""
+                    });
+                  }}
+                  disabled={uploading}
+                >
                   Cancel
                 </Button>
-                <Button 
-                  onClick={handleSendEmail} 
-                  disabled={sending}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Mail className="w-4 h-4 mr-2" />
-                  {sending ? "Sending..." : "Send Email"}
-                </Button>
               </div>
+              {uploading && <p className="text-sm text-amber-600">Uploading...</p>}
             </div>
           </DialogContent>
         </Dialog>
