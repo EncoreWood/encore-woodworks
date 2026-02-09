@@ -25,6 +25,8 @@ export default function EncoreDocs() {
     tags: "",
     project_id: ""
   });
+  const [uploadSource, setUploadSource] = useState("local"); // "local" or "drive"
+  const [driveFileId, setDriveFileId] = useState("");
 
   const queryClient = useQueryClient();
 
@@ -82,7 +84,57 @@ export default function EncoreDocs() {
         tags: "",
         project_id: ""
       });
+      setDriveFileId("");
       toast.success("Document uploaded successfully!");
+    } catch (error) {
+      toast.error("Upload failed: " + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleGoogleDriveUpload = async () => {
+    if (!uploadForm.name.trim()) {
+      toast.error("Please enter a document name");
+      return;
+    }
+
+    if (!driveFileId.trim()) {
+      toast.error("Please enter Google Drive file ID");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const { data } = await base44.functions.invoke('getGoogleDriveFile', {
+        file_id: driveFileId.trim()
+      });
+
+      const selectedProject = projects.find(p => p.id === uploadForm.project_id);
+      const tags = uploadForm.tags.split(",").map(t => t.trim()).filter(Boolean);
+
+      await base44.entities.Document.create({
+        name: uploadForm.name,
+        description: uploadForm.description,
+        file_url: data.file_url,
+        file_type: data.file_type,
+        category: uploadForm.category,
+        project_id: uploadForm.project_id || null,
+        project_name: selectedProject?.project_name || null,
+        tags
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
+      setShowUploadDialog(false);
+      setUploadForm({
+        name: "",
+        description: "",
+        category: "other",
+        tags: "",
+        project_id: ""
+      });
+      setDriveFileId("");
+      toast.success("Document uploaded from Google Drive!");
     } catch (error) {
       toast.error("Upload failed: " + error.message);
     } finally {
@@ -300,14 +352,45 @@ export default function EncoreDocs() {
                 />
               </div>
               <div>
-                <Label>File *</Label>
-                <input
-                  type="file"
-                  onChange={handleFileUpload}
-                  className="mt-1 block w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
-                  disabled={uploading}
-                />
+                <Label>Upload Source</Label>
+                <Select value={uploadSource} onValueChange={setUploadSource}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="local">From Computer</SelectItem>
+                    <SelectItem value="drive">From Google Drive</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              {uploadSource === "local" && (
+                <div>
+                  <Label>File *</Label>
+                  <input
+                    type="file"
+                    onChange={handleFileUpload}
+                    className="mt-1 block w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100"
+                    disabled={uploading}
+                  />
+                </div>
+              )}
+
+              {uploadSource === "drive" && (
+                <div>
+                  <Label>Google Drive File ID *</Label>
+                  <Input
+                    value={driveFileId}
+                    onChange={(e) => setDriveFileId(e.target.value)}
+                    placeholder="e.g., 1A2B3C4D5E6F7G8H9I0J"
+                    disabled={uploading}
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Right-click file in Google Drive → Share → Copy link → Extract ID from URL
+                  </p>
+                </div>
+              )}
+
               <div className="flex justify-end gap-3">
                 <Button 
                   variant="outline" 
@@ -320,11 +403,22 @@ export default function EncoreDocs() {
                       tags: "",
                       project_id: ""
                     });
+                    setDriveFileId("");
+                    setUploadSource("local");
                   }}
                   disabled={uploading}
                 >
                   Cancel
                 </Button>
+                {uploadSource === "drive" && (
+                  <Button
+                    onClick={handleGoogleDriveUpload}
+                    disabled={uploading || !driveFileId.trim()}
+                    className="bg-amber-600 hover:bg-amber-700"
+                  >
+                    {uploading ? "Uploading..." : "Upload from Drive"}
+                  </Button>
+                )}
               </div>
               {uploading && <p className="text-sm text-amber-600">Uploading...</p>}
             </div>
