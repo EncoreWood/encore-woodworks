@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, FileText, X, Calendar, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
@@ -41,7 +42,8 @@ export default function OrdersBoard() {
     notes: "",
     ordered_date: "",
     expected_date: "",
-    received_date: ""
+    received_date: "",
+    rooms: []
   });
   const [uploadingFile, setUploadingFile] = useState(false);
 
@@ -91,7 +93,8 @@ export default function OrdersBoard() {
         notes: existingOrder.notes || "",
         ordered_date: existingOrder.ordered_date || "",
         expected_date: existingOrder.expected_date || "",
-        received_date: existingOrder.received_date || ""
+        received_date: existingOrder.received_date || "",
+        rooms: existingOrder.rooms || []
       });
     } else {
       setFormData({
@@ -99,7 +102,8 @@ export default function OrdersBoard() {
         notes: "",
         ordered_date: "",
         expected_date: "",
-        received_date: ""
+        received_date: "",
+        rooms: []
       });
     }
     
@@ -148,6 +152,31 @@ export default function OrdersBoard() {
     setSelectedCell({
       ...selectedCell,
       order: { ...selectedCell.order, files: updatedFiles }
+    });
+  };
+
+  const toggleRoom = (roomIndex, roomName) => {
+    const existingRoomIndex = formData.rooms.findIndex(r => r.room_index === roomIndex);
+    
+    if (existingRoomIndex > -1) {
+      setFormData({
+        ...formData,
+        rooms: formData.rooms.filter((_, i) => i !== existingRoomIndex)
+      });
+    } else {
+      setFormData({
+        ...formData,
+        rooms: [...formData.rooms, { room_name: roomName, room_index: roomIndex, notes: "" }]
+      });
+    }
+  };
+
+  const updateRoomNotes = (roomIndex, notes) => {
+    setFormData({
+      ...formData,
+      rooms: formData.rooms.map(r => 
+        r.room_index === roomIndex ? { ...r, notes } : r
+      )
     });
   };
 
@@ -243,6 +272,11 @@ export default function OrdersBoard() {
                           >
                             {order.status.replace("_", " ").toUpperCase()}
                           </div>
+                          {order.rooms?.length > 0 && (
+                            <div className="text-xs text-slate-600">
+                              {order.rooms.length} room{order.rooms.length > 1 ? "s" : ""}
+                            </div>
+                          )}
                           {order.notes && (
                             <div className="text-xs text-slate-600 line-clamp-2">
                               {order.notes}
@@ -333,16 +367,56 @@ export default function OrdersBoard() {
                 </div>
               </div>
 
+              {/* Rooms */}
+              {selectedCell?.project?.rooms && selectedCell.project.rooms.length > 0 && (
+                <div>
+                  <Label>Rooms</Label>
+                  <div className="mt-2 space-y-3 border rounded-lg p-4 max-h-[300px] overflow-y-auto">
+                    {selectedCell.project.rooms.map((room, index) => {
+                      const isSelected = formData.rooms.some(r => r.room_index === index);
+                      const roomData = formData.rooms.find(r => r.room_index === index);
+                      
+                      return (
+                        <div key={index} className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() => toggleRoom(index, room.room_name)}
+                              id={`room-${index}`}
+                            />
+                            <label 
+                              htmlFor={`room-${index}`}
+                              className="text-sm font-medium cursor-pointer flex-1"
+                            >
+                              {room.room_name || `Room ${index + 1}`}
+                            </label>
+                          </div>
+                          {isSelected && (
+                            <Textarea
+                              value={roomData?.notes || ""}
+                              onChange={(e) => updateRoomNotes(index, e.target.value)}
+                              placeholder={`Notes for ${room.room_name || `Room ${index + 1}`}...`}
+                              rows={2}
+                              className="ml-6"
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Notes */}
               <div>
-                <Label>Notes</Label>
+                <Label>General Notes</Label>
                 <Textarea
                   value={formData.notes}
                   onChange={(e) =>
                     setFormData({ ...formData, notes: e.target.value })
                   }
-                  placeholder="Add notes about this order..."
-                  rows={4}
+                  placeholder="Add general notes about this order..."
+                  rows={3}
                 />
               </div>
 
