@@ -8,10 +8,12 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { User, MapPin, Calendar, DollarSign, MessageCircle, Plus } from "lucide-react";
+import { User, MapPin, Calendar, DollarSign, MessageCircle, Plus, CheckCircle2, Circle } from "lucide-react";
 import { format } from "date-fns";
 import { useState, useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 import ProjectForm from "../components/projects/ProjectForm";
+import TaskForm from "../components/projects/TaskForm";
 
 const statusColumnsByTab = {
   "pre-production": [
@@ -51,6 +53,8 @@ export default function Kanban() {
   const [chatDialogOpen, setChatDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [taskProject, setTaskProject] = useState(null);
   const [activeTab, setActiveTab] = useState("pre-production");
   const projectRefs = useRef({});
 
@@ -62,6 +66,11 @@ export default function Kanban() {
   const { data: chatRooms = [] } = useQuery({
     queryKey: ["chatRooms"],
     queryFn: () => base44.entities.ChatRoom.list()
+  });
+
+  const { data: allTasks = [] } = useQuery({
+    queryKey: ["tasks"],
+    queryFn: () => base44.entities.Task.list()
   });
 
   const updateMutation = useMutation({
@@ -153,6 +162,26 @@ export default function Kanban() {
       setShowProjectForm(false);
     }
   });
+
+  const createTaskMutation = useMutation({
+    mutationFn: (data) => base44.entities.Task.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setShowTaskForm(false);
+      setTaskProject(null);
+    }
+  });
+
+  const handleAddTask = (e, project) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setTaskProject(project);
+    setShowTaskForm(true);
+  };
+
+  const getProjectTasks = (projectId) => {
+    return allTasks.filter(t => t.project_id === projectId);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -410,6 +439,16 @@ export default function Kanban() {
             createMutation.mutate(projectData);
           }}
           isLoading={createMutation.isPending}
+        />
+
+        {/* Task Form */}
+        <TaskForm
+          open={showTaskForm}
+          onOpenChange={setShowTaskForm}
+          projectId={taskProject?.id}
+          projectName={taskProject?.project_name}
+          onSubmit={(data) => createTaskMutation.mutate(data)}
+          isLoading={createTaskMutation.isPending}
         />
       </div>
     </div>
