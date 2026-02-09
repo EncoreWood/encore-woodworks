@@ -115,8 +115,8 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Projects</h1>
-            <p className="text-slate-500 mt-1">Manage your cabinet projects</p>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Overview</h1>
+            <p className="text-slate-500 mt-1">Company overview</p>
           </div>
           <div className="flex gap-2">
             {currentUser?.role === "admin" && (
