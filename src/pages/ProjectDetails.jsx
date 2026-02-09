@@ -38,7 +38,8 @@ import {
   FileIcon,
   ExternalLink,
   Plus,
-  Eye
+  Eye,
+  PackageOpen
 } from "lucide-react";
 import { format } from "date-fns";
 import ProjectForm from "../components/projects/ProjectForm";
@@ -87,6 +88,12 @@ export default function ProjectDetails() {
   const { data: proposal, isLoading: proposalLoading } = useQuery({
     queryKey: ["proposal", projectId],
     queryFn: () => base44.entities.Proposal.filter({ project_id: projectId }).then((res) => res[0]),
+    enabled: !!projectId
+  });
+
+  const { data: projectOrders = [] } = useQuery({
+    queryKey: ["projectOrders", projectId],
+    queryFn: () => base44.entities.ProjectOrder.filter({ project_id: projectId }),
     enabled: !!projectId
   });
 
@@ -158,6 +165,15 @@ export default function ProjectDetails() {
   const completedPhases = phases.filter((p) => project[p.key]).length;
   const progress = (completedPhases / phases.length) * 100;
 
+  // Calculate materials ordered progress
+  const materialsOrderedProgress = (() => {
+    if (projectOrders.length === 0) return 0;
+    const completedOrders = projectOrders.filter(
+      order => order.status === "ordered" || order.status === "received" || order.status === "installed"
+    ).length;
+    return (completedOrders / projectOrders.length) * 100;
+  })();
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -228,36 +244,61 @@ export default function ProjectDetails() {
 
               <div className="space-y-4">
                 {phases.map((phase) => (
-                  <div
-                    key={phase.key}
-                    className={cn(
-                      "flex items-center gap-4 p-4 rounded-lg border transition-all cursor-pointer",
-                      project[phase.key]
-                        ? "bg-emerald-50 border-emerald-200"
-                        : "bg-white border-slate-200 hover:border-slate-300"
-                    )}
-                    onClick={() => handlePhaseToggle(phase.key)}
-                  >
-                    <Checkbox
-                      checked={project[phase.key]}
-                      className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
-                    />
-                    <phase.icon
+                  <div key={phase.key}>
+                    <div
                       className={cn(
-                        "w-5 h-5",
-                        project[phase.key] ? "text-emerald-600" : "text-slate-400"
+                        "flex items-center gap-4 p-4 rounded-lg border transition-all cursor-pointer",
+                        project[phase.key]
+                          ? "bg-emerald-50 border-emerald-200"
+                          : "bg-white border-slate-200 hover:border-slate-300"
                       )}
-                    />
-                    <span
-                      className={cn(
-                        "font-medium",
-                        project[phase.key] ? "text-emerald-700" : "text-slate-700"
-                      )}
+                      onClick={() => handlePhaseToggle(phase.key)}
                     >
-                      {phase.label}
-                    </span>
-                    {updateMutation.isPending && (
-                      <Loader2 className="w-4 h-4 animate-spin text-slate-400 ml-auto" />
+                      <Checkbox
+                        checked={project[phase.key]}
+                        className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                      />
+                      <phase.icon
+                        className={cn(
+                          "w-5 h-5",
+                          project[phase.key] ? "text-emerald-600" : "text-slate-400"
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          "font-medium flex-1",
+                          project[phase.key] ? "text-emerald-700" : "text-slate-700"
+                        )}
+                      >
+                        {phase.label}
+                      </span>
+                      {phase.key === "materials_ordered" && (
+                        <Link to={createPageUrl("OrdersBoard") + "?project=" + projectId}>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="gap-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <PackageOpen className="w-3 h-3" />
+                            Orders
+                          </Button>
+                        </Link>
+                      )}
+                      {updateMutation.isPending && (
+                        <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                      )}
+                    </div>
+                    {phase.key === "materials_ordered" && projectOrders.length > 0 && (
+                      <div className="ml-14 mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-slate-600">Order Completion</span>
+                          <span className="text-xs font-semibold text-slate-700">
+                            {projectOrders.filter(o => o.status === "ordered" || o.status === "received" || o.status === "installed").length}/{projectOrders.length} orders
+                          </span>
+                        </div>
+                        <Progress value={materialsOrderedProgress} className="h-1.5 bg-slate-200" />
+                      </div>
                     )}
                   </div>
                 ))}
