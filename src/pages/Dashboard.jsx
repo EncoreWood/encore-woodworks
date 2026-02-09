@@ -19,6 +19,7 @@ export default function Dashboard() {
   const [showForm, setShowForm] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [projectListDialog, setProjectListDialog] = useState(null);
   const [filters, setFilters] = useState({
     search: "",
     status: "all",
@@ -63,6 +64,7 @@ export default function Dashboard() {
   ).length;
   const completedProjects = projects.filter((p) => p.status === "completed").length;
   const onHoldProjects = projects.filter((p) => p.status === "on_hold").length;
+  const sideProjects = projects.filter((p) => p.status === "inquiry").length;
   
   // Financial calculations
   const totalEstimatedBudget = projects.reduce((sum, p) => sum + (p.estimated_budget || 0), 0);
@@ -192,30 +194,58 @@ export default function Dashboard() {
                   </Button>
                 </Link>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <StatsCard
                   title="Total Projects"
                   value={totalProjects}
                   icon={Briefcase}
                   subtitle="All time"
+                  onClick={() => setProjectListDialog({ title: "All Projects", projects })}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
                 />
                 <StatsCard
                   title="Active Projects"
                   value={activeProjects}
                   icon={Clock}
                   subtitle="In progress"
+                  onClick={() => setProjectListDialog({ 
+                    title: "Active Projects", 
+                    projects: projects.filter((p) => !["completed", "on_hold", "inquiry"].includes(p.status))
+                  })}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
                 />
                 <StatsCard
                   title="Completed"
                   value={completedProjects}
                   icon={CheckCircle}
                   subtitle="Finished"
+                  onClick={() => setProjectListDialog({ 
+                    title: "Completed Projects", 
+                    projects: projects.filter((p) => p.status === "completed")
+                  })}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
                 />
                 <StatsCard
                   title="On Hold"
                   value={onHoldProjects}
                   icon={PauseCircle}
                   subtitle="Paused"
+                  onClick={() => setProjectListDialog({ 
+                    title: "On Hold Projects", 
+                    projects: projects.filter((p) => p.status === "on_hold")
+                  })}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
+                />
+                <StatsCard
+                  title="Side Projects"
+                  value={sideProjects}
+                  icon={Briefcase}
+                  subtitle="Inquiry"
+                  onClick={() => setProjectListDialog({ 
+                    title: "Side Projects", 
+                    projects: projects.filter((p) => p.status === "inquiry")
+                  })}
+                  className="cursor-pointer hover:shadow-lg transition-shadow"
                 />
               </div>
             </div>
@@ -266,6 +296,41 @@ export default function Dashboard() {
           onSubmit={(data) => createMutation.mutate(data)}
           isLoading={createMutation.isPending}
         />
+
+        {/* Project List Dialog */}
+        <Dialog open={!!projectListDialog} onOpenChange={() => setProjectListDialog(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{projectListDialog?.title}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              {projectListDialog?.projects.length > 0 ? (
+                projectListDialog.projects.map((project) => (
+                  <Link
+                    key={project.id}
+                    to={createPageUrl(`ProjectDetails?id=${project.id}`)}
+                    className="block p-4 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-semibold text-slate-900">{project.project_name}</h4>
+                        <p className="text-sm text-slate-500">{project.client_name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-slate-700 capitalize">{project.status?.replace(/_/g, ' ')}</p>
+                        {project.estimated_budget && (
+                          <p className="text-sm text-slate-500">${project.estimated_budget.toLocaleString()}</p>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                ))
+              ) : (
+                <p className="text-center text-slate-500 py-8">No projects found</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Dashboard Settings Dialog */}
         <Dialog open={showSettings} onOpenChange={setShowSettings}>
