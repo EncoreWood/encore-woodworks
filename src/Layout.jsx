@@ -120,8 +120,28 @@ export default function Layout({ children, currentPageName }) {
     setEditingBoardIcon(currentIcon);
   };
 
-  const saveBoardName = () => {
+  const saveBoardName = async () => {
     if (editingBoardGroupKey !== null && editingBoardKey !== null && editingBoardName.trim()) {
+      const oldBoard = navGroups[editingBoardGroupKey].items[editingBoardKey];
+      const oldPageName = oldBoard.page;
+      const newPageName = editingBoardName.trim().replace(/\s+/g, "");
+
+      // Update references if page name changed
+      if (oldPageName !== newPageName) {
+        try {
+          const { data } = await base44.functions.invoke('updatePageReferences', {
+            old_page_name: oldPageName,
+            new_page_name: newPageName
+          });
+          
+          if (data.updated_references > 0) {
+            console.log(`Updated ${data.updated_references} references`);
+          }
+        } catch (error) {
+          console.error('Failed to update references:', error);
+        }
+      }
+
       setNavGroups(prev => ({
         ...prev,
         [editingBoardGroupKey]: {
@@ -130,6 +150,7 @@ export default function Layout({ children, currentPageName }) {
             idx === editingBoardKey ? { 
               ...item, 
               name: editingBoardName.trim(),
+              page: newPageName,
               icon: iconMap[editingBoardIcon],
               iconName: editingBoardIcon
             } : item
@@ -201,6 +222,7 @@ export default function Layout({ children, currentPageName }) {
             {
               name: newBoardName.trim(),
               icon: KanbanIcon,
+              iconName: "KanbanIcon",
               page: pageName
             }
           ]
