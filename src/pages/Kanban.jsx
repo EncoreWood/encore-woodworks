@@ -326,6 +326,52 @@ export default function Kanban() {
                                                    </span>
                                                  </div>
                                                )}
+
+                                               {/* Tasks Section */}
+                                               {(() => {
+                                                 const projectTasks = getProjectTasks(project.id);
+                                                 const completedTasks = projectTasks.filter(t => t.status === "completed").length;
+                                                 return (
+                                                   <div className="mt-3 pt-3 border-t border-slate-100">
+                                                     <div className="flex items-center justify-between mb-2">
+                                                       <span className="text-xs font-medium text-slate-600">
+                                                         Tasks {projectTasks.length > 0 && `(${completedTasks}/${projectTasks.length})`}
+                                                       </span>
+                                                       <button
+                                                         onClick={(e) => handleAddTask(e, project)}
+                                                         className="text-amber-600 hover:text-amber-700 text-xs flex items-center gap-1"
+                                                       >
+                                                         <Plus className="w-3 h-3" />
+                                                         Add
+                                                       </button>
+                                                     </div>
+                                                     {projectTasks.length > 0 ? (
+                                                       <div className="space-y-1">
+                                                         {projectTasks.slice(0, 2).map((task) => (
+                                                           <div key={task.id} className="flex items-center gap-1.5 text-xs">
+                                                             {task.status === "completed" ? (
+                                                               <CheckCircle2 className="w-3 h-3 text-emerald-600 flex-shrink-0" />
+                                                             ) : (
+                                                               <Circle className="w-3 h-3 text-slate-400 flex-shrink-0" />
+                                                             )}
+                                                             <span className={cn(
+                                                               "truncate flex-1",
+                                                               task.status === "completed" ? "line-through text-slate-400" : "text-slate-600"
+                                                             )}>
+                                                               {task.title}
+                                                             </span>
+                                                           </div>
+                                                         ))}
+                                                         {projectTasks.length > 2 && (
+                                                           <p className="text-xs text-slate-400 mt-1">+{projectTasks.length - 2} more</p>
+                                                         )}
+                                                       </div>
+                                                     ) : (
+                                                       <p className="text-xs text-slate-400">No tasks yet</p>
+                                                     )}
+                                                   </div>
+                                                 );
+                                               })()}
                                              </div>
                                            </Card>
                                          </Link>
