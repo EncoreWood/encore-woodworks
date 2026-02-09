@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { User, MapPin, Calendar, DollarSign, MessageCircle, Plus } from "lucide-react";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import ProjectForm from "../components/projects/ProjectForm";
 
 const statusColumns = [
@@ -36,6 +36,7 @@ export default function Kanban() {
   const [chatDialogOpen, setChatDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
+  const projectRefs = useRef({});
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
@@ -94,6 +95,24 @@ export default function Kanban() {
     return projects.filter((p) => p.status === status);
   };
 
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectId = urlParams.get("project");
+    
+    if (projectId && projectRefs.current[projectId]) {
+      setTimeout(() => {
+        projectRefs.current[projectId]?.scrollIntoView({ 
+          behavior: "smooth", 
+          block: "center" 
+        });
+        projectRefs.current[projectId]?.classList.add("ring-4", "ring-amber-400", "ring-opacity-50");
+        setTimeout(() => {
+          projectRefs.current[projectId]?.classList.remove("ring-4", "ring-amber-400", "ring-opacity-50");
+        }, 2000);
+      }, 100);
+    }
+  }, [projects]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -149,17 +168,20 @@ export default function Kanban() {
                                index={index}
                              >
                                {(provided, snapshot) => (
-                                 <div
-                                   ref={provided.innerRef}
-                                   {...provided.draggableProps}
-                                   {...provided.dragHandleProps}
-                                 >
-                                   <Link to={createPageUrl("ProjectDetails") + "?id=" + project.id}>
-                                     <Card
-                                       className={`p-4 cursor-pointer hover:shadow-md transition-all ${
-                                         snapshot.isDragging ? "shadow-lg rotate-2" : ""
-                                       }`}
-                                     >
+                                  <div
+                                    ref={(el) => {
+                                      provided.innerRef(el);
+                                      projectRefs.current[project.id] = el;
+                                    }}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                  >
+                                    <Link to={createPageUrl("ProjectDetails") + "?id=" + project.id}>
+                                      <Card
+                                        className={`p-4 cursor-pointer hover:shadow-md transition-all ${
+                                          snapshot.isDragging ? "shadow-lg rotate-2" : ""
+                                        }`}
+                                      >
                                        <div className="space-y-3">
                                          <div>
                                            <h3 className="font-semibold text-slate-900 mb-1 line-clamp-1">

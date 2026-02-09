@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Calendar, MapPin, User, ChevronRight, DoorOpen } from "lucide-react";
+import { Calendar, MapPin, User, ChevronRight, DoorOpen, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -55,11 +55,19 @@ export default function ProjectCard({ project }) {
     <Link to={createPageUrl("ProjectDetails") + `?id=${project.id}`}>
       <Card className="group p-5 bg-white border-0 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer">
         <div className="flex items-start justify-between mb-4">
-          <div className="space-y-1">
+          <div className="space-y-1 flex-1">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-slate-900 group-hover:text-amber-700 transition-colors">
                 {project.project_name}
               </h3>
+              <Link 
+                to={createPageUrl("Kanban") + `?project=${project.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-slate-400 hover:text-amber-600 transition-colors"
+                title="View on Board"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </Link>
               <span className={cn("text-xs font-medium", priority.color)}>
                 • {priority.label}
               </span>
