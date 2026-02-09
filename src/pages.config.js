@@ -59,12 +59,12 @@ import MorningMeeting from './pages/MorningMeeting';
 import OrdersBoard from './pages/OrdersBoard';
 import ProjectDetails from './pages/ProjectDetails';
 import PurchaseOrders from './pages/PurchaseOrders';
+import SOPBoard from './pages/SOPBoard';
 import ShopProduction from './pages/ShopProduction';
 import StretchingRoutine from './pages/StretchingRoutine';
 import Suppliers from './pages/Suppliers';
 import Team from './pages/Team';
 import TimeSheet from './pages/TimeSheet';
-import SOPBoard from './pages/SOPBoard';
 import __Layout from './Layout.jsx';
 
 
@@ -81,12 +81,12 @@ export const PAGES = {
     "OrdersBoard": OrdersBoard,
     "ProjectDetails": ProjectDetails,
     "PurchaseOrders": PurchaseOrders,
+    "SOPBoard": SOPBoard,
     "ShopProduction": ShopProduction,
     "StretchingRoutine": StretchingRoutine,
     "Suppliers": Suppliers,
     "Team": Team,
     "TimeSheet": TimeSheet,
-    "SOPBoard": SOPBoard,
 }
 
 export const pagesConfig = {
