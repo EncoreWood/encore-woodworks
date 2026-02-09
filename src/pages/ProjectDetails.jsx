@@ -111,7 +111,7 @@ export default function ProjectDetails() {
   const deleteMutation = useMutation({
     mutationFn: () => base44.entities.Project.delete(projectId),
     onSuccess: () => {
-      window.location.href = createPageUrl("Dashboard");
+      window.location.href = createPageUrl("Kanban");
     }
   });
 
@@ -144,10 +144,10 @@ export default function ProjectDetails() {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
         <h2 className="text-xl font-semibold text-slate-700 mb-4">Project not found</h2>
-        <Link to={createPageUrl("Dashboard")}>
+        <Link to={createPageUrl("Kanban")}>
           <Button variant="outline">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
+            Back to Projects
           </Button>
         </Link>
       </div>
@@ -182,7 +182,7 @@ export default function ProjectDetails() {
         {/* Header */}
         <div className="mb-8">
           <Link
-            to={createPageUrl("Dashboard")}
+            to={createPageUrl("Kanban")}
             className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700 mb-4"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
