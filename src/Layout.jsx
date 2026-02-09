@@ -21,39 +21,61 @@ export default function Layout({ children, currentPageName }) {
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
   const [employees, setEmployees] = useState([]);
 
-  const [navGroups, setNavGroups] = useState({
+  const defaultNavGroups = {
     projects: {
       name: "Projects",
       items: [
-        { name: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
-        { name: "Board", icon: KanbanIcon, page: "Kanban" },
-        { name: "Invoicing", icon: FileTextIcon, page: "Invoicing" },
-        { name: "Encore Docs", icon: FileText, page: "EncoreDocs" },
+        { name: "Dashboard", icon: LayoutDashboard, iconName: "LayoutDashboard", page: "Dashboard" },
+        { name: "Board", icon: KanbanIcon, iconName: "KanbanIcon", page: "Kanban" },
+        { name: "Invoicing", icon: FileTextIcon, iconName: "FileText", page: "Invoicing" },
+        { name: "Encore Docs", icon: FileText, iconName: "FileText", page: "EncoreDocs" },
       ]
     },
     operations: {
       name: "Operations",
       items: [
-        { name: "Calendar", icon: Calendar, page: "Calendar" },
-        { name: "Production", icon: Factory, page: "ShopProduction" },
-        { name: "Inventory", icon: Coffee, page: "Inventory" },
-        { name: "Purchase Orders", icon: Package, page: "PurchaseOrders" },
-        { name: "Suppliers", icon: Truck, page: "Suppliers" },
-        { name: "Order Board", icon: KanbanIcon, page: "OrdersBoard" },
-        { name: "SOPs", icon: FileText, page: "SOPBoard" },
+        { name: "Calendar", icon: Calendar, iconName: "Calendar", page: "Calendar" },
+        { name: "Production", icon: Factory, iconName: "Factory", page: "ShopProduction" },
+        { name: "Inventory", icon: Coffee, iconName: "Coffee", page: "Inventory" },
+        { name: "Purchase Orders", icon: Package, iconName: "Package", page: "PurchaseOrders" },
+        { name: "Suppliers", icon: Truck, iconName: "Truck", page: "Suppliers" },
+        { name: "Order Board", icon: KanbanIcon, iconName: "KanbanIcon", page: "OrdersBoard" },
+        { name: "SOPs", icon: FileText, iconName: "FileText", page: "SOPBoard" },
       ]
     },
     team: {
       name: "Team",
       items: [
-        { name: "Morning Meeting", icon: Coffee, page: "MorningMeeting" },
-        { name: "Team", icon: Users, page: "Team" },
-        { name: "Time Sheet", icon: Coffee, page: "TimeSheet" },
-        { name: "Chat", icon: MessageSquare, page: "ChatBoard" },
-        { name: "Forms", icon: FileText, page: "Forms" }
+        { name: "Morning Meeting", icon: Coffee, iconName: "Coffee", page: "MorningMeeting" },
+        { name: "Team", icon: Users, iconName: "Users", page: "Team" },
+        { name: "Time Sheet", icon: Coffee, iconName: "Coffee", page: "TimeSheet" },
+        { name: "Chat", icon: MessageSquare, iconName: "MessageSquare", page: "ChatBoard" },
+        { name: "Forms", icon: FileText, iconName: "FileText", page: "Forms" }
       ]
     }
-  });
+  };
+
+  const loadNavGroups = () => {
+    try {
+      const saved = localStorage.getItem('navGroups');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Restore icon components from iconName
+        Object.keys(parsed).forEach(groupKey => {
+          parsed[groupKey].items = parsed[groupKey].items.map(item => ({
+            ...item,
+            icon: iconMap[item.iconName] || KanbanIcon
+          }));
+        });
+        return parsed;
+      }
+    } catch (error) {
+      console.error('Failed to load nav groups:', error);
+    }
+    return defaultNavGroups;
+  };
+
+  const [navGroups, setNavGroups] = useState(loadNavGroups);
 
   const [showSettings, setShowSettings] = useState(false);
   const [editingGroupKey, setEditingGroupKey] = useState(null);
@@ -81,13 +103,17 @@ export default function Layout({ children, currentPageName }) {
 
   const saveGroupName = () => {
     if (editingGroupKey && editingGroupName.trim()) {
-      setNavGroups(prev => ({
-        ...prev,
-        [editingGroupKey]: {
-          ...prev[editingGroupKey],
-          name: editingGroupName.trim()
-        }
-      }));
+      setNavGroups(prev => {
+        const updated = {
+          ...prev,
+          [editingGroupKey]: {
+            ...prev[editingGroupKey],
+            name: editingGroupName.trim()
+          }
+        };
+        localStorage.setItem('navGroups', JSON.stringify(updated));
+        return updated;
+      });
       setEditingGroupKey(null);
       setEditingGroupName("");
     }
@@ -97,6 +123,7 @@ export default function Layout({ children, currentPageName }) {
     setNavGroups(prev => {
       const newGroups = { ...prev };
       delete newGroups[groupKey];
+      localStorage.setItem('navGroups', JSON.stringify(newGroups));
       return newGroups;
     });
     setExpandedGroups(prev => {
@@ -142,21 +169,25 @@ export default function Layout({ children, currentPageName }) {
         }
       }
 
-      setNavGroups(prev => ({
-        ...prev,
-        [editingBoardGroupKey]: {
-          ...prev[editingBoardGroupKey],
-          items: prev[editingBoardGroupKey].items.map((item, idx) =>
-            idx === editingBoardKey ? { 
-              ...item, 
-              name: editingBoardName.trim(),
-              page: newPageName,
-              icon: iconMap[editingBoardIcon],
-              iconName: editingBoardIcon
-            } : item
-          )
-        }
-      }));
+      setNavGroups(prev => {
+        const updated = {
+          ...prev,
+          [editingBoardGroupKey]: {
+            ...prev[editingBoardGroupKey],
+            items: prev[editingBoardGroupKey].items.map((item, idx) =>
+              idx === editingBoardKey ? { 
+                ...item, 
+                name: editingBoardName.trim(),
+                page: newPageName,
+                icon: iconMap[editingBoardIcon],
+                iconName: editingBoardIcon
+              } : item
+            )
+          }
+        };
+        localStorage.setItem('navGroups', JSON.stringify(updated));
+        return updated;
+      });
       setEditingBoardKey(null);
       setEditingBoardGroupKey(null);
       setEditingBoardName("");
@@ -172,6 +203,7 @@ export default function Layout({ children, currentPageName }) {
       const board = newGroups[fromGroupKey].items[itemIndex];
       newGroups[fromGroupKey].items.splice(itemIndex, 1);
       newGroups[toGroupKey].items.push(board);
+      localStorage.setItem('navGroups', JSON.stringify(newGroups));
       return newGroups;
     });
     setEditingBoardKey(null);
@@ -187,6 +219,7 @@ export default function Layout({ children, currentPageName }) {
       if (newIndex >= 0 && newIndex < items.length) {
         [items[itemIndex], items[newIndex]] = [items[newIndex], items[itemIndex]];
       }
+      localStorage.setItem('navGroups', JSON.stringify(newGroups));
       return newGroups;
     });
   };
@@ -194,13 +227,17 @@ export default function Layout({ children, currentPageName }) {
   const createNewGroup = () => {
     if (newGroupName.trim()) {
       const groupKey = newGroupName.toLowerCase().replace(/\s+/g, "_");
-      setNavGroups(prev => ({
-        ...prev,
-        [groupKey]: {
-          name: newGroupName.trim(),
-          items: []
-        }
-      }));
+      setNavGroups(prev => {
+        const updated = {
+          ...prev,
+          [groupKey]: {
+            name: newGroupName.trim(),
+            items: []
+          }
+        };
+        localStorage.setItem('navGroups', JSON.stringify(updated));
+        return updated;
+      });
       setExpandedGroups(prev => ({
         ...prev,
         [groupKey]: true
@@ -213,21 +250,25 @@ export default function Layout({ children, currentPageName }) {
   const createNewBoard = (groupKey) => {
     if (newBoardName.trim()) {
       const pageName = newBoardName.trim().replace(/\s+/g, "");
-      setNavGroups(prev => ({
-        ...prev,
-        [groupKey]: {
-          ...prev[groupKey],
-          items: [
-            ...prev[groupKey].items,
-            {
-              name: newBoardName.trim(),
-              icon: KanbanIcon,
-              iconName: "KanbanIcon",
-              page: pageName
-            }
-          ]
-        }
-      }));
+      setNavGroups(prev => {
+        const updated = {
+          ...prev,
+          [groupKey]: {
+            ...prev[groupKey],
+            items: [
+              ...prev[groupKey].items,
+              {
+                name: newBoardName.trim(),
+                icon: KanbanIcon,
+                iconName: "KanbanIcon",
+                page: pageName
+              }
+            ]
+          }
+        };
+        localStorage.setItem('navGroups', JSON.stringify(updated));
+        return updated;
+      });
       setNewBoardName("");
       setCreatingBoardInGroup(null);
     }
