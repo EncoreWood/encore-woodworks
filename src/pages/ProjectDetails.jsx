@@ -39,7 +39,9 @@ import {
   ExternalLink,
   Plus,
   Eye,
-  PackageOpen
+  PackageOpen,
+  Paintbrush,
+  TreePine
 } from "lucide-react";
 import { format } from "date-fns";
 import ProjectForm from "../components/projects/ProjectForm";
@@ -306,7 +308,7 @@ export default function ProjectDetails() {
             </Card>
 
             {/* Specifications */}
-            {(project.cabinet_style || project.hardware_type || project.project_url || project.notes) && (
+            {(project.cabinet_style || project.hardware_type || project.finish || project.wood_types?.length > 0 || project.project_url || project.notes) && (
               <Card className="p-6 bg-white border-0 shadow-sm">
                 <h2 className="text-lg font-semibold text-slate-900 mb-4">Specifications</h2>
                 <div className="space-y-4">
@@ -325,6 +327,30 @@ export default function ProjectDetails() {
                       <div>
                         <p className="text-sm text-slate-500">Hardware</p>
                         <p className="font-medium text-slate-900">{project.hardware_type}</p>
+                      </div>
+                    </div>
+                  )}
+                  {project.finish && (
+                    <div className="flex items-start gap-3">
+                      <Paintbrush className="w-5 h-5 text-slate-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-slate-500">Finish</p>
+                        <p className="font-medium text-slate-900">{project.finish}</p>
+                      </div>
+                    </div>
+                  )}
+                  {project.wood_types && project.wood_types.length > 0 && (
+                    <div className="flex items-start gap-3">
+                      <TreePine className="w-5 h-5 text-slate-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-slate-500">Wood Types</p>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {project.wood_types.map((wood, idx) => (
+                            <Badge key={idx} variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                              {wood}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}

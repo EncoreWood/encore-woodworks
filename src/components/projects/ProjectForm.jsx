@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Loader2 } from "lucide-react";
 import RoomsEditor from "./RoomsEditor";
 import FileUploader from "./FileUploader";
+import WoodTypeSelector from "./WoodTypeSelector";
 
 const initialFormState = {
   project_name: "",
@@ -29,6 +30,9 @@ const initialFormState = {
   estimated_completion: "",
   cabinet_style: "",
   hardware_type: "",
+  finish: "",
+  wood_types: [],
+  available_wood_types: ["Maple", "Oak", "Cherry", "Walnut", "Birch", "Hickory", "Pine", "Alder", "Ash", "Mahogany"],
   notes: "",
   project_url: "",
   files: [],
@@ -289,6 +293,24 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
                   value={formData.hardware_type}
                   onChange={(e) => handleChange("hardware_type", e.target.value)}
                   placeholder="e.g., Brushed Nickel Pulls"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="finish">Finish</Label>
+                <Input
+                  id="finish"
+                  value={formData.finish}
+                  onChange={(e) => handleChange("finish", e.target.value)}
+                  placeholder="e.g., Natural Clear Coat"
+                />
+              </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Wood Types</Label>
+                <WoodTypeSelector
+                  selectedWoods={formData.wood_types || []}
+                  availableWoods={formData.available_wood_types || initialFormState.available_wood_types}
+                  onChange={(woods) => handleChange("wood_types", woods)}
+                  onUpdateAvailable={(woods) => handleChange("available_wood_types", woods)}
                 />
               </div>
               <div className="space-y-2 sm:col-span-2">
