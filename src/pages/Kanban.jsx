@@ -7,22 +7,37 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { User, MapPin, Calendar, DollarSign, MessageCircle, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { useState, useEffect, useRef } from "react";
 import ProjectForm from "../components/projects/ProjectForm";
 
-const statusColumns = [
-  { id: "inquiry", label: "Inquiry", color: "bg-slate-100" },
-  { id: "quoted", label: "Quoted", color: "bg-blue-50" },
-  { id: "approved", label: "Approved", color: "bg-emerald-50" },
-  { id: "in_design", label: "In Design", color: "bg-violet-50" },
-  { id: "in_production", label: "In Production", color: "bg-amber-50" },
-  { id: "ready_for_install", label: "Ready", color: "bg-cyan-50" },
-  { id: "installing", label: "Installing", color: "bg-orange-50" },
-  { id: "completed", label: "Completed", color: "bg-emerald-50" },
-  { id: "on_hold", label: "On Hold", color: "bg-red-50" }
-];
+const statusColumnsByTab = {
+  "pre-production": [
+    { id: "inquiry", label: "Inquiry", color: "bg-slate-100" },
+    { id: "quoted", label: "Quoted", color: "bg-blue-50" },
+    { id: "approved", label: "Approved", color: "bg-emerald-50" }
+  ],
+  production: [
+    { id: "in_design", label: "In Design", color: "bg-violet-50" },
+    { id: "in_production", label: "In Production", color: "bg-amber-50" },
+    { id: "ready_for_install", label: "Ready", color: "bg-cyan-50" },
+    { id: "installing", label: "Installing", color: "bg-orange-50" },
+    { id: "on_hold", label: "On Hold", color: "bg-red-50" }
+  ],
+  completed: [
+    { id: "completed", label: "Completed", color: "bg-emerald-50" }
+  ],
+  "side-projects": [
+    { id: "inquiry", label: "Inquiry", color: "bg-slate-100" },
+    { id: "quoted", label: "Quoted", color: "bg-blue-50" },
+    { id: "approved", label: "Approved", color: "bg-emerald-50" },
+    { id: "in_design", label: "In Design", color: "bg-violet-50" },
+    { id: "in_production", label: "In Production", color: "bg-amber-50" },
+    { id: "completed", label: "Completed", color: "bg-emerald-50" }
+  ]
+};
 
 const priorityColors = {
   low: "bg-blue-100 text-blue-700",
@@ -36,6 +51,7 @@ export default function Kanban() {
   const [chatDialogOpen, setChatDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
+  const [activeTab, setActiveTab] = useState("pre-production");
   const projectRefs = useRef({});
 
   const { data: projects = [], isLoading } = useQuery({
@@ -92,7 +108,16 @@ export default function Kanban() {
   };
 
   const getProjectsByStatus = (status) => {
-    return projects.filter((p) => p.status === status);
+    const filtered = projects.filter((p) => p.status === status);
+    // Filter by project type for side projects tab
+    if (activeTab === "side-projects") {
+      return filtered.filter((p) => p.project_type === "custom");
+    }
+    // Exclude side projects from other tabs
+    if (activeTab !== "side-projects") {
+      return filtered.filter((p) => p.project_type !== "custom");
+    }
+    return filtered;
   };
 
   useEffect(() => {
@@ -121,6 +146,14 @@ export default function Kanban() {
     );
   }
 
+  const createMutation = useMutation({
+    mutationFn: (data) => base44.entities.Project.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setShowProjectForm(false);
+    }
+  });
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="px-4 sm:px-6 lg:px-8 py-8">
@@ -129,152 +162,170 @@ export default function Kanban() {
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Project Board</h1>
             <p className="text-slate-500 mt-1">Drag projects to update their status</p>
           </div>
-          <Button
-            onClick={() => setShowProjectForm(true)}
-            className="bg-amber-600 hover:bg-amber-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Project
-          </Button>
         </div>
 
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {statusColumns.map((column) => {
-              const columnProjects = getProjectsByStatus(column.id);
-              return (
-                <div key={column.id} className="flex-shrink-0 w-80">
-                  <div className="mb-3 flex items-center justify-between">
-                    <h2 className="font-semibold text-slate-700">{column.label}</h2>
-                    <Badge variant="outline" className="text-xs">
-                      {columnProjects.length}
-                    </Badge>
-                  </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="pre-production">Pre Production</TabsTrigger>
+            <TabsTrigger value="production">Production</TabsTrigger>
+            <TabsTrigger value="completed">Completed</TabsTrigger>
+            <TabsTrigger value="side-projects">Side Projects</TabsTrigger>
+          </TabsList>
 
-                  <Droppable droppableId={column.id}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`min-h-[200px] rounded-lg p-3 transition-colors ${
-                          snapshot.isDraggingOver ? "bg-slate-200" : column.color
-                        }`}
-                      >
-                        <div className="space-y-3">
-                          {columnProjects.map((project, index) => (
-                            <Draggable
-                               key={project.id}
-                               draggableId={project.id}
-                               index={index}
-                             >
-                               {(provided, snapshot) => (
-                                  <div
-                                    ref={(el) => {
-                                      provided.innerRef(el);
-                                      projectRefs.current[project.id] = el;
-                                    }}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                  >
-                                    <Link to={createPageUrl("ProjectDetails") + "?id=" + project.id}>
-                                      <Card
-                                        className={`p-4 cursor-pointer hover:shadow-md transition-all ${
-                                          snapshot.isDragging ? "shadow-lg rotate-2" : ""
-                                        }`}
-                                      >
-                                       <div className="space-y-3">
-                                         <div>
-                                           <h3 className="font-semibold text-slate-900 mb-1 line-clamp-1">
-                                             {project.project_name}
-                                           </h3>
-                                           <div className="flex items-center gap-2">
-                                             <Badge
-                                               className={`text-xs border-0 ${
-                                                 priorityColors[project.priority]
-                                               }`}
-                                             >
-                                               {project.priority}
-                                             </Badge>
-                                           </div>
-                                         </div>
+          {Object.keys(statusColumnsByTab).map((tabKey) => (
+            <TabsContent key={tabKey} value={tabKey} className="mt-0">
+              <div className="mb-4 flex justify-end">
+                {tabKey === "side-projects" && (
+                  <Button
+                    onClick={() => setShowProjectForm(true)}
+                    className="bg-amber-600 hover:bg-amber-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Side Project
+                  </Button>
+                )}
+              </div>
 
-                                         <div className="space-y-2 text-xs text-slate-600">
-                                           <div className="flex items-center gap-2">
-                                             <User className="w-3 h-3 flex-shrink-0" />
-                                             <span className="truncate">{project.client_name}</span>
-                                           </div>
-                                           {project.address && (
-                                             <div className="flex items-center gap-2">
-                                               <MapPin className="w-3 h-3 flex-shrink-0" />
-                                               <span className="truncate">{project.address}</span>
-                                             </div>
-                                           )}
-                                           {project.estimated_completion && (
-                                             <div className="flex items-center gap-2">
-                                               <Calendar className="w-3 h-3 flex-shrink-0" />
-                                               <span>
-                                                 {format(new Date(project.estimated_completion), "MMM d")}
-                                               </span>
-                                             </div>
-                                           )}
-                                           {project.estimated_budget && (
-                                             <div className="flex items-center gap-2">
-                                               <DollarSign className="w-3 h-3 flex-shrink-0" />
-                                               <span>${project.estimated_budget.toLocaleString()}</span>
-                                             </div>
-                                           )}
-                                         </div>
-
-                                         {(project.project_manager_name || project.shop_manager_name) && (
-                                           <div className="pt-2 border-t border-slate-100 space-y-1 text-xs">
-                                             {project.project_manager_name && (
-                                               <div className="flex items-center gap-1">
-                                                 <span className="text-slate-500 font-medium">PM:</span>
-                                                 <span className="text-slate-700">{project.project_manager_name}</span>
-                                               </div>
-                                             )}
-                                             {project.shop_manager_name && (
-                                               <div className="flex items-center gap-1">
-                                                 <span className="text-slate-500 font-medium">SM:</span>
-                                                 <span className="text-slate-700">{project.shop_manager_name}</span>
-                                               </div>
-                                             )}
-                                           </div>
-                                         )}
-
-                                         {project.rooms && project.rooms.length > 0 && (
-                                           <div className="pt-2 border-t border-slate-100">
-                                             <span className="text-xs text-slate-500">
-                                               {project.rooms.length} room{project.rooms.length !== 1 ? 's' : ''}
-                                             </span>
-                                           </div>
-                                         )}
-                                       </div>
-                                     </Card>
-                                   </Link>
-                                   <Button
-                                     variant="outline"
-                                     size="sm"
-                                     className="w-full mt-2"
-                                     onClick={(e) => handleChatClick(e, project)}
-                                   >
-                                     <MessageCircle className="w-3 h-3 mr-2" />
-                                     {chatRooms.find(r => r.project_id === project.id) ? 'View Chat' : 'Add Chat'}
-                                   </Button>
-                                 </div>
-                               )}
-                             </Draggable>
-                          ))}
+              <DragDropContext onDragEnd={handleDragEnd}>
+                <div className="flex gap-4 overflow-x-auto pb-4">
+                  {statusColumnsByTab[tabKey].map((column) => {
+                    const columnProjects = getProjectsByStatus(column.id);
+                    return (
+                      <div key={column.id} className="flex-shrink-0 w-80">
+                        <div className="mb-3 flex items-center justify-between">
+                          <h2 className="font-semibold text-slate-700">{column.label}</h2>
+                          <Badge variant="outline" className="text-xs">
+                            {columnProjects.length}
+                          </Badge>
                         </div>
-                        {provided.placeholder}
+
+                        <Droppable droppableId={column.id}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.droppableProps}
+                              className={`min-h-[200px] rounded-lg p-3 transition-colors ${
+                                snapshot.isDraggingOver ? "bg-slate-200" : column.color
+                              }`}
+                            >
+                              <div className="space-y-3">
+                                {columnProjects.map((project, index) => (
+                                  <Draggable
+                                     key={project.id}
+                                     draggableId={project.id}
+                                     index={index}
+                                   >
+                                     {(provided, snapshot) => (
+                                        <div
+                                          ref={(el) => {
+                                            provided.innerRef(el);
+                                            projectRefs.current[project.id] = el;
+                                          }}
+                                          {...provided.draggableProps}
+                                          {...provided.dragHandleProps}
+                                        >
+                                          <Link to={createPageUrl("ProjectDetails") + "?id=" + project.id}>
+                                            <Card
+                                              className={`p-4 cursor-pointer hover:shadow-md transition-all ${
+                                                snapshot.isDragging ? "shadow-lg rotate-2" : ""
+                                              }`}
+                                            >
+                                             <div className="space-y-3">
+                                               <div>
+                                                 <h3 className="font-semibold text-slate-900 mb-1 line-clamp-1">
+                                                   {project.project_name}
+                                                 </h3>
+                                                 <div className="flex items-center gap-2">
+                                                   <Badge
+                                                     className={`text-xs border-0 ${
+                                                       priorityColors[project.priority]
+                                                     }`}
+                                                   >
+                                                     {project.priority}
+                                                   </Badge>
+                                                 </div>
+                                               </div>
+
+                                               <div className="space-y-2 text-xs text-slate-600">
+                                                 <div className="flex items-center gap-2">
+                                                   <User className="w-3 h-3 flex-shrink-0" />
+                                                   <span className="truncate">{project.client_name}</span>
+                                                 </div>
+                                                 {project.address && (
+                                                   <div className="flex items-center gap-2">
+                                                     <MapPin className="w-3 h-3 flex-shrink-0" />
+                                                     <span className="truncate">{project.address}</span>
+                                                   </div>
+                                                 )}
+                                                 {project.estimated_completion && (
+                                                   <div className="flex items-center gap-2">
+                                                     <Calendar className="w-3 h-3 flex-shrink-0" />
+                                                     <span>
+                                                       {format(new Date(project.estimated_completion), "MMM d")}
+                                                     </span>
+                                                   </div>
+                                                 )}
+                                                 {project.estimated_budget && (
+                                                   <div className="flex items-center gap-2">
+                                                     <DollarSign className="w-3 h-3 flex-shrink-0" />
+                                                     <span>${project.estimated_budget.toLocaleString()}</span>
+                                                   </div>
+                                                 )}
+                                               </div>
+
+                                               {(project.project_manager_name || project.shop_manager_name) && (
+                                                 <div className="pt-2 border-t border-slate-100 space-y-1 text-xs">
+                                                   {project.project_manager_name && (
+                                                     <div className="flex items-center gap-1">
+                                                       <span className="text-slate-500 font-medium">PM:</span>
+                                                       <span className="text-slate-700">{project.project_manager_name}</span>
+                                                     </div>
+                                                   )}
+                                                   {project.shop_manager_name && (
+                                                     <div className="flex items-center gap-1">
+                                                       <span className="text-slate-500 font-medium">SM:</span>
+                                                       <span className="text-slate-700">{project.shop_manager_name}</span>
+                                                     </div>
+                                                   )}
+                                                 </div>
+                                               )}
+
+                                               {project.rooms && project.rooms.length > 0 && (
+                                                 <div className="pt-2 border-t border-slate-100">
+                                                   <span className="text-xs text-slate-500">
+                                                     {project.rooms.length} room{project.rooms.length !== 1 ? 's' : ''}
+                                                   </span>
+                                                 </div>
+                                               )}
+                                             </div>
+                                           </Card>
+                                         </Link>
+                                         <Button
+                                           variant="outline"
+                                           size="sm"
+                                           className="w-full mt-2"
+                                           onClick={(e) => handleChatClick(e, project)}
+                                         >
+                                           <MessageCircle className="w-3 h-3 mr-2" />
+                                           {chatRooms.find(r => r.project_id === project.id) ? 'View Chat' : 'Add Chat'}
+                                         </Button>
+                                       </div>
+                                     )}
+                                   </Draggable>
+                                ))}
+                              </div>
+                              {provided.placeholder}
+                            </div>
+                          )}
+                        </Droppable>
                       </div>
-                    )}
-                  </Droppable>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-        </DragDropContext>
+              </DragDropContext>
+            </TabsContent>
+          ))}
+        </Tabs>
 
         {/* Chat Dialog */}
         <Dialog open={chatDialogOpen} onOpenChange={setChatDialogOpen}>
@@ -350,12 +401,15 @@ export default function Kanban() {
         {/* Project Form */}
         <ProjectForm
           open={showProjectForm}
-          onClose={() => setShowProjectForm(false)}
-          onSubmit={async (projectData) => {
-            await base44.entities.Project.create(projectData);
-            queryClient.invalidateQueries({ queryKey: ["projects"] });
-            setShowProjectForm(false);
+          onOpenChange={setShowProjectForm}
+          onSubmit={(projectData) => {
+            // For side projects, set project_type to custom
+            if (activeTab === "side-projects") {
+              projectData.project_type = "custom";
+            }
+            createMutation.mutate(projectData);
           }}
+          isLoading={createMutation.isPending}
         />
       </div>
     </div>
