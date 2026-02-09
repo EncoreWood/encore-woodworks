@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, Briefcase, Clock, CheckCircle, AlertTriangle, Settings, DollarSign, Users, PauseCircle, TrendingUp, Home, Wrench } from "lucide-react";
+import { Plus, Briefcase, Clock, CheckCircle, AlertTriangle, Settings, DollarSign, Users, PauseCircle, TrendingUp, Home, Wrench, ArrowRight } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,8 @@ import StatsCard from "../components/dashboard/StatsCard";
 import ProjectCard from "../components/projects/ProjectCard";
 import ProjectFilters from "../components/projects/ProjectFilters";
 import ProjectForm from "../components/projects/ProjectForm";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -141,7 +143,15 @@ export default function Dashboard() {
           <>
             {/* Financial Overview */}
             <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">Financial Overview</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-slate-900">Financial Overview</h2>
+                <Link to={createPageUrl("Invoicing")}>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    View Invoicing Board
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatsCard
                   title="Total Budget"
