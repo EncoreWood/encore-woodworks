@@ -141,9 +141,24 @@ export default function Invoicing() {
     const project = projects.find(p => p.id === draggableId);
     if (!project) return;
 
+    const newInvoiceStatus = destination.droppableId;
+    let newProjectStatus = project.status;
+    
+    // Auto-update project status based on invoice status
+    if (newInvoiceStatus === "deposit_received" && (project.status === "inquiry" || project.status === "side_projects")) {
+      newProjectStatus = "approved";
+    } else if (newInvoiceStatus === "ninety_percent_received" && project.status === "approved") {
+      newProjectStatus = "in_production";
+    } else if (newInvoiceStatus === "paid_in_full" && !["completed"].includes(project.status)) {
+      newProjectStatus = "completed";
+    }
+
     updateProjectMutation.mutate({
       id: project.id,
-      data: { invoice_status: destination.droppableId }
+      data: { 
+        invoice_status: newInvoiceStatus,
+        status: newProjectStatus
+      }
     });
   };
 

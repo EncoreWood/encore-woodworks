@@ -32,6 +32,7 @@ const statusColumnsByTab = {
     { id: "completed", label: "Completed", color: "bg-emerald-50" }
   ],
   "side-projects": [
+    { id: "side_projects", label: "Side Projects", color: "bg-slate-200" },
     { id: "inquiry", label: "Inquiry", color: "bg-slate-100" },
     { id: "quoted", label: "Quoted", color: "bg-blue-50" },
     { id: "approved", label: "Approved", color: "bg-emerald-50" },
