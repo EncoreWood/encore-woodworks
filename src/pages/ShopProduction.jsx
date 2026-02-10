@@ -5,9 +5,10 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText } from "lucide-react";
 import ProductionItemForm from "../components/production/ProductionItemForm";
 import WoodworkingCalculator from "../components/production/WoodworkingCalculator";
+import PDFAnnotator from "../components/production/PDFAnnotator";
 
 const productionColumns = [
   { id: "face_frame", label: "Face Frame", color: "bg-blue-50" },
@@ -19,6 +20,9 @@ export default function ShopProduction() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [annotatingPdf, setAnnotatingPdf] = useState(null);
+  const [currentPdfUrl, setCurrentPdfUrl] = useState(null);
+  const [currentAnnotations, setCurrentAnnotations] = useState([]);
 
   const { data: items = [] } = useQuery({
     queryKey: ["productionItems"],
@@ -61,6 +65,31 @@ export default function ShopProduction() {
       id: itemId,
       data: { stage: newStage }
     });
+  };
+
+  const handleAnnotatePdf = (item, fileIndex) => {
+    const file = item.files[fileIndex];
+    setAnnotatingPdf({ item, fileIndex });
+    setCurrentPdfUrl(file.url);
+    setCurrentAnnotations(file.annotations || []);
+  };
+
+  const handleSaveAnnotations = (annotations) => {
+    const { item, fileIndex } = annotatingPdf;
+    const updatedFiles = [...item.files];
+    updatedFiles[fileIndex] = {
+      ...updatedFiles[fileIndex],
+      annotations
+    };
+
+    updateMutation.mutate({
+      id: item.id,
+      data: { files: updatedFiles }
+    });
+
+    setAnnotatingPdf(null);
+    setCurrentPdfUrl(null);
+    setCurrentAnnotations([]);
   };
 
   return (
@@ -176,11 +205,29 @@ export default function ShopProduction() {
                                                 className="w-full rounded-md border border-slate-200"
                                               />
                                             ) : file.url.match(/\.pdf$/i) ? (
-                                              <iframe 
-                                                src={file.url} 
-                                                className="w-full h-48 rounded-md border border-slate-200"
-                                                title={file.name}
-                                              />
+                                              <div className="relative group">
+                                                <iframe 
+                                                  src={file.url} 
+                                                  className="w-full h-48 rounded-md border border-slate-200"
+                                                  title={file.name}
+                                                />
+                                                <Button
+                                                  size="sm"
+                                                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-amber-600 hover:bg-amber-700"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleAnnotatePdf(item, idx);
+                                                  }}
+                                                >
+                                                  <FileText className="w-3 h-3 mr-1" />
+                                                  Annotate
+                                                </Button>
+                                                {file.annotations && file.annotations.length > 0 && (
+                                                  <Badge className="absolute bottom-2 right-2 bg-emerald-600">
+                                                    {file.annotations.length} notes
+                                                  </Badge>
+                                                )}
+                                              </div>
                                             ) : (
                                               <a 
                                                 href={file.url} 
@@ -227,6 +274,20 @@ export default function ShopProduction() {
           initialData={editingItem}
           isLoading={createMutation.isPending || updateMutation.isPending}
         />
+
+        {annotatingPdf && (
+          <PDFAnnotator
+            open={!!annotatingPdf}
+            onOpenChange={() => {
+              setAnnotatingPdf(null);
+              setCurrentPdfUrl(null);
+              setCurrentAnnotations([]);
+            }}
+            pdfUrl={currentPdfUrl}
+            annotations={currentAnnotations}
+            onSave={handleSaveAnnotations}
+          />
+        )}
       </div>
     </div>
   );
