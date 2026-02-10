@@ -64,7 +64,7 @@ export default function Dashboard() {
   ).length;
   const completedProjects = projects.filter((p) => p.status === "completed").length;
   const onHoldProjects = projects.filter((p) => p.status === "on_hold").length;
-  const sideProjects = projects.filter((p) => p.status === "inquiry").length;
+  const sideProjects = projects.filter((p) => p.status === "inquiry" || p.status === "side_projects").length;
   
   // Financial calculations
   const totalEstimatedBudget = projects.reduce((sum, p) => sum + (p.estimated_budget || 0), 0);
@@ -243,7 +243,7 @@ export default function Dashboard() {
                   subtitle="Inquiry"
                   onClick={() => setProjectListDialog({ 
                     title: "Side Projects", 
-                    projects: projects.filter((p) => p.status === "inquiry")
+                    projects: projects.filter((p) => p.status === "inquiry" || p.status === "side_projects")
                   })}
                   className="cursor-pointer hover:shadow-lg transition-shadow"
                 />
