@@ -13,8 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2, Edit, Eye, FileText, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { useState as useStateImport } from "react";
+import AngleCalculator from "../components/sop/AngleCalculator";
+import CircleCalculator from "../components/sop/CircleCalculator";
+import KerfCalculator from "../components/sop/KerfCalculator";
 
-const CATEGORIES = ["Office", "Face Frame", "Spray", "Build", "Cut"];
+const CATEGORIES = ["Office", "Face Frame", "Spray", "Build", "Cut", "Calculations"];
 
 export default function SOPBoard() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -221,9 +224,16 @@ export default function SOPBoard() {
           </div>
         </div>
 
+        {/* Calculators Section */}
+        <div className="mb-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <AngleCalculator />
+          <CircleCalculator />
+          <KerfCalculator />
+        </div>
+
         {/* Kanban Board */}
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
             {CATEGORIES.map((category) => (
               <Droppable droppableId={category} key={category}>
                 {(provided, snapshot) => (
