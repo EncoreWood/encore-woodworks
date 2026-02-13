@@ -98,6 +98,23 @@ export default function Kanban() {
     }
   });
 
+  const createMutation = useMutation({
+    mutationFn: (data) => base44.entities.Project.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setShowProjectForm(false);
+    }
+  });
+
+  const createTaskMutation = useMutation({
+    mutationFn: (data) => base44.entities.Task.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setShowTaskForm(false);
+      setTaskProject(null);
+    }
+  });
+
   const handleChatClick = (e, project) => {
     e.preventDefault();
     setSelectedProject(project);
@@ -155,23 +172,6 @@ export default function Kanban() {
       </div>
     );
   }
-
-  const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Project.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setShowProjectForm(false);
-    }
-  });
-
-  const createTaskMutation = useMutation({
-    mutationFn: (data) => base44.entities.Task.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      setShowTaskForm(false);
-      setTaskProject(null);
-    }
-  });
 
   const handleAddTask = (e, project) => {
     e.preventDefault();
