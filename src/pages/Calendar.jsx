@@ -355,6 +355,17 @@ export default function Calendar() {
     });
   };
 
+  const getProjectsSpanningDate = (date) => {
+    return projects.filter((project) => {
+      const startDate = project.start_date ? new Date(project.start_date) : null;
+      const completionDate = project.estimated_completion ? new Date(project.estimated_completion) : null;
+      
+      if (!startDate || !completionDate) return false;
+      
+      return isWithinInterval(date, { start: startDate, end: completionDate });
+    });
+  };
+
   const getDayContent = (day) => {
     const projectsOnDay = getProjectsForDate(day);
     if (projectsOnDay.length === 0) return null;
@@ -721,19 +732,23 @@ export default function Calendar() {
                   }}
                   components={{
                     DayContent: ({ date }) => {
-                      const projectCount = getProjectsForDate(date).length;
+                      const spanningProjects = getProjectsSpanningDate(date);
                       const meetingCount = getDesignMeetingsForDate(date).length;
                       const taskCount = getTasksForDate(date).length;
                       const vacationCount = getVacationsForDate(date).length;
                       return (
-                        <div className="w-full h-full flex flex-col p-1">
-                          <div className="text-sm font-semibold">{format(date, "d")}</div>
-                          <div className="flex gap-0.5 flex-wrap mt-0.5 text-xs">
-                            {projectCount > 0 && (activeFilter === "all" || activeFilter === "projects") && (
-                              <div className="px-1 py-0 bg-amber-500 text-white rounded">
-                                {projectCount}P
-                              </div>
-                            )}
+                        <div className="w-full h-full flex flex-col p-1 relative">
+                          <div className="text-sm font-semibold z-10">{format(date, "d")}</div>
+                          <div className="absolute bottom-1 left-0 right-0 px-1 flex flex-col gap-0.5">
+                            {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.slice(0, 3).map((project) => (
+                              <div
+                                key={project.id}
+                                className={`h-1 rounded-sm ${statusConfig[project.status]?.color || "bg-slate-400"}`}
+                                title={project.project_name}
+                              />
+                            ))}
+                          </div>
+                          <div className="flex gap-0.5 flex-wrap mt-0.5 text-xs relative z-10">
                             {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
                               <div className="px-1 py-0 bg-violet-500 text-white rounded">
                                 {meetingCount}M
