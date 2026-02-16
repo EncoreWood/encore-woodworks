@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Plus, Trash2, Send, Paperclip, X, ExternalLink, FileText, Image } from 'lucide-react';
+import { Plus, Trash2, Send, Paperclip, X, ExternalLink, FileText, Image, Settings } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +29,9 @@ export default function ChatBoard() {
   const [uploading, setUploading] = useState(false);
   const [showFilesDialog, setShowFilesDialog] = useState(false);
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [movingRoomId, setMovingRoomId] = useState(null);
+  const [moveToGroup, setMoveToGroup] = useState('');
   const queryClient = useQueryClient();
 
   // Fetch current user
@@ -82,6 +85,15 @@ export default function ChatBoard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chatRooms'] });
       setSelectedRoom(null);
+    }
+  });
+
+  const updateRoomMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.ChatRoom.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chatRooms'] });
+      setMovingRoomId(null);
+      setMoveToGroup('');
     }
   });
 
@@ -172,6 +184,14 @@ export default function ChatBoard() {
     setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleMoveRoom = (roomId, toGroup) => {
+    const projectIdValue = toGroup === 'project' ? 'manual' : null;
+    updateRoomMutation.mutate({
+      id: roomId,
+      data: { project_id: projectIdValue }
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -180,13 +200,24 @@ export default function ChatBoard() {
             <h1 className="text-3xl font-bold text-slate-900">Team Chat</h1>
             <p className="text-slate-500 mt-1">Collaborate with your team</p>
           </div>
-          <Button
-            onClick={() => setShowAddDialog(true)}
-            className="bg-amber-600 hover:bg-amber-700"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            New Chat Room
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowAddDialog(true)}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              New Chat Room
+            </Button>
+            {currentUser?.role === 'admin' && (
+              <Button
+                onClick={() => setShowSettings(true)}
+                variant="outline"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Manage Rooms
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -568,6 +599,90 @@ export default function ChatBoard() {
                 >
                   Create
                 </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Settings Dialog */}
+        <Dialog open={showSettings} onOpenChange={setShowSettings}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Manage Chat Rooms</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6">
+              {/* Encore Chats */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 mb-3">Encore Chats</h3>
+                <div className="space-y-2">
+                  {chatRooms.filter(r => !r.project_id).map((room) => (
+                    <div key={room.id} className="flex items-center justify-between p-3 bg-slate-50 rounded border border-slate-200">
+                      <span className="text-sm font-medium text-slate-900">{room.name}</span>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value="encore"
+                          onValueChange={(value) => handleMoveRoom(room.id, value)}
+                        >
+                          <SelectTrigger className="h-8 w-32 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="encore">Encore</SelectItem>
+                            <SelectItem value="project">Project</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteRoomMutation.mutate(room.id)}
+                          className="h-8 px-2 text-red-600"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {chatRooms.filter(r => !r.project_id).length === 0 && (
+                    <p className="text-xs text-slate-500">No rooms in this group</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Project Chats */}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-700 mb-3">Project Chats</h3>
+                <div className="space-y-2">
+                  {chatRooms.filter(r => r.project_id).map((room) => (
+                    <div key={room.id} className="flex items-center justify-between p-3 bg-slate-50 rounded border border-slate-200">
+                      <span className="text-sm font-medium text-slate-900">{room.name}</span>
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value="project"
+                          onValueChange={(value) => handleMoveRoom(room.id, value)}
+                        >
+                          <SelectTrigger className="h-8 w-32 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="encore">Encore</SelectItem>
+                            <SelectItem value="project">Project</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteRoomMutation.mutate(room.id)}
+                          className="h-8 px-2 text-red-600"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {chatRooms.filter(r => r.project_id).length === 0 && (
+                    <p className="text-xs text-slate-500">No rooms in this group</p>
+                  )}
+                </div>
               </div>
             </div>
           </DialogContent>
