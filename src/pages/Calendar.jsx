@@ -602,24 +602,28 @@ export default function Calendar() {
                   components={{
                     DayContent: ({ date }) => {
                       const presenter = getPresenterForDate(date);
-                      const projectCount = getProjectsForDate(date).length;
+                      const spanningProjects = getProjectsSpanningDate(date);
                       const meetingCount = getDesignMeetingsForDate(date).length;
                       const taskCount = getTasksForDate(date).length;
                       const cleaningCount = getBathroomCleaningsForDate(date).length;
                       return (
-                        <div className="w-full h-full flex flex-col p-2">
-                          <div className="text-base font-semibold mb-auto flex items-center justify-between">
+                        <div className="w-full h-full flex flex-col p-2 relative">
+                          <div className="text-base font-semibold mb-auto flex items-center justify-between z-10">
                             {format(date, "d")}
                             {presenter && activeFilter !== "cleaning" && activeFilter !== "meetings" && activeFilter !== "tasks" && activeFilter !== "projects" && (
                               <User className="w-4 h-4 text-blue-600" />
                             )}
                           </div>
-                          <div className="flex gap-1 flex-wrap mt-1">
-                            {projectCount > 0 && (activeFilter === "all" || activeFilter === "projects") && (
-                              <div className="text-xs px-1.5 py-0.5 bg-amber-500 text-white rounded font-medium">
-                                {projectCount}
-                              </div>
-                            )}
+                          <div className="absolute bottom-2 left-0 right-0 px-2 flex flex-col gap-0.5">
+                            {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.slice(0, 4).map((project) => (
+                              <div
+                                key={project.id}
+                                className={`h-1.5 rounded-sm ${statusConfig[project.status]?.color || "bg-slate-400"}`}
+                                title={project.project_name}
+                              />
+                            ))}
+                          </div>
+                          <div className="flex gap-1 flex-wrap mt-1 relative z-10">
                             {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
                               <div className="text-xs px-1.5 py-0.5 bg-violet-500 text-white rounded font-medium">
                                 {meetingCount}
@@ -640,9 +644,9 @@ export default function Calendar() {
                       );
                     }
                   }}
-                />
-              ) : (viewType === "month") ? (
-                <CalendarComponent
+                  />
+                  ) : (viewType === "month") ? (
+                  <CalendarComponent
                   mode="single"
                   selected={selectedDate}
                   onSelect={(date) => {
@@ -667,24 +671,28 @@ export default function Calendar() {
                   components={{
                     DayContent: ({ date }) => {
                       const presenter = getPresenterForDate(date);
-                      const projectCount = getProjectsForDate(date).length;
+                      const spanningProjects = getProjectsSpanningDate(date);
                       const meetingCount = getDesignMeetingsForDate(date).length;
                       const taskCount = getTasksForDate(date).length;
                       const cleaningCount = getBathroomCleaningsForDate(date).length;
                       return (
-                        <div className="w-full h-full flex flex-col p-2">
-                          <div className="text-base font-semibold mb-auto flex items-center justify-between">
+                        <div className="w-full h-full flex flex-col p-2 relative">
+                          <div className="text-base font-semibold mb-auto flex items-center justify-between z-10">
                             {format(date, "d")}
                             {presenter && activeFilter !== "cleaning" && activeFilter !== "meetings" && activeFilter !== "tasks" && activeFilter !== "projects" && (
                               <User className="w-4 h-4 text-blue-600" />
                             )}
                           </div>
-                          <div className="flex gap-1 flex-wrap mt-1">
-                            {projectCount > 0 && (activeFilter === "all" || activeFilter === "projects") && (
-                              <div className="text-xs px-1.5 py-0.5 bg-amber-500 text-white rounded font-medium">
-                                {projectCount}
-                              </div>
-                            )}
+                          <div className="absolute bottom-2 left-0 right-0 px-2 flex flex-col gap-0.5">
+                            {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.slice(0, 4).map((project) => (
+                              <div
+                                key={project.id}
+                                className={`h-1.5 rounded-sm ${statusConfig[project.status]?.color || "bg-slate-400"}`}
+                                title={project.project_name}
+                              />
+                            ))}
+                          </div>
+                          <div className="flex gap-1 flex-wrap mt-1 relative z-10">
                             {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
                               <div className="text-xs px-1.5 py-0.5 bg-violet-500 text-white rounded font-medium">
                                 {meetingCount}
