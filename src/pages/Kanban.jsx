@@ -106,6 +106,7 @@ export default function Kanban() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setShowProjectForm(false);
+      setNewProjectStatus(null);
     }
   });
 
