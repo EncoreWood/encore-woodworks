@@ -17,32 +17,18 @@ import { cn } from "@/lib/utils";
 import ProjectForm from "../components/projects/ProjectForm";
 import TaskForm from "../components/projects/TaskForm";
 
-const statusColumnsByTab = {
-  "pre-production": [
-    { id: "inquiry", label: "Inquiry", color: "bg-slate-100" },
-    { id: "quoted", label: "Quoted", color: "bg-blue-50" },
-    { id: "approved", label: "Approved", color: "bg-emerald-50" }
-  ],
-  production: [
-    { id: "in_design", label: "In Design", color: "bg-violet-50" },
-    { id: "in_production", label: "In Production", color: "bg-amber-50" },
-    { id: "ready_for_install", label: "Ready", color: "bg-cyan-50" },
-    { id: "installing", label: "Installing", color: "bg-orange-50" },
-    { id: "on_hold", label: "On Hold", color: "bg-red-50" }
-  ],
-  completed: [
-    { id: "completed", label: "Completed", color: "bg-emerald-50" }
-  ],
-  "side-projects": [
-    { id: "side_projects", label: "Side Projects", color: "bg-slate-200" },
-    { id: "inquiry", label: "Inquiry", color: "bg-slate-100" },
-    { id: "quoted", label: "Quoted", color: "bg-blue-50" },
-    { id: "approved", label: "Approved", color: "bg-emerald-50" },
-    { id: "in_design", label: "In Design", color: "bg-violet-50" },
-    { id: "in_production", label: "In Production", color: "bg-amber-50" },
-    { id: "completed", label: "Completed", color: "bg-emerald-50" }
-  ]
-};
+const allStatusOptions = [
+  { id: "inquiry", label: "Inquiry" },
+  { id: "side_projects", label: "Side Projects" },
+  { id: "quoted", label: "Quoted" },
+  { id: "approved", label: "Approved" },
+  { id: "in_design", label: "In Design" },
+  { id: "in_production", label: "In Production" },
+  { id: "ready_for_install", label: "Ready for Install" },
+  { id: "installing", label: "Installing" },
+  { id: "completed", label: "Completed" },
+  { id: "on_hold", label: "On Hold" }
+];
 
 const priorityColors = {
   low: "bg-blue-100 text-blue-700",
