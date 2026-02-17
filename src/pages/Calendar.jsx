@@ -757,10 +757,12 @@ export default function Calendar() {
                             {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.slice(0, 3).map((project) => (
                               <div
                                 key={project.id}
-                                className={!project.card_color ? `h-1 rounded-sm ${statusConfig[project.status]?.color || "bg-slate-400"}` : "h-1 rounded-sm"}
+                                className={!project.card_color ? `h-3.5 rounded-sm flex items-center px-0.5 overflow-hidden ${statusConfig[project.status]?.color || "bg-slate-400"}` : "h-3.5 rounded-sm flex items-center px-0.5 overflow-hidden"}
                                 style={project.card_color ? { backgroundColor: project.card_color } : {}}
                                 title={project.project_name}
-                              />
+                              >
+                                <span className="text-white text-[8px] font-medium truncate leading-none" style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
+                              </div>
                             ))}
                           </div>
                           <div className="flex gap-0.5 flex-wrap mt-0.5 text-xs relative z-10">
