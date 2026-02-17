@@ -324,16 +324,17 @@ export default function Kanban() {
                                           {...provided.dragHandleProps}
                                         >
                                           <Link to={createPageUrl("ProjectDetails") + "?id=" + project.id}>
-                                            <Card
-                                              className={`p-4 cursor-pointer hover:shadow-md transition-all ${
-                                                snapshot.isDragging ? "shadow-lg rotate-2" : ""
-                                              }`}
-                                            >
-                                             <div className="space-y-3">
-                                               <div>
-                                                 <h3 className="font-semibold text-slate-900 mb-1 line-clamp-1">
-                                                   {project.project_name}
-                                                 </h3>
+                                           <Card
+                                             className={`p-4 cursor-pointer hover:shadow-md transition-all overflow-hidden ${
+                                               snapshot.isDragging ? "shadow-lg rotate-2" : ""
+                                             }`}
+                                             style={project.card_color ? { borderLeft: `4px solid ${project.card_color}`, backgroundColor: project.card_color + "18" } : {}}
+                                           >
+                                            <div className="space-y-3">
+                                              <div>
+                                                <h3 className="font-semibold text-slate-900 mb-1 line-clamp-1">
+                                                  {project.project_name}
+                                                </h3>
                                                  <div className="flex items-center gap-2">
                                                    <Badge
                                                      className={`text-xs border-0 ${
