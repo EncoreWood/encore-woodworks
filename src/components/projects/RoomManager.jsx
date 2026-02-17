@@ -61,6 +61,20 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
 
   const handleSendToProduction = (file, fileIndex) => {
     const itemName = `${project.project_name} - ${formData.room_name || 'Room'} - ${file.name}`;
+    
+    // Update file to track it's in production
+    const updatedFiles = [...formData.files];
+    updatedFiles[fileIndex] = { ...file, in_production: true, production_stage: "face_frame" };
+    setFormData(prev => ({ ...prev, files: updatedFiles }));
+    
+    // Immediately save the room with updated file status
+    const updatedRooms = [...(project.rooms || [])];
+    if (roomIndex !== null) {
+      updatedRooms[roomIndex] = { ...formData, files: updatedFiles };
+      base44.entities.Project.update(project.id, { rooms: updatedRooms });
+    }
+    
+    // Create production item
     createProductionItemMutation.mutate({
       name: itemName,
       type: "cabinet",
@@ -68,14 +82,10 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
       project_id: project.id,
       project_name: project.project_name,
       room_name: formData.room_name,
+      file_id: file.url, // Track which file this is
       files: [file],
       notes: `From project: ${project.project_name}\nRoom: ${formData.room_name || 'Unnamed'}\n${formData.notes || ''}`
     });
-    
-    // Update file to track it's in production
-    const updatedFiles = [...formData.files];
-    updatedFiles[fileIndex] = { ...file, in_production: true, production_stage: "face_frame" };
-    setFormData(prev => ({ ...prev, files: updatedFiles }));
   };
 
   const handleSubmit = (e) => {

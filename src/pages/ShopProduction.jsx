@@ -55,16 +55,44 @@ export default function ShopProduction() {
     }
   });
 
-  const handleDragEnd = (result) => {
+  const handleDragEnd = async (result) => {
     if (!result.destination) return;
     
     const itemId = result.draggableId;
     const newStage = result.destination.droppableId;
+    const item = items.find(i => i.id === itemId);
     
+    // Update production item
     updateMutation.mutate({
       id: itemId,
       data: { stage: newStage }
     });
+    
+    // Sync back to project if this item came from a project
+    if (item?.project_id && item?.file_id) {
+      try {
+        const project = await base44.entities.Project.filter({ id: item.project_id }).then(res => res[0]);
+        if (project?.rooms) {
+          const updatedRooms = project.rooms.map(room => {
+            if (room.room_name === item.room_name && room.files) {
+              return {
+                ...room,
+                files: room.files.map(file => 
+                  file.url === item.file_id 
+                    ? { ...file, in_production: true, production_stage: newStage }
+                    : file
+                )
+              };
+            }
+            return room;
+          });
+          await base44.entities.Project.update(item.project_id, { rooms: updatedRooms });
+          queryClient.invalidateQueries({ queryKey: ["project", item.project_id] });
+        }
+      } catch (error) {
+        console.error("Failed to sync to project:", error);
+      }
+    }
   };
 
   const handleAnnotatePdf = (item, fileIndex) => {
