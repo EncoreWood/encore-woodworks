@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { base44 } from "@/api/base44Client";
 import { Trash2, Upload, X, Send, Edit, FileText, ExternalLink, CheckCircle2, Circle } from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export default function RoomManager({ open, onOpenChange, room, roomIndex, project, onSave }) {
   const queryClient = useQueryClient();
