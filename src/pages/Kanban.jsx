@@ -56,7 +56,9 @@ export default function Kanban() {
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskProject, setTaskProject] = useState(null);
-  const [activeTab, setActiveTab] = useState("pre-production");
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem("kanban_active_tab") || "pre-production";
+  });
   const projectRefs = useRef({});
 
   const { data: projects = [], isLoading } = useQuery({
