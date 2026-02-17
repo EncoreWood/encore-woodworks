@@ -568,6 +568,117 @@ export default function Kanban() {
           onSubmit={(data) => createTaskMutation.mutate(data)}
           isLoading={createTaskMutation.isPending}
         />
+
+        {/* Move Project Dialog */}
+        <Dialog open={!!moveProjectDialog} onOpenChange={(open) => { if (!open) { setMoveProjectDialog(null); setMoveTarget({ tab: "", status: "" }); } }}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Move Project</DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-slate-600 mb-3 font-medium">{moveProjectDialog?.project.project_name}</p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Group</label>
+                <Select value={moveTarget.tab} onValueChange={(val) => setMoveTarget({ tab: val, status: "" })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select group..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pre-production">Pre Production</SelectItem>
+                    <SelectItem value="production">Production</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="side-projects">Side Projects</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {moveTarget.tab && (
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Stage</label>
+                  <Select value={moveTarget.status} onValueChange={(val) => setMoveTarget(prev => ({ ...prev, status: val }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select stage..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(customColumnsByTab[moveTarget.tab] || []).map(col => (
+                        <SelectItem key={col.id} value={col.id}>{col.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <Button
+                className="w-full bg-amber-600 hover:bg-amber-700"
+                disabled={!moveTarget.status}
+                onClick={handleMoveProject}
+              >
+                Move Project
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Stages Dialog */}
+        <Dialog open={showTabEditor} onOpenChange={setShowTabEditor}>
+          <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Stages — {editingTab?.tabKey?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</DialogTitle>
+            </DialogHeader>
+            {editingTab && (
+              <div className="space-y-3">
+                {editingTab.columns.map((col, idx) => (
+                  <div key={idx} className="flex items-center gap-2 bg-slate-50 rounded-lg p-2 border border-slate-200">
+                    <GripVertical className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <Input
+                      value={col.label}
+                      onChange={(e) => {
+                        const updated = [...editingTab.columns];
+                        updated[idx] = { ...updated[idx], label: e.target.value };
+                        setEditingTab({ ...editingTab, columns: updated });
+                      }}
+                      className="h-8 text-sm flex-1"
+                      placeholder="Stage label"
+                    />
+                    <Select value={col.id} onValueChange={(val) => {
+                      const updated = [...editingTab.columns];
+                      updated[idx] = { ...updated[idx], id: val };
+                      setEditingTab({ ...editingTab, columns: updated });
+                    }}>
+                      <SelectTrigger className="h-8 text-xs w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allStatusOptions.map(opt => (
+                          <SelectItem key={opt.id} value={opt.id}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <button
+                      onClick={() => {
+                        const updated = editingTab.columns.filter((_, i) => i !== idx);
+                        setEditingTab({ ...editingTab, columns: updated });
+                      }}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => setEditingTab({ ...editingTab, columns: [...editingTab.columns, { id: "inquiry", label: "New Stage", color: "bg-slate-100" }] })}
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Add Stage
+                </Button>
+                <div className="flex gap-2 pt-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setShowTabEditor(false)}>Cancel</Button>
+                  <Button className="flex-1 bg-amber-600 hover:bg-amber-700" onClick={() => saveTabColumns(editingTab.tabKey, editingTab.columns)}>Save</Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
