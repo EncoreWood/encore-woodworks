@@ -30,6 +30,16 @@ export default function ShopProduction() {
     initialData: []
   });
 
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => base44.entities.Project.list()
+  });
+
+  const getProjectColor = (projectId) => {
+    if (!projectId) return null;
+    return projects.find(p => p.id === projectId)?.card_color || null;
+  };
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.ProductionItem.create(data),
     onSuccess: () => {
