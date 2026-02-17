@@ -454,7 +454,7 @@ export default function Kanban() {
                                              onClick={(e) => handleChatClick(e, project)}
                                            >
                                              <MessageCircle className="w-3 h-3 mr-1" />
-                                             {chatRooms.find(r => r.project_id === project.id) ? 'Chat' : 'Chat'}
+                                             Chat
                                            </Button>
                                            <Button
                                              variant="outline"
@@ -465,6 +465,36 @@ export default function Kanban() {
                                              <ArrowRight className="w-3 h-3 mr-1" />
                                              Move
                                            </Button>
+                                           <div className="relative">
+                                             <button
+                                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setColorPickerProjectId(colorPickerProjectId === project.id ? null : project.id); }}
+                                               className="h-8 w-8 rounded border border-slate-200 flex items-center justify-center hover:bg-slate-100 transition-colors"
+                                               style={project.card_color ? { backgroundColor: project.card_color } : {}}
+                                               title="Set card color"
+                                             >
+                                               {!project.card_color && <Palette className="w-3 h-3 text-slate-400" />}
+                                             </button>
+                                             {colorPickerProjectId === project.id && (
+                                               <div
+                                                 className="absolute bottom-10 right-0 z-50 bg-white border border-slate-200 rounded-lg shadow-lg p-2 w-44"
+                                                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                               >
+                                                 <div className="grid grid-cols-5 gap-1">
+                                                   {cardColors.map((color, ci) => (
+                                                     <button
+                                                       key={ci}
+                                                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); updateColorMutation.mutate({ id: project.id, card_color: color }); setColorPickerProjectId(null); }}
+                                                       className="w-7 h-7 rounded border border-slate-200 hover:scale-110 transition-transform flex items-center justify-center"
+                                                       style={{ backgroundColor: color || "#ffffff" }}
+                                                       title={color || "No color"}
+                                                     >
+                                                       {!color && <span className="text-slate-300 text-xs">✕</span>}
+                                                     </button>
+                                                   ))}
+                                                 </div>
+                                               </div>
+                                             )}
+                                           </div>
                                          </div>
                                        </div>
                                      )}
