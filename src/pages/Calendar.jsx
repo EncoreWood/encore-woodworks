@@ -738,11 +738,11 @@ export default function Calendar() {
                     month: "w-full",
                     table: "w-full border-collapse table-fixed",
                     head_cell: "text-slate-500 font-semibold text-xs py-2 w-[14.28%]",
-                    cell: "relative p-0 text-center border border-slate-100 w-[14.28%]",
-                    day: "relative h-16 w-full p-0 font-normal hover:bg-amber-50 transition-colors text-sm",
+                    cell: "relative p-0 text-center border border-slate-200 w-[14.28%] bg-slate-100",
+                    day: "relative h-16 w-full p-0 font-normal hover:bg-amber-50 transition-colors text-sm bg-white",
                     day_selected: "bg-amber-100 text-amber-900 font-semibold",
                     day_today: "bg-blue-50 font-bold border border-blue-300",
-                    day_outside: "text-slate-300 opacity-50"
+                    day_outside: "text-slate-300 opacity-50 bg-slate-50"
                   }}
                   components={{
                     DayContent: ({ date }) => {
