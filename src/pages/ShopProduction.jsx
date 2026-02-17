@@ -191,6 +191,9 @@ export default function ShopProduction() {
                                    }`}
                                    style={(() => { const c = getProjectColor(item.project_id); return c ? { borderLeft: `4px solid ${c}`, backgroundColor: c + "18" } : {}; })()}
                                   >
+                                    {item.project_name && (
+                                      <p className="text-xs text-slate-500 mb-1 font-medium">{item.project_name}{item.room_name ? ` · ${item.room_name}` : ''}</p>
+                                    )}
                                     <div className="flex items-start justify-between mb-2">
                                       <h3 className="font-medium text-slate-900">{item.name}</h3>
                                       <div className="flex items-center gap-2">
