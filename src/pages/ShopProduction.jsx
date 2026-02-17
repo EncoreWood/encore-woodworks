@@ -69,7 +69,7 @@ export default function ShopProduction() {
     });
     
     // Sync back to project if this item came from a project
-    if (item?.project_id && item?.file_id) {
+    if (item?.project_id) {
       try {
         const project = await base44.entities.Project.filter({ id: item.project_id }).then(res => res[0]);
         if (project?.rooms) {
@@ -77,17 +77,22 @@ export default function ShopProduction() {
             if (room.room_name === item.room_name && room.files) {
               return {
                 ...room,
-                files: room.files.map(file => 
-                  file.url === item.file_id 
+                files: room.files.map(file => {
+                  // Match by file_id (url) or by file name as fallback
+                  const isMatch = item.file_id
+                    ? file.url === item.file_id
+                    : item.files?.some(f => f.url === file.url || f.name === file.name);
+                  return isMatch
                     ? { ...file, in_production: true, production_stage: newStage }
-                    : file
-                )
+                    : file;
+                })
               };
             }
             return room;
           });
           await base44.entities.Project.update(item.project_id, { rooms: updatedRooms });
           queryClient.invalidateQueries({ queryKey: ["project", item.project_id] });
+          queryClient.invalidateQueries({ queryKey: ["projects"] });
         }
       } catch (error) {
         console.error("Failed to sync to project:", error);
