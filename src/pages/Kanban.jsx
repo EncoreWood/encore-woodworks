@@ -168,17 +168,34 @@ export default function Kanban() {
     updateMutation.mutate({ id: projectId, status: newStatus });
   };
 
-  const getProjectsByStatus = (status) => {
+  const getProjectsByStatus = (status, tabKey) => {
+    const tab = tabKey || activeTab;
     const filtered = projects.filter((p) => p.status === status);
-    // Filter by project type for side projects tab
-    if (activeTab === "side-projects") {
+    if (tab === "side-projects") {
       return filtered.filter((p) => p.project_type === "custom");
     }
-    // Exclude side projects from other tabs
-    if (activeTab !== "side-projects") {
+    if (tab !== "side-projects") {
       return filtered.filter((p) => p.project_type !== "custom");
     }
     return filtered;
+  };
+
+  const handleMoveProject = () => {
+    if (!moveProjectDialog || !moveTarget.status) return;
+    const updates = { status: moveTarget.status };
+    if (moveTarget.tab === "side-projects") updates.project_type = "custom";
+    else if (moveProjectDialog.project.project_type === "custom") updates.project_type = "kitchen"; // reset type if moving out of side projects
+    updateMutation.mutate({ id: moveProjectDialog.project.id, ...updates });
+    setMoveProjectDialog(null);
+    setMoveTarget({ tab: "", status: "" });
+  };
+
+  const saveTabColumns = (tabKey, columns) => {
+    const updated = { ...customColumnsByTab, [tabKey]: columns };
+    setCustomColumnsByTab(updated);
+    localStorage.setItem("kanban_custom_columns", JSON.stringify(updated));
+    setEditingTab(null);
+    setShowTabEditor(false);
   };
 
   useEffect(() => {
