@@ -195,14 +195,32 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
                           </Badge>
                         )}
                       </div>
-                      <a
-                        href={file.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-amber-600 hover:text-amber-700 flex-shrink-0"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {file.in_production ? (
+                          <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
+                            {file.production_stage?.replace(/_/g, ' ')}
+                          </Badge>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleSendToProduction(file, idx)}
+                            className="text-blue-600 hover:text-blue-700 text-xs h-7"
+                          >
+                            <Send className="w-3 h-3 mr-1" />
+                            To Production
+                          </Button>
+                        )}
+                        <a
+                          href={file.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-amber-600 hover:text-amber-700"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      </div>
                     </div>
                   ))}
                 </div>
