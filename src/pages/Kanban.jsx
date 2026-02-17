@@ -243,6 +243,10 @@ export default function Kanban() {
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Project Board</h1>
             <p className="text-slate-500 mt-1">Drag projects to update their status</p>
           </div>
+          <Button variant="outline" size="sm" onClick={() => { setEditingTab({ tabKey: activeTab, columns: JSON.parse(JSON.stringify(customColumnsByTab[activeTab] || [])) }); setShowTabEditor(true); }}>
+            <Settings className="w-4 h-4 mr-2" />
+            Edit Stages
+          </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={(tab) => { setActiveTab(tab); localStorage.setItem("kanban_active_tab", tab); }} className="w-full">
