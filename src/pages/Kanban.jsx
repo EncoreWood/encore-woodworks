@@ -431,15 +431,26 @@ export default function Kanban() {
                                              </div>
                                            </Card>
                                          </Link>
-                                         <Button
-                                           variant="outline"
-                                           size="sm"
-                                           className="w-full mt-2"
-                                           onClick={(e) => handleChatClick(e, project)}
-                                         >
-                                           <MessageCircle className="w-3 h-3 mr-2" />
-                                           {chatRooms.find(r => r.project_id === project.id) ? 'View Chat' : 'Add Chat'}
-                                         </Button>
+                                         <div className="flex gap-1 mt-2">
+                                           <Button
+                                             variant="outline"
+                                             size="sm"
+                                             className="flex-1"
+                                             onClick={(e) => handleChatClick(e, project)}
+                                           >
+                                             <MessageCircle className="w-3 h-3 mr-1" />
+                                             {chatRooms.find(r => r.project_id === project.id) ? 'Chat' : 'Chat'}
+                                           </Button>
+                                           <Button
+                                             variant="outline"
+                                             size="sm"
+                                             className="flex-1 text-slate-600"
+                                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMoveProjectDialog({ project }); setMoveTarget({ tab: "", status: "" }); }}
+                                           >
+                                             <ArrowRight className="w-3 h-3 mr-1" />
+                                             Move
+                                           </Button>
+                                         </div>
                                        </div>
                                      )}
                                    </Draggable>
