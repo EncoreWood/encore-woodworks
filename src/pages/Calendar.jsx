@@ -753,7 +753,8 @@ export default function Calendar() {
                             {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.slice(0, 3).map((project) => (
                               <div
                                 key={project.id}
-                                className={`h-1 rounded-sm ${statusConfig[project.status]?.color || "bg-slate-400"}`}
+                                className={!project.card_color ? `h-1 rounded-sm ${statusConfig[project.status]?.color || "bg-slate-400"}` : "h-1 rounded-sm"}
+                                style={project.card_color ? { backgroundColor: project.card_color } : {}}
                                 title={project.project_name}
                               />
                             ))}
