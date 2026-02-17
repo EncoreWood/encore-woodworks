@@ -196,7 +196,7 @@ export default function Kanban() {
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={(tab) => { setActiveTab(tab); localStorage.setItem("kanban_active_tab", tab); }} className="w-full">
           <TabsList className="mb-6">
             <TabsTrigger value="pre-production">Pre Production</TabsTrigger>
             <TabsTrigger value="production">Production</TabsTrigger>
