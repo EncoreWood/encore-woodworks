@@ -70,7 +70,12 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
     // Immediately save the room with updated file status
     const updatedRooms = [...(project.rooms || [])];
     if (roomIndex !== null) {
-      updatedRooms[roomIndex] = { ...formData, files: updatedFiles };
+      const roomToSave = {
+        ...formData,
+        cabinet_count: formData.cabinet_count ? Number(formData.cabinet_count) : undefined,
+        files: updatedFiles
+      };
+      updatedRooms[roomIndex] = roomToSave;
       base44.entities.Project.update(project.id, { rooms: updatedRooms });
     }
     
