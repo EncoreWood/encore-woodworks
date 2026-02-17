@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { User, MapPin, Calendar, DollarSign, MessageCircle, Plus, CheckCircle2, Circle, Settings, Pencil, Trash2, ArrowRight, GripVertical } from "lucide-react";
+import { User, MapPin, Calendar, DollarSign, MessageCircle, Plus, CheckCircle2, Circle, Settings, Pencil, Trash2, ArrowRight, GripVertical, Palette } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
