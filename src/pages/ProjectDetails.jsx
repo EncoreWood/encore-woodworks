@@ -48,6 +48,7 @@ import ProjectForm from "../components/projects/ProjectForm";
 import FileViewer from "../components/projects/FileViewer";
 import ProposalForm from "../components/proposals/ProposalForm";
 import ProposalViewer from "../components/proposals/ProposalViewer";
+import RoomManager from "../components/projects/RoomManager";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -80,6 +81,9 @@ export default function ProjectDetails() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showProposalForm, setShowProposalForm] = useState(false);
   const [showProposalView, setShowProposalView] = useState(false);
+  const [showRoomManager, setShowRoomManager] = useState(false);
+  const [editingRoom, setEditingRoom] = useState(null);
+  const [editingRoomIndex, setEditingRoomIndex] = useState(null);
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", projectId],
@@ -130,6 +134,38 @@ export default function ProjectDetails() {
 
   const handlePhaseToggle = (phase) => {
     updateMutation.mutate({ [phase]: !project[phase] });
+  };
+
+  const handleSaveRoom = (roomData) => {
+    const updatedRooms = [...(project.rooms || [])];
+    if (editingRoomIndex !== null) {
+      updatedRooms[editingRoomIndex] = roomData;
+    } else {
+      updatedRooms.push(roomData);
+    }
+    updateMutation.mutate({ rooms: updatedRooms });
+    setShowRoomManager(false);
+    setEditingRoom(null);
+    setEditingRoomIndex(null);
+  };
+
+  const handleDeleteRoom = (index) => {
+    if (confirm("Delete this room?")) {
+      const updatedRooms = project.rooms.filter((_, i) => i !== index);
+      updateMutation.mutate({ rooms: updatedRooms });
+    }
+  };
+
+  const handleEditRoom = (room, index) => {
+    setEditingRoom(room);
+    setEditingRoomIndex(index);
+    setShowRoomManager(true);
+  };
+
+  const handleAddRoom = () => {
+    setEditingRoom(null);
+    setEditingRoomIndex(null);
+    setShowRoomManager(true);
   };
 
   if (isLoading) {
@@ -398,22 +434,34 @@ export default function ProjectDetails() {
             )}
 
             {/* Rooms */}
-            {project.rooms && project.rooms.length > 0 && (
-              <Card className="p-6 bg-white border-0 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-slate-900">
-                    Rooms ({project.rooms.length})
-                  </h2>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-slate-500">
-                      {project.rooms.filter(r => r.completed).length}/{project.rooms.length} complete
-                    </span>
-                    <Progress 
-                      value={(project.rooms.filter(r => r.completed).length / project.rooms.length) * 100} 
-                      className="w-24 h-2 bg-slate-100"
-                    />
-                  </div>
+            <Card className="p-6 bg-white border-0 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Rooms ({project.rooms?.length || 0})
+                </h2>
+                <div className="flex items-center gap-3">
+                  {project.rooms && project.rooms.length > 0 && (
+                    <>
+                      <span className="text-sm text-slate-500">
+                        {project.rooms.filter(r => r.completed).length}/{project.rooms.length} complete
+                      </span>
+                      <Progress 
+                        value={(project.rooms.filter(r => r.completed).length / project.rooms.length) * 100} 
+                        className="w-24 h-2 bg-slate-100"
+                      />
+                    </>
+                  )}
+                  <Button
+                    onClick={handleAddRoom}
+                    size="sm"
+                    className="bg-amber-600 hover:bg-amber-700"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Room
+                  </Button>
                 </div>
+              </div>
+              {project.rooms && project.rooms.length > 0 ? (
                 <div className="space-y-3">
                   {project.rooms.map((room, idx) => (
                     <div 
@@ -637,6 +685,16 @@ export default function ProjectDetails() {
             <ProposalViewer proposal={proposal} />
           </DialogContent>
         </Dialog>
+
+        {/* Room Manager */}
+        <RoomManager
+          open={showRoomManager}
+          onOpenChange={setShowRoomManager}
+          room={editingRoom}
+          roomIndex={editingRoomIndex}
+          project={project}
+          onSave={handleSaveRoom}
+        />
 
         {/* Delete Confirmation */}
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
