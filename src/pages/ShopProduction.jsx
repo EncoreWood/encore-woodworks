@@ -186,9 +186,10 @@ export default function ShopProduction() {
                                   {...provided.dragHandleProps}
                                 >
                                   <Card
-                                    className={`p-4 bg-white border-0 shadow-sm transition-shadow ${
-                                      snapshot.isDragging ? "shadow-lg" : ""
-                                    }`}
+                                   className={`p-4 bg-white border-0 shadow-sm transition-shadow overflow-hidden ${
+                                     snapshot.isDragging ? "shadow-lg" : ""
+                                   }`}
+                                   style={(() => { const c = getProjectColor(item.project_id); return c ? { borderLeft: `4px solid ${c}`, backgroundColor: c + "18" } : {}; })()}
                                   >
                                     <div className="flex items-start justify-between mb-2">
                                       <h3 className="font-medium text-slate-900">{item.name}</h3>
