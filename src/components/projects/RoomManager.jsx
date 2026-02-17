@@ -90,7 +90,12 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+    // Convert cabinet_count to number if it exists
+    const dataToSave = {
+      ...formData,
+      cabinet_count: formData.cabinet_count ? Number(formData.cabinet_count) : undefined
+    };
+    onSave(dataToSave);
   };
 
   return (
