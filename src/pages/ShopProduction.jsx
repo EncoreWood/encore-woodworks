@@ -234,11 +234,11 @@ export default function ShopProduction() {
                                               />
                                             ) : file.url.match(/\.pdf$/i) ? (
                                               <div className="relative group">
-                                                <iframe 
-                                                  src={file.url} 
-                                                  className="w-full h-48 rounded-md border border-slate-200"
-                                                  title={file.name}
-                                                />
+                                               <iframe 
+                                                 src={`${file.url}#toolbar=0&navpanes=0&scrollbar=0`}
+                                                 className="w-full h-48 rounded-md border border-slate-200 pointer-events-none"
+                                                 title={file.name}
+                                               />
                                                 <Button
                                                   size="sm"
                                                   className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-amber-600 hover:bg-amber-700"
@@ -257,14 +257,15 @@ export default function ShopProduction() {
                                                 )}
                                               </div>
                                             ) : (
-                                              <a 
-                                                href={file.url} 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                className="text-amber-600 hover:text-amber-700 underline"
-                                              >
-                                                {file.name}
-                                              </a>
+                                             <button
+                                               onClick={(e) => {
+                                                 e.stopPropagation();
+                                                 window.open(file.url, '_blank');
+                                               }}
+                                               className="text-amber-600 hover:text-amber-700 underline text-left"
+                                             >
+                                               {file.name}
+                                             </button>
                                             ))}
                                           </div>
                                         ))}

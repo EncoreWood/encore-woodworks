@@ -12,14 +12,15 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function RoomManager({ open, onOpenChange, room, roomIndex, project, onSave }) {
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState(room || {
+  const [formData, setFormData] = useState({
     room_name: "",
     cabinet_count: "",
     style: "",
     finish: "",
     notes: "",
     files: [],
-    completed: false
+    completed: false,
+    ...room
   });
   const [uploading, setUploading] = useState(false);
 
