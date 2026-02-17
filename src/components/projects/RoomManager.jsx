@@ -24,6 +24,21 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
     completed: false,
     ...room
   });
+
+  useEffect(() => {
+    const newIsNew = roomIndex === null || roomIndex === undefined;
+    setIsEditing(newIsNew);
+    setFormData({
+      room_name: "",
+      cabinet_count: "",
+      style: "",
+      finish: "",
+      notes: "",
+      files: [],
+      completed: false,
+      ...room
+    });
+  }, [room, roomIndex]);
   const [uploading, setUploading] = useState(false);
 
   const createProductionItemMutation = useMutation({
