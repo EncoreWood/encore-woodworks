@@ -467,11 +467,12 @@ export default function ProjectDetails() {
                     <div 
                       key={idx} 
                       className={cn(
-                        "p-4 rounded-lg border transition-all",
+                        "p-4 rounded-lg border transition-all cursor-pointer hover:border-amber-300",
                         room.completed 
                           ? "bg-emerald-50 border-emerald-200" 
                           : "bg-slate-50 border-slate-100"
                       )}
+                      onClick={() => handleEditRoom(room, idx)}
                     >
                       <div className="flex items-start gap-3">
                         <Checkbox
@@ -481,6 +482,7 @@ export default function ProjectDetails() {
                             updatedRooms[idx] = { ...room, completed: checked };
                             updateMutation.mutate({ rooms: updatedRooms });
                           }}
+                          onClick={(e) => e.stopPropagation()}
                           className="mt-0.5 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
                         />
                         <DoorOpen className={cn(
@@ -495,11 +497,24 @@ export default function ProjectDetails() {
                             )}>
                               {room.room_name || `Room ${idx + 1}`}
                             </h3>
-                            {room.cabinet_count && (
-                              <Badge variant="outline" className="text-xs">
-                                {room.cabinet_count} cabinets
-                              </Badge>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {room.cabinet_count && (
+                                <Badge variant="outline" className="text-xs">
+                                  {room.cabinet_count} cabinets
+                                </Badge>
+                              )}
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteRoom(idx);
+                                }}
+                                className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
                           </div>
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             {room.style && (
@@ -520,19 +535,26 @@ export default function ProjectDetails() {
                           )}
                           {room.files && room.files.length > 0 && (
                             <div className="mt-3 space-y-2">
-                              <p className="text-xs font-medium text-slate-500 mb-2">Files:</p>
-                              {room.files.map((file, fileIdx) => (
-                                <FileViewer key={fileIdx} file={file} />
-                              ))}
+                              <p className="text-xs font-medium text-slate-500 mb-2">
+                                Files ({room.files.length})
+                              </p>
+                              <div className="text-xs text-slate-500">
+                                Click room to manage files
+                              </div>
                             </div>
                           )}
                         </div>
                       </div>
                     </div>
                   ))}
-                  </div>
-                  </Card>
-                  )}
+                </div>
+                ) : (
+                <p className="text-sm text-slate-500 text-center py-8">
+                  No rooms added yet. Click "Add Room" to get started.
+                </p>
+                )}
+                </Card>
+                </div>
                   </div>
 
           {/* Sidebar */}
