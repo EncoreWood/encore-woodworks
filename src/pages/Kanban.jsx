@@ -62,6 +62,48 @@ export default function Kanban() {
     return localStorage.getItem("kanban_active_tab") || "pre-production";
   });
   const [newProjectStatus, setNewProjectStatus] = useState(null);
+  const [showTabEditor, setShowTabEditor] = useState(false);
+  const [editingTab, setEditingTab] = useState(null); // { tabKey, columns }
+  const [moveProjectDialog, setMoveProjectDialog] = useState(null); // { project }
+  const [moveTarget, setMoveTarget] = useState({ tab: "", status: "" });
+
+  const defaultColumnsByTab = {
+    "pre-production": [
+      { id: "inquiry", label: "Inquiry", color: "bg-slate-100" },
+      { id: "quoted", label: "Quoted", color: "bg-blue-50" },
+      { id: "approved", label: "Approved", color: "bg-emerald-50" }
+    ],
+    production: [
+      { id: "in_design", label: "In Design", color: "bg-violet-50" },
+      { id: "in_production", label: "In Production", color: "bg-amber-50" },
+      { id: "ready_for_install", label: "Ready", color: "bg-cyan-50" },
+      { id: "installing", label: "Installing", color: "bg-orange-50" },
+      { id: "on_hold", label: "On Hold", color: "bg-red-50" }
+    ],
+    completed: [
+      { id: "completed", label: "Completed", color: "bg-emerald-50" }
+    ],
+    "side-projects": [
+      { id: "side_projects", label: "Side Projects", color: "bg-slate-200" },
+      { id: "inquiry", label: "Inquiry", color: "bg-slate-100" },
+      { id: "quoted", label: "Quoted", color: "bg-blue-50" },
+      { id: "approved", label: "Approved", color: "bg-emerald-50" },
+      { id: "in_design", label: "In Design", color: "bg-violet-50" },
+      { id: "in_production", label: "In Production", color: "bg-amber-50" },
+      { id: "completed", label: "Completed", color: "bg-emerald-50" }
+    ]
+  };
+
+  const loadCustomColumns = () => {
+    try {
+      const saved = localStorage.getItem("kanban_custom_columns");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return defaultColumnsByTab;
+  };
+
+  const [customColumnsByTab, setCustomColumnsByTab] = useState(loadCustomColumns);
+
   const projectRefs = useRef({});
 
   const { data: projects = [], isLoading } = useQuery({
