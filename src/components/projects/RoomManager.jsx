@@ -64,9 +64,17 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
       name: itemName,
       type: "cabinet",
       stage: "face_frame",
+      project_id: project.id,
+      project_name: project.project_name,
+      room_name: formData.room_name,
       files: [file],
       notes: `From project: ${project.project_name}\nRoom: ${formData.room_name || 'Unnamed'}\n${formData.notes || ''}`
     });
+    
+    // Update file to track it's in production
+    const updatedFiles = [...formData.files];
+    updatedFiles[fileIndex] = { ...file, in_production: true, production_stage: "face_frame" };
+    setFormData(prev => ({ ...prev, files: updatedFiles }));
   };
 
   const handleSubmit = (e) => {
@@ -190,16 +198,22 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleSendToProduction(file, idx)}
-                          className="text-blue-600 hover:text-blue-700"
-                        >
-                          <Send className="w-3 h-3 mr-1" />
-                          To Production
-                        </Button>
+                        {file.in_production ? (
+                          <Badge className="bg-blue-600 text-white text-xs">
+                            In Production: {file.production_stage?.replace('_', ' ')}
+                          </Badge>
+                        ) : (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleSendToProduction(file, idx)}
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            <Send className="w-3 h-3 mr-1" />
+                            To Production
+                          </Button>
+                        )}
                         <Button
                           type="button"
                           size="icon"
