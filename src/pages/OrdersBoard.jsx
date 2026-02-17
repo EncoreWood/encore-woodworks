@@ -242,8 +242,14 @@ export default function OrdersBoard() {
                 key={project.id}
                 className="grid grid-cols-[250px_repeat(9,_1fr)] border-b border-slate-200 hover:bg-slate-50"
               >
-                <div className="p-4 font-medium text-slate-900 border-r-2 border-slate-200">
+                <div
+                  className="p-4 font-medium text-slate-900 border-r-2 border-slate-200"
+                  style={project.card_color ? { borderLeft: `4px solid ${project.card_color}` } : {}}
+                >
                   <div className="flex items-center gap-2">
+                    {project.card_color && (
+                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: project.card_color }} />
+                    )}
                     <span className="font-semibold">{project.project_name}</span>
                     <Link 
                       to={createPageUrl("Kanban") + `?project=${project.id}`}
