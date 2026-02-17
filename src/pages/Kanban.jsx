@@ -483,11 +483,16 @@ export default function Kanban() {
         {/* Project Form */}
         <ProjectForm
           open={showProjectForm}
-          onOpenChange={setShowProjectForm}
+          onOpenChange={(open) => {
+            setShowProjectForm(open);
+            if (!open) setNewProjectStatus(null);
+          }}
           onSubmit={(projectData) => {
-            // For side projects, set project_type to custom
             if (activeTab === "side-projects") {
               projectData.project_type = "custom";
+            }
+            if (newProjectStatus) {
+              projectData.status = newProjectStatus;
             }
             createMutation.mutate(projectData);
           }}
