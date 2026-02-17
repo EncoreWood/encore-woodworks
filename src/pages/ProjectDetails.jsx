@@ -547,15 +547,14 @@ export default function ProjectDetails() {
                       </div>
                     </div>
                   ))}
-                </div>
-                ) : (
+              </div>
+              ) : (
                 <p className="text-sm text-slate-500 text-center py-8">
                   No rooms added yet. Click "Add Room" to get started.
                 </p>
-                )}
-                </Card>
-                </div>
-                  </div>
+              )}
+            </Card>
+          </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
