@@ -218,9 +218,21 @@ export default function Kanban() {
                       <div key={column.id} className="flex-shrink-0 w-80">
                         <div className="mb-3 flex items-center justify-between">
                           <h2 className="font-semibold text-slate-700">{column.label}</h2>
-                          <Badge variant="outline" className="text-xs">
-                            {columnProjects.length}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {columnProjects.length}
+                            </Badge>
+                            <button
+                              onClick={() => {
+                                setNewProjectStatus(column.id);
+                                setShowProjectForm(true);
+                              }}
+                              className="w-6 h-6 rounded-full bg-amber-600 hover:bg-amber-700 text-white flex items-center justify-center transition-colors"
+                              title={`Add project to ${column.label}`}
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
 
                         <Droppable droppableId={column.id}>
