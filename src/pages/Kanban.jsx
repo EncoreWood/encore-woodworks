@@ -149,6 +149,20 @@ export default function Kanban() {
     }
   });
 
+  const updateColorMutation = useMutation({
+    mutationFn: ({ id, card_color }) => base44.entities.Project.update(id, { card_color }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projects"] })
+  });
+
+  const [colorPickerProjectId, setColorPickerProjectId] = useState(null);
+
+  const cardColors = [
+    "", "#fee2e2", "#fef3c7", "#d1fae5", "#dbeafe", "#ede9fe",
+    "#fce7f3", "#cffafe", "#f0fdf4", "#fef9c3", "#e0e7ff",
+    "#f97316", "#ef4444", "#22c55e", "#3b82f6", "#a855f7",
+    "#ec4899", "#14b8a6", "#f59e0b", "#6366f1", "#64748b"
+  ];
+
   const handleChatClick = (e, project) => {
     e.preventDefault();
     setSelectedProject(project);
