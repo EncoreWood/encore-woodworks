@@ -41,6 +41,26 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
   }, [room, roomIndex]);
   const [uploading, setUploading] = useState(false);
 
+  // Fetch live production items to get up-to-date stages for this room's files
+  const { data: productionItems = [] } = useQuery({
+    queryKey: ["productionItems"],
+    queryFn: () => base44.entities.ProductionItem.list(),
+    enabled: open && !!project?.id
+  });
+
+  // Merge production stage from live ProductionItems into the room's files
+  const filesWithLiveStatus = (formData.files || []).map(file => {
+    const match = productionItems.find(
+      pi => pi.project_id === project?.id &&
+        pi.room_name === formData.room_name &&
+        (pi.file_id === file.url || pi.files?.some(f => f.url === file.url || f.name === file.name))
+    );
+    if (match) {
+      return { ...file, in_production: true, production_stage: match.stage };
+    }
+    return file;
+  });
+
   const createProductionItemMutation = useMutation({
     mutationFn: (data) => base44.entities.ProductionItem.create(data),
     onSuccess: () => {
