@@ -535,9 +535,43 @@ export default function ProjectDetails() {
                           )}
                           {room.files && room.files.length > 0 && (
                             <div className="mt-3 space-y-2">
-                              <p className="text-xs font-medium text-slate-500 mb-2">
-                                Files ({room.files.length})
-                              </p>
+                              <div className="flex items-center justify-between mb-2">
+                                <p className="text-xs font-medium text-slate-500">
+                                  Files ({room.files.length})
+                                </p>
+                                {room.files.some(f => f.in_production) && (
+                                  <Badge className="text-xs bg-blue-100 text-blue-700 border-blue-200">
+                                    {room.files.filter(f => f.in_production).length} in production
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                {room.files.slice(0, 4).map((file, fIdx) => (
+                                  <div key={fIdx} className="relative">
+                                    {file.url && file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                      <img 
+                                        src={file.url} 
+                                        alt={file.name} 
+                                        className="w-full h-16 object-cover rounded border border-slate-200"
+                                      />
+                                    ) : (
+                                      <div className="w-full h-16 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
+                                        <FileText className="w-4 h-4 text-slate-400" />
+                                      </div>
+                                    )}
+                                    {file.in_production && (
+                                      <Badge className="absolute -top-1 -right-1 text-xs bg-blue-600 h-4 px-1">
+                                        {file.production_stage?.split('_')[0]}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                              {room.files.length > 4 && (
+                                <p className="text-xs text-slate-500">
+                                  +{room.files.length - 4} more files
+                                </p>
+                              )}
                               <div className="text-xs text-slate-500">
                                 Click room to manage files
                               </div>
