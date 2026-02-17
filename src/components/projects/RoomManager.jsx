@@ -209,11 +209,11 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
             {/* Files */}
             <div>
               <p className="text-sm font-medium text-slate-700 mb-3">
-                Files {displayData.files?.length > 0 && `(${displayData.files.length})`}
+                Files {filesWithLiveStatus.length > 0 && `(${filesWithLiveStatus.length})`}
               </p>
-              {displayData.files && displayData.files.length > 0 ? (
+              {filesWithLiveStatus.length > 0 ? (
                 <div className="space-y-3">
-                  {displayData.files.map((file, idx) => (
+                  {filesWithLiveStatus.map((file, idx) => (
                     <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
                       {file.url && file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                         <img src={file.url} alt={file.name} className="w-14 h-14 object-cover rounded flex-shrink-0" />
