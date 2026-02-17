@@ -108,7 +108,7 @@ export default function Kanban() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, status }) => base44.entities.Project.update(id, { status }),
+    mutationFn: ({ id, status, project_type }) => base44.entities.Project.update(id, { status, ...(project_type ? { project_type } : {}) }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
     }
