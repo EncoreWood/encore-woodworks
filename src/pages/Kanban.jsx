@@ -257,14 +257,12 @@ export default function Kanban() {
             <TabsTrigger value="side-projects">Side Projects</TabsTrigger>
           </TabsList>
 
-          {Object.keys(statusColumnsByTab).map((tabKey) => (
+          {Object.keys(customColumnsByTab).map((tabKey) => (
             <TabsContent key={tabKey} value={tabKey} className="mt-0">
-
-
               <DragDropContext onDragEnd={handleDragEnd}>
                 <div className="flex gap-4 overflow-x-auto pb-4">
-                  {statusColumnsByTab[tabKey].map((column) => {
-                    const columnProjects = getProjectsByStatus(column.id);
+                  {(customColumnsByTab[tabKey] || []).map((column) => {
+                    const columnProjects = getProjectsByStatus(column.id, tabKey);
                     return (
                       <div key={column.id} className="flex-shrink-0 w-80">
                         <div className="mb-3 flex items-center justify-between">
