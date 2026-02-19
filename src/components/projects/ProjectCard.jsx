@@ -220,9 +220,20 @@ export default function ProjectCard({ project }) {
           </div>
         )}
 
-        <div className="mt-4 flex items-center justify-end text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity">
-          <span className="text-sm font-medium">View Details</span>
-          <ChevronRight className="w-4 h-4 ml-1" />
+        <div className="mt-4 flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 h-7 px-2 text-xs"
+            onClick={(e) => { e.preventDefault(); setShowPickupForm(true); }}
+          >
+            <ClipboardList className="w-3 h-3 mr-1" />
+            Add Pickup Item
+          </Button>
+          <div className="flex items-center text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="text-sm font-medium">View Details</span>
+            <ChevronRight className="w-4 h-4 ml-1" />
+          </div>
         </div>
       </Card>
 
