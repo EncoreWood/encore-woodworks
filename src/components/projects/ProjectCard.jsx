@@ -245,6 +245,15 @@ export default function ProjectCard({ project }) {
         onSubmit={(data) => createTaskMutation.mutate(data)}
         isLoading={createTaskMutation.isPending}
       />
+      <PickupItemForm
+        open={showPickupForm}
+        onOpenChange={setShowPickupForm}
+        onSubmit={(data) => createPickupMutation.mutate({ ...data, source: "project" })}
+        projectId={project.id}
+        projectName={project.project_name}
+        rooms={project.rooms || []}
+        isLoading={createPickupMutation.isPending}
+      />
     </Link>
   );
 }
