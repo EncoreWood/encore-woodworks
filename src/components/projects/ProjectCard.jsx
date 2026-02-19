@@ -65,6 +65,14 @@ export default function ProjectCard({ project }) {
       setShowTaskForm(false);
     }
   });
+
+  const createPickupMutation = useMutation({
+    mutationFn: (data) => base44.entities.PickupItem.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pickupItems"] });
+      setShowPickupForm(false);
+    }
+  });
   
   // Calculate progress
   const phases = [
