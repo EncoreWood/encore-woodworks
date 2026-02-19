@@ -16,6 +16,7 @@ import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import ProjectForm from "../components/projects/ProjectForm";
 import TaskForm from "../components/projects/TaskForm";
+import PickupItemForm from "../components/pickup/PickupItemForm";
 
 const allStatusOptions = [
   { id: "inquiry", label: "Inquiry" },
@@ -155,6 +156,16 @@ export default function Kanban() {
   });
 
   const [colorPickerProjectId, setColorPickerProjectId] = useState(null);
+  const [showPickupForm, setShowPickupForm] = useState(false);
+  const [pickupProject, setPickupProject] = useState(null);
+
+  const createPickupMutation = useMutation({
+    mutationFn: (data) => base44.entities.PickupItem.create(data),
+    onSuccess: () => {
+      setShowPickupForm(false);
+      setPickupProject(null);
+    }
+  });
 
   const cardColors = [
     "", "#fee2e2", "#fef3c7", "#d1fae5", "#dbeafe", "#ede9fe",
