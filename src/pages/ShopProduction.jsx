@@ -6,11 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2, FileText, ClipboardList } from "lucide-react";
-import PickupItemForm from "../components/pickup/PickupItemForm";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ProductionItemForm from "../components/production/ProductionItemForm";
 import WoodworkingCalculator from "../components/production/WoodworkingCalculator";
 import PDFAnnotator from "../components/production/PDFAnnotator";
+import PickupItemForm from "../components/pickup/PickupItemForm";
 
 const productionColumns = [
   { id: "face_frame", label: "Face Frame", color: "bg-blue-50" },
