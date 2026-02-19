@@ -344,6 +344,20 @@ export default function ShopProduction() {
           isLoading={createMutation.isPending || updateMutation.isPending}
         />
 
+        {/* Pickup Item Form */}
+        {pickupItem && (
+          <PickupItemForm
+            open={!!pickupItem}
+            onOpenChange={(open) => { if (!open) setPickupItem(null); }}
+            onSubmit={(data) => createPickupMutation.mutate({ ...data, source: "production", production_item_id: pickupItem.production_item_id })}
+            projectId={pickupItem.project_id}
+            projectName={pickupItem.project_name}
+            rooms={projects.find(p => p.id === pickupItem.project_id)?.rooms || []}
+            initialData={{ room_name: pickupItem.room_name }}
+            isLoading={createPickupMutation.isPending}
+          />
+        )}
+
         {annotatingPdf && (
           <PDFAnnotator
             open={!!annotatingPdf}
