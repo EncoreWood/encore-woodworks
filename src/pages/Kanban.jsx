@@ -624,6 +624,19 @@ export default function Kanban() {
           isLoading={createMutation.isPending}
         />
 
+        {/* Pickup Item Form */}
+        {pickupFormProject && (
+          <PickupItemForm
+            open={!!pickupFormProject}
+            onOpenChange={(open) => { if (!open) setPickupFormProject(null); }}
+            onSubmit={(data) => createPickupMutation.mutate({ ...data, source: "project" })}
+            projectId={pickupFormProject?.id}
+            projectName={pickupFormProject?.project_name}
+            rooms={pickupFormProject?.rooms || []}
+            isLoading={createPickupMutation.isPending}
+          />
+        )}
+
         {/* Task Form */}
         <TaskForm
           open={showTaskForm}
