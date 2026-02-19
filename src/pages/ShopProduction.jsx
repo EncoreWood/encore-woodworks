@@ -202,7 +202,18 @@ export default function ShopProduction() {
                                    style={(() => { const c = getProjectColor(item.project_id); return c ? { borderLeft: `4px solid ${c}`, backgroundColor: c + "18" } : {}; })()}
                                   >
                                     {item.project_name && (
-                                      <p className="text-xs text-slate-500 mb-1 font-medium">{item.project_name}{item.room_name ? ` · ${item.room_name}` : ''}</p>
+                                      <div className="flex items-center justify-between mb-1">
+                                        <p className="text-xs text-slate-500 font-medium">{item.project_name}{item.room_name ? ` · ${item.room_name}` : ''}</p>
+                                        {item.project_id && (
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id }); }}
+                                            className="text-amber-600 hover:text-amber-700 flex items-center gap-1 text-xs"
+                                            title="Add pickup item for this job"
+                                          >
+                                            <ClipboardList className="w-3 h-3" />
+                                          </button>
+                                        )}
+                                      </div>
                                     )}
                                     <div className="flex items-start justify-between mb-2">
                                       <h3 className="font-medium text-slate-900">{item.name}</h3>
