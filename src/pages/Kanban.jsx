@@ -150,6 +150,14 @@ export default function Kanban() {
     }
   });
 
+  const createPickupMutation = useMutation({
+    mutationFn: (data) => base44.entities.PickupItem.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pickupItems"] });
+      setPickupFormProject(null);
+    }
+  });
+
   const updateColorMutation = useMutation({
     mutationFn: ({ id, card_color }) => base44.entities.Project.update(id, { card_color }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projects"] })
