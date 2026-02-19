@@ -456,7 +456,7 @@ export default function Kanban() {
                                              </div>
                                            </Card>
                                          </Link>
-                                         <div className="flex gap-1 mt-2">
+                                         <div className="flex gap-1 mt-2 flex-wrap">
                                            <Button
                                              variant="outline"
                                              size="sm"
@@ -474,6 +474,16 @@ export default function Kanban() {
                                            >
                                              <ArrowRight className="w-3 h-3 mr-1" />
                                              Move
+                                           </Button>
+                                           <Button
+                                             variant="outline"
+                                             size="sm"
+                                             className="text-amber-600 hover:text-amber-700 hover:border-amber-300"
+                                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPickupFormProject(project); }}
+                                             title="Add pickup item"
+                                           >
+                                             <ClipboardList className="w-3 h-3 mr-1" />
+                                             Pickup
                                            </Button>
                                            <div className="relative">
                                              <button
