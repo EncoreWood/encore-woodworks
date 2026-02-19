@@ -45,6 +45,7 @@ const priorityConfig = {
 export default function ProjectCard({ project }) {
   const queryClient = useQueryClient();
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [showPickupForm, setShowPickupForm] = useState(false);
   const status = statusConfig[project.status] || statusConfig.inquiry;
   const type = typeConfig[project.project_type] || project.project_type;
   const priority = priorityConfig[project.priority] || priorityConfig.medium;
