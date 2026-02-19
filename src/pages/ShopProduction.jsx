@@ -67,6 +67,14 @@ export default function ShopProduction() {
     }
   });
 
+  const createPickupMutation = useMutation({
+    mutationFn: (data) => base44.entities.PickupItem.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pickupItems"] });
+      setPickupItem(null);
+    }
+  });
+
   const handleDragEnd = async (result) => {
     if (!result.destination) return;
     
