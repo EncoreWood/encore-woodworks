@@ -156,16 +156,7 @@ export default function Kanban() {
   });
 
   const [colorPickerProjectId, setColorPickerProjectId] = useState(null);
-  const [showPickupForm, setShowPickupForm] = useState(false);
-  const [pickupProject, setPickupProject] = useState(null);
-
-  const createPickupMutation = useMutation({
-    mutationFn: (data) => base44.entities.PickupItem.create(data),
-    onSuccess: () => {
-      setShowPickupForm(false);
-      setPickupProject(null);
-    }
-  });
+  const [pickupFormProject, setPickupFormProject] = useState(null);
 
   const cardColors = [
     "", "#fee2e2", "#fef3c7", "#d1fae5", "#dbeafe", "#ede9fe",
@@ -457,34 +448,25 @@ export default function Kanban() {
                                              </div>
                                            </Card>
                                          </Link>
-                                         <div className="flex gap-1 mt-2 flex-wrap">
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="flex-1"
-                                            onClick={(e) => handleChatClick(e, project)}
-                                          >
-                                            <MessageCircle className="w-3 h-3 mr-1" />
-                                            Chat
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="flex-1 text-slate-600"
-                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMoveProjectDialog({ project }); setMoveTarget({ tab: "", status: "" }); }}
-                                          >
-                                            <ArrowRight className="w-3 h-3 mr-1" />
-                                            Move
-                                          </Button>
-                                          <Button
-                                            variant="outline"
-                                            size="sm"
-                                            className="flex-1 text-amber-700 border-amber-200 hover:bg-amber-50"
-                                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPickupProject(project); setShowPickupForm(true); }}
-                                          >
-                                            <ClipboardList className="w-3 h-3 mr-1" />
-                                            Pickup
-                                          </Button>
+                                         <div className="flex gap-1 mt-2">
+                                           <Button
+                                             variant="outline"
+                                             size="sm"
+                                             className="flex-1"
+                                             onClick={(e) => handleChatClick(e, project)}
+                                           >
+                                             <MessageCircle className="w-3 h-3 mr-1" />
+                                             Chat
+                                           </Button>
+                                           <Button
+                                             variant="outline"
+                                             size="sm"
+                                             className="flex-1 text-slate-600"
+                                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMoveProjectDialog({ project }); setMoveTarget({ tab: "", status: "" }); }}
+                                           >
+                                             <ArrowRight className="w-3 h-3 mr-1" />
+                                             Move
+                                           </Button>
                                            <div className="relative">
                                              <button
                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setColorPickerProjectId(colorPickerProjectId === project.id ? null : project.id); }}
