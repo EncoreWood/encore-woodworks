@@ -15,12 +15,19 @@ export default function FileUploader({ files = [], onChange, label = "Files" }) 
     setUploading(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      onChange([...files, { name: file.name, url: file_url }]);
+      onChange([...files, { name: file.name, url: file_url, pts: undefined }]);
     } catch (error) {
       console.error("Upload failed:", error);
     } finally {
       setUploading(false);
     }
+  };
+
+  const handlePtsChange = (index, value) => {
+    const updated = files.map((f, i) =>
+      i === index ? { ...f, pts: value === "" ? undefined : Number(value) } : f
+    );
+    onChange(updated);
   };
 
   const handleRemove = (index) => {
