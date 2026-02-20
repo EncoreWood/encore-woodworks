@@ -51,7 +51,28 @@ export default function ShopProduction() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.ProductionItem.update(id, data),
+    mutationFn: async ({ id, data, syncToProject }) => {
+      await base44.entities.ProductionItem.update(id, data);
+      // Sync PTS back to the project's room files
+      if (syncToProject && data.files && syncToProject.project_id && syncToProject.room_name) {
+        const projList = await base44.entities.Project.filter({ id: syncToProject.project_id });
+        const proj = projList[0];
+        if (proj?.rooms) {
+          const updatedRooms = proj.rooms.map(room => {
+            if (room.room_name !== syncToProject.room_name) return room;
+            return {
+              ...room,
+              files: (room.files || []).map(rf => {
+                const match = data.files.find(pf => pf.url === rf.url || pf.name === rf.name);
+                return match ? { ...rf, pts: match.pts } : rf;
+              })
+            };
+          });
+          await base44.entities.Project.update(syncToProject.project_id, { rooms: updatedRooms });
+          queryClient.invalidateQueries({ queryKey: ["projects"] });
+        }
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["productionItems"] });
       setShowForm(false);
