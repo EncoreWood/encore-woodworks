@@ -96,8 +96,9 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
   };
 
   const handleSendToProduction = (file, fileIndex) => {
+    const currentFile = formData.files[fileIndex]; // use latest formData (has PTS)
     const updatedFiles = [...formData.files];
-    updatedFiles[fileIndex] = { ...file, in_production: true, production_stage: "face_frame" };
+    updatedFiles[fileIndex] = { ...currentFile, in_production: true, production_stage: "face_frame" };
     setFormData(prev => ({ ...prev, files: updatedFiles }));
 
     const updatedRooms = [...(project.rooms || [])];
@@ -112,16 +113,45 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
     }
 
     createProductionItemMutation.mutate({
-      name: `${project.project_name} - ${formData.room_name || 'Room'} - ${file.name}`,
+      name: `${project.project_name} - ${formData.room_name || 'Room'} - ${currentFile.name}`,
       type: "cabinet",
       stage: "face_frame",
       project_id: project.id,
       project_name: project.project_name,
       room_name: formData.room_name,
-      file_id: file.url,
-      files: [file],
+      file_id: currentFile.url,
+      files: [currentFile],
       notes: `From project: ${project.project_name}\nRoom: ${formData.room_name || 'Unnamed'}\n${formData.notes || ''}`
     });
+  };
+
+  // Save PTS inline without entering edit mode
+  const handlePtsChange = (fileIdx, newPts) => {
+    const updated = [...(formData.files || [])];
+    updated[fileIdx] = { ...updated[fileIdx], pts: newPts === "" ? undefined : Number(newPts) };
+    setFormData(prev => ({ ...prev, files: updated }));
+  };
+
+  const handlePtsSave = async () => {
+    const dataToSave = {
+      ...formData,
+      cabinet_count: formData.cabinet_count ? Number(formData.cabinet_count) : undefined
+    };
+    onSave(dataToSave);
+
+    // Also sync pts to any existing production items for these files
+    for (const pi of productionItems) {
+      if (pi.project_id !== project?.id || pi.room_name !== formData.room_name) continue;
+      const updatedPiFiles = (pi.files || []).map(pf => {
+        const match = formData.files.find(f => f.url === pf.url || f.name === pf.name);
+        return match ? { ...pf, pts: match.pts } : pf;
+      });
+      if (JSON.stringify(updatedPiFiles) !== JSON.stringify(pi.files)) {
+        await base44.entities.ProductionItem.update(pi.id, { files: updatedPiFiles });
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+    toast.success("PTS saved");
   };
 
   const handleSubmit = (e) => {
