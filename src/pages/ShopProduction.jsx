@@ -273,28 +273,25 @@ export default function ShopProduction() {
                                                 className="w-full rounded-md border border-slate-200"
                                               />
                                             ) : file.url.match(/\.pdf$/i) ? (
-                                              <div className="relative group">
-                                               <iframe 
-                                                 src={`${file.url}#toolbar=0&navpanes=0&scrollbar=0`}
-                                                 className="w-full h-48 rounded-md border border-slate-200 pointer-events-none"
-                                                 title={file.name}
-                                               />
+                                              <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-md border border-slate-200">
+                                                <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                                <span className="text-slate-700 flex-1 truncate">{file.name}</span>
+                                                {file.annotations && file.annotations.length > 0 && (
+                                                  <Badge className="bg-emerald-600 text-xs">
+                                                    {file.annotations.length} notes
+                                                  </Badge>
+                                                )}
                                                 <Button
                                                   size="sm"
-                                                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-amber-600 hover:bg-amber-700"
+                                                  variant="outline"
+                                                  className="h-6 px-2 text-xs"
                                                   onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleAnnotatePdf(item, idx);
                                                   }}
                                                 >
-                                                  <FileText className="w-3 h-3 mr-1" />
                                                   Annotate
                                                 </Button>
-                                                {file.annotations && file.annotations.length > 0 && (
-                                                  <Badge className="absolute bottom-2 right-2 bg-emerald-600">
-                                                    {file.annotations.length} notes
-                                                  </Badge>
-                                                )}
                                               </div>
                                             ) : (
                                              <button

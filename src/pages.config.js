@@ -57,6 +57,7 @@ import Invoicing from './pages/Invoicing';
 import Kanban from './pages/Kanban';
 import MorningMeeting from './pages/MorningMeeting';
 import OrdersBoard from './pages/OrdersBoard';
+import PickupList from './pages/PickupList';
 import ProjectDetails from './pages/ProjectDetails';
 import PurchaseOrders from './pages/PurchaseOrders';
 import SOPBoard from './pages/SOPBoard';
@@ -65,7 +66,6 @@ import StretchingRoutine from './pages/StretchingRoutine';
 import Suppliers from './pages/Suppliers';
 import Team from './pages/Team';
 import TimeSheet from './pages/TimeSheet';
-import PickupList from './pages/PickupList';
 import __Layout from './Layout.jsx';
 
 
@@ -80,6 +80,7 @@ export const PAGES = {
     "Kanban": Kanban,
     "MorningMeeting": MorningMeeting,
     "OrdersBoard": OrdersBoard,
+    "PickupList": PickupList,
     "ProjectDetails": ProjectDetails,
     "PurchaseOrders": PurchaseOrders,
     "SOPBoard": SOPBoard,
@@ -88,7 +89,6 @@ export const PAGES = {
     "Suppliers": Suppliers,
     "Team": Team,
     "TimeSheet": TimeSheet,
-    "PickupList": PickupList,
 }
 
 export const pagesConfig = {
