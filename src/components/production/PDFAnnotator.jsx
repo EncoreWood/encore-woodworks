@@ -2,12 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Pencil, Eraser, Download, Trash2, ZoomIn, ZoomOut, RotateCw } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Pencil, Eraser, Download, Trash2, ZoomIn, ZoomOut, RotateCw, Undo2 } from "lucide-react";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 
-// Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave }) {
@@ -20,7 +18,6 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const [paths, setPaths] = useState(annotations);
   const [currentPath, setCurrentPath] = useState([]);
   const canvasRef = useRef(null);
-  const containerRef = useRef(null);
   const [color, setColor] = useState("#FF0000");
 
   useEffect(() => {
@@ -31,42 +28,69 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     setNumPages(numPages);
   };
 
-  const startDrawing = (e) => {
-    if (tool !== "pen") return;
-    setDrawing(true);
+  const getPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    setCurrentPath([{ x, y }]);
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  };
+
+  const startDrawing = (e) => {
+    if (tool === "pen") {
+      setDrawing(true);
+      const pos = getPos(e);
+      setCurrentPath([pos]);
+    } else if (tool === "eraser") {
+      setDrawing(true);
+      eraseAt(getPos(e));
+    }
+  };
+
+  const eraseAt = ({ x, y }) => {
+    const threshold = 15;
+    setPaths(prev => prev.filter(path => {
+      return !path.points.some(pt => Math.hypot(pt.x - x, pt.y - y) < threshold);
+    }));
   };
 
   const draw = (e) => {
-    if (!drawing || tool !== "pen") return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    setCurrentPath((prev) => [...prev, { x, y }]);
+    if (!drawing) return;
+    const pos = getPos(e);
+    if (tool === "pen") {
+      setCurrentPath((prev) => [...prev, pos]);
+    } else if (tool === "eraser") {
+      eraseAt(pos);
+    }
   };
 
   const stopDrawing = () => {
-    if (drawing && currentPath.length > 0) {
+    if (drawing && tool === "pen" && currentPath.length > 0) {
       setPaths((prev) => [...prev, { points: currentPath, color, page: pageNumber }]);
       setCurrentPath([]);
     }
     setDrawing(false);
   };
 
-  const clearAnnotations = () => {
-    setPaths([]);
+  const handleUndo = () => {
+    const pagePaths = paths.filter(p => p.page === pageNumber);
+    if (pagePaths.length === 0) return;
+    const lastIdx = paths.lastIndexOf(pagePaths[pagePaths.length - 1]);
+    setPaths(prev => prev.filter((_, i) => i !== lastIdx));
   };
+
+  const clearPage = () => {
+    setPaths(prev => prev.filter(p => p.page !== pageNumber));
+  };
+
+  const clearAll = () => setPaths([]);
 
   const handleSave = () => {
     onSave(paths);
     onOpenChange(false);
   };
 
-  const handleDownload = async () => {
-    // Create a downloadable version with annotations
+  const handleDownload = () => {
     const link = document.createElement("a");
     link.href = pdfUrl;
     link.download = "annotated.pdf";
@@ -78,11 +102,9 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw saved paths for current page
     paths.filter(p => p.page === pageNumber).forEach((path) => {
       ctx.strokeStyle = path.color;
       ctx.lineWidth = 2;
@@ -90,16 +112,12 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       ctx.lineJoin = "round";
       ctx.beginPath();
       path.points.forEach((point, index) => {
-        if (index === 0) {
-          ctx.moveTo(point.x, point.y);
-        } else {
-          ctx.lineTo(point.x, point.y);
-        }
+        if (index === 0) ctx.moveTo(point.x, point.y);
+        else ctx.lineTo(point.x, point.y);
       });
       ctx.stroke();
     });
 
-    // Draw current path
     if (currentPath.length > 0) {
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
@@ -107,15 +125,14 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       ctx.lineJoin = "round";
       ctx.beginPath();
       currentPath.forEach((point, index) => {
-        if (index === 0) {
-          ctx.moveTo(point.x, point.y);
-        } else {
-          ctx.lineTo(point.x, point.y);
-        }
+        if (index === 0) ctx.moveTo(point.x, point.y);
+        else ctx.lineTo(point.x, point.y);
       });
       ctx.stroke();
     }
   }, [paths, currentPath, pageNumber, color]);
+
+  const cursorStyle = tool === "pen" ? "crosshair" : "cell";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -123,11 +140,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Annotate PDF</span>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500">
-                Page {pageNumber} of {numPages}
-              </span>
-            </div>
+            <span className="text-sm text-slate-500">Page {pageNumber} of {numPages}</span>
           </DialogTitle>
         </DialogHeader>
 
@@ -139,20 +152,30 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
             onClick={() => setTool("pen")}
             className={tool === "pen" ? "bg-amber-600 hover:bg-amber-700" : ""}
           >
-            <Pencil className="w-4 h-4 mr-2" />
+            <Pencil className="w-4 h-4 mr-1" />
             Draw
           </Button>
 
           <Button
-            variant="outline"
+            variant={tool === "eraser" ? "default" : "outline"}
             size="sm"
-            onClick={() => setPaths((prev) => prev.filter(p => p.page !== pageNumber))}
+            onClick={() => setTool("eraser")}
+            className={tool === "eraser" ? "bg-slate-600 hover:bg-slate-700" : ""}
           >
-            <Eraser className="w-4 h-4 mr-2" />
+            <Eraser className="w-4 h-4 mr-1" />
+            Eraser
+          </Button>
+
+          <Button variant="outline" size="sm" onClick={handleUndo}>
+            <Undo2 className="w-4 h-4 mr-1" />
+            Undo
+          </Button>
+
+          <Button variant="outline" size="sm" onClick={clearPage}>
             Clear Page
           </Button>
 
-          <div className="flex items-center gap-2 ml-2">
+          <div className="flex items-center gap-2 ml-1">
             <label className="text-sm text-slate-600">Color:</label>
             <input
               type="color"
@@ -164,45 +187,28 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
 
           <div className="border-l h-6 mx-2" />
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setScale((s) => Math.max(0.5, s - 0.1))}
-          >
+          <Button variant="outline" size="sm" onClick={() => setScale(s => Math.max(0.5, s - 0.1))}>
             <ZoomOut className="w-4 h-4" />
           </Button>
           <span className="text-sm text-slate-600">{Math.round(scale * 100)}%</span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setScale((s) => Math.min(2, s + 0.1))}
-          >
+          <Button variant="outline" size="sm" onClick={() => setScale(s => Math.min(2, s + 0.1))}>
             <ZoomIn className="w-4 h-4" />
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setRotation((r) => (r + 90) % 360)}
-          >
+          <Button variant="outline" size="sm" onClick={() => setRotation(r => (r + 90) % 360)}>
             <RotateCw className="w-4 h-4" />
           </Button>
 
           <div className="border-l h-6 mx-2" />
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={clearAnnotations}
-            className="text-red-600 hover:text-red-700"
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
+          <Button variant="outline" size="sm" onClick={clearAll} className="text-red-600 hover:text-red-700">
+            <Trash2 className="w-4 h-4 mr-1" />
             Clear All
           </Button>
 
           <div className="ml-auto flex gap-2">
             <Button variant="outline" size="sm" onClick={handleDownload}>
-              <Download className="w-4 h-4 mr-2" />
+              <Download className="w-4 h-4 mr-1" />
               Download
             </Button>
             <Button onClick={handleSave} className="bg-amber-600 hover:bg-amber-700">
@@ -212,20 +218,13 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         </div>
 
         {/* PDF Viewer */}
-        <div
-          ref={containerRef}
-          className="flex-1 overflow-auto bg-slate-100 rounded-lg relative"
-        >
+        <div className="flex-1 overflow-auto bg-slate-100 rounded-lg relative">
           <div className="flex items-center justify-center min-h-full p-4">
             <div className="relative">
               <Document
                 file={pdfUrl}
                 onLoadSuccess={onDocumentLoadSuccess}
-                loading={
-                  <div className="flex items-center justify-center p-8">
-                    <div className="text-slate-500">Loading PDF...</div>
-                  </div>
-                }
+                loading={<div className="flex items-center justify-center p-8 text-slate-500">Loading PDF...</div>}
               >
                 <Page
                   pageNumber={pageNumber}
@@ -237,39 +236,26 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
               </Document>
               <canvas
                 ref={canvasRef}
-                className="absolute top-0 left-0 cursor-crosshair"
+                className="absolute top-0 left-0"
+                style={{ cursor: cursorStyle }}
                 width={595 * scale}
                 height={842 * scale}
                 onMouseDown={startDrawing}
                 onMouseMove={draw}
                 onMouseUp={stopDrawing}
                 onMouseLeave={stopDrawing}
-                style={{ pointerEvents: tool === "pen" ? "auto" : "none" }}
               />
             </div>
           </div>
         </div>
 
-        {/* Page Navigation */}
         {numPages && numPages > 1 && (
           <div className="flex items-center justify-center gap-4 pt-4 border-t">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-              disabled={pageNumber <= 1}
-            >
+            <Button variant="outline" size="sm" onClick={() => setPageNumber(p => Math.max(1, p - 1))} disabled={pageNumber <= 1}>
               Previous
             </Button>
-            <span className="text-sm">
-              Page {pageNumber} of {numPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPageNumber((p) => Math.min(numPages, p + 1))}
-              disabled={pageNumber >= numPages}
-            >
+            <span className="text-sm">Page {pageNumber} of {numPages}</span>
+            <Button variant="outline" size="sm" onClick={() => setPageNumber(p => Math.min(numPages, p + 1))} disabled={pageNumber >= numPages}>
               Next
             </Button>
           </div>
