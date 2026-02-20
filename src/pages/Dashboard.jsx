@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import ProjectForm from "../components/projects/ProjectForm";
+import ProductionStatsPanel from "../components/dashboard/ProductionStatsPanel";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format, startOfWeek, startOfMonth } from "date-fns";
