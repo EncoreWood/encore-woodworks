@@ -239,7 +239,14 @@ export default function ShopProduction() {
                                       </div>
                                     )}
                                     <div className="flex items-start justify-between mb-2">
-                                      <h3 className="font-medium text-slate-900">{item.name}</h3>
+                                      <div className="flex-1 min-w-0">
+                                        <h3 className="font-medium text-slate-900">{item.name}</h3>
+                                        {item.files && item.files.some(f => f.pts) && (
+                                          <span className="text-xs font-bold text-amber-600">
+                                            {item.files.reduce((s, f) => s + (f.pts || 0), 0)} PTS
+                                          </span>
+                                        )}
+                                      </div>
                                       <div className="flex items-center gap-2">
                                         <Button
                                           variant="ghost"
