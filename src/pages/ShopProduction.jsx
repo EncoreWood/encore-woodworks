@@ -250,27 +250,34 @@ export default function ShopProduction() {
             <p className="text-slate-500 mt-1">Track projects through production stages</p>
           </div>
           <div className="flex items-center gap-4">
-            {/* PTS Tracker per column */}
-            <div className="flex gap-3">
-              {productionColumns.map(col => {
-                const colItems = items.filter(i => i.stage === col.id);
-                const pts = colItems.reduce((sum, item) => {
-                  return sum + (item.files || []).reduce((s, f) => s + (f.pts || 0), 0);
-                }, 0);
-                return (
-                  <div key={col.id} className="text-center bg-white rounded-lg px-3 py-2 shadow-sm border border-slate-200">
-                    <p className="text-xs text-slate-500 font-medium">{col.label}</p>
-                    <p className="text-lg font-bold text-amber-600">{pts} <span className="text-xs font-semibold text-slate-500">PTS</span></p>
-                  </div>
-                );
-              })}
-              <div className="text-center bg-amber-600 rounded-lg px-3 py-2 shadow-sm">
-                <p className="text-xs text-white font-medium">Total</p>
-                <p className="text-lg font-bold text-white">
-                  {items.reduce((sum, item) => sum + (item.files || []).reduce((s, f) => s + (f.pts || 0), 0), 0)} <span className="text-xs font-semibold">PTS</span>
-                </p>
-              </div>
-            </div>
+            {/* PTS Tracker — based on Complete stage items only */}
+            {(() => {
+              const now = new Date();
+              const todayStr = format(now, "yyyy-MM-dd");
+              const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+              const monthStart = startOfMonth(now);
+
+              const completedItems = items.filter(i => i.stage === "complete");
+
+              const getPts = (filtered) =>
+                filtered.reduce((sum, item) => sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0), 0);
+
+              const dayPts = getPts(completedItems.filter(i => i.completed_date === todayStr));
+              const weekPts = getPts(completedItems.filter(i => i.completed_date && new Date(i.completed_date) >= weekStart));
+              const monthPts = getPts(completedItems.filter(i => i.completed_date && new Date(i.completed_date) >= monthStart));
+              const totalPts = getPts(completedItems);
+
+              return (
+                <div className="flex gap-2">
+                  {[{ label: "Day", val: dayPts }, { label: "Week", val: weekPts }, { label: "Month", val: monthPts }, { label: "All Time", val: totalPts, accent: true }].map(({ label, val, accent }) => (
+                    <div key={label} className={`text-center rounded-lg px-3 py-2 shadow-sm border ${accent ? "bg-green-600 border-green-600" : "bg-white border-slate-200"}`}>
+                      <p className={`text-xs font-medium ${accent ? "text-green-100" : "text-slate-500"}`}>{label}</p>
+                      <p className={`text-lg font-bold ${accent ? "text-white" : "text-green-700"}`}>{val} <span className="text-xs font-semibold opacity-70">PTS</span></p>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             <Button onClick={() => setShowForm(true)} className="bg-amber-600 hover:bg-amber-700">
               <Plus className="w-4 h-4 mr-2" />
               Add Item
