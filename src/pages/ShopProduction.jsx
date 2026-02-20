@@ -395,8 +395,14 @@ export default function ShopProduction() {
           }}
           onSubmit={(data) => {
             if (editingItem) {
-              // Preserve any existing data on the item not in the form, merge files with pts
-              updateMutation.mutate({ id: editingItem.id, data: { ...data } });
+              updateMutation.mutate({
+                id: editingItem.id,
+                data: { ...data },
+                syncToProject: editingItem.project_id ? {
+                  project_id: editingItem.project_id,
+                  room_name: editingItem.room_name
+                } : null
+              });
             } else {
               createMutation.mutate(data);
             }
