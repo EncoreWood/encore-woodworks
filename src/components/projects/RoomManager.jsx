@@ -238,9 +238,16 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
 
             {/* Files */}
             <div>
-              <p className="text-sm font-medium text-slate-700 mb-3">
-                Files {filesWithLiveStatus.length > 0 && `(${filesWithLiveStatus.length})`}
-              </p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-slate-700">
+                  Files {filesWithLiveStatus.length > 0 && `(${filesWithLiveStatus.length})`}
+                </p>
+                {filesWithLiveStatus.length > 0 && (
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handlePtsSave}>
+                    Save PTS
+                  </Button>
+                )}
+              </div>
               {filesWithLiveStatus.length > 0 ? (
                 <div className="space-y-3">
                   {filesWithLiveStatus.map((file, idx) => (
@@ -261,6 +268,18 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
                         )}
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Inline PTS editor in view mode */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs font-semibold text-slate-500">PTS</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={formData.files?.[idx]?.pts ?? ""}
+                            onChange={(e) => handlePtsChange(idx, e.target.value)}
+                            className="w-14 h-7 text-xs border border-slate-300 rounded px-1 text-center"
+                            placeholder="0"
+                          />
+                        </div>
                         {file.in_production ? (
                           <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
                             {file.production_stage?.replace(/_/g, ' ')}
