@@ -374,12 +374,13 @@ export default function ShopProduction() {
           }}
           onSubmit={(data) => {
             if (editingItem) {
-              updateMutation.mutate({ id: editingItem.id, data });
+              // Preserve any existing data on the item not in the form, merge files with pts
+              updateMutation.mutate({ id: editingItem.id, data: { ...data } });
             } else {
               createMutation.mutate(data);
             }
           }}
-          initialData={editingItem}
+          initialData={editingItem ? { ...editingItem } : null}
           isLoading={createMutation.isPending || updateMutation.isPending}
         />
 
