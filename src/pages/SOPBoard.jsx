@@ -13,9 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2, Edit, Eye, FileText, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { useState as useStateImport } from "react";
-import AngleCalculator from "../components/sop/AngleCalculator";
-import CircleCalculator from "../components/sop/CircleCalculator";
-import KerfCalculator from "../components/sop/KerfCalculator";
 
 const CATEGORIES = ["Office", "Face Frame", "Spray", "Build", "Cut", "Calculations"];
 
