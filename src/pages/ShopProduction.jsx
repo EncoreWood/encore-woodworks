@@ -345,68 +345,99 @@ export default function ShopProduction() {
                                     )}
                                     
                                     {item.files && item.files.length > 0 && (
-                                      <div className="space-y-2 pt-2 border-t border-slate-100">
-                                        {item.files.map((file, idx) => (
-                                          <div key={idx} className="text-xs">
-                                            {file.url && (file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                                              <div className="relative">
-                                                <img 
-                                                  src={file.url} 
-                                                  alt={file.name} 
-                                                  className="w-full rounded-md border border-slate-200"
-                                                />
-                                                {(file.pts !== undefined && file.pts !== null) && (
-                                                  <span className="absolute top-1 right-1 text-xs font-bold text-amber-600 bg-white border border-amber-200 rounded px-1.5 py-0.5 shadow">{file.pts} PTS</span>
-                                                )}
-                                              </div>
-                                            ) : file.url.match(/\.pdf$/i) ? (
-                                             <div className="rounded-md border border-slate-200 overflow-hidden">
-                                               {/* PDF inline embed */}
-                                               <iframe
-                                                 src={file.url}
-                                                 title={file.name}
-                                                 className="w-full"
-                                                 style={{ height: "260px", border: "none" }}
-                                               />
-                                               <div className="flex items-center gap-2 p-2 bg-slate-50 border-t border-slate-200">
-                                                 <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
-                                                 <span className="text-slate-700 flex-1 truncate text-xs">{file.name}</span>
-                                                 {file.pts !== undefined && file.pts !== null && (
-                                                   <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">{file.pts} PTS</span>
-                                                 )}
-                                                 {file.annotations && file.annotations.length > 0 && (
-                                                   <Badge className="bg-emerald-600 text-xs">
-                                                     {file.annotations.length} notes
-                                                   </Badge>
-                                                 )}
-                                                 <Button
-                                                   size="sm"
-                                                   variant="outline"
-                                                   className="h-6 px-2 text-xs"
-                                                   onClick={(e) => {
-                                                     e.stopPropagation();
-                                                     handleAnnotatePdf(item, idx);
-                                                   }}
-                                                 >
-                                                   Annotate
-                                                 </Button>
+                                       <div className="space-y-2 pt-2 border-t border-slate-100">
+                                         {item.files.map((file, idx) => (
+                                           <div key={idx} className="text-xs">
+                                             {file.url && (file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                                               <div className="relative">
+                                                 <img 
+                                                   src={file.url} 
+                                                   alt={file.name} 
+                                                   className="w-full rounded-md border border-slate-200"
+                                                 />
+                                                 <div className="absolute top-1 right-1 flex items-center gap-1 bg-white border border-amber-200 rounded px-1.5 py-0.5 shadow">
+                                                   <span className="text-xs font-semibold text-slate-500">PTS</span>
+                                                   <input
+                                                     type="number"
+                                                     min="0"
+                                                     value={file.pts ?? ""}
+                                                     onClick={e => e.stopPropagation()}
+                                                     onChange={(e) => { e.stopPropagation(); handleInlinePtsChange(item, idx, e.target.value); }}
+                                                     className="w-10 text-xs text-center font-bold text-amber-600 border-none outline-none bg-transparent"
+                                                     placeholder="0"
+                                                   />
+                                                 </div>
                                                </div>
-                                             </div>
-                                            ) : (
-                                             <button
-                                               onClick={(e) => {
-                                                 e.stopPropagation();
-                                                 window.open(file.url, '_blank');
-                                               }}
-                                               className="text-amber-600 hover:text-amber-700 underline text-left"
-                                             >
-                                               {file.name}
-                                             </button>
-                                            ))}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
+                                             ) : file.url.match(/\.pdf$/i) ? (
+                                              <div className="rounded-md border border-slate-200 overflow-hidden">
+                                                <iframe
+                                                  src={file.url}
+                                                  title={file.name}
+                                                  className="w-full"
+                                                  style={{ height: "260px", border: "none" }}
+                                                />
+                                                <div className="flex items-center gap-2 p-2 bg-slate-50 border-t border-slate-200">
+                                                  <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                                  <span className="text-slate-700 flex-1 truncate text-xs">{file.name}</span>
+                                                  <div className="flex items-center gap-1">
+                                                    <span className="text-xs font-semibold text-slate-500">PTS</span>
+                                                    <input
+                                                      type="number"
+                                                      min="0"
+                                                      value={file.pts ?? ""}
+                                                      onClick={e => e.stopPropagation()}
+                                                      onChange={(e) => { e.stopPropagation(); handleInlinePtsChange(item, idx, e.target.value); }}
+                                                      className="w-12 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600 bg-amber-50"
+                                                      placeholder="0"
+                                                    />
+                                                  </div>
+                                                  {file.annotations && file.annotations.length > 0 && (
+                                                    <Badge className="bg-emerald-600 text-xs">
+                                                      {file.annotations.length} notes
+                                                    </Badge>
+                                                  )}
+                                                  <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="h-6 px-2 text-xs"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleAnnotatePdf(item, idx);
+                                                    }}
+                                                  >
+                                                    Annotate
+                                                  </Button>
+                                                </div>
+                                              </div>
+                                             ) : (
+                                              <div className="flex items-center gap-2">
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    window.open(file.url, '_blank');
+                                                  }}
+                                                  className="text-amber-600 hover:text-amber-700 underline text-left flex-1"
+                                                >
+                                                  {file.name}
+                                                </button>
+                                                <div className="flex items-center gap-1">
+                                                  <span className="text-xs font-semibold text-slate-500">PTS</span>
+                                                  <input
+                                                    type="number"
+                                                    min="0"
+                                                    value={file.pts ?? ""}
+                                                    onClick={e => e.stopPropagation()}
+                                                    onChange={(e) => { e.stopPropagation(); handleInlinePtsChange(item, idx, e.target.value); }}
+                                                    className="w-12 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600"
+                                                    placeholder="0"
+                                                  />
+                                                </div>
+                                              </div>
+                                             ))}
+                                           </div>
+                                         ))}
+                                       </div>
+                                     )}
                                   </Card>
                                 </div>
                               )}
