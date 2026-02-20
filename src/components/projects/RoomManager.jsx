@@ -363,6 +363,21 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs font-semibold text-slate-500">PTS</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={file.pts ?? ""}
+                              onChange={(e) => {
+                                const updated = [...formData.files];
+                                updated[idx] = { ...updated[idx], pts: e.target.value === "" ? undefined : Number(e.target.value) };
+                                setFormData(prev => ({ ...prev, files: updated }));
+                              }}
+                              className="w-14 h-7 text-xs border border-slate-300 rounded px-1 text-center"
+                              placeholder="0"
+                            />
+                          </div>
                           {file.in_production ? (
                             <Badge className="bg-blue-600 text-white text-xs">
                               In Production: {file.production_stage?.replace(/_/g, ' ')}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Upload, X, FileIcon, Loader2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
