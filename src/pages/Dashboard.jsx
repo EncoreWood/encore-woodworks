@@ -92,7 +92,7 @@ export default function Dashboard() {
     base44.auth.me().then(setCurrentUser);
   }, []);
 
-  // PTS calculations
+  // PTS calculations — only from items in the "complete" stage, keyed by completed_date
   const getPtsFromItems = (items) => {
     return items.reduce((sum, item) => {
       return sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
@@ -103,20 +103,11 @@ export default function Dashboard() {
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
   const monthStart = startOfMonth(now);
 
-  const dayPts = getPtsFromItems(productionItems.filter(i => {
-    if (!i.updated_date) return false;
-    return format(new Date(i.updated_date), "yyyy-MM-dd") === todayStr;
-  }));
+  const completedStageItems = productionItems.filter(i => i.stage === "complete");
 
-  const weekPts = getPtsFromItems(productionItems.filter(i => {
-    if (!i.updated_date) return false;
-    return new Date(i.updated_date) >= weekStart;
-  }));
-
-  const monthPts = getPtsFromItems(productionItems.filter(i => {
-    if (!i.updated_date) return false;
-    return new Date(i.updated_date) >= monthStart;
-  }));
+  const dayPts = getPtsFromItems(completedStageItems.filter(i => i.completed_date === todayStr));
+  const weekPts = getPtsFromItems(completedStageItems.filter(i => i.completed_date && new Date(i.completed_date) >= weekStart));
+  const monthPts = getPtsFromItems(completedStageItems.filter(i => i.completed_date && new Date(i.completed_date) >= monthStart));
 
   // Financial
   const totalEstimatedBudget = projects.reduce((sum, p) => sum + (p.estimated_budget || 0), 0);
