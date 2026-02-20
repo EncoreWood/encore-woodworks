@@ -299,6 +299,9 @@ export default function ShopProduction() {
                                               <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-md border border-slate-200">
                                                 <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
                                                 <span className="text-slate-700 flex-1 truncate">{file.name}</span>
+                                                {file.pts !== undefined && file.pts !== null && (
+                                                  <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">{file.pts} PTS</span>
+                                                )}
                                                 {file.annotations && file.annotations.length > 0 && (
                                                   <Badge className="bg-emerald-600 text-xs">
                                                     {file.annotations.length} notes
