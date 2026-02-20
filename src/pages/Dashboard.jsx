@@ -116,10 +116,13 @@ export default function Dashboard() {
   const monthPts = getPtsFromItems(completedStageItems.filter(i => i.completed_date && new Date(i.completed_date) >= monthStart));
 
   // Financial
-  const totalEstimatedBudget = projects.reduce((sum, p) => sum + (p.estimated_budget || 0), 0);
+  const pastApprovedStatuses = ["approved", "in_design", "in_production", "ready_for_install", "installing", "completed"];
+  const approvedAndBeyondProjects = projects.filter(p => pastApprovedStatuses.includes(p.status));
+  const totalEstimatedBudget = approvedAndBeyondProjects.reduce((sum, p) => sum + (p.estimated_budget || 0), 0);
   const totalDeposits = projects.reduce((sum, p) => sum + (p.deposit_paid || 0), 0);
   const completedProjectsValue = projects.filter(p => p.status === "completed").reduce((sum, p) => sum + (p.actual_cost || p.estimated_budget || 0), 0);
   const receivable = totalEstimatedBudget - totalDeposits;
+  const potentialJobsValue = projects.filter(p => ["inquiry", "quoted"].includes(p.status)).reduce((sum, p) => sum + (p.estimated_budget || 0), 0);
 
   // Projects
   const totalProjects = projects.length;
