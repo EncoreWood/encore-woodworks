@@ -103,10 +103,10 @@ export default function ShopProduction() {
     const newStage = result.destination.droppableId;
     const item = items.find(i => i.id === itemId);
     
-    // Update production item
+    // Update production item — only change the stage, preserve everything else
     updateMutation.mutate({
       id: itemId,
-      data: { stage: newStage }
+      data: { ...item, stage: newStage }
     });
     
     // Sync back to project if this item came from a project
