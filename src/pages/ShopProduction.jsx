@@ -24,6 +24,7 @@ export default function ShopProduction() {
   const [currentPdfUrl, setCurrentPdfUrl] = useState(null);
   const [currentAnnotations, setCurrentAnnotations] = useState([]);
   const [pickupItem, setPickupItem] = useState(null); // { project_id, project_name, room_name }
+  const [editingPts, setEditingPts] = useState(null); // { itemId, fileIdx }
 
   const { data: items = [] } = useQuery({
     queryKey: ["productionItems"],
