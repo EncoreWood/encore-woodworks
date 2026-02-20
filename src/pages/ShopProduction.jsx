@@ -308,29 +308,38 @@ export default function ShopProduction() {
                                                 )}
                                               </div>
                                             ) : file.url.match(/\.pdf$/i) ? (
-                                              <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-md border border-slate-200">
-                                                <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
-                                                <span className="text-slate-700 flex-1 truncate">{file.name}</span>
-                                                {file.pts !== undefined && file.pts !== null && (
-                                                  <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">{file.pts} PTS</span>
-                                                )}
-                                                {file.annotations && file.annotations.length > 0 && (
-                                                  <Badge className="bg-emerald-600 text-xs">
-                                                    {file.annotations.length} notes
-                                                  </Badge>
-                                                )}
-                                                <Button
-                                                  size="sm"
-                                                  variant="outline"
-                                                  className="h-6 px-2 text-xs"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleAnnotatePdf(item, idx);
-                                                  }}
-                                                >
-                                                  Annotate
-                                                </Button>
-                                              </div>
+                                             <div className="rounded-md border border-slate-200 overflow-hidden">
+                                               {/* PDF inline embed */}
+                                               <iframe
+                                                 src={file.url}
+                                                 title={file.name}
+                                                 className="w-full"
+                                                 style={{ height: "260px", border: "none" }}
+                                               />
+                                               <div className="flex items-center gap-2 p-2 bg-slate-50 border-t border-slate-200">
+                                                 <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                                 <span className="text-slate-700 flex-1 truncate text-xs">{file.name}</span>
+                                                 {file.pts !== undefined && file.pts !== null && (
+                                                   <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">{file.pts} PTS</span>
+                                                 )}
+                                                 {file.annotations && file.annotations.length > 0 && (
+                                                   <Badge className="bg-emerald-600 text-xs">
+                                                     {file.annotations.length} notes
+                                                   </Badge>
+                                                 )}
+                                                 <Button
+                                                   size="sm"
+                                                   variant="outline"
+                                                   className="h-6 px-2 text-xs"
+                                                   onClick={(e) => {
+                                                     e.stopPropagation();
+                                                     handleAnnotatePdf(item, idx);
+                                                   }}
+                                                 >
+                                                   Annotate
+                                                 </Button>
+                                               </div>
+                                             </div>
                                             ) : (
                                              <button
                                                onClick={(e) => {
