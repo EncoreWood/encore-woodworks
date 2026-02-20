@@ -295,7 +295,7 @@ export default function ShopProduction() {
                                         <h3 className="font-medium text-slate-900">{item.name}</h3>
                                         {item.files && item.files.some(f => f.pts) && (
                                           <span className="text-xs font-bold text-amber-600">
-                                            {item.files.reduce((s, f) => s + (f.pts || 0), 0)} PTS
+                                            {item.files.reduce((s, f) => s + (f.pts || 0), 0)} PTS total
                                           </span>
                                         )}
                                       </div>
