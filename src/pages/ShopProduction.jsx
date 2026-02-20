@@ -7,7 +7,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Trash2, FileText, ClipboardList } from "lucide-react";
 import ProductionItemForm from "../components/production/ProductionItemForm";
-import WoodworkingCalculator from "../components/production/WoodworkingCalculator";
 import PDFAnnotator from "../components/production/PDFAnnotator";
 import PickupItemForm from "../components/pickup/PickupItemForm";
 
