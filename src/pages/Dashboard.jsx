@@ -160,8 +160,14 @@ export default function Dashboard() {
             <p className="text-slate-400 text-sm">Company overview</p>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <p className="text-4xl font-light text-slate-500">{format(now, "EEEE")}</p>
-            <p className="text-3xl font-semibold text-slate-700">{format(now, "MMM do yyyy")}</p>
+            <div className="flex items-center gap-4">
+              <WeatherWidget />
+              <div className="text-right">
+                <p className="text-4xl font-light text-slate-500">{format(now, "EEEE")}</p>
+                <p className="text-3xl font-semibold text-slate-700">{format(now, "MMM do yyyy")}</p>
+                <p className="text-xs text-slate-400 text-right">Mountain Time</p>
+              </div>
+            </div>
             <div className="flex gap-2 mt-1">
               {currentUser?.role === "admin" && (
                 <Button onClick={() => setShowSettings(true)} variant="outline" size="icon">
