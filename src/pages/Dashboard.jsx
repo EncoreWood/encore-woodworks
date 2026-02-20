@@ -16,7 +16,7 @@ import ProductionStatsPanel from "../components/dashboard/ProductionStatsPanel";
 import WeatherWidget from "../components/dashboard/WeatherWidget";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { format, startOfWeek, startOfMonth, toZonedTime } from "date-fns-tz";
+import { format, startOfWeek, startOfMonth } from "date-fns";
 
 function StatBox({ label, value, subtitle, icon: Icon, onClick }) {
   return (
