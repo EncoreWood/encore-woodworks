@@ -157,7 +157,8 @@ export default function ShopProduction() {
 
     updateMutation.mutate({
       id: item.id,
-      data: { files: updatedFiles }
+      data: { files: updatedFiles },
+      syncToProject: item.project_id ? { project_id: item.project_id, room_name: item.room_name } : null
     });
 
     setAnnotatingPdf(null);
