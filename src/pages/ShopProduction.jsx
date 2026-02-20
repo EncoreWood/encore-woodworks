@@ -113,8 +113,14 @@ export default function ShopProduction() {
     const newStage = result.destination.droppableId;
     const item = items.find(i => i.id === itemId);
     
-    // Update production item — only change the stage, preserve everything else including files/pts
-    await base44.entities.ProductionItem.update(itemId, { ...item, stage: newStage });
+    // Update only the stage — send safe file objects only (no blobs)
+    const safeFiles = (item.files || []).map(f => ({
+      name: f.name,
+      url: f.url,
+      pts: f.pts,
+      annotations: f.annotations
+    }));
+    await base44.entities.ProductionItem.update(itemId, { ...item, stage: newStage, files: safeFiles });
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
     
     // Sync back to project if this item came from a project
