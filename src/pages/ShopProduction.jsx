@@ -439,15 +439,23 @@ export default function ShopProduction() {
                                                 </button>
                                                 <div className="flex items-center gap-1">
                                                   <span className="text-xs font-semibold text-slate-500">PTS</span>
-                                                  <input
-                                                    type="number"
-                                                    min="0"
-                                                    value={file.pts ?? ""}
-                                                    onClick={e => e.stopPropagation()}
-                                                    onChange={(e) => { e.stopPropagation(); handleInlinePtsChange(item, idx, e.target.value); }}
-                                                    className="w-12 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600"
-                                                    placeholder="0"
-                                                  />
+                                                  {editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
+                                                    <input
+                                                      type="number"
+                                                      min="0"
+                                                      defaultValue={file.pts ?? ""}
+                                                      autoFocus
+                                                      onClick={e => e.stopPropagation()}
+                                                      onBlur={(e) => { handleInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
+                                                      onKeyDown={(e) => { if (e.key === 'Enter') { handleInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
+                                                      className="w-12 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600"
+                                                      placeholder="0"
+                                                    />
+                                                  ) : (
+                                                    <button onClick={(e) => { e.stopPropagation(); setEditingPts({ itemId: item.id, fileIdx: idx }); }} className="h-6 px-2 text-xs border border-amber-200 rounded font-bold text-amber-600 hover:bg-amber-50 min-w-[40px] text-center">
+                                                      {file.pts ?? "—"}
+                                                    </button>
+                                                  )}
                                                 </div>
                                               </div>
                                              ))}
