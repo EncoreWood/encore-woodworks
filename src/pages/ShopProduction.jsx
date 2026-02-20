@@ -103,11 +103,9 @@ export default function ShopProduction() {
     const newStage = result.destination.droppableId;
     const item = items.find(i => i.id === itemId);
     
-    // Update production item — only change the stage, preserve everything else
-    updateMutation.mutate({
-      id: itemId,
-      data: { ...item, stage: newStage }
-    });
+    // Update production item — only change the stage, preserve everything else including files/pts
+    await base44.entities.ProductionItem.update(itemId, { ...item, stage: newStage });
+    queryClient.invalidateQueries({ queryKey: ["productionItems"] });
     
     // Sync back to project if this item came from a project
     if (item?.project_id) {
