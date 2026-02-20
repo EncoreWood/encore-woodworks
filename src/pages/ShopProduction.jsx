@@ -153,10 +153,33 @@ export default function ShopProduction() {
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Shop Production</h1>
             <p className="text-slate-500 mt-1">Track projects through production stages</p>
           </div>
-          <Button onClick={() => setShowForm(true)} className="bg-amber-600 hover:bg-amber-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Item
-          </Button>
+          <div className="flex items-center gap-4">
+            {/* PTS Tracker per column */}
+            <div className="flex gap-3">
+              {productionColumns.map(col => {
+                const colItems = items.filter(i => i.stage === col.id);
+                const pts = colItems.reduce((sum, item) => {
+                  return sum + (item.files || []).reduce((s, f) => s + (f.pts || 0), 0);
+                }, 0);
+                return (
+                  <div key={col.id} className="text-center bg-white rounded-lg px-3 py-2 shadow-sm border border-slate-200">
+                    <p className="text-xs text-slate-500 font-medium">{col.label}</p>
+                    <p className="text-lg font-bold text-amber-600">{pts} <span className="text-xs font-semibold text-slate-500">PTS</span></p>
+                  </div>
+                );
+              })}
+              <div className="text-center bg-amber-600 rounded-lg px-3 py-2 shadow-sm">
+                <p className="text-xs text-white font-medium">Total</p>
+                <p className="text-lg font-bold text-white">
+                  {items.reduce((sum, item) => sum + (item.files || []).reduce((s, f) => s + (f.pts || 0), 0), 0)} <span className="text-xs font-semibold">PTS</span>
+                </p>
+              </div>
+            </div>
+            <Button onClick={() => setShowForm(true)} className="bg-amber-600 hover:bg-amber-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Item
+            </Button>
+          </div>
         </div>
 
         <div className="mb-6">
