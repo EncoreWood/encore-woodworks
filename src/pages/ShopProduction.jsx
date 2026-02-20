@@ -287,13 +287,25 @@ export default function ShopProduction() {
 
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex gap-4 overflow-x-auto pb-4">
-            {productionColumns.map((column) => {
+            {productionColumns.map((column, colIdx) => {
               const columnItems = items.filter((item) => item.stage === column.id);
+              // PTS earned = sum of pts of items that have moved PAST this stage (i.e., are in any later stage)
+              const laterStageIds = productionColumns.slice(colIdx + 1).map(c => c.id);
+              const earnedPts = items
+                .filter(i => laterStageIds.includes(i.stage))
+                .reduce((sum, item) => sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0), 0);
               
               return (
                 <div key={column.id} className="flex-shrink-0 w-80">
                   <div className="mb-3 flex items-center justify-between">
-                    <h2 className="font-semibold text-slate-700">{column.label}</h2>
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-semibold text-slate-700">{column.label}</h2>
+                      {earnedPts > 0 && (
+                        <span className="text-xs font-bold text-green-700 bg-green-100 border border-green-200 rounded-full px-2 py-0.5">
+                          {earnedPts} PTS
+                        </span>
+                      )}
+                    </div>
                     <Badge variant="outline" className="text-xs">
                       {columnItems.length}
                     </Badge>
