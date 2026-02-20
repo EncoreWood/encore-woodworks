@@ -234,8 +234,9 @@ export default function Dashboard() {
           <>
             {/* Financial Overview */}
             <SectionCard title="Financial Overview" link={createPageUrl("Invoicing")} linkLabel="View Invoicing Board">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <StatBox label="Total Budget" value={`$${totalEstimatedBudget.toLocaleString()}`} icon={DollarSign} subtitle="All projects" />
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                <StatBox label="Total Budget" value={`$${totalEstimatedBudget.toLocaleString()}`} icon={DollarSign} subtitle="Approved & beyond" />
+                <StatBox label="Potential Jobs" value={`$${potentialJobsValue.toLocaleString()}`} icon={TrendingUp} subtitle="Inquiry & quoted" />
                 <StatBox label="Deposits Received" value={`$${totalDeposits.toLocaleString()}`} icon={TrendingUp} subtitle="Paid deposits" />
                 <StatBox label="Receivable" value={`$${receivable.toLocaleString()}`} icon={AlertTriangle} subtitle="Outstanding" />
                 <StatBox label="Completed Value" value={`$${completedProjectsValue.toLocaleString()}`} icon={CheckCircle} subtitle="Finished projects" />
