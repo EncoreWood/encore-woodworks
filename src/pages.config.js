@@ -66,6 +66,7 @@ import StretchingRoutine from './pages/StretchingRoutine';
 import Suppliers from './pages/Suppliers';
 import Team from './pages/Team';
 import TimeSheet from './pages/TimeSheet';
+import Tools from './pages/Tools';
 import __Layout from './Layout.jsx';
 
 
@@ -89,6 +90,7 @@ export const PAGES = {
     "Suppliers": Suppliers,
     "Team": Team,
     "TimeSheet": TimeSheet,
+    "Tools": Tools,
 }
 
 export const pagesConfig = {
