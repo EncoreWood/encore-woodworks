@@ -109,19 +109,42 @@ export default function ShopProduction() {
 
   const handleDragEnd = async (result) => {
     if (!result.destination) return;
-    
+    if (result.destination.droppableId === result.source.droppableId && result.destination.index === result.source.index) return;
+
     const itemId = result.draggableId;
     const newStage = result.destination.droppableId;
     const item = items.find(i => i.id === itemId);
-    
-    // Update only the stage — send safe file objects only (no blobs)
+    if (!item) return;
+
+    // Safe files — only plain serializable fields, never blobs
     const safeFiles = (item.files || []).map(f => ({
       name: f.name,
       url: f.url,
-      pts: f.pts,
+      pts: f.pts !== undefined ? Number(f.pts) : undefined,
       annotations: f.annotations
     }));
-    await base44.entities.ProductionItem.update(itemId, { ...item, stage: newStage, files: safeFiles });
+
+    const updatePayload = {
+      name: item.name,
+      type: item.type,
+      stage: newStage,
+      project_id: item.project_id,
+      project_name: item.project_name,
+      room_name: item.room_name,
+      notes: item.notes,
+      files: safeFiles,
+      // Stamp the date when moved to complete
+      completed_date: newStage === "complete" && item.stage !== "complete"
+        ? format(new Date(), "yyyy-MM-dd")
+        : item.completed_date
+    };
+
+    // Optimistically update cache so UI is instant
+    queryClient.setQueryData(["productionItems"], (old = []) =>
+      old.map(i => i.id === itemId ? { ...i, stage: newStage, files: safeFiles, completed_date: updatePayload.completed_date } : i)
+    );
+
+    await base44.entities.ProductionItem.update(itemId, updatePayload);
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
     
     // Sync back to project if this item came from a project
