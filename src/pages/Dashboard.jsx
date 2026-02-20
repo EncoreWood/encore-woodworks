@@ -58,7 +58,11 @@ export default function Dashboard() {
   const [showSettings, setShowSettings] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [projectListDialog, setProjectListDialog] = useState(null);
-  const now = new Date();
+
+  // Mountain Standard Time
+  const MST_TZ = "America/Denver";
+  const nowUtc = new Date();
+  const now = new Date(nowUtc.toLocaleString("en-US", { timeZone: MST_TZ }));
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
