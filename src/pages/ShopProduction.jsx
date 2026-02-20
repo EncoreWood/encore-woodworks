@@ -182,10 +182,6 @@ export default function ShopProduction() {
           </div>
         </div>
 
-        <div className="mb-6">
-          <WoodworkingCalculator />
-        </div>
-
         <DragDropContext onDragEnd={handleDragEnd}>
           <div className="flex gap-4 overflow-x-auto pb-4">
             {productionColumns.map((column) => {
