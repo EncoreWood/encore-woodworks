@@ -252,7 +252,7 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
                   Files {filesWithLiveStatus.length > 0 && `(${filesWithLiveStatus.length})`}
                 </p>
                 {filesWithLiveStatus.length > 0 && (
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handlePtsSave}>
+                  <Button size="sm" className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white" onClick={handlePtsSave}>
                     Save PTS
                   </Button>
                 )}
