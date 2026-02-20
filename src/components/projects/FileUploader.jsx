@@ -78,6 +78,17 @@ export default function FileUploader({ files = [], onChange, label = "Files" }) 
                 {file.name}
                 <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
               </a>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <span className="text-xs font-semibold text-slate-500">PTS</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={file.pts ?? ""}
+                  onChange={(e) => handlePtsChange(index, e.target.value)}
+                  className="w-12 h-6 text-xs border border-slate-300 rounded px-1 text-center"
+                  placeholder="0"
+                />
+              </div>
               <Button
                 type="button"
                 variant="ghost"
