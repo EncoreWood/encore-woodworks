@@ -140,6 +140,41 @@ export default function ShopProduction() {
     }
   };
 
+  // Inline PTS update — saves immediately to DB and syncs to project
+  const handleInlinePtsChange = async (item, fileIndex, newPts) => {
+    const updatedFiles = (item.files || []).map((f, i) =>
+      i === fileIndex ? { ...f, pts: newPts === "" ? undefined : Number(newPts) } : f
+    );
+
+    // Optimistically update the cache
+    queryClient.setQueryData(["productionItems"], (old = []) =>
+      old.map(i => i.id === item.id ? { ...i, files: updatedFiles } : i)
+    );
+
+    // Save to ProductionItem
+    await base44.entities.ProductionItem.update(item.id, { files: updatedFiles });
+
+    // Sync PTS back to the Project's room files
+    if (item.project_id && item.room_name) {
+      const projList = await base44.entities.Project.filter({ id: item.project_id });
+      const proj = projList[0];
+      if (proj?.rooms) {
+        const updatedRooms = proj.rooms.map(room => {
+          if (room.room_name !== item.room_name) return room;
+          return {
+            ...room,
+            files: (room.files || []).map(rf => {
+              const match = updatedFiles.find(pf => pf.url === rf.url || pf.name === rf.name);
+              return match !== undefined ? { ...rf, pts: match.pts } : rf;
+            })
+          };
+        });
+        await base44.entities.Project.update(item.project_id, { rooms: updatedRooms });
+        queryClient.invalidateQueries({ queryKey: ["projects"] });
+      }
+    }
+  };
+
   const handleAnnotatePdf = (item, fileIndex) => {
     const file = item.files[fileIndex];
     setAnnotatingPdf({ item, fileIndex });
