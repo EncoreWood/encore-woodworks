@@ -133,17 +133,17 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
   };
 
   const handlePtsSave = async () => {
+    if (roomIndex === null || roomIndex === undefined) return;
+
     const dataToSave = {
       ...formData,
       cabinet_count: formData.cabinet_count ? Number(formData.cabinet_count) : undefined
     };
 
-    // Save directly to the project without closing the modal
+    // Build updated rooms array and save directly to DB
     const updatedRooms = [...(project.rooms || [])];
-    if (roomIndex !== null && roomIndex !== undefined) {
-      updatedRooms[roomIndex] = dataToSave;
-      await base44.entities.Project.update(project.id, { rooms: updatedRooms });
-    }
+    updatedRooms[roomIndex] = dataToSave;
+    await base44.entities.Project.update(project.id, { rooms: updatedRooms });
 
     // Also sync pts to any existing production items for these files
     for (const pi of productionItems) {
@@ -156,7 +156,10 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
         await base44.entities.ProductionItem.update(pi.id, { files: updatedPiFiles });
       }
     }
+
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+    queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+    queryClient.invalidateQueries({ queryKey: ["projects"] });
     toast.success("PTS saved");
   };
 
