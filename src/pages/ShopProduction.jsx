@@ -53,9 +53,19 @@ export default function ShopProduction() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data, syncToProject }) => {
-      await base44.entities.ProductionItem.update(id, data);
+      // Strip out any File/Blob objects from files array before saving
+      const safeData = {
+        ...data,
+        files: (data.files || []).map(f => ({
+          name: f.name,
+          url: f.url,
+          pts: f.pts,
+          annotations: f.annotations
+        }))
+      };
+      await base44.entities.ProductionItem.update(id, safeData);
       // Sync PTS back to the project's room files
-      if (syncToProject && data.files && syncToProject.project_id && syncToProject.room_name) {
+      if (syncToProject && safeData.files && syncToProject.project_id && syncToProject.room_name) {
         const projList = await base44.entities.Project.filter({ id: syncToProject.project_id });
         const proj = projList[0];
         if (proj?.rooms) {
@@ -64,7 +74,7 @@ export default function ShopProduction() {
             return {
               ...room,
               files: (room.files || []).map(rf => {
-                const match = data.files.find(pf => pf.url === rf.url || pf.name === rf.name);
+                const match = safeData.files.find(pf => pf.url === rf.url || pf.name === rf.name);
                 return match ? { ...rf, pts: match.pts } : rf;
               })
             };
