@@ -13,9 +13,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import ProjectForm from "../components/projects/ProjectForm";
 import ProductionStatsPanel from "../components/dashboard/ProductionStatsPanel";
+import WeatherWidget from "../components/dashboard/WeatherWidget";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { format, startOfWeek, startOfMonth } from "date-fns";
+import { format, startOfWeek, startOfMonth, toZonedTime } from "date-fns-tz";
 
 function StatBox({ label, value, subtitle, icon: Icon, onClick }) {
   return (
