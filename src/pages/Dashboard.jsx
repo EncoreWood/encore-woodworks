@@ -168,7 +168,7 @@ export default function Dashboard() {
                 <p className="text-xs text-slate-400 text-right">Mountain Time</p>
               </div>
             </div>
-            <div className="flex gap-2 mt-1">
+            <div className="flex gap-2">
               {currentUser?.role === "admin" && (
                 <Button onClick={() => setShowSettings(true)} variant="outline" size="icon">
                   <Settings className="w-4 h-4" />
