@@ -358,15 +358,23 @@ export default function ShopProduction() {
                                                  />
                                                  <div className="absolute top-1 right-1 flex items-center gap-1 bg-white border border-amber-200 rounded px-1.5 py-0.5 shadow">
                                                    <span className="text-xs font-semibold text-slate-500">PTS</span>
-                                                   <input
-                                                     type="number"
-                                                     min="0"
-                                                     value={file.pts ?? ""}
-                                                     onClick={e => e.stopPropagation()}
-                                                     onChange={(e) => { e.stopPropagation(); handleInlinePtsChange(item, idx, e.target.value); }}
-                                                     className="w-10 text-xs text-center font-bold text-amber-600 border-none outline-none bg-transparent"
-                                                     placeholder="0"
-                                                   />
+                                                   {editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
+                                                     <input
+                                                       type="number"
+                                                       min="0"
+                                                       defaultValue={file.pts ?? ""}
+                                                       autoFocus
+                                                       onClick={e => e.stopPropagation()}
+                                                       onBlur={(e) => { handleInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
+                                                       onKeyDown={(e) => { if (e.key === 'Enter') { handleInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
+                                                       className="w-10 text-xs text-center font-bold text-amber-600 border-none outline-none bg-transparent"
+                                                       placeholder="0"
+                                                     />
+                                                   ) : (
+                                                     <button onClick={(e) => { e.stopPropagation(); setEditingPts({ itemId: item.id, fileIdx: idx }); }} className="text-xs font-bold text-amber-600 min-w-[24px] text-center hover:underline">
+                                                       {file.pts ?? "—"}
+                                                     </button>
+                                                   )}
                                                  </div>
                                                </div>
                                              ) : file.url.match(/\.pdf$/i) ? (
