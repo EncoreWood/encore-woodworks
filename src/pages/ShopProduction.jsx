@@ -296,7 +296,7 @@ export default function ShopProduction() {
                                                   alt={file.name} 
                                                   className="w-full rounded-md border border-slate-200"
                                                 />
-                                                {file.pts !== undefined && file.pts !== null && (
+                                                {(file.pts !== undefined && file.pts !== null) && (
                                                   <span className="absolute top-1 right-1 text-xs font-bold text-amber-600 bg-white border border-amber-200 rounded px-1.5 py-0.5 shadow">{file.pts} PTS</span>
                                                 )}
                                               </div>
