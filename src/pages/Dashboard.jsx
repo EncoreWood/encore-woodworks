@@ -244,16 +244,8 @@ export default function Dashboard() {
               </div>
             </SectionCard>
 
-            {/* Breakdown */}
-            <SectionCard title="Breakdown">
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-                <StatBox label="Kitchen Projects" value={kitchenProjects} icon={Home} />
-                <StatBox label="Bathroom Projects" value={bathroomProjects} icon={Home} />
-                <StatBox label="Custom Projects" value={customProjects} icon={Wrench} />
-                <StatBox label="Other Projects" value={otherProjects} icon={Briefcase} />
-                <StatBox label="Total Employees" value={employees.length} icon={Users} subtitle="Current team" />
-              </div>
-            </SectionCard>
+            {/* Production Stage Breakdown */}
+            <ProductionStatsPanel items={productionItems} />
           </>
         )}
       </div>
