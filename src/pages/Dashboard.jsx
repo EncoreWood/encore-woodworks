@@ -3,16 +3,52 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, Briefcase, Clock, CheckCircle, AlertTriangle, Settings, DollarSign, Users, PauseCircle, TrendingUp, Home, Wrench, ArrowRight } from "lucide-react";
+import {
+  Plus, Briefcase, Clock, CheckCircle, AlertTriangle, Settings,
+  DollarSign, Users, PauseCircle, TrendingUp, Home, Wrench, ArrowRight,
+  Calendar
+} from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import StatsCard from "../components/dashboard/StatsCard";
-import ProjectCard from "../components/projects/ProjectCard";
-import ProjectFilters from "../components/projects/ProjectFilters";
 import ProjectForm from "../components/projects/ProjectForm";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { format, startOfWeek, startOfMonth } from "date-fns";
+
+function StatBox({ label, value, subtitle, icon: Icon, onClick }) {
+  return (
+    <div
+      className={`flex flex-col gap-1 p-4 bg-white rounded-xl border border-slate-200 shadow-sm ${onClick ? "cursor-pointer hover:shadow-md transition-shadow" : ""}`}
+      onClick={onClick}
+    >
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
+        {Icon && <Icon className="w-4 h-4 text-slate-400" />}
+      </div>
+      <p className="text-3xl font-bold text-slate-900">{value}</p>
+      {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
+    </div>
+  );
+}
+
+function SectionCard({ title, link, linkLabel, children }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-5">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <h2 className="text-base font-bold text-slate-800">{title}</h2>
+        {link && (
+          <Link to={link}>
+            <Button variant="ghost" size="sm" className="gap-1 text-slate-500 hover:text-slate-800 text-xs">
+              {linkLabel} <ArrowRight className="w-3 h-3" />
+            </Button>
+          </Link>
+        )}
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const queryClient = useQueryClient();
@@ -20,14 +56,9 @@ export default function Dashboard() {
   const [showSettings, setShowSettings] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [projectListDialog, setProjectListDialog] = useState(null);
-  const [filters, setFilters] = useState({
-    search: "",
-    status: "all",
-    type: "all",
-    priority: "all"
-  });
+  const now = new Date();
 
-  const { data: projects = [], isLoading } = useQuery({
+  const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: () => base44.entities.Project.list("-created_date")
   });
@@ -42,58 +73,69 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Employee.list()
   });
 
+  const { data: productionItems = [] } = useQuery({
+    queryKey: ["productionItems"],
+    queryFn: () => base44.entities.ProductionItem.list("-updated_date", 200)
+  });
+
   const updateSettingMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.DashboardSettings.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboardSettings"] });
-    }
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboardSettings"] })
   });
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Project.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setShowForm(false);
-    }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["projects"] }); setShowForm(false); }
   });
 
-  // Calculate comprehensive business stats
-  const totalProjects = projects.length;
-  const activeProjects = projects.filter(
-    (p) => !["completed", "on_hold", "inquiry"].includes(p.status)
-  ).length;
-  const completedProjects = projects.filter((p) => p.status === "completed").length;
-  const onHoldProjects = projects.filter((p) => p.status === "on_hold").length;
-  const sideProjects = projects.filter((p) => p.status === "inquiry" || p.status === "side_projects").length;
-  
-  // Financial calculations
-  const totalEstimatedBudget = projects.reduce((sum, p) => sum + (p.estimated_budget || 0), 0);
-  const totalDeposits = projects.reduce((sum, p) => sum + (p.deposit_paid || 0), 0);
-  const completedProjectsValue = projects
-    .filter((p) => p.status === "completed")
-    .reduce((sum, p) => sum + (p.actual_cost || p.estimated_budget || 0), 0);
-  const receivable = totalEstimatedBudget - totalDeposits;
-  
-  // Project type breakdown
-  const kitchenProjects = projects.filter((p) => p.project_type === "kitchen").length;
-  const bathroomProjects = projects.filter((p) => p.project_type === "bathroom").length;
-  const customProjects = projects.filter((p) => p.project_type === "custom").length;
-  const otherProjects = totalProjects - kitchenProjects - bathroomProjects - customProjects;
-  
-  // Employee count
-  const totalEmployees = employees.length;
+  useEffect(() => {
+    base44.auth.me().then(setCurrentUser);
+  }, []);
 
-  const clearFilters = () => {
-    setFilters({ search: "", status: "all", type: "all", priority: "all" });
+  // PTS calculations
+  const getPtsFromItems = (items) => {
+    return items.reduce((sum, item) => {
+      return sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
+    }, 0);
   };
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const user = await base44.auth.me();
-      setCurrentUser(user);
-    };
-    fetchUser();
-  }, []);
+  const todayStr = format(now, "yyyy-MM-dd");
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const monthStart = startOfMonth(now);
+
+  const dayPts = getPtsFromItems(productionItems.filter(i => {
+    if (!i.updated_date) return false;
+    return format(new Date(i.updated_date), "yyyy-MM-dd") === todayStr;
+  }));
+
+  const weekPts = getPtsFromItems(productionItems.filter(i => {
+    if (!i.updated_date) return false;
+    return new Date(i.updated_date) >= weekStart;
+  }));
+
+  const monthPts = getPtsFromItems(productionItems.filter(i => {
+    if (!i.updated_date) return false;
+    return new Date(i.updated_date) >= monthStart;
+  }));
+
+  // Financial
+  const totalEstimatedBudget = projects.reduce((sum, p) => sum + (p.estimated_budget || 0), 0);
+  const totalDeposits = projects.reduce((sum, p) => sum + (p.deposit_paid || 0), 0);
+  const completedProjectsValue = projects.filter(p => p.status === "completed").reduce((sum, p) => sum + (p.actual_cost || p.estimated_budget || 0), 0);
+  const receivable = totalEstimatedBudget - totalDeposits;
+
+  // Projects
+  const totalProjects = projects.length;
+  const activeProjects = projects.filter(p => !["completed", "on_hold", "inquiry", "side_projects"].includes(p.status));
+  const completedProjects = projects.filter(p => p.status === "completed");
+  const onHoldProjects = projects.filter(p => p.status === "on_hold");
+  const sideProjects = projects.filter(p => p.status === "inquiry" || p.status === "side_projects");
+
+  // Breakdown
+  const kitchenProjects = projects.filter(p => p.project_type === "kitchen").length;
+  const bathroomProjects = projects.filter(p => p.project_type === "bathroom").length;
+  const customProjects = projects.filter(p => p.project_type === "custom").length;
+  const otherProjects = totalProjects - kitchenProjects - bathroomProjects - customProjects;
 
   const getSectionVisibility = (section) => {
     const setting = dashboardSettings.find(s => s.section === section);
@@ -105,276 +147,190 @@ export default function Dashboard() {
     const setting = dashboardSettings.find(s => s.section === section);
     if (!setting) return;
     const field = role === "admin" ? "visible_to_admins" : "visible_to_users";
-    updateSettingMutation.mutate({
-      id: setting.id,
-      data: { [field]: value }
-    });
+    updateSettingMutation.mutate({ id: setting.id, data: { [field]: value } });
   };
+
+  const inProductionProjects = projects.filter(p => p.status === "in_production");
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Overview</h1>
-            <p className="text-slate-500 mt-1">Company overview</p>
+            <h1 className="text-2xl font-bold text-slate-800">Overview</h1>
+            <p className="text-slate-400 text-sm">Company overview</p>
           </div>
-          <div className="flex gap-2">
-            {currentUser?.role === "admin" && (
-              <Button
-                onClick={() => setShowSettings(true)}
-                variant="outline"
-                size="icon"
-              >
-                <Settings className="w-4 h-4" />
+          <div className="flex flex-col items-end gap-2">
+            <p className="text-4xl font-light text-slate-500">{format(now, "EEEE")}</p>
+            <p className="text-3xl font-semibold text-slate-700">{format(now, "MMM do yyyy")}</p>
+            <div className="flex gap-2 mt-1">
+              {currentUser?.role === "admin" && (
+                <Button onClick={() => setShowSettings(true)} variant="outline" size="icon">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              )}
+              <Button onClick={() => setShowForm(true)} className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm">
+                <Plus className="w-4 h-4 mr-1" /> New Project
               </Button>
-            )}
-            <Button
-              onClick={() => setShowForm(true)}
-              className="bg-amber-600 hover:bg-amber-700 shadow-sm"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              New Project
-            </Button>
+            </div>
           </div>
         </div>
 
-        {/* Business Overview Stats */}
-        {getSectionVisibility("stats") && (
-          <>
-            {/* Financial Overview */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-slate-900">Financial Overview</h2>
-                <Link to={createPageUrl("Invoicing")}>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    View Invoicing Board
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatsCard
-                  title="Total Budget"
-                  value={`$${totalEstimatedBudget.toLocaleString()}`}
-                  icon={DollarSign}
-                  subtitle="All projects"
-                />
-                <StatsCard
-                  title="Deposits Received"
-                  value={`$${totalDeposits.toLocaleString()}`}
-                  icon={TrendingUp}
-                  subtitle="Paid deposits"
-                />
-                <StatsCard
-                  title="Receivable"
-                  value={`$${receivable.toLocaleString()}`}
-                  icon={AlertTriangle}
-                  subtitle="Outstanding"
-                  className="border-l-4 border-l-amber-500"
-                />
-                <StatsCard
-                  title="Completed Value"
-                  value={`$${completedProjectsValue.toLocaleString()}`}
-                  icon={CheckCircle}
-                  subtitle="Finished projects"
-                />
-              </div>
-            </div>
-
-            {/* Project Overview */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-slate-900">Project Overview</h2>
-                <Link to={createPageUrl("Kanban")}>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    View Projects Board
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <StatsCard
-                  title="Total Projects"
-                  value={totalProjects}
-                  icon={Briefcase}
-                  subtitle="All time"
-                  onClick={() => setProjectListDialog({ title: "All Projects", projects })}
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
-                />
-                <StatsCard
-                  title="Active Projects"
-                  value={activeProjects}
-                  icon={Clock}
-                  subtitle="In progress"
-                  onClick={() => setProjectListDialog({ 
-                    title: "Active Projects", 
-                    projects: projects.filter((p) => !["completed", "on_hold", "inquiry"].includes(p.status))
-                  })}
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
-                />
-                <StatsCard
-                  title="Completed"
-                  value={completedProjects}
-                  icon={CheckCircle}
-                  subtitle="Finished"
-                  onClick={() => setProjectListDialog({ 
-                    title: "Completed Projects", 
-                    projects: projects.filter((p) => p.status === "completed")
-                  })}
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
-                />
-                <StatsCard
-                  title="On Hold"
-                  value={onHoldProjects}
-                  icon={PauseCircle}
-                  subtitle="Paused"
-                  onClick={() => setProjectListDialog({ 
-                    title: "On Hold Projects", 
-                    projects: projects.filter((p) => p.status === "on_hold")
-                  })}
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
-                />
-                <StatsCard
-                  title="Side Projects"
-                  value={sideProjects}
-                  icon={Briefcase}
-                  subtitle="Inquiry"
-                  onClick={() => setProjectListDialog({ 
-                    title: "Side Projects", 
-                    projects: projects.filter((p) => p.status === "inquiry" || p.status === "side_projects")
-                  })}
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
-                />
-              </div>
-            </div>
-
-            {/* Project Types & Team */}
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold text-slate-900 mb-4">Breakdown</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <StatsCard
-                  title="Kitchen Projects"
-                  value={kitchenProjects}
-                  icon={Home}
-                />
-                <StatsCard
-                  title="Bathroom Projects"
-                  value={bathroomProjects}
-                  icon={Home}
-                />
-                <StatsCard
-                  title="Custom Projects"
-                  value={customProjects}
-                  icon={Wrench}
-                />
-                <StatsCard
-                  title="Other Projects"
-                  value={otherProjects}
-                  icon={Briefcase}
-                />
-                <StatsCard
-                  title="Total Employees"
-                  value={totalEmployees}
-                  icon={Users}
-                  subtitle="Current team"
-                />
-              </div>
-            </div>
-          </>
-        )}
-
-
-
-
-
-        {/* Create Form */}
-        <ProjectForm
-          open={showForm}
-          onOpenChange={setShowForm}
-          onSubmit={(data) => createMutation.mutate(data)}
-          isLoading={createMutation.isPending}
-        />
-
-        {/* Project List Dialog */}
-        <Dialog open={!!projectListDialog} onOpenChange={() => setProjectListDialog(null)}>
-          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{projectListDialog?.title}</DialogTitle>
-            </DialogHeader>
+        {/* Top Row: Current Projects + PTS Overview */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+          {/* In Production */}
+          <div className="lg:col-span-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">Current Projects</h3>
             <div className="space-y-2">
-              {projectListDialog?.projects.length > 0 ? (
-                projectListDialog.projects.map((project) => (
-                  <Link
-                    key={project.id}
-                    to={createPageUrl(`ProjectDetails?id=${project.id}`)}
-                    className="block p-4 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
+              {inProductionProjects.length === 0 ? (
+                <p className="text-slate-400 text-sm">No active production projects</p>
+              ) : (
+                inProductionProjects.slice(0, 5).map(p => (
+                  <Link key={p.id} to={createPageUrl("ProjectDetails") + "?id=" + p.id}>
+                    <div className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 transition-colors">
                       <div>
-                        <h4 className="font-semibold text-slate-900">{project.project_name}</h4>
-                        <p className="text-sm text-slate-500">{project.client_name}</p>
+                        <p className="text-sm font-semibold text-slate-800">{p.project_name}</p>
+                        <p className="text-xs text-slate-400">{p.client_name}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-slate-700 capitalize">{project.status?.replace(/_/g, ' ')}</p>
-                        {project.estimated_budget && (
-                          <p className="text-sm text-slate-500">${project.estimated_budget.toLocaleString()}</p>
-                        )}
-                      </div>
+                      {p.estimated_completion && (
+                        <span className="text-xs text-slate-400 flex items-center gap-1">
+                          <Calendar className="w-3 h-3" />{format(new Date(p.estimated_completion), "MMM d")}
+                        </span>
+                      )}
                     </div>
                   </Link>
                 ))
-              ) : (
-                <p className="text-center text-slate-500 py-8">No projects found</p>
               )}
             </div>
-          </DialogContent>
-        </Dialog>
+          </div>
 
-        {/* Dashboard Settings Dialog */}
-        <Dialog open={showSettings} onOpenChange={setShowSettings}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Dashboard Visibility Settings</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-6">
-              {["stats", "projects", "google_sheet"].map((section) => {
-                const setting = dashboardSettings.find(s => s.section === section);
-                const sectionLabel = section === "google_sheet" ? "Google Sheet" : section.charAt(0).toUpperCase() + section.slice(1);
-                
-                return (
-                  <div key={section} className="space-y-3">
-                    <h3 className="font-semibold text-slate-900">{sectionLabel}</h3>
-                    <div className="space-y-2 ml-2">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          id={`users-${section}`}
-                          checked={setting?.visible_to_users ?? true}
-                          onCheckedChange={(checked) => handleToggleSectionVisibility(section, "user", checked)}
-                        />
-                        <Label htmlFor={`users-${section}`} className="cursor-pointer">
-                          Visible to Regular Users
-                        </Label>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          id={`admins-${section}`}
-                          checked={setting?.visible_to_admins ?? true}
-                          onCheckedChange={(checked) => handleToggleSectionVisibility(section, "admin", checked)}
-                        />
-                        <Label htmlFor={`admins-${section}`} className="cursor-pointer">
-                          Visible to Admins
-                        </Label>
-                      </div>
+          {/* PTS Overview */}
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">PTS Overview</h3>
+            <div className="grid grid-cols-3 gap-4">
+              {[
+                { label: "Day", value: dayPts },
+                { label: "Week", value: weekPts },
+                { label: "Month", value: monthPts },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex flex-col items-center justify-center bg-slate-50 rounded-xl py-6">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">{label}</p>
+                  <p className="text-5xl font-bold text-slate-800">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {getSectionVisibility("stats") && (
+          <>
+            {/* Financial Overview */}
+            <SectionCard title="Financial Overview" link={createPageUrl("Invoicing")} linkLabel="View Invoicing Board">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <StatBox label="Total Budget" value={`$${totalEstimatedBudget.toLocaleString()}`} icon={DollarSign} subtitle="All projects" />
+                <StatBox label="Deposits Received" value={`$${totalDeposits.toLocaleString()}`} icon={TrendingUp} subtitle="Paid deposits" />
+                <StatBox label="Receivable" value={`$${receivable.toLocaleString()}`} icon={AlertTriangle} subtitle="Outstanding" />
+                <StatBox label="Completed Value" value={`$${completedProjectsValue.toLocaleString()}`} icon={CheckCircle} subtitle="Finished projects" />
+              </div>
+            </SectionCard>
+
+            {/* Project Overview */}
+            <SectionCard title="Project Overview" link={createPageUrl("Kanban")} linkLabel="View Projects Board">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                <StatBox label="Total Projects" value={totalProjects} icon={Briefcase} subtitle="All time"
+                  onClick={() => setProjectListDialog({ title: "All Projects", projects })} />
+                <StatBox label="Active Projects" value={activeProjects.length} icon={Clock} subtitle="In progress"
+                  onClick={() => setProjectListDialog({ title: "Active Projects", projects: activeProjects })} />
+                <StatBox label="Completed" value={completedProjects.length} icon={CheckCircle} subtitle="Finished"
+                  onClick={() => setProjectListDialog({ title: "Completed Projects", projects: completedProjects })} />
+                <StatBox label="On Hold" value={onHoldProjects.length} icon={PauseCircle} subtitle="Paused"
+                  onClick={() => setProjectListDialog({ title: "On Hold Projects", projects: onHoldProjects })} />
+                <StatBox label="Side Projects" value={sideProjects.length} icon={Briefcase} subtitle="Inquiry"
+                  onClick={() => setProjectListDialog({ title: "Side Projects", projects: sideProjects })} />
+              </div>
+            </SectionCard>
+
+            {/* Breakdown */}
+            <SectionCard title="Breakdown">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+                <StatBox label="Kitchen Projects" value={kitchenProjects} icon={Home} />
+                <StatBox label="Bathroom Projects" value={bathroomProjects} icon={Home} />
+                <StatBox label="Custom Projects" value={customProjects} icon={Wrench} />
+                <StatBox label="Other Projects" value={otherProjects} icon={Briefcase} />
+                <StatBox label="Total Employees" value={employees.length} icon={Users} subtitle="Current team" />
+              </div>
+            </SectionCard>
+          </>
+        )}
+      </div>
+
+      {/* Create Form */}
+      <ProjectForm
+        open={showForm}
+        onOpenChange={setShowForm}
+        onSubmit={(data) => createMutation.mutate(data)}
+        isLoading={createMutation.isPending}
+      />
+
+      {/* Project List Dialog */}
+      <Dialog open={!!projectListDialog} onOpenChange={() => setProjectListDialog(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{projectListDialog?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            {projectListDialog?.projects?.length > 0 ? (
+              projectListDialog.projects.map(project => (
+                <Link key={project.id} to={createPageUrl(`ProjectDetails?id=${project.id}`)} className="block p-4 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-semibold text-slate-900">{project.project_name}</h4>
+                      <p className="text-sm text-slate-500">{project.client_name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-medium text-slate-700 capitalize">{project.status?.replace(/_/g, ' ')}</p>
+                      {project.estimated_budget && <p className="text-sm text-slate-500">${project.estimated_budget.toLocaleString()}</p>}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
+                </Link>
+              ))
+            ) : (
+              <p className="text-center text-slate-500 py-8">No projects found</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings Dialog */}
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Dashboard Visibility Settings</DialogTitle></DialogHeader>
+          <div className="space-y-6">
+            {["stats", "projects"].map(section => {
+              const setting = dashboardSettings.find(s => s.section === section);
+              return (
+                <div key={section} className="space-y-3">
+                  <h3 className="font-semibold text-slate-900 capitalize">{section}</h3>
+                  <div className="space-y-2 ml-2">
+                    <div className="flex items-center gap-3">
+                      <Checkbox id={`users-${section}`} checked={setting?.visible_to_users ?? true}
+                        onCheckedChange={v => handleToggleSectionVisibility(section, "user", v)} />
+                      <Label htmlFor={`users-${section}`} className="cursor-pointer">Visible to Regular Users</Label>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Checkbox id={`admins-${section}`} checked={setting?.visible_to_admins ?? true}
+                        onCheckedChange={v => handleToggleSectionVisibility(section, "admin", v)} />
+                      <Label htmlFor={`admins-${section}`} className="cursor-pointer">Visible to Admins</Label>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
