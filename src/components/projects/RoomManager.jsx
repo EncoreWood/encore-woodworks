@@ -363,7 +363,7 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 flex-shrink-0">
                             <span className="text-xs font-semibold text-slate-500">PTS</span>
                             <input
                               type="number"
