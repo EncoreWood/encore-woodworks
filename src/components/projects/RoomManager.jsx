@@ -137,7 +137,13 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
       ...formData,
       cabinet_count: formData.cabinet_count ? Number(formData.cabinet_count) : undefined
     };
-    onSave(dataToSave);
+
+    // Save directly to the project without closing the modal
+    const updatedRooms = [...(project.rooms || [])];
+    if (roomIndex !== null && roomIndex !== undefined) {
+      updatedRooms[roomIndex] = dataToSave;
+      await base44.entities.Project.update(project.id, { rooms: updatedRooms });
+    }
 
     // Also sync pts to any existing production items for these files
     for (const pi of productionItems) {
