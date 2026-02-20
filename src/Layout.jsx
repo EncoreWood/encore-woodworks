@@ -36,13 +36,14 @@ export default function Layout({ children, currentPageName }) {
     operations: {
       name: "Operations",
       items: [
-        { name: "Calendar", icon: Calendar, iconName: "Calendar", page: "Calendar" },
-        { name: "Production", icon: Factory, iconName: "Factory", page: "ShopProduction" },
-        { name: "Inventory", icon: Coffee, iconName: "Coffee", page: "Inventory" },
-        { name: "Purchase Orders", icon: Package, iconName: "Package", page: "PurchaseOrders" },
-        { name: "Suppliers", icon: Truck, iconName: "Truck", page: "Suppliers" },
-        { name: "SOPs", icon: FileText, iconName: "FileText", page: "SOPBoard" },
-      ]
+          { name: "Calendar", icon: Calendar, iconName: "Calendar", page: "Calendar" },
+          { name: "Production", icon: Factory, iconName: "Factory", page: "ShopProduction" },
+          { name: "Tools", icon: Wrench, iconName: "Wrench", page: "Tools" },
+          { name: "Inventory", icon: Coffee, iconName: "Coffee", page: "Inventory" },
+          { name: "Purchase Orders", icon: Package, iconName: "Package", page: "PurchaseOrders" },
+          { name: "Suppliers", icon: Truck, iconName: "Truck", page: "Suppliers" },
+          { name: "SOPs", icon: FileText, iconName: "FileText", page: "SOPBoard" },
+        ]
     },
     team: {
       name: "Team",
