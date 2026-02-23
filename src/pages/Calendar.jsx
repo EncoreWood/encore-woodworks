@@ -349,8 +349,8 @@ export default function Calendar() {
 
   const getProjectsForDate = (date) => {
     return projects.filter((project) => {
-      const startDate = project.start_date ? new Date(project.start_date) : null;
-      const completionDate = project.estimated_completion ? new Date(project.estimated_completion) : null;
+      const startDate = project.start_date ? parseLocalDate(project.start_date) : null;
+      const completionDate = project.estimated_completion ? parseLocalDate(project.estimated_completion) : null;
       
       return (
         (startDate && isSameDay(startDate, date)) ||
@@ -361,8 +361,8 @@ export default function Calendar() {
 
   const getProjectsSpanningDate = (date) => {
     return projects.filter((project) => {
-      const startDate = project.start_date ? new Date(project.start_date) : null;
-      const completionDate = project.estimated_completion ? new Date(project.estimated_completion) : null;
+      const startDate = project.start_date ? parseLocalDate(project.start_date) : null;
+      const completionDate = project.estimated_completion ? parseLocalDate(project.estimated_completion) : null;
       
       if (!startDate || !completionDate) return false;
       
