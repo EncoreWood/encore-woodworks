@@ -1063,13 +1063,13 @@ export default function Calendar() {
                         {project.start_date && (
                           <div className="flex items-center gap-2">
                             <CalendarIcon className="w-3 h-3" />
-                            <span>Start: {format(new Date(project.start_date), "MMM d")}</span>
+                            <span>Start: {format(parseLocalDate(project.start_date), "MMM d")}</span>
                           </div>
                         )}
                         {project.estimated_completion && (
                           <div className="flex items-center gap-2">
                             <CalendarIcon className="w-3 h-3" />
-                            <span>Due: {format(new Date(project.estimated_completion), "MMM d")}</span>
+                            <span>Due: {format(parseLocalDate(project.estimated_completion), "MMM d")}</span>
                           </div>
                         )}
                       </div>
