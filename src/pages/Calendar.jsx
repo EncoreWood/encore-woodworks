@@ -619,16 +619,21 @@ export default function Calendar() {
                             )}
                           </div>
                           <div className="absolute bottom-2 left-0 right-0 px-2 flex flex-col gap-0.5">
-                            {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.slice(0, 4).map((project) => (
-                              <div
-                                key={project.id}
-                                className={!project.card_color ? `h-4 rounded-sm flex items-center px-1 overflow-hidden ${statusConfig[project.status]?.color || "bg-slate-400"}` : "h-4 rounded-sm flex items-center px-1 overflow-hidden"}
-                                style={project.card_color ? { backgroundColor: project.card_color } : {}}
-                                title={project.project_name}
-                              >
-                                <span className="text-white text-[9px] font-medium truncate leading-none" style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
-                              </div>
-                            ))}
+                            {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.slice(0, 4).map((project) => {
+                              const isSide = project.status === "side_projects";
+                              const bgStyle = isSide ? { backgroundColor: "#374151" } : (project.card_color ? { backgroundColor: project.card_color } : {});
+                              const bgClass = (!isSide && !project.card_color) ? `${statusConfig[project.status]?.color || "bg-slate-400"}` : "";
+                              return (
+                                <div
+                                  key={project.id}
+                                  className={`h-4 rounded-sm flex items-center px-1 overflow-hidden ${bgClass}`}
+                                  style={bgStyle}
+                                  title={project.project_name}
+                                >
+                                  <span className="text-white text-[9px] font-medium truncate leading-none" style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
+                                </div>
+                              );
+                            })}
                           </div>
                           <div className="flex gap-1 flex-wrap mt-1 relative z-10">
                             {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
