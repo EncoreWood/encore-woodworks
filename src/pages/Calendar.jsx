@@ -35,7 +35,8 @@ import { Textarea } from "@/components/ui/textarea";
 import ProjectForm from "../components/projects/ProjectForm";
 
 const statusConfig = {
-  inquiry: { label: "Inquiry", color: "bg-slate-500" },
+  inquiry: { label: "Inquiry", color: "bg-slate-700" },
+  side_projects: { label: "Side Project", color: "bg-slate-700" },
   quoted: { label: "Quoted", color: "bg-blue-500" },
   approved: { label: "Approved", color: "bg-emerald-500" },
   in_design: { label: "In Design", color: "bg-violet-500" },
@@ -45,6 +46,9 @@ const statusConfig = {
   completed: { label: "Completed", color: "bg-emerald-600" },
   on_hold: { label: "On Hold", color: "bg-red-500" }
 };
+
+// Parse date strings as local time to avoid UTC offset shifting dates
+const parseLocalDate = (dateStr) => new Date(dateStr + "T00:00:00");
 
 export default function Calendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
