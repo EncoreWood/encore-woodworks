@@ -30,6 +30,14 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
 
   const getPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
+    // Handle touch/stylus events
+    if (e.touches || e.changedTouches) {
+      const touch = e.touches?.[0] || e.changedTouches?.[0];
+      return {
+        x: touch.clientX - rect.left,
+        y: touch.clientY - rect.top
+      };
+    }
     return {
       x: e.clientX - rect.left,
       y: e.clientY - rect.top
@@ -37,6 +45,9 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   };
 
   const startDrawing = (e) => {
+    // Ignore mouse events if a touch/stylus is active (prevent double-firing)
+    if (e.type === "mousedown" && e.sourceCapabilities?.firesTouchEvents) return;
+    e.preventDefault();
     if (tool === "pen") {
       setDrawing(true);
       const pos = getPos(e);
