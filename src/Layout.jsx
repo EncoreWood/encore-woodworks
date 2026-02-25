@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, Settings, Trash2, ArrowUp, ArrowDown, Play, Square, Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive } from "lucide-react";
+import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, Settings, Trash2, ArrowUp, ArrowDown, Play, Square, Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
