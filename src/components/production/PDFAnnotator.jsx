@@ -251,13 +251,20 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
               <canvas
                 ref={canvasRef}
                 className="absolute top-0 left-0"
-                style={{ cursor: cursorStyle }}
+                style={{ cursor: cursorStyle, touchAction: "none" }}
                 width={595 * scale}
                 height={842 * scale}
                 onMouseDown={startDrawing}
                 onMouseMove={draw}
                 onMouseUp={stopDrawing}
                 onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                onPointerDown={startDrawing}
+                onPointerMove={draw}
+                onPointerUp={stopDrawing}
+                onPointerLeave={stopDrawing}
               />
             </div>
           </div>
