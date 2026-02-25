@@ -67,6 +67,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
 
   const draw = (e) => {
     if (!drawing) return;
+    if (e.type === "mousemove" && e.sourceCapabilities?.firesTouchEvents) return;
+    e.preventDefault();
     const pos = getPos(e);
     if (tool === "pen") {
       setCurrentPath((prev) => [...prev, pos]);
@@ -75,7 +77,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     }
   };
 
-  const stopDrawing = () => {
+  const stopDrawing = (e) => {
+    if (e?.type === "mouseup" && e.sourceCapabilities?.firesTouchEvents) return;
     if (drawing && tool === "pen" && currentPath.length > 0) {
       setPaths((prev) => [...prev, { points: currentPath, color, page: pageNumber }]);
       setCurrentPath([]);
