@@ -15,7 +15,8 @@ const productionColumns = [
   { id: "face_frame", label: "Face Frame", color: "bg-blue-50" },
   { id: "spray", label: "Spray", color: "bg-purple-50" },
   { id: "build", label: "Build", color: "bg-amber-50" },
-  { id: "complete", label: "Complete", color: "bg-green-50" }
+  { id: "complete", label: "Complete", color: "bg-green-50" },
+  { id: "on_hold", label: "On Hold", color: "bg-red-100" }
 ];
 
 export default function ShopProduction() {
