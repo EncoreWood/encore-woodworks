@@ -576,9 +576,9 @@ export default function ShopProduction() {
           />
         )}
 
-        {annotatingPdf && (
+        {annotatingPdf && currentPdfUrl && (
           <PDFAnnotator
-            open={!!annotatingPdf}
+            open={true}
             onOpenChange={() => {
               setAnnotatingPdf(null);
               setCurrentPdfUrl(null);
