@@ -9,6 +9,7 @@ import "react-pdf/dist/esm/Page/TextLayer.css";
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave }) {
+  if (!pdfUrl) return null;
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(1.0);
