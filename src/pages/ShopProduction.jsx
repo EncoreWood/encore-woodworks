@@ -437,16 +437,15 @@ export default function ShopProduction() {
                                                  </div>
                                                </div>
                                              ) : file.url.match(/\.pdf$/i) ? (
-                                              <div className="rounded-md border border-slate-200 overflow-hidden">
-                                                <iframe
-                                                  src={file.url}
-                                                  title={file.name}
-                                                  className="w-full"
-                                                  style={{ height: "260px", border: "none" }}
-                                                />
-                                                <div className="flex items-center gap-2 p-2 bg-slate-50 border-t border-slate-200">
+                                              <div className="rounded-md border border-slate-200 overflow-hidden bg-slate-50">
+                                                <div className="flex items-center gap-2 p-2">
                                                   <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
-                                                  <span className="text-slate-700 flex-1 truncate text-xs">{file.name}</span>
+                                                  <button
+                                                    className="text-amber-600 hover:text-amber-700 underline text-left flex-1 text-xs truncate"
+                                                    onClick={(e) => { e.stopPropagation(); window.open(file.url, '_blank', 'noopener,noreferrer'); }}
+                                                  >
+                                                    {file.name}
+                                                  </button>
                                                   <div className="flex items-center gap-1">
                                                     <span className="text-xs font-semibold text-slate-500">PTS</span>
                                                     {editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
