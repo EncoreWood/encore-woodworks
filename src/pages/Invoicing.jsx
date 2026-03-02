@@ -370,6 +370,20 @@ export default function Invoicing() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
+                                  className="h-8 w-8 p-0 text-green-600"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setAddingPayment(project);
+                                    setPaymentAmount("");
+                                  }}
+                                  title="Add Payment"
+                                >
+                                  <PlusCircle className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
                                   className="h-8 w-8 p-0"
                                   onClick={(e) => handleEdit(project, e)}
                                   title="Edit Financial Details"
