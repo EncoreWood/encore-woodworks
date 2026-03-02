@@ -12,11 +12,16 @@ import RoomsEditor from "./RoomsEditor";
 import FileUploader from "./FileUploader";
 import WoodTypeSelector from "./WoodTypeSelector";
 
+const emptyContact = { name: "", email: "", phone: "" };
+
 const initialFormState = {
   project_name: "",
   client_name: "",
   client_email: "",
   client_phone: "",
+  contractor: { ...emptyContact },
+  home_owner: { ...emptyContact },
+  designer: { ...emptyContact },
   project_type: "kitchen",
   status: "inquiry",
   priority: "medium",
@@ -37,7 +42,7 @@ const initialFormState = {
   project_url: "",
   files: [],
   rooms: []
-  };
+};
 
 export default function ProjectForm({ open, onOpenChange, onSubmit, initialData, isLoading }) {
   const [formData, setFormData] = useState(initialData || initialFormState);
