@@ -53,6 +53,12 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
     enabled: open
   });
 
+  const { data: contacts = [] } = useQuery({
+    queryKey: ["contacts"],
+    queryFn: () => base44.entities.Contact.list(),
+    enabled: open
+  });
+
   useEffect(() => {
     if (open) {
       const data = initialData || initialFormState;
