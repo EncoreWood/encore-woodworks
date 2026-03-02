@@ -291,8 +291,10 @@ export default function ShopProduction() {
             {productionColumns.map((column, colIdx) => {
               const columnItems = items.filter((item) => item.stage === column.id);
               const todayStr = format(new Date(), "yyyy-MM-dd");
-              const todayPts = columnItems
-                .filter(i => i.completed_date === todayStr || column.id !== "complete")
+              // Items that have moved PAST this stage today (in a later stage, completed today)
+              const laterStageIds = productionColumns.slice(colIdx + 1).map(c => c.id);
+              const todayPts = items
+                .filter(i => laterStageIds.includes(i.stage) && i.completed_date === todayStr)
                 .reduce((sum, item) => sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0), 0);
 
               return (
