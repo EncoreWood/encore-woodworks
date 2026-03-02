@@ -368,6 +368,17 @@ export default function Invoicing() {
                                     </Button>
                                   </>
                                 )}
+                                {(project.payments?.length > 0) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-slate-500"
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setViewingPayments(project); }}
+                                    title="View Payment History"
+                                  >
+                                    <Clock className="w-4 h-4" />
+                                  </Button>
+                                )}
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -376,7 +387,7 @@ export default function Invoicing() {
                                     e.preventDefault();
                                     e.stopPropagation();
                                     setAddingPayment(project);
-                                    setPaymentAmount("");
+                                    setPaymentForm({ amount: "", date: new Date().toISOString().split("T")[0], notes: "" });
                                   }}
                                   title="Add Payment"
                                 >
