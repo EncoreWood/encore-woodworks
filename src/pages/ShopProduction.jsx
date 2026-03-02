@@ -270,7 +270,7 @@ export default function ShopProduction() {
 
               return (
                 <div className="flex gap-2">
-                  {[{ label: "Day", val: dayPts }, { label: "Week", val: weekPts }, { label: "Month", val: monthPts }, { label: "All Time", val: totalPts, accent: true }].map(({ label, val, accent }) => (
+                  {[{ label: "Day", val: dayPts }, { label: "Week", val: weekPts }, { label: "Month", val: monthPts }].map(({ label, val, accent }) => (
                     <div key={label} className={`text-center rounded-lg px-3 py-2 shadow-sm border ${accent ? "bg-green-600 border-green-600" : "bg-white border-slate-200"}`}>
                       <p className={`text-xs font-medium ${accent ? "text-green-100" : "text-slate-500"}`}>{label}</p>
                       <p className={`text-lg font-bold ${accent ? "text-white" : "text-green-700"}`}>{val} <span className="text-xs font-semibold opacity-70">PTS</span></p>
