@@ -69,6 +69,8 @@ const typeConfig = {
   garage: "Garage",
   office: "Office",
   laundry: "Laundry",
+  new_construction: "New Construction",
+  remodel: "Remodel",
   custom: "Custom"
 };
 
