@@ -132,6 +132,8 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
                     <SelectItem value="garage">Garage</SelectItem>
                     <SelectItem value="office">Office</SelectItem>
                     <SelectItem value="laundry">Laundry</SelectItem>
+                    <SelectItem value="new_construction">New Construction</SelectItem>
+                    <SelectItem value="remodel">Remodel</SelectItem>
                     <SelectItem value="custom">Custom</SelectItem>
                   </SelectContent>
                 </Select>
