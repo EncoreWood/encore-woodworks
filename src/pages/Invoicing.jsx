@@ -740,6 +740,64 @@ export default function Invoicing() {
           </DialogContent>
         </Dialog>
 
+        {/* Add Payment Dialog */}
+        <Dialog open={!!addingPayment} onOpenChange={() => setAddingPayment(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Add Payment</DialogTitle>
+            </DialogHeader>
+            {addingPayment && (
+              <div className="space-y-4 py-2">
+                <div className="text-sm text-slate-600">
+                  <div className="font-semibold text-slate-900">{addingPayment.project_name}</div>
+                  <div>{addingPayment.client_name}</div>
+                  <div className="mt-2 flex justify-between text-xs">
+                    <span>Current deposit paid:</span>
+                    <span className="font-semibold text-green-600">${(addingPayment.deposit_paid || 0).toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Payment Amount</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input
+                      type="number"
+                      min="0"
+                      className="pl-9"
+                      placeholder="0.00"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  {paymentAmount && (
+                    <p className="text-xs text-slate-500">
+                      New total deposit: <span className="font-semibold text-green-600">${((addingPayment.deposit_paid || 0) + parseFloat(paymentAmount || 0)).toLocaleString()}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddingPayment(null)}>Cancel</Button>
+              <Button
+                className="bg-green-600 hover:bg-green-700"
+                disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}
+                onClick={() => {
+                  const newDeposit = (addingPayment.deposit_paid || 0) + parseFloat(paymentAmount);
+                  updateProjectMutation.mutate({ id: addingPayment.id, data: { deposit_paid: newDeposit } });
+                  setAddingPayment(null);
+                  setPaymentAmount("");
+                  toast.success(`Payment of $${parseFloat(paymentAmount).toLocaleString()} added!`);
+                }}
+              >
+                <PlusCircle className="w-4 h-4 mr-2" />
+                Add Payment
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Edit Dialog */}
         <Dialog open={!!editingProject} onOpenChange={() => setEditingProject(null)}>
           <DialogContent>
