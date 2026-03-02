@@ -752,6 +752,64 @@ export default function Invoicing() {
           </DialogContent>
         </Dialog>
 
+        {/* Payment History Dialog */}
+        <Dialog open={!!viewingPayments} onOpenChange={() => setViewingPayments(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Payment History — {viewingPayments?.project_name}</DialogTitle>
+            </DialogHeader>
+            {viewingPayments && (
+              <div className="space-y-3 py-2">
+                {(viewingPayments.payments || []).length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-4">No payments recorded yet.</p>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      {(viewingPayments.payments || []).map((p, i) => (
+                        <div key={i} className="flex items-start justify-between bg-slate-50 rounded-lg px-3 py-2 text-sm">
+                          <div>
+                            <span className="font-semibold text-green-700">${parseFloat(p.amount).toLocaleString()}</span>
+                            {p.date && <span className="ml-2 text-xs text-slate-500">{p.date}</span>}
+                            {p.notes && <p className="text-xs text-slate-500 mt-0.5">{p.notes}</p>}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-red-400 hover:text-red-600"
+                            onClick={() => {
+                              const updatedPayments = (viewingPayments.payments || []).filter((_, idx) => idx !== i);
+                              const newDeposit = updatedPayments.reduce((sum, pay) => sum + parseFloat(pay.amount || 0), 0);
+                              updateProjectMutation.mutate({ id: viewingPayments.id, data: { payments: updatedPayments, deposit_paid: newDeposit } });
+                              setViewingPayments(prev => ({ ...prev, payments: updatedPayments, deposit_paid: newDeposit }));
+                            }}
+                          >
+                            ×
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-sm font-semibold pt-2 border-t">
+                      <span>Total Paid:</span>
+                      <span className="text-green-700">${(viewingPayments.deposit_paid || 0).toLocaleString()}</span>
+                    </div>
+                  </>
+                )}
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    setViewingPayments(null);
+                    setAddingPayment(viewingPayments);
+                    setPaymentForm({ amount: "", date: new Date().toISOString().split("T")[0], notes: "" });
+                  }}
+                >
+                  <PlusCircle className="w-4 h-4 mr-2" />
+                  Add Payment
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
         {/* Add Payment Dialog */}
         <Dialog open={!!addingPayment} onOpenChange={() => setAddingPayment(null)}>
           <DialogContent className="max-w-sm">
@@ -764,12 +822,12 @@ export default function Invoicing() {
                   <div className="font-semibold text-slate-900">{addingPayment.project_name}</div>
                   <div>{addingPayment.client_name}</div>
                   <div className="mt-2 flex justify-between text-xs">
-                    <span>Current deposit paid:</span>
+                    <span>Total paid so far:</span>
                     <span className="font-semibold text-green-600">${(addingPayment.deposit_paid || 0).toLocaleString()}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Payment Amount</Label>
+                  <Label>Amount</Label>
                   <div className="relative">
                     <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input
@@ -777,30 +835,49 @@ export default function Invoicing() {
                       min="0"
                       className="pl-9"
                       placeholder="0.00"
-                      value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      value={paymentForm.amount}
+                      onChange={(e) => setPaymentForm(f => ({ ...f, amount: e.target.value }))}
                       autoFocus
                     />
                   </div>
-                  {paymentAmount && (
-                    <p className="text-xs text-slate-500">
-                      New total deposit: <span className="font-semibold text-green-600">${((addingPayment.deposit_paid || 0) + parseFloat(paymentAmount || 0)).toLocaleString()}</span>
-                    </p>
-                  )}
                 </div>
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input
+                    type="date"
+                    value={paymentForm.date}
+                    onChange={(e) => setPaymentForm(f => ({ ...f, date: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Notes (optional)</Label>
+                  <Textarea
+                    rows={2}
+                    placeholder="e.g. Check #1234, wire transfer..."
+                    value={paymentForm.notes}
+                    onChange={(e) => setPaymentForm(f => ({ ...f, notes: e.target.value }))}
+                  />
+                </div>
+                {paymentForm.amount && (
+                  <p className="text-xs text-slate-500">
+                    New total: <span className="font-semibold text-green-600">${((addingPayment.deposit_paid || 0) + parseFloat(paymentForm.amount || 0)).toLocaleString()}</span>
+                  </p>
+                )}
               </div>
             )}
             <DialogFooter>
               <Button variant="outline" onClick={() => setAddingPayment(null)}>Cancel</Button>
               <Button
                 className="bg-green-600 hover:bg-green-700"
-                disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}
+                disabled={!paymentForm.amount || parseFloat(paymentForm.amount) <= 0}
                 onClick={() => {
-                  const newDeposit = (addingPayment.deposit_paid || 0) + parseFloat(paymentAmount);
-                  updateProjectMutation.mutate({ id: addingPayment.id, data: { deposit_paid: newDeposit } });
+                  const newPayment = { amount: parseFloat(paymentForm.amount), date: paymentForm.date, notes: paymentForm.notes };
+                  const updatedPayments = [...(addingPayment.payments || []), newPayment];
+                  const newDeposit = (addingPayment.deposit_paid || 0) + parseFloat(paymentForm.amount);
+                  updateProjectMutation.mutate({ id: addingPayment.id, data: { payments: updatedPayments, deposit_paid: newDeposit } });
                   setAddingPayment(null);
-                  setPaymentAmount("");
-                  toast.success(`Payment of $${parseFloat(paymentAmount).toLocaleString()} added!`);
+                  setPaymentForm({ amount: "", date: "", notes: "" });
+                  toast.success(`Payment of $${parseFloat(paymentForm.amount).toLocaleString()} added!`);
                 }}
               >
                 <PlusCircle className="w-4 h-4 mr-2" />
