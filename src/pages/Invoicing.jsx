@@ -31,7 +31,8 @@ export default function Invoicing() {
     actual_cost: 0
   });
   const [addingPayment, setAddingPayment] = useState(null); // project
-  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentForm, setPaymentForm] = useState({ amount: "", date: "", notes: "" });
+  const [viewingPayments, setViewingPayments] = useState(null); // project
 
   const queryClient = useQueryClient();
 
