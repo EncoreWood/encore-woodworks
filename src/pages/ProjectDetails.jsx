@@ -598,24 +598,39 @@ export default function ProjectDetails() {
             <Card className="p-6 bg-white border-0 shadow-sm">
               <h2 className="text-lg font-semibold text-slate-900 mb-4">Client Information</h2>
               <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-slate-400" />
-                  <span className="text-slate-700">{project.client_name}</span>
-                </div>
-                {project.client_email && (
+                {["contractor", "home_owner", "designer"].map((role) => {
+                  const contact = project[role];
+                  if (!contact?.name && !contact?.email && !contact?.phone) return null;
+                  const labels = { contractor: "Contractor", home_owner: "Home Owner", designer: "Designer" };
+                  return (
+                    <div key={role} className="border rounded-lg p-3 space-y-1.5 bg-slate-50">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{labels[role]}</p>
+                      {contact.name && (
+                        <div className="flex items-center gap-2">
+                          <User className="w-4 h-4 text-slate-400" />
+                          <span className="text-slate-800 font-medium">{contact.name}</span>
+                        </div>
+                      )}
+                      {contact.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-slate-400" />
+                          <a href={`mailto:${contact.email}`} className="text-amber-600 hover:text-amber-700 text-sm">{contact.email}</a>
+                        </div>
+                      )}
+                      {contact.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-slate-400" />
+                          <a href={`tel:${contact.phone}`} className="text-amber-600 hover:text-amber-700 text-sm">{contact.phone}</a>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {/* Legacy fallback */}
+                {!project.contractor?.name && !project.home_owner?.name && !project.designer?.name && project.client_name && (
                   <div className="flex items-center gap-3">
-                    <Mail className="w-5 h-5 text-slate-400" />
-                    <a href={`mailto:${project.client_email}`} className="text-amber-600 hover:text-amber-700">
-                      {project.client_email}
-                    </a>
-                  </div>
-                )}
-                {project.client_phone && (
-                  <div className="flex items-center gap-3">
-                    <Phone className="w-5 h-5 text-slate-400" />
-                    <a href={`tel:${project.client_phone}`} className="text-amber-600 hover:text-amber-700">
-                      {project.client_phone}
-                    </a>
+                    <User className="w-5 h-5 text-slate-400" />
+                    <span className="text-slate-700">{project.client_name}</span>
                   </div>
                 )}
                 {project.address && (
