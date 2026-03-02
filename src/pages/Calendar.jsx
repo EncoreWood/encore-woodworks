@@ -101,6 +101,11 @@ export default function Calendar() {
     queryFn: () => base44.entities.Employee.list()
   });
 
+  const { data: contacts = [] } = useQuery({
+    queryKey: ["contacts"],
+    queryFn: () => base44.entities.Contact.list()
+  });
+
   const { data: bathroomCleanings = [] } = useQuery({
     queryKey: ["bathroomCleanings"],
     queryFn: () => base44.entities.BathroomCleaning.list()
