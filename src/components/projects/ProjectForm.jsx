@@ -55,7 +55,13 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
 
   useEffect(() => {
     if (open) {
-      setFormData(initialData || initialFormState);
+      const data = initialData || initialFormState;
+      setFormData({
+        ...data,
+        contractor: data.contractor || { ...emptyContact },
+        home_owner: data.home_owner || { ...emptyContact },
+        designer: data.designer || { ...emptyContact },
+      });
     }
   }, [open, initialData]);
 
