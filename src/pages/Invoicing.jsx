@@ -30,6 +30,8 @@ export default function Invoicing() {
     deposit_paid: 0,
     actual_cost: 0
   });
+  const [addingPayment, setAddingPayment] = useState(null); // project
+  const [paymentAmount, setPaymentAmount] = useState("");
 
   const queryClient = useQueryClient();
 
