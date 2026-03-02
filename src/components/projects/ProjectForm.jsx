@@ -216,74 +216,54 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Client Information</h3>
 
-            {/* Contractor */}
-            <div className="border rounded-lg p-4 space-y-3 bg-slate-50">
-              <p className="text-sm font-semibold text-slate-600">Contractor</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Input
-                  placeholder="Name"
-                  value={formData.contractor?.name || ""}
-                  onChange={(e) => handleChange("contractor", { ...formData.contractor, name: e.target.value })}
-                />
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={formData.contractor?.email || ""}
-                  onChange={(e) => handleChange("contractor", { ...formData.contractor, email: e.target.value })}
-                />
-                <Input
-                  placeholder="Phone"
-                  value={formData.contractor?.phone || ""}
-                  onChange={(e) => handleChange("contractor", { ...formData.contractor, phone: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Home Owner */}
-            <div className="border rounded-lg p-4 space-y-3 bg-slate-50">
-              <p className="text-sm font-semibold text-slate-600">Home Owner</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Input
-                  placeholder="Name"
-                  value={formData.home_owner?.name || ""}
-                  onChange={(e) => handleChange("home_owner", { ...formData.home_owner, name: e.target.value })}
-                />
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={formData.home_owner?.email || ""}
-                  onChange={(e) => handleChange("home_owner", { ...formData.home_owner, email: e.target.value })}
-                />
-                <Input
-                  placeholder="Phone"
-                  value={formData.home_owner?.phone || ""}
-                  onChange={(e) => handleChange("home_owner", { ...formData.home_owner, phone: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Designer */}
-            <div className="border rounded-lg p-4 space-y-3 bg-slate-50">
-              <p className="text-sm font-semibold text-slate-600">Designer</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Input
-                  placeholder="Name"
-                  value={formData.designer?.name || ""}
-                  onChange={(e) => handleChange("designer", { ...formData.designer, name: e.target.value })}
-                />
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={formData.designer?.email || ""}
-                  onChange={(e) => handleChange("designer", { ...formData.designer, email: e.target.value })}
-                />
-                <Input
-                  placeholder="Phone"
-                  value={formData.designer?.phone || ""}
-                  onChange={(e) => handleChange("designer", { ...formData.designer, phone: e.target.value })}
-                />
-              </div>
-            </div>
+            {[
+              { field: "contractor", label: "Contractor", types: ["GC"] },
+              { field: "home_owner", label: "Home Owner", types: ["Home Owner"] },
+              { field: "designer", label: "Designer", types: ["Designer"] },
+            ].map(({ field, label, types }) => {
+              const relevantContacts = contacts.filter(c => !c.contact_type || types.includes(c.contact_type) || true);
+              return (
+                <div key={field} className="border rounded-lg p-4 space-y-3 bg-slate-50">
+                  <p className="text-sm font-semibold text-slate-600">{label}</p>
+                  <Select
+                    value=""
+                    onValueChange={(contactId) => {
+                      const c = contacts.find(x => x.id === contactId);
+                      if (c) handleChange(field, { name: c.name, email: c.email || "", phone: c.phone || "" });
+                    }}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select from contacts..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contacts.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}{c.contact_type ? ` (${c.contact_type})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <Input
+                      placeholder="Name"
+                      value={formData[field]?.name || ""}
+                      onChange={(e) => handleChange(field, { ...formData[field], name: e.target.value })}
+                    />
+                    <Input
+                      type="email"
+                      placeholder="Email"
+                      value={formData[field]?.email || ""}
+                      onChange={(e) => handleChange(field, { ...formData[field], email: e.target.value })}
+                    />
+                    <Input
+                      placeholder="Phone"
+                      value={formData[field]?.phone || ""}
+                      onChange={(e) => handleChange(field, { ...formData[field], phone: e.target.value })}
+                    />
+                  </div>
+                </div>
+              );
+            })}
 
             <div className="space-y-2">
               <Label htmlFor="address">Installation Address</Label>
