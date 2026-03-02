@@ -209,45 +209,84 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
           {/* Client Info */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Client Information</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="client_name">Client Name *</Label>
+
+            {/* Contractor */}
+            <div className="border rounded-lg p-4 space-y-3 bg-slate-50">
+              <p className="text-sm font-semibold text-slate-600">Contractor</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Input
-                  id="client_name"
-                  value={formData.client_name}
-                  onChange={(e) => handleChange("client_name", e.target.value)}
-                  placeholder="John Smith"
-                  required
+                  placeholder="Name"
+                  value={formData.contractor?.name || ""}
+                  onChange={(e) => handleChange("contractor", { ...formData.contractor, name: e.target.value })}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="client_email">Email</Label>
                 <Input
-                  id="client_email"
                   type="email"
-                  value={formData.client_email}
-                  onChange={(e) => handleChange("client_email", e.target.value)}
-                  placeholder="john@example.com"
+                  placeholder="Email"
+                  value={formData.contractor?.email || ""}
+                  onChange={(e) => handleChange("contractor", { ...formData.contractor, email: e.target.value })}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="client_phone">Phone</Label>
                 <Input
-                  id="client_phone"
-                  value={formData.client_phone}
-                  onChange={(e) => handleChange("client_phone", e.target.value)}
-                  placeholder="(555) 123-4567"
+                  placeholder="Phone"
+                  value={formData.contractor?.phone || ""}
+                  onChange={(e) => handleChange("contractor", { ...formData.contractor, phone: e.target.value })}
                 />
               </div>
-              <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="address">Installation Address</Label>
+            </div>
+
+            {/* Home Owner */}
+            <div className="border rounded-lg p-4 space-y-3 bg-slate-50">
+              <p className="text-sm font-semibold text-slate-600">Home Owner</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => handleChange("address", e.target.value)}
-                  placeholder="123 Main St, City, State 12345"
+                  placeholder="Name"
+                  value={formData.home_owner?.name || ""}
+                  onChange={(e) => handleChange("home_owner", { ...formData.home_owner, name: e.target.value })}
+                />
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={formData.home_owner?.email || ""}
+                  onChange={(e) => handleChange("home_owner", { ...formData.home_owner, email: e.target.value })}
+                />
+                <Input
+                  placeholder="Phone"
+                  value={formData.home_owner?.phone || ""}
+                  onChange={(e) => handleChange("home_owner", { ...formData.home_owner, phone: e.target.value })}
                 />
               </div>
+            </div>
+
+            {/* Designer */}
+            <div className="border rounded-lg p-4 space-y-3 bg-slate-50">
+              <p className="text-sm font-semibold text-slate-600">Designer</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Input
+                  placeholder="Name"
+                  value={formData.designer?.name || ""}
+                  onChange={(e) => handleChange("designer", { ...formData.designer, name: e.target.value })}
+                />
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={formData.designer?.email || ""}
+                  onChange={(e) => handleChange("designer", { ...formData.designer, email: e.target.value })}
+                />
+                <Input
+                  placeholder="Phone"
+                  value={formData.designer?.phone || ""}
+                  onChange={(e) => handleChange("designer", { ...formData.designer, phone: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="address">Installation Address</Label>
+              <Input
+                id="address"
+                value={formData.address}
+                onChange={(e) => handleChange("address", e.target.value)}
+                placeholder="123 Main St, City, State 12345"
+              />
             </div>
           </div>
 
