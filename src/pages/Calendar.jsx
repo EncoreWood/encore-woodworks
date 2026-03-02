@@ -1159,12 +1159,30 @@ export default function Calendar() {
                 <>
                   <div>
                     <Label htmlFor="client_name">Client Name *</Label>
-                    <Input
-                      id="client_name"
-                      value={formData.client_name || ""}
-                      onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
-                      placeholder="Enter client name"
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="client_name"
+                        value={formData.client_name || ""}
+                        onChange={(e) => setFormData({ ...formData, client_name: e.target.value })}
+                        placeholder="Enter client name"
+                        className="flex-1"
+                      />
+                      {contacts.length > 0 && (
+                        <Select value="" onValueChange={(id) => {
+                          const c = contacts.find(x => x.id === id);
+                          if (c) setFormData(prev => ({ ...prev, client_name: c.name }));
+                        }}>
+                          <SelectTrigger className="w-36">
+                            <SelectValue placeholder="From contacts" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {contacts.map(c => (
+                              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="project_name">Project Name</Label>
