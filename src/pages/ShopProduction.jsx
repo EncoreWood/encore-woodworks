@@ -117,7 +117,9 @@ export default function ShopProduction() {
     if (result.destination.droppableId === result.source.droppableId && result.destination.index === result.source.index) return;
 
     const itemId = result.draggableId;
-    const newStage = result.destination.droppableId;
+    const destId = result.destination.droppableId;
+    // Map the Job Info droppable to its stage id
+    const newStage = destId === JOB_INFO_DROPPABLE_ID ? JOB_INFO_STAGE : destId;
     const item = items.find(i => i.id === itemId);
     if (!item) return;
 
