@@ -401,9 +401,12 @@ export default function Layout({ children, currentPageName }) {
                       className={cn(
                         "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all",
                         currentPageName === item.page
-                          ? "bg-slate-600 text-white shadow-md"
-                          : "text-slate-700 hover:bg-slate-400/50 hover:text-slate-900"
+                          ? "text-white shadow-md"
+                          : "text-slate-800 hover:text-slate-900"
                       )}
+                      style={currentPageName === item.page ? { backgroundColor: "#8a7560" } : undefined}
+                      onMouseEnter={e => { if (currentPageName !== item.page) e.currentTarget.style.backgroundColor = "rgba(180,150,100,0.25)"; }}
+                      onMouseLeave={e => { if (currentPageName !== item.page) e.currentTarget.style.backgroundColor = ""; }}
                       >
                       <item.icon className="w-4 h-4 flex-shrink-0" />
                       <span>{item.name}</span>
