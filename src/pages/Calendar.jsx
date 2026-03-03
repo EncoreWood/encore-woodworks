@@ -379,6 +379,15 @@ export default function Calendar() {
     });
   };
 
+  const getInstallProjectsSpanningDate = (date) => {
+    return projects.filter((project) => {
+      const installStart = project.install_start_date ? parseLocalDate(project.install_start_date) : null;
+      const installEnd = project.install_end_date ? parseLocalDate(project.install_end_date) : null;
+      if (!installStart || !installEnd) return false;
+      return isWithinInterval(date, { start: installStart, end: installEnd });
+    });
+  };
+
   const getDayContent = (day) => {
     const projectsOnDay = getProjectsForDate(day);
     if (projectsOnDay.length === 0) return null;
