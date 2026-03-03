@@ -1096,6 +1096,12 @@ export default function Calendar() {
                             <span>Due: {format(parseLocalDate(project.estimated_completion), "MMM d")}</span>
                           </div>
                         )}
+                        {project.install_start_date && (
+                          <div className="flex items-center gap-2 text-amber-600">
+                            <CalendarIcon className="w-3 h-3" />
+                            <span>Install: {format(parseLocalDate(project.install_start_date), "MMM d")}{project.install_end_date ? ` – ${format(parseLocalDate(project.install_end_date), "MMM d")}` : ""}</span>
+                          </div>
+                        )}
                       </div>
                     </Link>
                   ))
