@@ -292,6 +292,13 @@ export default function ShopProduction() {
         </div>
 
         <DragDropContext onDragEnd={handleDragEnd}>
+          {/* Job Info Row */}
+          <JobInfoRow
+            items={items.filter(i => i.stage === JOB_INFO_STAGE)}
+            getProjectColor={getProjectColor}
+            onPickup={(item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id })}
+          />
+
           <div className="flex gap-4 overflow-x-auto pb-4">
             {productionColumns.map((column, colIdx) => {
               const columnItems = items.filter((item) => item.stage === column.id);
