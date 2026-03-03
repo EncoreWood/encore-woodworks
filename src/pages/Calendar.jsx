@@ -356,10 +356,14 @@ export default function Calendar() {
     return projects.filter((project) => {
       const startDate = project.start_date ? parseLocalDate(project.start_date) : null;
       const completionDate = project.estimated_completion ? parseLocalDate(project.estimated_completion) : null;
+      const installStart = project.install_start_date ? parseLocalDate(project.install_start_date) : null;
+      const installEnd = project.install_end_date ? parseLocalDate(project.install_end_date) : null;
       
       return (
         (startDate && isSameDay(startDate, date)) ||
-        (completionDate && isSameDay(completionDate, date))
+        (completionDate && isSameDay(completionDate, date)) ||
+        (installStart && isSameDay(installStart, date)) ||
+        (installEnd && isSameDay(installEnd, date))
       );
     });
   };
