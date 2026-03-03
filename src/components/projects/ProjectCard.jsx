@@ -129,6 +129,15 @@ export default function ProjectCard({ project }) {
               <span>Due {format(new Date(project.estimated_completion), "MMM d, yyyy")}</span>
             </div>
           )}
+          {(project.install_start_date || project.install_end_date) && (
+            <div className="flex items-center gap-2 text-sm text-slate-600">
+              <Calendar className="w-4 h-4 text-amber-500" />
+              <span className="text-amber-700 font-medium">
+                Install: {project.install_start_date ? format(new Date(project.install_start_date), "MMM d") : "?"}
+                {project.install_end_date ? ` – ${format(new Date(project.install_end_date), "MMM d, yyyy")}` : ""}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Tasks */}
