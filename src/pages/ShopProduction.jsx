@@ -20,6 +20,8 @@ const productionColumns = [
   { id: "on_hold", label: "On Hold", color: "bg-red-100" }
 ];
 
+const JOB_INFO_STAGE = "job_info";
+
 export default function ShopProduction() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
