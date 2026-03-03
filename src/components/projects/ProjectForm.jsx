@@ -308,6 +308,24 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
                   onChange={(e) => handleChange("estimated_completion", e.target.value)}
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="install_start_date">Install Start</Label>
+                <Input
+                  id="install_start_date"
+                  type="date"
+                  value={formData.install_start_date || ""}
+                  onChange={(e) => handleChange("install_start_date", e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="install_end_date">Install End</Label>
+                <Input
+                  id="install_end_date"
+                  type="date"
+                  value={formData.install_end_date || ""}
+                  onChange={(e) => handleChange("install_end_date", e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
