@@ -197,7 +197,7 @@ export default function Dashboard() {
                   <Link key={p.id} to={createPageUrl("ProjectDetails") + "?id=" + p.id}>
                     <div className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 transition-colors">
                       <div>
-                        <p className="text-sm font-semibold text-slate-800">{p.project_name}</p>
+                        <p className="text-sm font-semibold" style={p.card_color ? { color: p.card_color } : { color: "#1e293b" }}>{p.project_name}</p>
                         <p className="text-xs text-slate-400">{p.client_name}</p>
                       </div>
                       {p.estimated_completion && (
