@@ -423,7 +423,10 @@ export default function Layout({ children, currentPageName }) {
           <div className="p-4 border-t border-slate-400">
             <button
               onClick={() => setShowSettings(true)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-slate-400 hover:bg-slate-500 text-slate-800 text-sm font-medium transition-all"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-slate-800 text-sm font-medium transition-all"
+              style={{ backgroundColor: "rgba(180,150,100,0.3)" }}
+              onMouseEnter={e => e.currentTarget.style.backgroundColor = "rgba(180,150,100,0.5)"}
+              onMouseLeave={e => e.currentTarget.style.backgroundColor = "rgba(180,150,100,0.3)"}
               title="Settings"
             >
               <Settings className="w-4 h-4" />
