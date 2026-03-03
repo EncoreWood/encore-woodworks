@@ -10,6 +10,7 @@ import { Plus, Pencil, Trash2, FileText, ClipboardList } from "lucide-react";
 import ProductionItemForm from "../components/production/ProductionItemForm";
 import PDFAnnotator from "../components/production/PDFAnnotator";
 import PickupItemForm from "../components/pickup/PickupItemForm";
+import JobInfoRow, { JOB_INFO_DROPPABLE_ID } from "../components/production/JobInfoRow";
 
 const productionColumns = [
   { id: "face_frame", label: "Face Frame", color: "bg-blue-50" },
