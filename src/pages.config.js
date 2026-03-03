@@ -49,6 +49,7 @@
  */
 import Calendar from './pages/Calendar';
 import ChatBoard from './pages/ChatBoard';
+import ContactsBoard from './pages/ContactsBoard';
 import Dashboard from './pages/Dashboard';
 import EncoreDocs from './pages/EncoreDocs';
 import Forms from './pages/Forms';
@@ -68,13 +69,13 @@ import Suppliers from './pages/Suppliers';
 import Team from './pages/Team';
 import TimeSheet from './pages/TimeSheet';
 import Tools from './pages/Tools';
-import ContactsBoard from './pages/ContactsBoard';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "Calendar": Calendar,
     "ChatBoard": ChatBoard,
+    "ContactsBoard": ContactsBoard,
     "Dashboard": Dashboard,
     "EncoreDocs": EncoreDocs,
     "Forms": Forms,
@@ -94,7 +95,6 @@ export const PAGES = {
     "Team": Team,
     "TimeSheet": TimeSheet,
     "Tools": Tools,
-    "ContactsBoard": ContactsBoard,
 }
 
 export const pagesConfig = {
