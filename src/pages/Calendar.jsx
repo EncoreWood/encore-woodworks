@@ -623,71 +623,88 @@ export default function Calendar() {
                   }}
                   components={{
                     DayContent: ({ date }) => {
-                      const presenter = getPresenterForDate(date);
-                      const spanningProjects = getProjectsSpanningDate(date);
-                      const meetingCount = getDesignMeetingsForDate(date).length;
-                      const taskCount = getTasksForDate(date).length;
-                      const cleaningCount = getBathroomCleaningsForDate(date).length;
-                      return (
-                        <div className="w-full h-full flex flex-col p-2 relative">
-                          <div className="text-base font-semibold mb-auto flex items-center justify-between z-10">
-                            {format(date, "d")}
-                            {presenter && activeFilter !== "cleaning" && activeFilter !== "meetings" && activeFilter !== "tasks" && activeFilter !== "projects" && (
-                              <User className="w-4 h-4 text-blue-600" />
-                            )}
-                          </div>
-                          <div className="absolute bottom-2 left-0 right-0 px-2 flex flex-col gap-0.5">
-                            {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.slice(0, 4).map((project) => {
-                              const isSide = project.status === "side_projects";
-                              const bgStyle = isSide ? { backgroundColor: "#374151" } : (project.card_color ? { backgroundColor: project.card_color } : {});
-                              const bgClass = (!isSide && !project.card_color) ? `${statusConfig[project.status]?.color || "bg-slate-400"}` : "";
-                              return (
-                                <div
-                                  key={project.id}
-                                  className={`h-4 rounded-sm flex items-center px-1 overflow-hidden ${bgClass}`}
-                                  style={bgStyle}
-                                  title={project.project_name}
-                                >
-                                  <span className="text-white text-[9px] font-medium truncate leading-none" style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <div className="flex gap-1 flex-wrap mt-1 relative z-10">
-                            {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
-                              <div className="text-xs px-1.5 py-0.5 bg-violet-500 text-white rounded font-medium">
-                                {meetingCount}
-                              </div>
-                            )}
-                            {taskCount > 0 && (activeFilter === "all" || activeFilter === "tasks") && (
-                              <div className="text-xs px-1.5 py-0.5 bg-purple-500 text-white rounded font-medium">
-                                {taskCount}
-                              </div>
-                            )}
-                            {cleaningCount > 0 && (activeFilter === "all" || activeFilter === "cleaning") && (
-                              <div className="text-xs px-1.5 py-0.5 bg-cyan-500 text-white rounded font-medium">
-                                {cleaningCount}
-                              </div>
-                            )}
-                          </div>
+                    const presenter = getPresenterForDate(date);
+                    const spanningProjects = getProjectsSpanningDate(date);
+                    const installProjects = getInstallProjectsSpanningDate(date);
+                    const meetingCount = getDesignMeetingsForDate(date).length;
+                    const taskCount = getTasksForDate(date).length;
+                    const cleaningCount = getBathroomCleaningsForDate(date).length;
+                    return (
+                      <div className="w-full h-full flex flex-col p-2 relative">
+                        <div className="text-base font-semibold mb-auto flex items-center justify-between z-10">
+                          {format(date, "d")}
+                          {presenter && activeFilter !== "cleaning" && activeFilter !== "meetings" && activeFilter !== "tasks" && activeFilter !== "projects" && (
+                            <User className="w-4 h-4 text-blue-600" />
+                          )}
                         </div>
-                      );
+                        <div className="absolute bottom-2 left-0 right-0 px-2 flex flex-col gap-0.5">
+                          {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.slice(0, 3).map((project) => {
+                            const isSide = project.status === "side_projects";
+                            const bgStyle = isSide ? { backgroundColor: "#374151" } : (project.card_color ? { backgroundColor: project.card_color } : {});
+                            const bgClass = (!isSide && !project.card_color) ? `${statusConfig[project.status]?.color || "bg-slate-400"}` : "";
+                            return (
+                              <div
+                                key={project.id}
+                                className={`h-4 rounded-sm flex items-center px-1 overflow-hidden ${bgClass}`}
+                                style={bgStyle}
+                                title={project.project_name}
+                              >
+                                <span className="text-white text-[9px] font-medium truncate leading-none" style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
+                              </div>
+                            );
+                          })}
+                          {(activeFilter === "all" || activeFilter === "projects") && installProjects.slice(0, 2).map((project) => {
+                            const isSide = project.status === "side_projects";
+                            const bgStyle = isSide ? { backgroundColor: "#374151" } : (project.card_color ? { backgroundColor: project.card_color } : {});
+                            const bgClass = (!isSide && !project.card_color) ? `${statusConfig[project.status]?.color || "bg-slate-400"}` : "";
+                            return (
+                              <div
+                                key={"install-" + project.id}
+                                className={`h-4 rounded-sm flex items-center gap-0.5 px-1 overflow-hidden ${bgClass}`}
+                                style={bgStyle}
+                                title={"Install: " + project.project_name}
+                              >
+                                <Hammer className="w-2 h-2 text-white flex-shrink-0" style={{ filter: "drop-shadow(0 0 2px rgba(0,0,0,0.5))" }} />
+                                <span className="text-white text-[9px] font-medium truncate leading-none" style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="flex gap-1 flex-wrap mt-1 relative z-10">
+                          {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
+                            <div className="text-xs px-1.5 py-0.5 bg-violet-500 text-white rounded font-medium">
+                              {meetingCount}
+                            </div>
+                          )}
+                          {taskCount > 0 && (activeFilter === "all" || activeFilter === "tasks") && (
+                            <div className="text-xs px-1.5 py-0.5 bg-purple-500 text-white rounded font-medium">
+                              {taskCount}
+                            </div>
+                          )}
+                          {cleaningCount > 0 && (activeFilter === "all" || activeFilter === "cleaning") && (
+                            <div className="text-xs px-1.5 py-0.5 bg-cyan-500 text-white rounded font-medium">
+                              {cleaningCount}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
                     }
-                  }}
-                  />
-                  ) : (viewType === "month") ? (
-                  <CalendarComponent
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => {
+                    }}
+                    />
+                    ) : (viewType === "month") ? (
+                    <CalendarComponent
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => {
                     setSelectedDate(date);
                     setDayDialogDate(date);
                     setShowDayDialog(true);
-                  }}
-                  month={currentMonth}
-                  onMonthChange={setCurrentMonth}
-                  className="w-full"
-                  classNames={{
+                    }}
+                    month={currentMonth}
+                    onMonthChange={setCurrentMonth}
+                    className="w-full"
+                    classNames={{
                     months: "w-full",
                     month: "w-full",
                     table: "w-full border-collapse table-fixed",
@@ -697,61 +714,78 @@ export default function Calendar() {
                     day_selected: "bg-amber-100 text-amber-900 font-semibold",
                     day_today: "bg-blue-50 font-bold border-2 border-blue-300",
                     day_outside: "text-slate-300 opacity-50 bg-slate-50"
-                  }}
-                  components={{
+                    }}
+                    components={{
                     DayContent: ({ date }) => {
-                      const presenter = getPresenterForDate(date);
-                      const spanningProjects = getProjectsSpanningDate(date);
-                      const meetingCount = getDesignMeetingsForDate(date).length;
-                      const taskCount = getTasksForDate(date).length;
-                      const cleaningCount = getBathroomCleaningsForDate(date).length;
-                      return (
-                        <div className="w-full h-full flex flex-col p-2 relative">
-                          <div className="text-base font-semibold mb-auto flex items-center justify-between z-10">
-                            {format(date, "d")}
-                            {presenter && activeFilter !== "cleaning" && activeFilter !== "meetings" && activeFilter !== "tasks" && activeFilter !== "projects" && (
-                              <User className="w-4 h-4 text-blue-600" />
-                            )}
-                          </div>
-                          <div className="absolute bottom-2 left-0 right-0 px-2 flex flex-col gap-0.5">
-                            {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.slice(0, 4).map((project) => {
-                              const isSide = project.status === "side_projects";
-                              const bgStyle = isSide ? { backgroundColor: "#374151" } : (project.card_color ? { backgroundColor: project.card_color } : {});
-                              const bgClass = (!isSide && !project.card_color) ? `${statusConfig[project.status]?.color || "bg-slate-400"}` : "";
-                              return (
-                                <div
-                                  key={project.id}
-                                  className={`h-4 rounded-sm flex items-center px-1 overflow-hidden ${bgClass}`}
-                                  style={bgStyle}
-                                  title={project.project_name}
-                                >
-                                  <span className="text-white text-[9px] font-medium truncate leading-none" style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <div className="flex gap-1 flex-wrap mt-1 relative z-10">
-                            {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
-                              <div className="text-xs px-1.5 py-0.5 bg-violet-500 text-white rounded font-medium">
-                                {meetingCount}
-                              </div>
-                            )}
-                            {taskCount > 0 && (activeFilter === "all" || activeFilter === "tasks") && (
-                              <div className="text-xs px-1.5 py-0.5 bg-purple-500 text-white rounded font-medium">
-                                {taskCount}
-                              </div>
-                            )}
-                            {cleaningCount > 0 && (activeFilter === "all" || activeFilter === "cleaning") && (
-                              <div className="text-xs px-1.5 py-0.5 bg-cyan-500 text-white rounded font-medium">
-                                {cleaningCount}
-                              </div>
-                            )}
-                          </div>
+                    const presenter = getPresenterForDate(date);
+                    const spanningProjects = getProjectsSpanningDate(date);
+                    const installProjects = getInstallProjectsSpanningDate(date);
+                    const meetingCount = getDesignMeetingsForDate(date).length;
+                    const taskCount = getTasksForDate(date).length;
+                    const cleaningCount = getBathroomCleaningsForDate(date).length;
+                    return (
+                      <div className="w-full h-full flex flex-col p-2 relative">
+                        <div className="text-base font-semibold mb-auto flex items-center justify-between z-10">
+                          {format(date, "d")}
+                          {presenter && activeFilter !== "cleaning" && activeFilter !== "meetings" && activeFilter !== "tasks" && activeFilter !== "projects" && (
+                            <User className="w-4 h-4 text-blue-600" />
+                          )}
                         </div>
-                      );
+                        <div className="absolute bottom-2 left-0 right-0 px-2 flex flex-col gap-0.5">
+                          {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.slice(0, 3).map((project) => {
+                            const isSide = project.status === "side_projects";
+                            const bgStyle = isSide ? { backgroundColor: "#374151" } : (project.card_color ? { backgroundColor: project.card_color } : {});
+                            const bgClass = (!isSide && !project.card_color) ? `${statusConfig[project.status]?.color || "bg-slate-400"}` : "";
+                            return (
+                              <div
+                                key={project.id}
+                                className={`h-4 rounded-sm flex items-center px-1 overflow-hidden ${bgClass}`}
+                                style={bgStyle}
+                                title={project.project_name}
+                              >
+                                <span className="text-white text-[9px] font-medium truncate leading-none" style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
+                              </div>
+                            );
+                          })}
+                          {(activeFilter === "all" || activeFilter === "projects") && installProjects.slice(0, 2).map((project) => {
+                            const isSide = project.status === "side_projects";
+                            const bgStyle = isSide ? { backgroundColor: "#374151" } : (project.card_color ? { backgroundColor: project.card_color } : {});
+                            const bgClass = (!isSide && !project.card_color) ? `${statusConfig[project.status]?.color || "bg-slate-400"}` : "";
+                            return (
+                              <div
+                                key={"install-" + project.id}
+                                className={`h-4 rounded-sm flex items-center gap-0.5 px-1 overflow-hidden ${bgClass}`}
+                                style={bgStyle}
+                                title={"Install: " + project.project_name}
+                              >
+                                <Hammer className="w-2 h-2 text-white flex-shrink-0" style={{ filter: "drop-shadow(0 0 2px rgba(0,0,0,0.5))" }} />
+                                <span className="text-white text-[9px] font-medium truncate leading-none" style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="flex gap-1 flex-wrap mt-1 relative z-10">
+                          {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
+                            <div className="text-xs px-1.5 py-0.5 bg-violet-500 text-white rounded font-medium">
+                              {meetingCount}
+                            </div>
+                          )}
+                          {taskCount > 0 && (activeFilter === "all" || activeFilter === "tasks") && (
+                            <div className="text-xs px-1.5 py-0.5 bg-purple-500 text-white rounded font-medium">
+                              {taskCount}
+                            </div>
+                          )}
+                          {cleaningCount > 0 && (activeFilter === "all" || activeFilter === "cleaning") && (
+                            <div className="text-xs px-1.5 py-0.5 bg-cyan-500 text-white rounded font-medium">
+                              {cleaningCount}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
                     }
-                  }}
-                />
+                    }}
+                    />
               ) : (
                 <CalendarComponent
                   mode="single"
