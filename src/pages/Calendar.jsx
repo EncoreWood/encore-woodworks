@@ -6,7 +6,7 @@ import { createPageUrl } from "@/utils";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Plus, Pencil, Briefcase, Users, CheckCircle2, Trash2, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, User, Plus, Pencil, Briefcase, Users, CheckCircle2, Trash2, Sparkles, Hammer } from "lucide-react";
 import { format, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addMonths, addDays, startOfYear, isWithinInterval } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
