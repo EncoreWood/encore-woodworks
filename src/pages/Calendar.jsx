@@ -1418,9 +1418,14 @@ export default function Calendar() {
                       </div>
                       <p className="text-xs text-amber-700">{project.client_name}</p>
                       {project.address && (
-                        <p className="text-xs text-amber-600 mt-1">{project.address}</p>
+                       <p className="text-xs text-amber-600 mt-1">{project.address}</p>
                       )}
-                    </Link>
+                      {project.install_start_date && (
+                       <p className="text-xs text-amber-600 mt-1 font-medium">
+                         Install: {format(parseLocalDate(project.install_start_date), "MMM d")}{project.install_end_date ? ` – ${format(parseLocalDate(project.install_end_date), "MMM d")}` : ""}
+                       </p>
+                      )}
+                      </Link>
                   ))}
 
                   {/* Design Meetings */}
