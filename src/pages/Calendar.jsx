@@ -813,6 +813,7 @@ export default function Calendar() {
                   components={{
                     DayContent: ({ date }) => {
                       const spanningProjects = getProjectsSpanningDate(date);
+                      const installProjects = getInstallProjectsSpanningDate(date);
                       const meetingCount = getDesignMeetingsForDate(date).length;
                       const taskCount = getTasksForDate(date).length;
                       const vacationCount = getVacationsForDate(date).length;
@@ -820,7 +821,7 @@ export default function Calendar() {
                         <div className="w-full h-full flex flex-col p-1 relative">
                           <div className="text-sm font-semibold z-10">{format(date, "d")}</div>
                           <div className="absolute bottom-1 left-0 right-0 px-1 flex flex-col gap-0.5">
-                            {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.slice(0, 3).map((project) => {
+                            {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.slice(0, 2).map((project) => {
                               const isSide = project.status === "side_projects";
                               const bgStyle = isSide ? { backgroundColor: "#374151" } : (project.card_color ? { backgroundColor: project.card_color } : {});
                               const bgClass = (!isSide && !project.card_color) ? `${statusConfig[project.status]?.color || "bg-slate-400"}` : "";
@@ -831,6 +832,22 @@ export default function Calendar() {
                                   style={bgStyle}
                                   title={project.project_name}
                                 >
+                                  <span className="text-white text-[8px] font-medium truncate leading-none" style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
+                                </div>
+                              );
+                            })}
+                            {(activeFilter === "all" || activeFilter === "projects") && installProjects.slice(0, 1).map((project) => {
+                              const isSide = project.status === "side_projects";
+                              const bgStyle = isSide ? { backgroundColor: "#374151" } : (project.card_color ? { backgroundColor: project.card_color } : {});
+                              const bgClass = (!isSide && !project.card_color) ? `${statusConfig[project.status]?.color || "bg-slate-400"}` : "";
+                              return (
+                                <div
+                                  key={"install-" + project.id}
+                                  className={`h-3.5 rounded-sm flex items-center gap-0.5 px-0.5 overflow-hidden ${bgClass}`}
+                                  style={bgStyle}
+                                  title={"Install: " + project.project_name}
+                                >
+                                  <Hammer className="w-2 h-2 text-white flex-shrink-0" style={{ filter: "drop-shadow(0 0 2px rgba(0,0,0,0.5))" }} />
                                   <span className="text-white text-[8px] font-medium truncate leading-none" style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
                                 </div>
                               );
