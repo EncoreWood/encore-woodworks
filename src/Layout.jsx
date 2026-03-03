@@ -381,7 +381,7 @@ export default function Layout({ children, currentPageName }) {
             <div key={groupKey}>
               <button
                 onClick={() => toggleGroup(groupKey)}
-                className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-400/50 transition-all group"
+                className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-800 hover:bg-amber-700/20 transition-all group"
               >
                 <ChevronDown
                   className={cn(
