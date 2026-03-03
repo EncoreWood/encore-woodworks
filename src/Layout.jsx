@@ -337,11 +337,9 @@ export default function Layout({ children, currentPageName }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200 flex">
+    <div className="min-h-screen flex" style={{ backgroundColor: "#c8c3bb" }}>
       {/* Sidebar */}
-      <aside className="w-64 bg-gradient-to-b from-slate-300 via-gray-200 to-slate-300 border-r border-slate-400 sticky top-0 h-screen overflow-y-auto flex flex-col shadow-2xl" style={{ 
-        backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 100%), repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px)'
-      }}>
+      <aside className="w-64 border-r border-slate-500 sticky top-0 h-screen overflow-y-auto flex flex-col shadow-2xl" style={{ backgroundColor: "#b0aa9f" }}>
         {/* Logo & Settings */}
         <div className="border-b border-slate-400">
           <div className="flex items-center gap-3 p-6">
