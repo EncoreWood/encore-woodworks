@@ -20,12 +20,14 @@ function PdfPreviewTooltip({ url, anchorEl }) {
         <FileText className="w-3 h-3 text-red-500" />
         <span className="text-xs text-slate-600 truncate font-medium">PDF Preview</span>
       </div>
-      <iframe
-        src={`${url}#toolbar=0&navpanes=0&scrollbar=0`}
+      <object
+        data={`${url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+        type="application/pdf"
         className="w-full"
-        style={{ height: 420, border: "none" }}
-        title="PDF Preview"
-      />
+        style={{ height: 420, border: "none", display: "block" }}
+      >
+        <div className="flex items-center justify-center h-full text-xs text-slate-400 p-4">PDF preview unavailable</div>
+      </object>
     </div>,
     document.body
   );
