@@ -358,7 +358,7 @@ export default function ShopProduction() {
         {/* Forms */}
         <ProductionItemForm
           open={showForm}
-          onOpenChange={(open) => { setShowForm(open); if (!open) setEditingItem(null); }}
+          onOpenChange={(open) => { setShowForm(open); if (!open) { setEditingItem(null); setJobInfoMode(false); } }}
           onSubmit={(data) => {
             if (editingItem) {
               updateMutation.mutate({ id: editingItem.id, data: { ...data }, syncToProject: editingItem.project_id ? { project_id: editingItem.project_id, room_name: editingItem.room_name } : null });
@@ -368,6 +368,7 @@ export default function ShopProduction() {
           }}
           initialData={editingItem ? { ...editingItem } : null}
           isLoading={createMutation.isPending || updateMutation.isPending}
+          jobInfoProjects={jobInfoMode ? activeProjects : undefined}
         />
 
         {pickupItem && (
