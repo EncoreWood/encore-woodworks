@@ -336,6 +336,7 @@ export default function OrdersBoard() {
                     <SelectItem value="in_production">In Production</SelectItem>
                     <SelectItem value="received">Received</SelectItem>
                     <SelectItem value="installed">Installed</SelectItem>
+                    <SelectItem value="not_applicable">Not Applicable</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
