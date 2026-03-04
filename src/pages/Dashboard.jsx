@@ -153,7 +153,7 @@ export default function Dashboard() {
   const inProductionProjects = projects.filter(p => p.status === "in_production");
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#c8c3bb" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "#d1d5db" }}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
 
         {/* Header */}
