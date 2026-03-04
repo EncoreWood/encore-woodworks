@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Factory } from "lucide-react";
 
 const defaultForm = {
   title: "",
@@ -14,7 +16,9 @@ const defaultForm = {
   status: "open",
   priority: "medium",
   room_name: "",
-  notes: ""
+  notes: "",
+  linkToProduction: false,
+  productionStage: "face_frame"
 };
 
 export default function PickupItemForm({ open, onOpenChange, onSubmit, initialData, projectId, projectName, rooms = [], isLoading }) {
@@ -29,6 +33,7 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   const projectRooms = selectedProject?.rooms || rooms;
+  const isEditing = !!(initialData?.id);
 
   useEffect(() => {
     if (open) {
@@ -39,7 +44,9 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
         status: initialData.status || "open",
         priority: initialData.priority || "medium",
         room_name: initialData.room_name || "",
-        notes: initialData.notes || ""
+        notes: initialData.notes || "",
+        linkToProduction: false,
+        productionStage: "face_frame"
       } : defaultForm);
     }
   }, [open, initialData, projectId]);
@@ -47,11 +54,14 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
   const handleSubmit = (e) => {
     e.preventDefault();
     const proj = projects.find(p => p.id === selectedProjectId);
+    const { linkToProduction, productionStage, ...itemData } = form;
     onSubmit({
-      ...form,
+      ...itemData,
       project_id: selectedProjectId || projectId,
       project_name: proj?.project_name || projectName || "",
-      source: initialData?.source || "manual"
+      source: initialData?.source || "manual",
+      linkToProduction: !isEditing && linkToProduction,
+      productionStage: !isEditing && linkToProduction ? productionStage : undefined
     });
   };
 
@@ -59,7 +69,7 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{initialData ? "Edit Pickup Item" : "Add Pickup Item"}</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit Pickup Item" : "Add Pickup Item"}</DialogTitle>
           {projectName && <p className="text-sm text-slate-500">{projectName}</p>}
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -168,12 +178,45 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
             />
           </div>
 
+          {/* Link to Production toggle — only on new items */}
+          {!isEditing && (
+            <div className="border rounded-lg p-3 bg-slate-50 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Factory className="w-4 h-4 text-amber-600" />
+                  <Label className="cursor-pointer">Link to Production Board</Label>
+                </div>
+                <Switch
+                  checked={form.linkToProduction}
+                  onCheckedChange={(v) => setForm({ ...form, linkToProduction: v })}
+                />
+              </div>
+              {form.linkToProduction && (
+                <div>
+                  <Label className="text-xs text-slate-500">Starting Stage</Label>
+                  <Select value={form.productionStage} onValueChange={(v) => setForm({ ...form, productionStage: v })}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="face_frame">Face Frame</SelectItem>
+                      <SelectItem value="spray">Spray</SelectItem>
+                      <SelectItem value="build">Build</SelectItem>
+                      <SelectItem value="on_hold">On Hold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-400 mt-1">A moveable card will be created in the Production board. Moving it there will update the stage shown here.</p>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="flex gap-2 pt-2">
             <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button type="submit" className="flex-1 bg-amber-600 hover:bg-amber-700" disabled={isLoading || !form.title.trim() || (!projectId && !selectedProjectId)}>
-              {isLoading ? "Saving..." : initialData ? "Save Changes" : "Add Item"}
+              {isLoading ? "Saving..." : isEditing ? "Save Changes" : "Add Item"}
             </Button>
           </div>
         </form>
