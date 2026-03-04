@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, CheckCircle2, AlertCircle, RefreshCw, Search, Filter } from "lucide-react";
+import { Plus, Pencil, Trash2, CheckCircle2, AlertCircle, RefreshCw, Search, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import PickupItemForm from "../components/pickup/PickupItemForm";
 import { cn } from "@/lib/utils";
 
