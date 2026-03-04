@@ -230,7 +230,18 @@ export default function PickupList() {
                                   <Badge className={cn("text-xs border-0", statusConfig[item.status]?.color)}>
                                     {statusConfig[item.status]?.label}
                                   </Badge>
-                                  {item.source && item.source !== "manual" && (
+                                  {item.production_item_id && (
+                                    <Link
+                                      to={createPageUrl("ShopProduction")}
+                                      title="View in Production"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <Badge variant="outline" className="text-xs text-blue-600 border-blue-300 hover:bg-blue-50 gap-1 cursor-pointer">
+                                        <ExternalLink className="w-2.5 h-2.5" />Production
+                                      </Badge>
+                                    </Link>
+                                  )}
+                                  {item.source && item.source !== "manual" && !item.production_item_id && (
                                     <Badge variant="outline" className="text-xs text-slate-400">{item.source}</Badge>
                                   )}
                                   <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingItem(item); setShowForm(true); }}>
