@@ -63,6 +63,22 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
           {projectName && <p className="text-sm text-slate-500">{projectName}</p>}
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {!projectId && (
+            <div>
+              <Label>Project *</Label>
+              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select a project..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.project_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div>
             <Label>Description *</Label>
             <Input
