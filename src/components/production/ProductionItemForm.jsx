@@ -16,7 +16,8 @@ const initialFormState = {
   notes: ""
 };
 
-export default function ProductionItemForm({ open, onOpenChange, onSubmit, initialData, isLoading }) {
+// jobInfoProjects: if provided, form is in "Job Info" mode — shows project dropdown instead of type, hides stage
+export default function ProductionItemForm({ open, onOpenChange, onSubmit, initialData, isLoading, jobInfoProjects }) {
   const [formData, setFormData] = useState(initialFormState);
 
   useEffect(() => {
@@ -55,33 +56,53 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="type">Type *</Label>
-            <Select value={formData.type} onValueChange={(v) => handleChange("type", v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="cabinet">Cabinet</SelectItem>
-                <SelectItem value="misc">Misc</SelectItem>
-                <SelectItem value="pickup">Pick up</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="stage">Starting Stage</Label>
-            <Select value={formData.stage} onValueChange={(v) => handleChange("stage", v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="face_frame">Face Frame</SelectItem>
-                <SelectItem value="spray">Spray</SelectItem>
-                <SelectItem value="build">Build</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {jobInfoProjects ? (
+            <div className="space-y-2">
+              <Label>Project *</Label>
+              <Select
+                value={formData.project_id || ""}
+                onValueChange={(v) => {
+                  const proj = jobInfoProjects.find(p => p.id === v);
+                  handleChange("project_id", v);
+                  handleChange("project_name", proj?.project_name || "");
+                  handleChange("type", "cabinet");
+                  handleChange("stage", "face_frame");
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Select project..." /></SelectTrigger>
+                <SelectContent>
+                  {jobInfoProjects.map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.project_name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="type">Type *</Label>
+                <Select value={formData.type} onValueChange={(v) => handleChange("type", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cabinet">Cabinet</SelectItem>
+                    <SelectItem value="misc">Misc</SelectItem>
+                    <SelectItem value="pickup">Pick up</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="stage">Starting Stage</Label>
+                <Select value={formData.stage} onValueChange={(v) => handleChange("stage", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="face_frame">Face Frame</SelectItem>
+                    <SelectItem value="spray">Spray</SelectItem>
+                    <SelectItem value="build">Build</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>
