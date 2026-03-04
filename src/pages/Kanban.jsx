@@ -313,9 +313,10 @@ export default function Kanban() {
                             <div
                               ref={provided.innerRef}
                               {...provided.droppableProps}
-                              className={`min-h-[200px] rounded-lg p-3 transition-colors ${
+                              className={`rounded-lg p-3 transition-colors overflow-y-auto ${
                                 snapshot.isDraggingOver ? "bg-slate-200" : column.color
                               }`}
+                              style={{ maxHeight: "calc(100vh - 260px)", minHeight: 200 }}
                             >
                               <div className="space-y-3">
                                 {columnProjects.map((project, index) => (
