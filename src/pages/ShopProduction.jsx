@@ -275,6 +275,11 @@ export default function ShopProduction() {
 
           {/* ── JOB INFO TAB ── */}
           <TabsContent value="job_info" className="mt-0">
+            <div className="mb-4 flex justify-end">
+              <Button onClick={() => { setJobInfoMode(true); setEditingItem(null); setShowForm(true); }} className="bg-amber-600 hover:bg-amber-700">
+                <Plus className="w-4 h-4 mr-2" /> Add Job Info Item
+              </Button>
+            </div>
             <DragDropContext onDragEnd={handleDragEnd}>
               <div className="flex gap-4 overflow-x-auto pb-4">
                 {activeProjects.map((project) => {
