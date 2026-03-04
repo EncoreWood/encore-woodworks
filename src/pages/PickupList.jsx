@@ -61,7 +61,30 @@ export default function PickupList() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.PickupItem.create(data),
+    mutationFn: async (data) => {
+      const { linkToProduction, productionStage, ...itemData } = data;
+      const created = await base44.entities.PickupItem.create(itemData);
+      if (linkToProduction) {
+        const prodItem = await base44.entities.ProductionItem.create({
+          name: itemData.title,
+          type: "pickup",
+          stage: productionStage || "face_frame",
+          project_id: itemData.project_id,
+          project_name: itemData.project_name,
+          room_name: itemData.room_name || "",
+          notes: itemData.notes || "",
+          files: [],
+          pickup_item_id: created.id
+        });
+        // Link back: store production_item_id and initial stage on pickup item
+        await base44.entities.PickupItem.update(created.id, {
+          production_item_id: prodItem.id,
+          production_stage: productionStage || "face_frame"
+        });
+        queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+      }
+      return created;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pickupItems"] });
       setShowForm(false);
