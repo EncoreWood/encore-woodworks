@@ -19,9 +19,20 @@ const defaultForm = {
 
 export default function PickupItemForm({ open, onOpenChange, onSubmit, initialData, projectId, projectName, rooms = [], isLoading }) {
   const [form, setForm] = useState(defaultForm);
+  const [selectedProjectId, setSelectedProjectId] = useState(projectId || "");
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => base44.entities.Project.list(),
+    enabled: open
+  });
+
+  const selectedProject = projects.find(p => p.id === selectedProjectId);
+  const projectRooms = selectedProject?.rooms || rooms;
 
   useEffect(() => {
     if (open) {
+      setSelectedProjectId(initialData?.project_id || projectId || "");
       setForm(initialData ? {
         title: initialData.title || "",
         type: initialData.type || "missing",
@@ -31,14 +42,15 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
         notes: initialData.notes || ""
       } : defaultForm);
     }
-  }, [open, initialData]);
+  }, [open, initialData, projectId]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const proj = projects.find(p => p.id === selectedProjectId);
     onSubmit({
       ...form,
-      project_id: projectId,
-      project_name: projectName,
+      project_id: selectedProjectId || projectId,
+      project_name: proj?.project_name || projectName || "",
       source: initialData?.source || "manual"
     });
   };
