@@ -187,13 +187,13 @@ export default function Dashboard() {
         {/* Top Row: Current Projects + PTS Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
           {/* In Production */}
-          <div className="lg:col-span-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="lg:col-span-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col">
             <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">Current Projects</h3>
-            <div className="space-y-2">
+            <div className="overflow-y-auto max-h-64 space-y-2 pr-1">
               {inProductionProjects.length === 0 ? (
                 <p className="text-slate-400 text-sm">No active production projects</p>
               ) : (
-                inProductionProjects.slice(0, 5).map(p => (
+                inProductionProjects.map(p => (
                   <Link key={p.id} to={createPageUrl("ProjectDetails") + "?id=" + p.id}>
                     <div className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 transition-colors">
                       <div>
