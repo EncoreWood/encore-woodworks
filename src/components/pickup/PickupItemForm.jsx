@@ -172,7 +172,7 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
             <Button type="button" variant="outline" className="flex-1" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" className="flex-1 bg-amber-600 hover:bg-amber-700" disabled={isLoading || !form.title.trim()}>
+            <Button type="submit" className="flex-1 bg-amber-600 hover:bg-amber-700" disabled={isLoading || !form.title.trim() || (!projectId && !selectedProjectId)}>
               {isLoading ? "Saving..." : initialData ? "Save Changes" : "Add Item"}
             </Button>
           </div>
