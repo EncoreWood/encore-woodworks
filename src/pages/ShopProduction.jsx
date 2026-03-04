@@ -1,16 +1,16 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { format, startOfWeek, startOfMonth } from "date-fns";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2, FileText, ClipboardList } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Factory, Briefcase } from "lucide-react";
 import ProductionItemForm from "../components/production/ProductionItemForm";
 import PDFAnnotator from "../components/production/PDFAnnotator";
 import PickupItemForm from "../components/pickup/PickupItemForm";
-import JobInfoRow, { JOB_INFO_DROPPABLE_ID } from "../components/production/JobInfoRow";
+import ProductionCard from "../components/production/ProductionCard";
 
 const productionColumns = [
   { id: "face_frame", label: "Face Frame", color: "bg-blue-50" },
@@ -20,17 +20,18 @@ const productionColumns = [
   { id: "on_hold", label: "On Hold", color: "bg-red-100" }
 ];
 
-const JOB_INFO_STAGE = "job_info";
+const ACTIVE_PROJECT_STATUSES = ["in_production", "ready_for_install", "installing", "in_design", "approved"];
 
 export default function ShopProduction() {
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("production");
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [annotatingPdf, setAnnotatingPdf] = useState(null);
   const [currentPdfUrl, setCurrentPdfUrl] = useState(null);
   const [currentAnnotations, setCurrentAnnotations] = useState([]);
-  const [pickupItem, setPickupItem] = useState(null); // { project_id, project_name, room_name }
-  const [editingPts, setEditingPts] = useState(null); // { itemId, fileIdx }
+  const [pickupItem, setPickupItem] = useState(null);
+  const [editingPts, setEditingPts] = useState(null);
 
   const { data: items = [] } = useQuery({
     queryKey: ["productionItems"],
@@ -43,6 +44,8 @@ export default function ShopProduction() {
     queryFn: () => base44.entities.Project.list()
   });
 
+  const activeProjects = projects.filter(p => ACTIVE_PROJECT_STATUSES.includes(p.status));
+
   const getProjectColor = (projectId) => {
     if (!projectId) return null;
     return projects.find(p => p.id === projectId)?.card_color || null;
@@ -50,66 +53,37 @@ export default function ShopProduction() {
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.ProductionItem.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
-      setShowForm(false);
-      setEditingItem(null);
-    }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["productionItems"] }); setShowForm(false); setEditingItem(null); }
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data, syncToProject }) => {
-      // Strip out any File/Blob objects from files array before saving
-      const safeData = {
-        ...data,
-        files: (data.files || []).map(f => ({
-          name: f.name,
-          url: f.url,
-          pts: f.pts,
-          annotations: f.annotations
-        }))
-      };
+      const safeData = { ...data, files: (data.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations })) };
       await base44.entities.ProductionItem.update(id, safeData);
-      // Sync PTS back to the project's room files
       if (syncToProject && safeData.files && syncToProject.project_id && syncToProject.room_name) {
         const projList = await base44.entities.Project.filter({ id: syncToProject.project_id });
         const proj = projList[0];
         if (proj?.rooms) {
           const updatedRooms = proj.rooms.map(room => {
             if (room.room_name !== syncToProject.room_name) return room;
-            return {
-              ...room,
-              files: (room.files || []).map(rf => {
-                const match = safeData.files.find(pf => pf.url === rf.url || pf.name === rf.name);
-                return match ? { ...rf, pts: match.pts } : rf;
-              })
-            };
+            return { ...room, files: (room.files || []).map(rf => { const match = safeData.files.find(pf => pf.url === rf.url || pf.name === rf.name); return match ? { ...rf, pts: match.pts } : rf; }) };
           });
           await base44.entities.Project.update(syncToProject.project_id, { rooms: updatedRooms });
           queryClient.invalidateQueries({ queryKey: ["projects"] });
         }
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
-      setShowForm(false);
-      setEditingItem(null);
-    }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["productionItems"] }); setShowForm(false); setEditingItem(null); }
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.ProductionItem.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
-    }
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["productionItems"] })
   });
 
   const createPickupMutation = useMutation({
     mutationFn: (data) => base44.entities.PickupItem.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pickupItems"] });
-      setPickupItem(null);
-    }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["pickupItems"] }); setPickupItem(null); }
   });
 
   const handleDragEnd = async (result) => {
@@ -117,36 +91,18 @@ export default function ShopProduction() {
     if (result.destination.droppableId === result.source.droppableId && result.destination.index === result.source.index) return;
 
     const itemId = result.draggableId;
-    const destId = result.destination.droppableId;
-    // Map the Job Info droppable to its stage id
-    const newStage = destId === JOB_INFO_DROPPABLE_ID ? JOB_INFO_STAGE : destId;
+    const newStage = result.destination.droppableId;
     const item = items.find(i => i.id === itemId);
     if (!item) return;
 
-    // Safe files — only plain serializable fields, never blobs
-    const safeFiles = (item.files || []).map(f => ({
-      name: f.name,
-      url: f.url,
-      pts: f.pts !== undefined ? Number(f.pts) : undefined,
-      annotations: f.annotations
-    }));
-
+    const safeFiles = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts !== undefined ? Number(f.pts) : undefined, annotations: f.annotations }));
     const updatePayload = {
-      name: item.name,
-      type: item.type,
-      stage: newStage,
-      project_id: item.project_id,
-      project_name: item.project_name,
-      room_name: item.room_name,
-      notes: item.notes,
-      files: safeFiles,
-      // Stamp the date when moved to complete
-      completed_date: newStage === "complete" && item.stage !== "complete"
-        ? format(new Date(), "yyyy-MM-dd")
-        : item.completed_date
+      name: item.name, type: item.type, stage: newStage,
+      project_id: item.project_id, project_name: item.project_name, room_name: item.room_name,
+      notes: item.notes, files: safeFiles,
+      completed_date: newStage === "complete" && item.stage !== "complete" ? format(new Date(), "yyyy-MM-dd") : item.completed_date
     };
 
-    // Optimistically update cache so UI is instant
     queryClient.setQueryData(["productionItems"], (old = []) =>
       old.map(i => i.id === itemId ? { ...i, stage: newStage, files: safeFiles, completed_date: updatePayload.completed_date } : i)
     );
@@ -154,76 +110,38 @@ export default function ShopProduction() {
     await base44.entities.ProductionItem.update(itemId, updatePayload);
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
 
-    // Sync stage back to linked PickupItem
     if (item?.pickup_item_id) {
-      try {
-        await base44.entities.PickupItem.update(item.pickup_item_id, { production_stage: newStage });
-        queryClient.invalidateQueries({ queryKey: ["pickupItems"] });
-      } catch (e) {
-        console.error("Failed to sync stage to pickup item:", e);
-      }
+      try { await base44.entities.PickupItem.update(item.pickup_item_id, { production_stage: newStage }); queryClient.invalidateQueries({ queryKey: ["pickupItems"] }); } catch (e) {}
     }
-    
-    // Sync back to project if this item came from a project
+
     if (item?.project_id) {
       try {
         const project = await base44.entities.Project.filter({ id: item.project_id }).then(res => res[0]);
         if (project?.rooms) {
           const updatedRooms = project.rooms.map(room => {
             if (room.room_name === item.room_name && room.files) {
-              return {
-                ...room,
-                files: room.files.map(file => {
-                  // Match by file_id (url) or by file name as fallback
-                  const isMatch = item.file_id
-                    ? file.url === item.file_id
-                    : item.files?.some(f => f.url === file.url || f.name === file.name);
-                  return isMatch
-                    ? { ...file, in_production: true, production_stage: newStage }
-                    : file;
-                })
-              };
+              return { ...room, files: room.files.map(file => { const isMatch = item.files?.some(f => f.url === file.url || f.name === file.name); return isMatch ? { ...file, in_production: true, production_stage: newStage } : file; }) };
             }
             return room;
           });
           await base44.entities.Project.update(item.project_id, { rooms: updatedRooms });
-          queryClient.invalidateQueries({ queryKey: ["project", item.project_id] });
           queryClient.invalidateQueries({ queryKey: ["projects"] });
         }
-      } catch (error) {
-        console.error("Failed to sync to project:", error);
-      }
+      } catch (error) {}
     }
   };
 
-  // Inline PTS update — saves immediately to DB and syncs to project
   const handleInlinePtsChange = async (item, fileIndex, newPts) => {
-    const updatedFiles = (item.files || []).map((f, i) =>
-      i === fileIndex ? { ...f, pts: newPts === "" ? undefined : Number(newPts) } : f
-    );
-
-    // Optimistically update the cache
-    queryClient.setQueryData(["productionItems"], (old = []) =>
-      old.map(i => i.id === item.id ? { ...i, files: updatedFiles } : i)
-    );
-
-    // Save to ProductionItem
+    const updatedFiles = (item.files || []).map((f, i) => i === fileIndex ? { ...f, pts: newPts === "" ? undefined : Number(newPts) } : f);
+    queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, files: updatedFiles } : i));
     await base44.entities.ProductionItem.update(item.id, { files: updatedFiles });
-
-    // Sync PTS back to the Project's room files
     if (item.project_id && item.room_name) {
       const projList = await base44.entities.Project.filter({ id: item.project_id });
       const proj = projList[0];
       if (proj?.rooms) {
         const updatedRooms = proj.rooms.map(room => {
           if (room.room_name !== item.room_name) return room;
-          return {
-            ...room,
-            files: (room.files || []).map(rf => {
-              const match = updatedFiles.find(pf => pf.url === rf.url || pf.name === rf.name);
-              return match !== undefined ? { ...rf, pts: match.pts } : rf;
-            })
-          };
+          return { ...room, files: (room.files || []).map(rf => { const match = updatedFiles.find(pf => pf.url === rf.url || pf.name === rf.name); return match !== undefined ? { ...rf, pts: match.pts } : rf; }) };
         });
         await base44.entities.Project.update(item.project_id, { rooms: updatedRooms });
         queryClient.invalidateQueries({ queryKey: ["projects"] });
@@ -241,342 +159,203 @@ export default function ShopProduction() {
   const handleSaveAnnotations = (annotations) => {
     const { item, fileIndex } = annotatingPdf;
     const updatedFiles = [...item.files];
-    updatedFiles[fileIndex] = {
-      ...updatedFiles[fileIndex],
-      annotations
-    };
+    updatedFiles[fileIndex] = { ...updatedFiles[fileIndex], annotations };
+    updateMutation.mutate({ id: item.id, data: { files: updatedFiles }, syncToProject: item.project_id ? { project_id: item.project_id, room_name: item.room_name } : null });
+    setAnnotatingPdf(null); setCurrentPdfUrl(null); setCurrentAnnotations([]);
+  };
 
-    updateMutation.mutate({
-      id: item.id,
-      data: { files: updatedFiles },
-      syncToProject: item.project_id ? { project_id: item.project_id, room_name: item.room_name } : null
-    });
+  // PTS stats
+  const now = new Date();
+  const todayStr = format(now, "yyyy-MM-dd");
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const monthStart = startOfMonth(now);
+  const completedItems = items.filter(i => i.stage === "complete");
+  const getPts = (filtered) => filtered.reduce((sum, item) => sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0), 0);
+  const dayPts = getPts(completedItems.filter(i => i.completed_date === todayStr));
+  const weekPts = getPts(completedItems.filter(i => i.completed_date && new Date(i.completed_date) >= weekStart));
+  const monthPts = getPts(completedItems.filter(i => i.completed_date && new Date(i.completed_date) >= monthStart));
 
-    setAnnotatingPdf(null);
-    setCurrentPdfUrl(null);
-    setCurrentAnnotations([]);
+  const sharedCardProps = {
+    editingPts,
+    setEditingPts,
+    onInlinePtsChange: handleInlinePtsChange,
+    onAnnotate: handleAnnotatePdf,
+    getProjectColor,
+    onPickup: (item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id }),
+    onEdit: (item) => { setEditingItem(item); setShowForm(true); },
+    onDelete: (id) => deleteMutation.mutate(id),
   };
 
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Shop Production</h1>
             <p className="text-slate-500 mt-1">Track projects through production stages</p>
           </div>
           <div className="flex items-center gap-4">
-            {/* PTS Tracker — based on Complete stage items only */}
-            {(() => {
-              const now = new Date();
-              const todayStr = format(now, "yyyy-MM-dd");
-              const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-              const monthStart = startOfMonth(now);
-
-              const completedItems = items.filter(i => i.stage === "complete");
-
-              const getPts = (filtered) =>
-                filtered.reduce((sum, item) => sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0), 0);
-
-              const dayPts = getPts(completedItems.filter(i => i.completed_date === todayStr));
-              const weekPts = getPts(completedItems.filter(i => i.completed_date && new Date(i.completed_date) >= weekStart));
-              const monthPts = getPts(completedItems.filter(i => i.completed_date && new Date(i.completed_date) >= monthStart));
-              const totalPts = getPts(completedItems);
-
-              return (
-                <div className="flex gap-2">
-                  {[{ label: "Day", val: dayPts }, { label: "Week", val: weekPts }, { label: "Month", val: monthPts }].map(({ label, val, accent }) => (
-                    <div key={label} className={`text-center rounded-lg px-3 py-2 shadow-sm border ${accent ? "bg-green-600 border-green-600" : "bg-white border-slate-200"}`}>
-                      <p className={`text-xs font-medium ${accent ? "text-green-100" : "text-slate-500"}`}>{label}</p>
-                      <p className={`text-lg font-bold ${accent ? "text-white" : "text-green-700"}`}>{val} <span className="text-xs font-semibold opacity-70">PTS</span></p>
-                    </div>
-                  ))}
+            <div className="flex gap-2">
+              {[{ label: "Day", val: dayPts }, { label: "Week", val: weekPts }, { label: "Month", val: monthPts }].map(({ label, val }) => (
+                <div key={label} className="text-center rounded-lg px-3 py-2 shadow-sm border bg-white border-slate-200">
+                  <p className="text-xs font-medium text-slate-500">{label}</p>
+                  <p className="text-lg font-bold text-green-700">{val} <span className="text-xs font-semibold opacity-70">PTS</span></p>
                 </div>
-              );
-            })()}
+              ))}
+            </div>
             <Button onClick={() => setShowForm(true)} className="bg-amber-600 hover:bg-amber-700">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Item
+              <Plus className="w-4 h-4 mr-2" /> Add Item
             </Button>
           </div>
         </div>
 
-        <DragDropContext onDragEnd={handleDragEnd}>
-          {/* Job Info Row */}
-          <JobInfoRow
-            items={items.filter(i => i.stage === JOB_INFO_STAGE)}
-            getProjectColor={getProjectColor}
-            onPickup={(item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id })}
-          />
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-6">
+            <TabsTrigger value="production" className="flex items-center gap-2">
+              <Factory className="w-4 h-4" /> Production
+            </TabsTrigger>
+            <TabsTrigger value="job_info" className="flex items-center gap-2">
+              <Briefcase className="w-4 h-4" /> Job Info
+            </TabsTrigger>
+          </TabsList>
 
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {productionColumns.map((column, colIdx) => {
-              const columnItems = items.filter((item) => item.stage === column.id);
-              const todayStr = format(new Date(), "yyyy-MM-dd");
-              // Items that have moved PAST this stage today (in a later stage, completed today)
-              const laterStageIds = productionColumns.slice(colIdx + 1).map(c => c.id);
-              const todayPts = items
-                .filter(i => laterStageIds.includes(i.stage) && i.completed_date === todayStr)
-                .reduce((sum, item) => sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0), 0);
+          {/* ── PRODUCTION TAB ── */}
+          <TabsContent value="production" className="mt-0">
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <div className="flex gap-4 overflow-x-auto pb-4">
+                {productionColumns.map((column, colIdx) => {
+                  const columnItems = items.filter(i => i.stage === column.id);
+                  const laterStageIds = productionColumns.slice(colIdx + 1).map(c => c.id);
+                  const todayColPts = items
+                    .filter(i => laterStageIds.includes(i.stage) && i.completed_date === todayStr)
+                    .reduce((sum, item) => sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0), 0);
 
-              return (
-                <div key={column.id} className="flex-shrink-0 w-80">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <h2 className="font-semibold text-slate-700">{column.label}</h2>
-                      {todayPts > 0 && (
-                        <span className="text-xs font-bold text-green-700 bg-green-100 border border-green-200 rounded-full px-2 py-0.5">
-                          {todayPts} PTS
-                        </span>
-                      )}
-                    </div>
-                    <Badge variant="outline" className="text-xs">
-                      {columnItems.length}
-                    </Badge>
-                  </div>
-
-                  <Droppable droppableId={column.id}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={`rounded-lg p-3 transition-colors overflow-y-auto ${
-                          snapshot.isDraggingOver ? "bg-slate-200" : column.color
-                        }`}
-                        style={{ maxHeight: "calc(100vh - 260px)", minHeight: 200 }}
-                      >
-                        <div className="space-y-3">
-                          {columnItems.map((item, index) => (
-                            <Draggable key={item.id} draggableId={item.id} index={index}>
-                              {(provided, snapshot) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                >
-                                  <Card
-                                   className={`p-4 bg-white border-0 shadow-sm transition-shadow overflow-hidden ${
-                                     snapshot.isDragging ? "shadow-lg" : ""
-                                   }`}
-                                   style={(() => { const c = getProjectColor(item.project_id); return c ? { borderLeft: `4px solid ${c}`, backgroundColor: c + "18" } : {}; })()}
-                                  >
-                                    {item.project_name && (
-                                      <div className="flex items-center justify-between mb-1">
-                                        <p className="text-xs text-slate-500 font-medium">{item.project_name}{item.room_name ? ` · ${item.room_name}` : ''}</p>
-                                        {item.project_id && (
-                                          <button
-                                            onClick={(e) => { e.stopPropagation(); setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id }); }}
-                                            className="text-amber-600 hover:text-amber-700 flex items-center gap-1 text-xs"
-                                            title="Add pickup item for this job"
-                                          >
-                                            <ClipboardList className="w-3 h-3" />
-                                          </button>
-                                        )}
-                                      </div>
-                                    )}
-                                    <div className="flex items-start justify-between mb-2">
-                                      <div className="flex-1 min-w-0">
-                                        <h3 className="font-medium text-slate-900">{item.name}</h3>
-                                        {item.files && item.files.some(f => f.pts) && (
-                                          <span className="text-xs font-bold text-amber-600">
-                                            {item.files.reduce((s, f) => s + (f.pts || 0), 0)} PTS total
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setEditingItem(item);
-                                            setShowForm(true);
-                                          }}
-                                        >
-                                          <Pencil className="w-3 h-3" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (confirm(`Delete "${item.name}"?`)) {
-                                              deleteMutation.mutate(item.id);
-                                            }
-                                          }}
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </Button>
-                                        <Badge
-                                          variant="outline"
-                                          className={
-                                            item.type === "cabinet"
-                                              ? "bg-blue-50 text-blue-700 border-blue-200"
-                                              : item.type === "misc"
-                                              ? "bg-purple-50 text-purple-700 border-purple-200"
-                                              : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                          }
-                                        >
-                                          {item.type === "cabinet" ? "Cabinet" : item.type === "misc" ? "Misc" : "Pick up"}
-                                        </Badge>
-                                      </div>
-                                    </div>
-                                    
-                                    {item.notes && (
-                                      <p className="text-sm text-slate-600 mb-3">{item.notes}</p>
-                                    )}
-                                    
-                                    {item.files && item.files.length > 0 && (
-                                       <div className="space-y-2 pt-2 border-t border-slate-100">
-                                         {item.files.map((file, idx) => (
-                                           <div key={idx} className="text-xs">
-                                             {file.url && (file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                                               <div className="relative">
-                                                 <img 
-                                                   src={file.url} 
-                                                   alt={file.name} 
-                                                   className="w-full rounded-md border border-slate-200"
-                                                 />
-                                                 <div className="absolute top-1 right-1 flex items-center gap-1 bg-white border border-amber-200 rounded px-1.5 py-0.5 shadow">
-                                                   <span className="text-xs font-semibold text-slate-500">PTS</span>
-                                                   {editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
-                                                     <input
-                                                       type="number"
-                                                       min="0"
-                                                       defaultValue={file.pts ?? ""}
-                                                       autoFocus
-                                                       onClick={e => e.stopPropagation()}
-                                                       onBlur={(e) => { handleInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
-                                                       onKeyDown={(e) => { if (e.key === 'Enter') { handleInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
-                                                       className="w-10 text-xs text-center font-bold text-amber-600 border-none outline-none bg-transparent"
-                                                       placeholder="0"
-                                                     />
-                                                   ) : (
-                                                     <button onClick={(e) => { e.stopPropagation(); setEditingPts({ itemId: item.id, fileIdx: idx }); }} className="text-xs font-bold text-amber-600 min-w-[24px] text-center hover:underline">
-                                                       {file.pts ?? "—"}
-                                                     </button>
-                                                   )}
-                                                 </div>
-                                               </div>
-                                             ) : file.url.match(/\.pdf$/i) ? (
-                                              <div className="rounded-md border border-slate-200 overflow-hidden bg-slate-50">
-                                                <div className="flex items-center gap-2 p-2">
-                                                  <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
-                                                  <button
-                                                    className="text-amber-600 hover:text-amber-700 underline text-left flex-1 text-xs truncate"
-                                                    onClick={(e) => { e.stopPropagation(); window.open(file.url, '_blank', 'noopener,noreferrer'); }}
-                                                  >
-                                                    {file.name}
-                                                  </button>
-                                                  <div className="flex items-center gap-1">
-                                                    <span className="text-xs font-semibold text-slate-500">PTS</span>
-                                                    {editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
-                                                      <input
-                                                        type="number"
-                                                        min="0"
-                                                        defaultValue={file.pts ?? ""}
-                                                        autoFocus
-                                                        onClick={e => e.stopPropagation()}
-                                                        onBlur={(e) => { handleInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
-                                                        onKeyDown={(e) => { if (e.key === 'Enter') { handleInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
-                                                        className="w-12 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600 bg-amber-50"
-                                                        placeholder="0"
-                                                      />
-                                                    ) : (
-                                                      <button onClick={(e) => { e.stopPropagation(); setEditingPts({ itemId: item.id, fileIdx: idx }); }} className="h-6 px-2 text-xs border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 min-w-[40px] text-center">
-                                                        {file.pts ?? "—"}
-                                                      </button>
-                                                    )}
-                                                  </div>
-                                                  {file.annotations && file.annotations.length > 0 && (
-                                                    <Badge className="bg-emerald-600 text-xs">
-                                                      {file.annotations.length} notes
-                                                    </Badge>
-                                                  )}
-                                                  <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="h-6 px-2 text-xs"
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      handleAnnotatePdf(item, idx);
-                                                    }}
-                                                  >
-                                                    Annotate
-                                                  </Button>
-                                                </div>
-                                              </div>
-                                             ) : (
-                                              <div className="flex items-center gap-2">
-                                                <button
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    window.open(file.url, '_blank');
-                                                  }}
-                                                  className="text-amber-600 hover:text-amber-700 underline text-left flex-1"
-                                                >
-                                                  {file.name}
-                                                </button>
-                                                <div className="flex items-center gap-1">
-                                                  <span className="text-xs font-semibold text-slate-500">PTS</span>
-                                                  {editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
-                                                    <input
-                                                      type="number"
-                                                      min="0"
-                                                      defaultValue={file.pts ?? ""}
-                                                      autoFocus
-                                                      onClick={e => e.stopPropagation()}
-                                                      onBlur={(e) => { handleInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
-                                                      onKeyDown={(e) => { if (e.key === 'Enter') { handleInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
-                                                      className="w-12 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600"
-                                                      placeholder="0"
-                                                    />
-                                                  ) : (
-                                                    <button onClick={(e) => { e.stopPropagation(); setEditingPts({ itemId: item.id, fileIdx: idx }); }} className="h-6 px-2 text-xs border border-amber-200 rounded font-bold text-amber-600 hover:bg-amber-50 min-w-[40px] text-center">
-                                                      {file.pts ?? "—"}
-                                                    </button>
-                                                  )}
-                                                </div>
-                                              </div>
-                                             ))}
-                                           </div>
-                                         ))}
-                                       </div>
-                                     )}
-                                  </Card>
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
+                  return (
+                    <div key={column.id} className="flex-shrink-0 w-80">
+                      <div className="mb-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <h2 className="font-semibold text-slate-700">{column.label}</h2>
+                          {todayColPts > 0 && (
+                            <span className="text-xs font-bold text-green-700 bg-green-100 border border-green-200 rounded-full px-2 py-0.5">{todayColPts} PTS</span>
+                          )}
                         </div>
-                        {provided.placeholder}
+                        <Badge variant="outline" className="text-xs">{columnItems.length}</Badge>
                       </div>
-                    )}
-                  </Droppable>
-                </div>
-              );
-            })}
-          </div>
-        </DragDropContext>
+                      <Droppable droppableId={column.id}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className={`rounded-lg p-3 transition-colors overflow-y-auto ${snapshot.isDraggingOver ? "bg-slate-200" : column.color}`}
+                            style={{ maxHeight: "calc(100vh - 280px)", minHeight: 200 }}
+                          >
+                            <div className="space-y-3">
+                              {columnItems.map((item, index) => (
+                                <Draggable key={item.id} draggableId={item.id} index={index}>
+                                  {(provided, snapshot) => (
+                                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                                      <ProductionCard item={item} isDragging={snapshot.isDragging} {...sharedCardProps} />
+                                    </div>
+                                  )}
+                                </Draggable>
+                              ))}
+                            </div>
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </div>
+                  );
+                })}
+              </div>
+            </DragDropContext>
+          </TabsContent>
 
+          {/* ── JOB INFO TAB ── */}
+          <TabsContent value="job_info" className="mt-0">
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <div className="flex gap-4 overflow-x-auto pb-4">
+                {activeProjects.map((project) => {
+                  // Items whose project_id matches this project (any stage except complete/on_hold for job info view)
+                  const projectItems = items.filter(i => i.project_id === project.id);
+
+                  return (
+                    <div key={project.id} className="flex-shrink-0 w-80">
+                      <div className="mb-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {project.card_color && (
+                            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: project.card_color }} />
+                          )}
+                          <h2 className="font-semibold text-slate-700 truncate">{project.project_name}</h2>
+                        </div>
+                        <Badge variant="outline" className="text-xs flex-shrink-0">{projectItems.length}</Badge>
+                      </div>
+                      <Droppable droppableId={`jobinfo_${project.id}`} isDropDisabled={true}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className="rounded-lg p-3 bg-slate-100 overflow-y-auto"
+                            style={{ maxHeight: "calc(100vh - 280px)", minHeight: 120 }}
+                          >
+                            {projectItems.length === 0 ? (
+                              <p className="text-xs text-slate-400 text-center py-4">No production items</p>
+                            ) : (
+                              <div className="space-y-3">
+                                {projectItems.map((item, index) => {
+                                  // Find any linked production item (another item with this as pickup_item_id, or just show itself)
+                                  return (
+                                    <Draggable key={item.id} draggableId={`ji_${item.id}`} index={index} isDragDisabled={true}>
+                                      {(provided) => (
+                                        <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                                          <ProductionCard
+                                            item={item}
+                                            isDragging={false}
+                                            editingPts={editingPts}
+                                            setEditingPts={setEditingPts}
+                                            onInlinePtsChange={handleInlinePtsChange}
+                                            onAnnotate={handleAnnotatePdf}
+                                            getProjectColor={getProjectColor}
+                                            onPickup={(item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id })}
+                                            onEdit={(item) => { setEditingItem(item); setShowForm(true); }}
+                                            onDelete={(id) => deleteMutation.mutate(id)}
+                                            showLinkButton={true}
+                                            onLinkClick={() => setActiveTab("production")}
+                                          />
+                                          {/* Stage badge below card */}
+                                          <div className="mt-1 flex justify-end">
+                                            <Badge variant="outline" className="text-xs capitalize">{item.stage?.replace(/_/g, " ") || "—"}</Badge>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </Draggable>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+                    </div>
+                  );
+                })}
+                {activeProjects.length === 0 && (
+                  <p className="text-slate-400 text-sm">No active projects found.</p>
+                )}
+              </div>
+            </DragDropContext>
+          </TabsContent>
+        </Tabs>
+
+        {/* Forms */}
         <ProductionItemForm
           open={showForm}
-          onOpenChange={(open) => {
-            setShowForm(open);
-            if (!open) setEditingItem(null);
-          }}
+          onOpenChange={(open) => { setShowForm(open); if (!open) setEditingItem(null); }}
           onSubmit={(data) => {
             if (editingItem) {
-              updateMutation.mutate({
-                id: editingItem.id,
-                data: { ...data },
-                syncToProject: editingItem.project_id ? {
-                  project_id: editingItem.project_id,
-                  room_name: editingItem.room_name
-                } : null
-              });
+              updateMutation.mutate({ id: editingItem.id, data: { ...data }, syncToProject: editingItem.project_id ? { project_id: editingItem.project_id, room_name: editingItem.room_name } : null });
             } else {
               createMutation.mutate(data);
             }
@@ -585,7 +364,6 @@ export default function ShopProduction() {
           isLoading={createMutation.isPending || updateMutation.isPending}
         />
 
-        {/* Pickup Item Form */}
         {pickupItem && (
           <PickupItemForm
             open={!!pickupItem}
@@ -602,11 +380,7 @@ export default function ShopProduction() {
         {annotatingPdf && currentPdfUrl && (
           <PDFAnnotator
             open={true}
-            onOpenChange={() => {
-              setAnnotatingPdf(null);
-              setCurrentPdfUrl(null);
-              setCurrentAnnotations([]);
-            }}
+            onOpenChange={() => { setAnnotatingPdf(null); setCurrentPdfUrl(null); setCurrentAnnotations([]); }}
             pdfUrl={currentPdfUrl}
             annotations={currentAnnotations}
             onSave={handleSaveAnnotations}
