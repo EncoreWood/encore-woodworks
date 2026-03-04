@@ -281,19 +281,34 @@ export default function PickupList() {
                                   <Badge className={cn("text-xs border-0", statusConfig[item.status]?.color)}>
                                     {statusConfig[item.status]?.label}
                                   </Badge>
-                                  {item.production_item_id && (
-                                    <Link
-                                      to={createPageUrl("ShopProduction")}
-                                      title="View in Production"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      <Badge variant="outline" className="text-xs text-blue-600 border-blue-300 hover:bg-blue-50 gap-1 cursor-pointer">
-                                        <ExternalLink className="w-2.5 h-2.5" />Production
-                                      </Badge>
-                                    </Link>
-                                  )}
+                                  {item.production_item_id && (() => {
+                                    const stageInfo = productionStageColors[item.production_stage] || productionStageColors.face_frame;
+                                    return (
+                                      <Link
+                                        to={createPageUrl("ShopProduction")}
+                                        title="View in Production"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <Badge variant="outline" className={`text-xs gap-1 cursor-pointer hover:opacity-80 ${stageInfo.color}`}>
+                                          <Factory className="w-2.5 h-2.5" />
+                                          {stageInfo.label}
+                                        </Badge>
+                                      </Link>
+                                    );
+                                  })()}
                                   {item.source && item.source !== "manual" && !item.production_item_id && (
                                     <Badge variant="outline" className="text-xs text-slate-400">{item.source}</Badge>
+                                  )}
+                                  {!item.archived && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                      title="Complete & Archive"
+                                      onClick={(e) => { e.stopPropagation(); archiveMutation.mutate(item.id); }}
+                                    >
+                                      <Archive className="w-3 h-3" />
+                                    </Button>
                                   )}
                                   <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingItem(item); setShowForm(true); }}>
                                     <Pencil className="w-3 h-3" />
