@@ -130,7 +130,13 @@ export default function PickupList() {
   }, {});
 
   const archiveMutation = useMutation({
-    mutationFn: (id) => base44.entities.PickupItem.update(id, { archived: true, status: "resolved" }),
+    mutationFn: async (item) => {
+      await base44.entities.PickupItem.update(item.id, { archived: true, status: "resolved" });
+      if (item.production_item_id) {
+        await base44.entities.ProductionItem.delete(item.production_item_id);
+        queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+      }
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pickupItems"] })
   });
 
