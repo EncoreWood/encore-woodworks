@@ -147,10 +147,21 @@ export default function PickupList() {
               {openCount > 0 && <span className="ml-2 text-amber-600 font-medium">• {openCount} open</span>}
             </p>
           </div>
-          <Button onClick={() => { setEditingItem(null); setShowForm(true); }} className="bg-amber-600 hover:bg-amber-700">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Item
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowArchived(v => !v)}
+              className="gap-2"
+            >
+              <Archive className="w-4 h-4" />
+              {showArchived ? "Show Active" : "View Archived"}
+            </Button>
+            <Button onClick={() => { setEditingItem(null); setShowForm(true); }} className="bg-amber-600 hover:bg-amber-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Item
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
