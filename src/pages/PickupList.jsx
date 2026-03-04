@@ -129,7 +129,12 @@ export default function PickupList() {
     return acc;
   }, {});
 
-  const openCount = pickupItems.filter(i => i.status === "open").length;
+  const archiveMutation = useMutation({
+    mutationFn: (id) => base44.entities.PickupItem.update(id, { archived: true, status: "resolved" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pickupItems"] })
+  });
+
+  const openCount = allPickupItems.filter(i => !i.archived && i.status === "open").length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200">
