@@ -122,14 +122,14 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Room</Label>
-              {rooms.length > 0 ? (
+              {projectRooms.length > 0 ? (
                 <Select value={form.room_name} onValueChange={(v) => setForm({ ...form, room_name: v })}>
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select room..." />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value={null}>No specific room</SelectItem>
-                    {rooms.map((r, i) => (
+                    {projectRooms.map((r, i) => (
                       <SelectItem key={i} value={r.room_name || r}>{r.room_name || r}</SelectItem>
                     ))}
                   </SelectContent>
