@@ -153,6 +153,16 @@ export default function ShopProduction() {
 
     await base44.entities.ProductionItem.update(itemId, updatePayload);
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+
+    // Sync stage back to linked PickupItem
+    if (item?.pickup_item_id) {
+      try {
+        await base44.entities.PickupItem.update(item.pickup_item_id, { production_stage: newStage });
+        queryClient.invalidateQueries({ queryKey: ["pickupItems"] });
+      } catch (e) {
+        console.error("Failed to sync stage to pickup item:", e);
+      }
+    }
     
     // Sync back to project if this item came from a project
     if (item?.project_id) {
