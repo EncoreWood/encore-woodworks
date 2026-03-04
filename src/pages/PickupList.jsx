@@ -47,10 +47,13 @@ export default function PickupList() {
   const [filterType, setFilterType] = useState("all");
   const [search, setSearch] = useState("");
 
-  const { data: pickupItems = [] } = useQuery({
+  const { data: allPickupItems = [] } = useQuery({
     queryKey: ["pickupItems"],
     queryFn: () => base44.entities.PickupItem.list("-created_date")
   });
+
+  const [showArchived, setShowArchived] = useState(false);
+  const pickupItems = allPickupItems.filter(i => showArchived ? i.archived : !i.archived);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
