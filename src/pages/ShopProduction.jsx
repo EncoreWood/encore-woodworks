@@ -26,6 +26,7 @@ export default function ShopProduction() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("production");
   const [showForm, setShowForm] = useState(false);
+  const [jobInfoMode, setJobInfoMode] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [annotatingPdf, setAnnotatingPdf] = useState(null);
   const [currentPdfUrl, setCurrentPdfUrl] = useState(null);
@@ -204,7 +205,7 @@ export default function ShopProduction() {
                 </div>
               ))}
             </div>
-            <Button onClick={() => setShowForm(true)} className="bg-amber-600 hover:bg-amber-700">
+            <Button onClick={() => { setJobInfoMode(false); setShowForm(true); }} className="bg-amber-600 hover:bg-amber-700">
               <Plus className="w-4 h-4 mr-2" /> Add Item
             </Button>
           </div>
