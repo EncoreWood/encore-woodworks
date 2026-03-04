@@ -311,7 +311,7 @@ export default function PickupList() {
                                       size="icon"
                                       className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                                       title="Complete & Archive"
-                                      onClick={(e) => { e.stopPropagation(); archiveMutation.mutate(item.id); }}
+                                      onClick={(e) => { e.stopPropagation(); archiveMutation.mutate(item); }}
                                     >
                                       <Archive className="w-3 h-3" />
                                     </Button>
