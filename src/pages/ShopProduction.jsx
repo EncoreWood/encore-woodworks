@@ -282,11 +282,23 @@ export default function ShopProduction() {
                             <div className="space-y-3">
                               {columnItems.map((item, index) => (
                                 <Draggable key={item.id} draggableId={item.id} index={index}>
-                                  {(provided, snapshot) => (
-                                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                                      <ProductionCard item={item} isDragging={snapshot.isDragging} {...sharedCardProps} />
-                                    </div>
-                                  )}
+                                 {(provided, snapshot) => {
+                                   const proj = projects.find(p => p.id === item.project_id);
+                                   const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
+                                   return (
+                                     <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                                       <ProductionCard
+                                         item={item}
+                                         isDragging={snapshot.isDragging}
+                                         {...sharedCardProps}
+                                         onReturnToFolder={hasRoom ? returnToFolder : undefined}
+                                         onSendToJobInfo={sendToJobInfo}
+                                         roomFolderLabel={hasRoom ? item.room_name : undefined}
+                                         onOpenRoomFolder={hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
+                                       />
+                                     </div>
+                                   );
+                                 }}
                                 </Draggable>
                               ))}
                             </div>
