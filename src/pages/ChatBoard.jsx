@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { createPortal } from 'react-dom';
 import { Plus, Trash2, Send, Paperclip, X, ExternalLink, FileText, Image, Settings, Hash, Reply, CornerUpLeft } from 'lucide-react';
 import {
   Dialog,
