@@ -182,7 +182,14 @@ export default function ShopProduction() {
   const monthPts = getPts(completedItems.filter(i => i.completed_date && new Date(i.completed_date) >= monthStart));
 
   const returnToFolder = async (item) => {
-    await base44.entities.ProductionItem.update(item.id, { ...item, is_job_info: true });
+    const files = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
+    await base44.entities.ProductionItem.update(item.id, { ...item, files, is_job_info: true });
+    queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+  };
+
+  const returnToFolderFromJobInfo = async (item) => {
+    const files = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
+    await base44.entities.ProductionItem.update(item.id, { ...item, files, is_job_info: true });
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
     setActiveTab("job_packets");
   };
