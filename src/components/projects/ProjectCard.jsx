@@ -46,6 +46,7 @@ export default function ProjectCard({ project }) {
   const queryClient = useQueryClient();
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [showPickupForm, setShowPickupForm] = useState(false);
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
   const status = statusConfig[project.status] || statusConfig.inquiry;
   const type = typeConfig[project.project_type] || project.project_type;
   const priority = priorityConfig[project.priority] || priorityConfig.medium;
