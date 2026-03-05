@@ -389,6 +389,31 @@ export default function ShopProduction() {
               </div>
             </DragDropContext>
           </TabsContent>
+          {/* ── JOB PACKETS TAB ── */}
+          <TabsContent value="job_packets" className="mt-0">
+            <JobPacketsTab
+              projects={activeProjects}
+              items={items}
+              onAddCard={(project, roomName) => {
+                setPacketsFormContext({ project, roomName });
+                setJobInfoMode(true);
+                setEditingItem({ project_id: project.id, project_name: project.project_name, room_name: roomName, is_job_info: true, type: "cabinet" });
+                setShowForm(true);
+              }}
+              onSendToProduction={async (selectedItems) => {
+                for (const item of selectedItems) {
+                  await base44.entities.ProductionItem.update(item.id, {
+                    ...item,
+                    is_job_info: false,
+                    stage: item.stage || "face_frame"
+                  });
+                }
+                queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+                setActiveTab("production");
+              }}
+              sharedCardProps={sharedCardProps}
+            />
+          </TabsContent>
         </Tabs>
 
         {/* Forms */}
