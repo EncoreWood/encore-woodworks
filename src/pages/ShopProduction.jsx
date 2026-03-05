@@ -33,6 +33,7 @@ export default function ShopProduction() {
   const [currentAnnotations, setCurrentAnnotations] = useState([]);
   const [pickupItem, setPickupItem] = useState(null);
   const [editingPts, setEditingPts] = useState(null);
+  const [linkingItem, setLinkingItem] = useState(null); // job info item being linked
 
   const { data: items = [] } = useQuery({
     queryKey: ["productionItems"],
