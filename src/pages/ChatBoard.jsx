@@ -108,11 +108,8 @@ function FileEmbed({ att }) {
       <div className="mt-1 rounded-xl overflow-hidden border border-slate-200">
         <div className="flex items-center justify-between px-3 py-2 bg-slate-100 text-xs text-slate-600">
           <div className="flex items-center gap-2"><FileText className="w-3.5 h-3.5" /><span className="truncate max-w-[200px]">{name}</span></div>
-          <button onClick={() => setExpanded(!expanded)} className="text-blue-600 hover:underline">{expanded ? 'Hide' : 'View'}</button>
+          <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Open</a>
         </div>
-        {expanded && (
-          <iframe src={url} title={name} className="w-full h-96 border-0" />
-        )}
       </div>
     );
   }
