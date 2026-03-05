@@ -294,6 +294,31 @@ export default function ProjectCard({ project }) {
         rooms={project.rooms || []}
         isLoading={createPickupMutation.isPending}
       />
+
+      {/* Photo lightbox */}
+      {lightboxPhoto !== null && (() => {
+        const photos = (project.files || []).filter(f => {
+          const ext = (f.name || '').split('.').pop().toLowerCase();
+          return ['jpg','jpeg','png','gif','webp','svg'].includes(ext) || f.url?.match(/\.(jpg|jpeg|png|gif|webp|svg)/i);
+        });
+        return (
+          <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+            onClick={e => { e.preventDefault(); setLightboxPhoto(null); }}>
+            <div className="relative max-w-4xl max-h-full" onClick={e => e.stopPropagation()}>
+              <img src={photos[lightboxPhoto]?.url} alt="" className="max-h-[85vh] max-w-full rounded-xl object-contain" />
+              <button className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1.5" onClick={() => setLightboxPhoto(null)}>
+                <X className="w-4 h-4" />
+              </button>
+              {lightboxPhoto > 0 && (
+                <button className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full px-3 py-1 text-xl" onClick={() => setLightboxPhoto(i => i - 1)}>‹</button>
+              )}
+              {lightboxPhoto < photos.length - 1 && (
+                <button className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full px-3 py-1 text-xl" onClick={() => setLightboxPhoto(i => i + 1)}>›</button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </Link>
   );
 }
