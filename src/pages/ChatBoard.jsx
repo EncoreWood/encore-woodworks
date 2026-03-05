@@ -437,7 +437,7 @@ export default function ChatBoard() {
             <div className="space-y-0.5">
               {encoreRooms.length === 0 ? (
                 <p className="text-xs text-slate-400 px-3 py-2">No rooms yet</p>
-              ) : encoreRooms.map(room => <RoomItem key={room.id} room={room} />)}
+              ) : encoreRooms.map(room => <RoomItem key={room.id} room={room} selectedRoomId={selectedRoom?.id} unreadCounts={unreadCounts} projects={projects} onSelect={setSelectedRoom} />)}
             </div>
           </div>
 
