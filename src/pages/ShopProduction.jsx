@@ -12,6 +12,7 @@ import ProductionItemForm from "../components/production/ProductionItemForm";
 import PDFAnnotator from "../components/production/PDFAnnotator";
 import PickupItemForm from "../components/pickup/PickupItemForm";
 import ProductionCard from "../components/production/ProductionCard";
+import JobPacketsTab from "../components/production/JobPacketsTab";
 
 const productionColumns = [
   { id: "face_frame", label: "Face Frame", color: "bg-blue-50" },
