@@ -160,7 +160,7 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
 }
 
 // Main tab component
-export default function JobPacketsTab({ projects, items, onAddCard, onSendToProduction, sharedCardProps }) {
+export default function JobPacketsTab({ projects, items, openFolderContext, onFolderOpened, onAddCard, onSendToProduction, sharedCardProps }) {
   if (projects.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-400">
