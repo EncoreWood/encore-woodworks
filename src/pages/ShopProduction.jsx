@@ -36,6 +36,7 @@ export default function ShopProduction() {
   const [pickupItem, setPickupItem] = useState(null);
   const [editingPts, setEditingPts] = useState(null);
   const [linkingItem, setLinkingItem] = useState(null); // job info item being linked
+  const [packetsFormContext, setPacketsFormContext] = useState(null); // { project, roomName } for Job Packets add
 
   const { data: items = [] } = useQuery({
     queryKey: ["productionItems"],
