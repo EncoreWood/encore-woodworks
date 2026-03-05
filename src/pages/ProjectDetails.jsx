@@ -96,6 +96,8 @@ export default function ProjectDetails() {
   // inline section editing
   const [editingSection, setEditingSection] = useState(null); // 'notes', 'budget', 'client'
   const [sectionDraft, setSectionDraft] = useState({});
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  const [showPhotos, setShowPhotos] = useState(false);
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", projectId],
