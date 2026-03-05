@@ -16,6 +16,38 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+function PhotoGallery({ photos }) {
+  const [lightbox, setLightbox] = useState(null);
+  if (photos.length === 0) return <p className="text-sm text-slate-400 py-8 text-center col-span-3">No photos yet</p>;
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-2">
+        {photos.map((photo, idx) => (
+          <button key={idx} onClick={() => setLightbox(idx)} className="group relative overflow-hidden rounded-xl aspect-square bg-slate-100">
+            <img src={photo.url} alt={photo.name} className="w-full h-full object-cover group-hover:opacity-80 transition-opacity" />
+          </button>
+        ))}
+      </div>
+      {lightbox !== null && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
+          <div className="relative max-w-4xl max-h-full" onClick={e => e.stopPropagation()}>
+            <img src={photos[lightbox].url} alt={photos[lightbox].name} className="max-h-[85vh] max-w-full rounded-xl object-contain" />
+            <button className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1.5" onClick={() => setLightbox(null)}>
+              <X className="w-4 h-4" />
+            </button>
+            {lightbox > 0 && (
+              <button className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-2" onClick={() => setLightbox(l => l - 1)}>‹</button>
+            )}
+            {lightbox < photos.length - 1 && (
+              <button className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-2" onClick={() => setLightbox(l => l + 1)}>›</button>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 // Color helper: returns a css color string from a hex or default
 function getRoomColor(room, projects) {
   if (!room?.project_id) return null;
