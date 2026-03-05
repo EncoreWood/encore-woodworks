@@ -173,7 +173,12 @@ export default function ContactsBoard() {
           <div key={tag} className="mb-6">
             <div className="flex items-center gap-2 mb-3">
               <Building2 className="w-4 h-4 text-amber-600" />
-              <h2 className="font-semibold text-slate-700">{tag}</h2>
+              <button
+                onClick={() => setTagProjectsDialog(tag)}
+                className="font-semibold text-slate-700 hover:text-amber-700 hover:underline transition-colors"
+              >
+                {tag}
+              </button>
               <Badge variant="outline" className="text-xs">{members.length}</Badge>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
