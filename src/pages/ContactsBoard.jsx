@@ -209,6 +209,39 @@ export default function ContactsBoard() {
           </div>
         )}
 
+        {/* Tag Projects Dialog */}
+        <Dialog open={!!tagProjectsDialog} onOpenChange={() => setTagProjectsDialog(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Projects linked to "{tagProjectsDialog}"</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              {(() => {
+                const tagContacts = contacts.filter(c => c.company_tag === tagProjectsDialog);
+                const contactNames = tagContacts.map(c => c.name?.toLowerCase());
+                const contactEmails = tagContacts.map(c => c.email?.toLowerCase()).filter(Boolean);
+                const linked = projects.filter(p => {
+                  const roles = [p.contractor, p.home_owner, p.designer].filter(Boolean);
+                  return roles.some(r =>
+                    contactNames.includes(r.name?.toLowerCase()) ||
+                    (r.email && contactEmails.includes(r.email?.toLowerCase()))
+                  ) || contactNames.includes(p.client_name?.toLowerCase());
+                });
+                if (linked.length === 0) return <p className="text-sm text-slate-400 py-4 text-center">No projects found linked to this company.</p>;
+                return linked.map(p => (
+                  <div key={p.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div>
+                      <p className="font-medium text-slate-900">{p.project_name}</p>
+                      <p className="text-xs text-slate-500 capitalize">{p.project_type} · {p.status?.replace(/_/g, ' ')}</p>
+                    </div>
+                    <a href={`/pages/ProjectDetails?id=${p.id}`} className="text-xs text-amber-600 hover:underline">View</a>
+                  </div>
+                ));
+              })()}
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Add/Edit Form Dialog */}
         <Dialog open={showForm} onOpenChange={(o) => { setShowForm(o); if (!o) setEditingContact(null); }}>
           <DialogContent className="max-w-md">
