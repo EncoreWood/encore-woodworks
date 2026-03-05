@@ -213,6 +213,36 @@ export default function ProjectCard({ project }) {
           </div>
         )}
 
+        {/* Chat Photos */}
+        {(() => {
+          const photos = (project.files || []).filter(f => {
+            const ext = (f.name || '').split('.').pop().toLowerCase();
+            return ['jpg','jpeg','png','gif','webp','svg'].includes(ext) || f.url?.match(/\.(jpg|jpeg|png|gif|webp|svg)/i);
+          });
+          if (photos.length === 0) return null;
+          return (
+            <div className="mb-4 p-3 bg-slate-50 rounded-lg">
+              <div className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
+                <Image className="w-4 h-4 text-slate-400" />
+                <span>Photos ({photos.length})</span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {photos.slice(0, 8).map((photo, idx) => (
+                  <button key={idx} onClick={e => { e.preventDefault(); setLightboxPhoto(photos.indexOf(photo)); }}
+                    className="aspect-square rounded-lg overflow-hidden bg-slate-200 hover:opacity-80 transition-opacity">
+                    <img src={photo.url} alt={photo.name} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+                {photos.length > 8 && (
+                  <div className="aspect-square rounded-lg bg-slate-200 flex items-center justify-center text-xs text-slate-500 font-medium">
+                    +{photos.length - 8}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-slate-500">Progress</span>
