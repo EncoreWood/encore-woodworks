@@ -127,6 +127,31 @@ function FileEmbed({ att }) {
   );
 }
 
+function RoomItem({ room, selectedRoomId, unreadCounts, projects, onSelect }) {
+  const color = getRoomColor(room, projects);
+  const isSelected = selectedRoomId === room.id;
+  const unread = unreadCounts[room.id] || 0;
+  return (
+    <button
+      onClick={() => onSelect(room)}
+      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+        isSelected ? 'shadow-sm' : 'hover:bg-white/60'
+      }`}
+      style={isSelected ? { backgroundColor: color ? color + '22' : '#fef3c7', borderLeft: `3px solid ${color || '#d97706'}` } : {}}
+    >
+      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color || (room.project_id ? '#3b82f6' : '#94a3b8') }} />
+      <span className={`flex-1 text-sm truncate ${isSelected ? 'font-semibold text-slate-900' : 'text-slate-700'}`}>
+        {room.name}
+      </span>
+      {unread > 0 && (
+        <span className="bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+          {unread > 99 ? '99+' : unread}
+        </span>
+      )}
+    </button>
+  );
+}
+
 function MessageBubble({ msg, currentUser, onReply, replySource, accentColor }) {
   const isMe = msg.user_name === (currentUser?.full_name || currentUser?.email);
   const time = msg.created_date ? new Date(msg.created_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
