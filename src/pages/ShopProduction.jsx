@@ -223,6 +223,9 @@ export default function ShopProduction() {
             <TabsTrigger value="job_info" className="flex items-center gap-2">
               <Briefcase className="w-4 h-4" /> Job Info
             </TabsTrigger>
+            <TabsTrigger value="job_packets" className="flex items-center gap-2">
+              <Package className="w-4 h-4" /> Job Packets
+            </TabsTrigger>
           </TabsList>
 
           {/* ── PRODUCTION TAB ── */}
