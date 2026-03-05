@@ -284,7 +284,7 @@ export default function ShopProduction() {
               <div className="flex gap-4 overflow-x-auto pb-4">
                 {activeProjects.map((project) => {
                   // Items whose project_id matches this project (any stage except complete/on_hold for job info view)
-                  const projectItems = items.filter(i => i.project_id === project.id);
+                  const projectItems = items.filter(i => i.project_id === project.id && i.is_job_info);
 
                   return (
                     <div key={project.id} className="flex-shrink-0 w-80">
