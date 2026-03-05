@@ -213,17 +213,22 @@ export default function JobPacketsTab({ projects, items, openFolderContext, onFo
                 <p className="text-sm text-slate-400">No rooms defined for this project.</p>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  {rooms.map(roomName => (
-                    <RoomFolder
-                      key={roomName}
-                      project={project}
-                      roomName={roomName}
-                      items={items}
-                      onAddCard={onAddCard}
-                      onSendToProduction={onSendToProduction}
-                      sharedCardProps={sharedCardProps}
-                    />
-                  ))}
+                  {rooms.map(roomName => {
+                    const autoOpen = !!(openFolderContext && openFolderContext.projectId === project.id && openFolderContext.roomName === roomName);
+                    return (
+                      <RoomFolder
+                        key={roomName}
+                        project={project}
+                        roomName={roomName}
+                        items={items}
+                        onAddCard={onAddCard}
+                        onSendToProduction={onSendToProduction}
+                        sharedCardProps={sharedCardProps}
+                        autoOpen={autoOpen}
+                        onAutoOpened={onFolderOpened}
+                      />
+                    );
+                  })}
                 </div>
               )}
             </div>
