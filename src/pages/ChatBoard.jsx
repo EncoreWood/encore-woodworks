@@ -111,13 +111,19 @@ function FileEmbed({ att }) {
 
   if (isImage) {
     return (
-      <div className="mt-1">
+      <div className="mt-1 relative group/img inline-block">
         <img
           src={url}
           alt={name}
-          className="max-h-60 max-w-xs rounded-xl object-cover cursor-pointer border border-slate-200 hover:opacity-90 transition-opacity"
+          className="max-h-48 max-w-xs rounded-xl object-cover cursor-pointer border border-slate-200 hover:opacity-90 transition-opacity"
           onClick={() => setExpanded(true)}
         />
+        {/* Hover enlarge preview */}
+        {createPortal(
+          <div className="fixed z-[9998] pointer-events-none opacity-0 group-hover/img:opacity-100 transition-opacity"
+            style={{ display: 'none' }} />,
+          document.body
+        )}
         {expanded && createPortal(
           <div className="fixed inset-0 z-[9999] bg-black/85 flex items-center justify-center p-4" onClick={() => setExpanded(false)}>
             <div className="relative max-w-5xl max-h-full" onClick={e => e.stopPropagation()}>
