@@ -7,8 +7,15 @@ import { Plus, FolderOpen, Folder, ChevronRight, ArrowRight, Package } from "luc
 import ProductionCard from "./ProductionCard";
 
 // A single room folder within a project
-function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, sharedCardProps }) {
+function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, sharedCardProps, autoOpen, onAutoOpened }) {
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (autoOpen) {
+      setOpen(true);
+      onAutoOpened?.();
+    }
+  }, [autoOpen]);
   const [selected, setSelected] = useState(new Set());
 
   const roomItems = items.filter(i => i.project_id === project.id && i.room_name === roomName && i.is_job_info);
