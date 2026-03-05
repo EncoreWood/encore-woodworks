@@ -127,10 +127,10 @@ function FileEmbed({ att }) {
   );
 }
 
-function RoomItem({ room, selectedRoomId, unreadCounts, projects, onSelect }) {
+function RoomItem({ room, selectedRoomId, unreadCounts = {}, projects = [], onSelect }) {
   const color = getRoomColor(room, projects);
   const isSelected = selectedRoomId === room.id;
-  const unread = unreadCounts[room.id] || 0;
+  const unread = (unreadCounts && unreadCounts[room.id]) || 0;
   return (
     <button
       onClick={() => onSelect(room)}
