@@ -634,6 +634,15 @@ export default function ProjectDetails() {
         {/* Room Manager */}
         <RoomManager open={showRoomManager} onOpenChange={setShowRoomManager} room={editingRoom} roomIndex={editingRoomIndex} project={project} onSave={handleSaveRoom} />
 
+        {/* Photo Lightbox */}
+        {lightboxPhoto && (
+          <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
+            <DialogContent className="max-w-4xl p-2 bg-black border-0">
+              <img src={lightboxPhoto.url} alt={lightboxPhoto.name} className="w-full max-h-[85vh] object-contain rounded" />
+            </DialogContent>
+          </Dialog>
+        )}
+
         {/* Delete Confirmation */}
         <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <AlertDialogContent>
