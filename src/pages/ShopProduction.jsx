@@ -6,7 +6,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Factory, Briefcase, Link2, Unlink } from "lucide-react";
+import { Plus, Factory, Briefcase, Link2, Unlink, Package } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ProductionItemForm from "../components/production/ProductionItemForm";
 import PDFAnnotator from "../components/production/PDFAnnotator";
