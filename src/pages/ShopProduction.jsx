@@ -226,7 +226,7 @@ export default function ShopProduction() {
             <DragDropContext onDragEnd={handleDragEnd}>
               <div className="flex gap-4 overflow-x-auto pb-4">
                 {productionColumns.map((column, colIdx) => {
-                  const columnItems = items.filter(i => i.stage === column.id);
+                  const columnItems = items.filter(i => i.stage === column.id && !i.is_job_info);
                   const laterStageIds = productionColumns.slice(colIdx + 1).map(c => c.id);
                   const todayColPts = items
                     .filter(i => laterStageIds.includes(i.stage) && i.completed_date === todayStr)
