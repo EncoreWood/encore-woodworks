@@ -40,6 +40,61 @@ function Avatar({ name, color, size = 'md' }) {
   );
 }
 
+function FileEmbed({ att }) {
+  const [expanded, setExpanded] = useState(false);
+  const url = att.url;
+  const name = att.name || 'file';
+  const ext = name.split('.').pop().toLowerCase();
+  const isPdf = ext === 'pdf';
+  const isImage = att.type === 'photo' || ['jpg','jpeg','png','gif','webp','svg'].includes(ext);
+
+  if (isImage) {
+    return (
+      <div className="mt-1">
+        <img
+          src={url}
+          alt={name}
+          className="max-h-60 max-w-xs rounded-xl object-cover cursor-pointer border border-slate-200 hover:opacity-90 transition-opacity"
+          onClick={() => setExpanded(true)}
+        />
+        {expanded && (
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setExpanded(false)}>
+            <div className="relative max-w-4xl max-h-full">
+              <img src={url} alt={name} className="max-h-[90vh] max-w-full rounded-xl object-contain" />
+              <button className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1.5" onClick={() => setExpanded(false)}>
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (isPdf) {
+    return (
+      <div className="mt-1 rounded-xl overflow-hidden border border-slate-200">
+        <div className="flex items-center justify-between px-3 py-2 bg-slate-100 text-xs text-slate-600">
+          <div className="flex items-center gap-2"><FileText className="w-3.5 h-3.5" /><span className="truncate max-w-[200px]">{name}</span></div>
+          <button onClick={() => setExpanded(!expanded)} className="text-blue-600 hover:underline">{expanded ? 'Hide' : 'View'}</button>
+        </div>
+        {expanded && (
+          <iframe src={url} title={name} className="w-full h-96 border-0" />
+        )}
+      </div>
+    );
+  }
+
+  // Generic file — show inline info, no download
+  return (
+    <div className="mt-1 flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-xl text-xs text-slate-600">
+      <Paperclip className="w-3.5 h-3.5 flex-shrink-0" />
+      <span className="truncate">{name}</span>
+      <span className="text-slate-400 uppercase">{ext}</span>
+    </div>
+  );
+}
+
 function MessageBubble({ msg, currentUser, onReply, replySource, accentColor }) {
   const isMe = msg.user_name === (currentUser?.full_name || currentUser?.email);
   const time = msg.created_date ? new Date(msg.created_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
@@ -76,16 +131,8 @@ function MessageBubble({ msg, currentUser, onReply, replySource, accentColor }) 
         )}
 
         {msg.attachments?.length > 0 && (
-          <div className="mt-1 space-y-1 w-full">
-            {msg.attachments.map((att, idx) => (
-              <a key={idx} href={att.url} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 p-2 bg-slate-100 rounded-xl text-xs hover:bg-slate-200 transition-colors">
-                {att.type === 'photo'
-                  ? <img src={att.url} alt={att.name} className="h-28 rounded-lg object-cover" />
-                  : <><Paperclip className="w-4 h-4 text-slate-500" /><span className="text-slate-700 truncate">{att.name}</span></>
-                }
-              </a>
-            ))}
+          <div className="mt-1 w-full space-y-1">
+            {msg.attachments.map((att, idx) => <FileEmbed key={idx} att={att} />)}
           </div>
         )}
       </div>
