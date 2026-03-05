@@ -37,6 +37,7 @@ export default function ShopProduction() {
   const [editingPts, setEditingPts] = useState(null);
   const [linkingItem, setLinkingItem] = useState(null); // job info item being linked
   const [packetsFormContext, setPacketsFormContext] = useState(null); // { project, roomName } for Job Packets add
+  const [openFolderContext, setOpenFolderContext] = useState(null); // { project, roomName } to auto-open a folder in Job Packets
 
   const { data: items = [] } = useQuery({
     queryKey: ["productionItems"],
