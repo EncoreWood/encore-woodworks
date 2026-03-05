@@ -111,19 +111,27 @@ function FileEmbed({ att }) {
 
   if (isImage) {
     return (
-      <div className="mt-1 relative group/img inline-block">
+      <div className="mt-1 relative inline-block">
         <img
           src={url}
           alt={name}
           className="max-h-48 max-w-xs rounded-xl object-cover cursor-pointer border border-slate-200 hover:opacity-90 transition-opacity"
+          onMouseEnter={(e) => setHoveredAnchorEl(e.currentTarget)}
+          onMouseLeave={() => setHoveredAnchorEl(null)}
           onClick={() => setExpanded(true)}
         />
-        {/* Hover enlarge preview */}
-        {createPortal(
-          <div className="fixed z-[9998] pointer-events-none opacity-0 group-hover/img:opacity-100 transition-opacity"
-            style={{ display: 'none' }} />,
+        {/* Hover large preview */}
+        {hoveredAnchorEl && createPortal(
+          <div className="fixed z-[9998] pointer-events-none"
+            style={{
+              top: hoveredAnchorEl.getBoundingClientRect().bottom + 8,
+              left: Math.max(8, hoveredAnchorEl.getBoundingClientRect().left),
+            }}>
+            <img src={url} alt={name} className="max-h-72 max-w-sm rounded-xl object-contain border border-slate-300 shadow-2xl bg-black/5" />
+          </div>,
           document.body
         )}
+        {/* Click fullscreen */}
         {expanded && createPortal(
           <div className="fixed inset-0 z-[9999] bg-black/85 flex items-center justify-center p-4" onClick={() => setExpanded(false)}>
             <div className="relative max-w-5xl max-h-full" onClick={e => e.stopPropagation()}>
