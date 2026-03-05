@@ -376,32 +376,7 @@ export default function ChatBoard() {
   // Build reply source map from messages
   const messageMap = Object.fromEntries(messages.map(m => [m.id, m]));
 
-  const RoomItem = ({ room }) => {
-    const color = getRoomColor(room, projects);
-    const isSelected = selectedRoom?.id === room.id;
-    const unread = unreadCounts[room.id] || 0;
-    const proj = projects.find(p => p.id === room.project_id);
 
-    return (
-      <button
-        onClick={() => setSelectedRoom(room)}
-        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all group ${
-          isSelected ? 'shadow-sm' : 'hover:bg-white/60'
-        }`}
-        style={isSelected ? { backgroundColor: color ? color + '22' : '#fef3c7', borderLeft: `3px solid ${color || '#d97706'}` } : {}}
-      >
-        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color || (room.project_id ? '#3b82f6' : '#94a3b8') }} />
-        <span className={`flex-1 text-sm truncate ${isSelected ? 'font-semibold text-slate-900' : 'text-slate-700'}`}>
-          {room.name}
-        </span>
-        {unread > 0 && (
-          <span className="bg-red-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-            {unread > 99 ? '99+' : unread}
-          </span>
-        )}
-      </button>
-    );
-  };
 
   return (
     <div className="h-screen flex bg-slate-100 overflow-hidden">
