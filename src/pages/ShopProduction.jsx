@@ -370,6 +370,18 @@ export default function ShopProduction() {
                                                    onPickup={(item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id })}
                                                    onEdit={(item) => { setEditingItem(item); setShowForm(true); }}
                                                    onDelete={(id) => deleteMutation.mutate(id)}
+                                                   onSendToJobInfo={undefined}
+                                                   onReturnToFolder={(() => {
+                                                     const proj = projects.find(p => p.id === item.project_id);
+                                                     const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
+                                                     return hasRoom ? returnToFolder : undefined;
+                                                   })()}
+                                                   roomFolderLabel={item.room_name}
+                                                   onOpenRoomFolder={(() => {
+                                                     const proj = projects.find(p => p.id === item.project_id);
+                                                     const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
+                                                     return hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined;
+                                                   })()}
                                                  />
                                                  {/* Link row */}
                                                  <div className="mt-1 flex items-center justify-between gap-2">
