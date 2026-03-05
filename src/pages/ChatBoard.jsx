@@ -554,23 +554,29 @@ export default function ChatBoard() {
 
       {/* Files Dialog */}
       <Dialog open={showFilesDialog} onOpenChange={setShowFilesDialog}>
-        <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Files — {selectedRoom?.name}</DialogTitle></DialogHeader>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {(() => {
               const files = folders.find(f => f.type === 'files')?.files || [];
               return files.length === 0
                 ? <p className="text-sm text-slate-400 py-8 text-center">No files uploaded yet</p>
-                : files.map((file, idx) => (
-                    <a key={idx} href={file.url} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-3 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors">
-                      <FileText className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-800 truncate">{file.name}</p>
-                        <p className="text-xs text-slate-400">{file.uploaded_by}</p>
+                : files.map((file, idx) => {
+                    const ext = (file.name || '').split('.').pop().toLowerCase();
+                    const isPdf = ext === 'pdf';
+                    return (
+                      <div key={idx} className="rounded-xl border border-slate-200 overflow-hidden">
+                        <div className="flex items-center gap-3 px-3 py-2 bg-slate-50">
+                          <FileText className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-800 truncate">{file.name}</p>
+                            <p className="text-xs text-slate-400">{file.uploaded_by}</p>
+                          </div>
+                        </div>
+                        {isPdf && <iframe src={file.url} title={file.name} className="w-full h-80 border-0" />}
                       </div>
-                    </a>
-                  ));
+                    );
+                  });
             })()}
           </div>
         </DialogContent>
@@ -578,20 +584,9 @@ export default function ChatBoard() {
 
       {/* Photos Dialog */}
       <Dialog open={showPhotosDialog} onOpenChange={setShowPhotosDialog}>
-        <DialogContent className="max-w-lg max-h-[70vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader><DialogTitle>Photos — {selectedRoom?.name}</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-3 gap-2">
-            {(() => {
-              const photos = folders.find(f => f.type === 'photos')?.files || [];
-              return photos.length === 0
-                ? <p className="text-sm text-slate-400 py-8 text-center col-span-3">No photos yet</p>
-                : photos.map((photo, idx) => (
-                    <a key={idx} href={photo.url} target="_blank" rel="noopener noreferrer" className="group relative overflow-hidden rounded-xl">
-                      <img src={photo.url} alt={photo.name} className="w-full h-24 object-cover group-hover:opacity-80 transition-opacity" />
-                    </a>
-                  ));
-            })()}
-          </div>
+          <PhotoGallery photos={folders.find(f => f.type === 'photos')?.files || []} />
         </DialogContent>
       </Dialog>
 
