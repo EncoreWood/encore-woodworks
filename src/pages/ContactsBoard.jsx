@@ -38,6 +38,11 @@ export default function ContactsBoard() {
     queryFn: () => base44.entities.Contact.list(),
   });
 
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => base44.entities.Project.list(),
+  });
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Contact.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["contacts"] }); setShowForm(false); setForm(emptyForm); toast.success("Contact added!"); }
