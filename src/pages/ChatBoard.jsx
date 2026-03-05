@@ -604,8 +604,8 @@ export default function ChatBoard() {
                             <p className="text-sm font-medium text-slate-800 truncate">{file.name}</p>
                             <p className="text-xs text-slate-400">{file.uploaded_by}</p>
                           </div>
+                          <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex-shrink-0">Open</a>
                         </div>
-                        {isPdf && <iframe src={file.url} title={file.name} className="w-full h-80 border-0" />}
                       </div>
                     );
                   });
