@@ -261,12 +261,14 @@ export default function ChatBoard() {
   useEffect(() => {
     if (selectedRoom) {
       const now = new Date().toISOString();
-      const updated = { ...lastSeenTimestamps, [selectedRoom.id]: now };
-      setLastSeenTimestamps(updated);
-      localStorage.setItem('chatLastSeen', JSON.stringify(updated));
+      setLastSeenTimestamps(prev => {
+        const updated = { ...prev, [selectedRoom.id]: now };
+        localStorage.setItem('chatLastSeen', JSON.stringify(updated));
+        return updated;
+      });
       setUnreadCounts(prev => ({ ...prev, [selectedRoom.id]: 0 }));
     }
-  }, [selectedRoom]);
+  }, [selectedRoom?.id]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
