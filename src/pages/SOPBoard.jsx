@@ -210,7 +210,7 @@ export default function SOPBoard() {
             <Button
               onClick={() => {
                 setEditingSOP(null);
-                setNewSOP({ title: "", category: "Office", description: "", steps: [], notes: "" });
+                setNewSOP({ title: "", category: "Office", purpose: "", scope: "", materials: "", steps: [{ step_number: 1, instruction: "" }], safety_precautions: "", quality_checkpoints: "", files: [], notes: "" });
                 setShowNewSOPDialog(true);
               }}
               className="bg-amber-600 hover:bg-amber-700"
