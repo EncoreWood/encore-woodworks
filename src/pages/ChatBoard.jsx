@@ -381,9 +381,10 @@ export default function ChatBoard() {
     if (!files.length) return;
     setUploading(true);
     for (const file of files) {
-      const { url } = await base44.integrations.Core.UploadFile({ file });
+      const result = await base44.integrations.Core.UploadFile({ file });
+      const fileUrl = result.file_url || result.url;
       const isPhoto = file.type.startsWith('image/');
-      setAttachments(prev => [...prev, { name: file.name, url, type: isPhoto ? 'photo' : 'file' }]);
+      setAttachments(prev => [...prev, { name: file.name, url: fileUrl, type: isPhoto ? 'photo' : 'file' }]);
     }
     setUploading(false);
     e.target.value = '';
