@@ -181,6 +181,26 @@ export default function ShopProduction() {
   const weekPts = getPts(completedItems.filter(i => i.completed_date && new Date(i.completed_date) >= weekStart));
   const monthPts = getPts(completedItems.filter(i => i.completed_date && new Date(i.completed_date) >= monthStart));
 
+  const returnToFolder = async (item) => {
+    await base44.entities.ProductionItem.update(item.id, { ...item, is_job_info: true });
+    queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+    // Navigate to Job Packets tab and auto-open the folder
+    setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name });
+    setActiveTab("job_packets");
+  };
+
+  const sendToJobInfo = async (item) => {
+    await base44.entities.ProductionItem.update(item.id, { ...item, is_job_info: true });
+    queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+    setActiveTab("job_info");
+  };
+
+  const returnToJobInfoFromProduction = async (item) => {
+    await base44.entities.ProductionItem.update(item.id, { ...item, is_job_info: true });
+    queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+    setActiveTab("job_info");
+  };
+
   const sharedCardProps = {
     editingPts,
     setEditingPts,
