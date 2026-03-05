@@ -303,6 +303,18 @@ export default function ChatBoard() {
               base44.entities.ChatFolder.update(folder.id, { files: updatedFiles });
             }
           });
+
+          // Sync photos to linked project's files array
+          const photoAttachments = attachments.filter(a => a.type === 'photo');
+          if (photoAttachments.length > 0 && selectedRoom.project_id && selectedRoom.project_id !== 'manual') {
+            const proj = projects.find(p => p.id === selectedRoom.project_id);
+            if (proj) {
+              const existingFiles = proj.files || [];
+              const newFiles = photoAttachments.map(a => ({ name: a.name, url: a.url }));
+              base44.entities.Project.update(proj.id, { files: [...existingFiles, ...newFiles] });
+              queryClient.invalidateQueries({ queryKey: ['projects'] });
+            }
+          }
         } catch (e) {}
       }
     }
