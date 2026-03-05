@@ -379,7 +379,7 @@ export default function ShopProduction() {
                                                    onReturnToFolder={(() => {
                                                      const proj = projects.find(p => p.id === item.project_id);
                                                      const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
-                                                     return hasRoom ? returnToFolder : undefined;
+                                                     return hasRoom ? returnToFolderFromJobInfo : undefined;
                                                    })()}
                                                    roomFolderLabel={item.room_name}
                                                    onOpenRoomFolder={(() => {
