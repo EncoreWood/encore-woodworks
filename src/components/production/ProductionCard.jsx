@@ -81,7 +81,47 @@ export default function ProductionCard({
             <p className="text-xs text-slate-500 font-medium truncate flex-1">
               {item.project_name}{item.room_name ? ` · ${item.room_name}` : ""}
             </p>
-            <div className="flex items-center gap-1 ml-1">
+            <div className="flex items-center gap-1 ml-1 flex-wrap justify-end">
+              {/* Room folder link */}
+              {onOpenRoomFolder && roomFolderLabel && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onOpenRoomFolder(); }}
+                  className="flex items-center gap-0.5 text-amber-600 hover:text-amber-800 flex-shrink-0"
+                  title={`Open room folder: ${roomFolderLabel}`}
+                >
+                  <FolderOpen className="w-3 h-3" />
+                </button>
+              )}
+              {/* Return to Job Packets folder */}
+              {onReturnToFolder && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onReturnToFolder(item); }}
+                  className="flex items-center gap-0.5 text-blue-500 hover:text-blue-700 flex-shrink-0"
+                  title="Return to Job Packets folder"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </button>
+              )}
+              {/* Send to Job Info */}
+              {onSendToJobInfo && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onSendToJobInfo(item); }}
+                  className="flex items-center gap-0.5 text-purple-500 hover:text-purple-700 flex-shrink-0"
+                  title="Send to Job Info"
+                >
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              )}
+              {/* Return to Job Info */}
+              {onReturnToJobInfo && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onReturnToJobInfo(item); }}
+                  className="flex items-center gap-0.5 text-purple-500 hover:text-purple-700 flex-shrink-0"
+                  title="Return to Job Info"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </button>
+              )}
               {showLinkButton && linkedProductionItem && onLinkClick && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onLinkClick(linkedProductionItem); }}
