@@ -419,12 +419,15 @@ export default function ShopProduction() {
         {/* Forms */}
         <ProductionItemForm
           open={showForm}
-          onOpenChange={(open) => { setShowForm(open); if (!open) { setEditingItem(null); setJobInfoMode(false); } }}
+          onOpenChange={(open) => { setShowForm(open); if (!open) { setEditingItem(null); setJobInfoMode(false); setPacketsFormContext(null); } }}
           onSubmit={(data) => {
-            if (editingItem) {
-              updateMutation.mutate({ id: editingItem.id, data: { ...data }, syncToProject: editingItem.project_id ? { project_id: editingItem.project_id, room_name: editingItem.room_name } : null });
+            const finalData = packetsFormContext
+              ? { ...data, is_job_info: true, project_id: packetsFormContext.project.id, project_name: packetsFormContext.project.project_name, room_name: packetsFormContext.roomName }
+              : data;
+            if (editingItem?.id) {
+              updateMutation.mutate({ id: editingItem.id, data: finalData, syncToProject: editingItem.project_id ? { project_id: editingItem.project_id, room_name: editingItem.room_name } : null });
             } else {
-              createMutation.mutate(data);
+              createMutation.mutate(finalData);
             }
           }}
           initialData={editingItem ? { ...editingItem } : null}
