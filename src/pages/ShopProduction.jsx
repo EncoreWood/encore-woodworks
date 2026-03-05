@@ -315,29 +315,58 @@ export default function ShopProduction() {
                                   // Find any linked production item (another item with this as pickup_item_id, or just show itself)
                                   return (
                                     <Draggable key={item.id} draggableId={`ji_${item.id}`} index={index} isDragDisabled={true}>
-                                      {(provided) => (
-                                        <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                                          <ProductionCard
-                                            item={item}
-                                            isDragging={false}
-                                            editingPts={editingPts}
-                                            setEditingPts={setEditingPts}
-                                            onInlinePtsChange={handleInlinePtsChange}
-                                            onAnnotate={handleAnnotatePdf}
-                                            getProjectColor={getProjectColor}
-                                            onPickup={(item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id })}
-                                            onEdit={(item) => { setEditingItem(item); setShowForm(true); }}
-                                            onDelete={(id) => deleteMutation.mutate(id)}
-                                            showLinkButton={true}
-                                            onLinkClick={() => setActiveTab("production")}
-                                          />
-                                          {/* Stage badge below card */}
-                                          <div className="mt-1 flex justify-end">
-                                            <Badge variant="outline" className="text-xs capitalize">{item.stage?.replace(/_/g, " ") || "—"}</Badge>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </Draggable>
+                                           {(provided) => {
+                                             const linkedProd = item.linked_production_item_id
+                                               ? items.find(i => i.id === item.linked_production_item_id)
+                                               : null;
+                                             return (
+                                               <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                                                 <ProductionCard
+                                                   item={item}
+                                                   isDragging={false}
+                                                   editingPts={editingPts}
+                                                   setEditingPts={setEditingPts}
+                                                   onInlinePtsChange={handleInlinePtsChange}
+                                                   onAnnotate={handleAnnotatePdf}
+                                                   getProjectColor={getProjectColor}
+                                                   onPickup={(item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id })}
+                                                   onEdit={(item) => { setEditingItem(item); setShowForm(true); }}
+                                                   onDelete={(id) => deleteMutation.mutate(id)}
+                                                 />
+                                                 {/* Link row */}
+                                                 <div className="mt-1 flex items-center justify-between gap-2">
+                                                   {linkedProd ? (
+                                                     <button
+                                                       onClick={() => setActiveTab("production")}
+                                                       className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 underline truncate"
+                                                       title="View linked production card"
+                                                     >
+                                                       <Link2 className="w-3 h-3 flex-shrink-0" />
+                                                       <span className="truncate">{linkedProd.name}</span>
+                                                       <Badge variant="outline" className="ml-1 text-xs capitalize flex-shrink-0">{linkedProd.stage?.replace(/_/g, " ")}</Badge>
+                                                     </button>
+                                                   ) : (
+                                                     <button
+                                                       onClick={() => setLinkingItem(item)}
+                                                       className="flex items-center gap-1 text-xs text-slate-400 hover:text-amber-600"
+                                                     >
+                                                       <Link2 className="w-3 h-3" /> Link to production card
+                                                     </button>
+                                                   )}
+                                                   {linkedProd && (
+                                                     <button
+                                                       onClick={() => updateMutation.mutate({ id: item.id, data: { ...item, linked_production_item_id: null } })}
+                                                       className="text-xs text-red-400 hover:text-red-600 flex-shrink-0"
+                                                       title="Unlink"
+                                                     >
+                                                       <Unlink className="w-3 h-3" />
+                                                     </button>
+                                                   )}
+                                                 </div>
+                                               </div>
+                                             );
+                                           }}
+                                         </Draggable>
                                   );
                                 })}
                               </div>
