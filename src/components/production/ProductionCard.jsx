@@ -96,10 +96,11 @@ export default function ProductionCard({
               {onReturnToFolder && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onReturnToFolder(item); }}
-                  className="flex items-center gap-0.5 text-blue-500 hover:text-blue-700 flex-shrink-0"
+                  className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded px-2 py-0.5 flex-shrink-0 transition-colors"
                   title="Return to Job Packets folder"
                 >
                   <RotateCcw className="w-3 h-3" />
+                  Return to Packet
                 </button>
               )}
               {/* Send to Job Info */}
