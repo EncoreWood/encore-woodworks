@@ -68,6 +68,7 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
                   handleChange("project_name", proj?.project_name || "");
                   handleChange("type", "cabinet");
                   handleChange("stage", "face_frame");
+                  handleChange("is_job_info", true);
                 }}
               >
                 <SelectTrigger><SelectValue placeholder="Select project..." /></SelectTrigger>
