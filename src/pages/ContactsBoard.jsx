@@ -21,6 +21,7 @@ export default function ContactsBoard() {
   const [filterTag, setFilterTag] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingContact, setEditingContact] = useState(null);
+  const [tagProjectsDialog, setTagProjectsDialog] = useState(null); // tag string
   const [customTypes, setCustomTypes] = useState(() => {
     try { return JSON.parse(localStorage.getItem("contact_custom_types") || "[]"); } catch { return []; }
   });
