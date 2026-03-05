@@ -184,8 +184,6 @@ export default function ShopProduction() {
   const returnToFolder = async (item) => {
     await base44.entities.ProductionItem.update(item.id, { ...item, is_job_info: true });
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
-    // Navigate to Job Packets tab and auto-open the folder
-    setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name });
     setActiveTab("job_packets");
   };
 
