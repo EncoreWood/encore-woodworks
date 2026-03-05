@@ -44,10 +44,15 @@ export default function ProductionCard({
   onAnnotate,
   getProjectColor,
   isDragging,
-  // Job Info mode
-  linkedProductionItem,   // production item linked to this job info card
-  onLinkClick,           // called when user clicks "View in Production"
-  showLinkButton,        // show "Link to Production" quick nav button
+  // Job Info / Packets mode
+  linkedProductionItem,
+  onLinkClick,
+  showLinkButton,
+  onReturnToFolder,      // called to move production card back to Job Packets folder
+  onSendToJobInfo,       // called to move production card → Job Info
+  onReturnToJobInfo,     // called to move a production card back → Job Info (is_job_info=true)
+  roomFolderLabel,       // label for the room folder link on a production card
+  onOpenRoomFolder,      // called to open the matching room folder in Job Packets tab
 }) {
   const [hoveredPdfUrl, setHoveredPdfUrl] = useState(null);
   const [hoveredAnchorEl, setHoveredAnchorEl] = useState(null);
