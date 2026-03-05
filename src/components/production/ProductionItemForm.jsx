@@ -13,7 +13,8 @@ const initialFormState = {
   type: "cabinet",
   stage: "face_frame",
   files: [],
-  notes: ""
+  notes: "",
+  is_job_info: false
 };
 
 // jobInfoProjects: if provided, form is in "Job Info" mode — shows project dropdown instead of type, hides stage
