@@ -339,8 +339,8 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: "#d1d5db" }}>
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-slate-400 sticky top-0 h-screen overflow-y-auto flex flex-col shadow-2xl" style={{ backgroundColor: "#9ca3af" }}>
+      {/* Sidebar — hidden on mobile */}
+      <aside className="hidden sm:flex w-64 border-r border-slate-400 sticky top-0 h-screen overflow-y-auto flex-col shadow-2xl" style={{ backgroundColor: "#9ca3af" }}>
         {/* Logo & Settings */}
         <div className="border-b border-slate-400">
           <div className="flex items-center gap-3 p-6">
