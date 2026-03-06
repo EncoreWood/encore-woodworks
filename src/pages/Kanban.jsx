@@ -113,9 +113,24 @@ export default function Kanban() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, status, project_type }) => base44.entities.Project.update(id, { status, ...(project_type ? { project_type } : {}) }),
-    onSuccess: () => {
+    onMutate: async ({ id, status, project_type }) => {
+      await queryClient.cancelQueries({ queryKey: ["projects"] });
+      const previous = queryClient.getQueryData(["projects"]);
+      queryClient.setQueryData(["projects"], (old) =>
+        (old || []).map((p) =>
+          p.id === id
+            ? { ...p, status, ...(project_type ? { project_type } : {}) }
+            : p
+        )
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(["projects"], context.previous);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-    }
+    },
   });
 
   const createChatMutation = useMutation({
