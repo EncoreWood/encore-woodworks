@@ -184,6 +184,15 @@ export default function Kanban() {
   const [colorPickerProjectId, setColorPickerProjectId] = useState(null);
   const [pickupFormProject, setPickupFormProject] = useState(null);
 
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["projects"] }),
+      queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+    ]);
+  }, [queryClient]);
+
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh);
+
   const cardColors = [
     "", "#fee2e2", "#fef3c7", "#d1fae5", "#dbeafe", "#ede9fe",
     "#fce7f3", "#cffafe", "#f0fdf4", "#fef9c3", "#e0e7ff",
