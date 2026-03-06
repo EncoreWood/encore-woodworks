@@ -419,9 +419,17 @@ export default function Layout({ children, currentPageName }) {
           ))}
         </nav>
 
-        {/* Settings Button */}
-        {currentUser?.role === "admin" && (
-          <div className="p-4 border-t border-slate-400">
+        {/* Bottom Buttons */}
+        <div className="p-4 border-t border-slate-400 space-y-2">
+          <Link to={createPageUrl("AccountSettings")} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-slate-800 text-sm font-medium transition-all"
+            style={{ backgroundColor: "rgba(180,150,100,0.2)" }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = "rgba(180,150,100,0.4)"}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = "rgba(180,150,100,0.2)"}
+          >
+            <UserCircle className="w-4 h-4" />
+            Account
+          </Link>
+          {currentUser?.role === "admin" && (
             <button
               onClick={() => setShowSettings(true)}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-slate-800 text-sm font-medium transition-all"
@@ -433,8 +441,8 @@ export default function Layout({ children, currentPageName }) {
               <Settings className="w-4 h-4" />
               Settings
             </button>
-          </div>
           )}
+        </div>
           </aside>
 
       {/* Page Content */}
