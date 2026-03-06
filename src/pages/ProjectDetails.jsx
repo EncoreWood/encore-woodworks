@@ -212,6 +212,12 @@ export default function ProjectDetails() {
           <Link to={createPageUrl("Kanban")} className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700 mb-4">
             <ArrowLeft className="w-4 h-4 mr-1" />Back to Projects
           </Link>
+          {/* Mobile sticky back bar */}
+          <div className="sm:hidden sticky top-0 z-10 -mx-4 px-4 py-2 bg-slate-50/95 backdrop-blur border-b border-slate-200 mb-4 flex items-center gap-2">
+            <Link to={createPageUrl("Kanban")} className="flex items-center gap-1 text-amber-600 font-medium text-sm">
+              <ArrowLeft className="w-4 h-4" /> Projects
+            </Link>
+          </div>
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
