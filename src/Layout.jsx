@@ -438,9 +438,21 @@ export default function Layout({ children, currentPageName }) {
           </aside>
 
       {/* Page Content */}
-      <main className="flex-1 overflow-auto">
+      <main
+        className="flex-1 overflow-auto"
+        style={{
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+      >
+        <div className="sm:hidden h-0" />
         {children}
+        {/* Bottom spacer for mobile tab bar */}
+        <div className="sm:hidden h-16" />
       </main>
+
+      {/* Mobile Tab Bar */}
+      <MobileTabBar currentPageName={currentPageName} />
 
       {/* Settings Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
