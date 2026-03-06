@@ -230,6 +230,7 @@ export default function ShopProduction() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div className="px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
