@@ -100,6 +100,15 @@ export default function Dashboard() {
     base44.auth.me().then(setCurrentUser);
   }, []);
 
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["projects"] }),
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] }),
+    ]);
+  }, [queryClient]);
+
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh);
+
   // PTS calculations — only from items in the "complete" stage, keyed by completed_date
   const getPtsFromItems = (items) => {
     return items.reduce((sum, item) => {
