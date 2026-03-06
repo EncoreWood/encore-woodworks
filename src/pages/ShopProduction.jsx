@@ -208,6 +208,15 @@ export default function ShopProduction() {
     setActiveTab("job_info");
   };
 
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] }),
+      queryClient.invalidateQueries({ queryKey: ["projects"] }),
+    ]);
+  }, [queryClient]);
+
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh);
+
   const sharedCardProps = {
     editingPts,
     setEditingPts,
