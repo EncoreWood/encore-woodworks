@@ -4,13 +4,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Folder, Plus, Trash2, Upload } from 'lucide-react';
+import { Folder, Plus, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function ChatFolders({ roomId }) {
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -153,14 +154,15 @@ export default function ChatFolders({ roomId }) {
               <label className="text-sm font-medium text-slate-700 mb-2 block">
                 Folder Type
               </label>
-              <select
-                value={folderType}
-                onChange={(e) => setFolderType(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm"
-              >
-                <option value="files">Files</option>
-                <option value="photos">Photos</option>
-              </select>
+              <Select value={folderType} onValueChange={setFolderType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="files">Files</SelectItem>
+                  <SelectItem value="photos">Photos</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex gap-2 justify-end">
               <Button
