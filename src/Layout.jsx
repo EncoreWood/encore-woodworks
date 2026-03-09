@@ -55,7 +55,8 @@ export default function Layout({ children, currentPageName }) {
         { name: "Team", icon: Users, iconName: "Users", page: "Team" },
         { name: "Time Sheet", icon: Coffee, iconName: "Coffee", page: "TimeSheet" },
         { name: "Chat", icon: MessageSquare, iconName: "MessageSquare", page: "ChatBoard" },
-        { name: "Forms", icon: FileText, iconName: "FileText", page: "Forms" }
+        { name: "Forms", icon: FileText, iconName: "FileText", page: "Forms" },
+        { name: "Privacy Policy", icon: FileText, iconName: "FileText", page: "PrivacyPolicy" }
       ]
     }
   };
