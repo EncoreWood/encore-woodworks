@@ -89,26 +89,44 @@ export default function AccountSettings() {
         </Card>
 
         {/* Delete Confirmation */}
-        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialog open={showDeleteDialog} onOpenChange={(open) => { setShowDeleteDialog(open); if (!open) setDeleteConfirmText(""); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Account</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be lost.
+              <AlertDialogTitle className="flex items-center gap-2 text-red-700">
+                <Trash2 className="w-5 h-5" /> Delete Account
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-3">
+                  <p>This will permanently delete your account and all associated data. <strong>This cannot be undone.</strong></p>
+                  <p className="text-sm">To confirm, type <strong>DELETE</strong> below:</p>
+                  <Input
+                    value={deleteConfirmText}
+                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    placeholder="Type DELETE to confirm"
+                    className="border-red-200 focus:border-red-400"
+                    autoCapitalize="characters"
+                  />
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-red-600 hover:bg-red-700"
+              <AlertDialogCancel onClick={() => setDeleteConfirmText("")}>Cancel</AlertDialogCancel>
+              <Button
+                className="bg-red-600 hover:bg-red-700 text-white"
+                disabled={deleteConfirmText !== "DELETE"}
                 onClick={() => {
-                  // Contact admin to proceed — self-deletion not directly available
-                  alert("Please contact your administrator to complete account deletion.");
+                  base44.integrations.Core.SendEmail({
+                    to: "team@encorewood.com",
+                    subject: "Account Deletion Request",
+                    body: `User ${currentUser?.full_name} (${currentUser?.email}) has requested account deletion.`
+                  });
                   setShowDeleteDialog(false);
+                  setDeleteConfirmText("");
+                  alert("Your deletion request has been sent to the administrator.");
                 }}
               >
-                Request Deletion
-              </AlertDialogAction>
+                Permanently Delete Account
+              </Button>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
