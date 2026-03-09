@@ -14,6 +14,7 @@ import {
 export default function AccountSettings() {
   const [currentUser, setCurrentUser] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   useEffect(() => {
     base44.auth.me().then(setCurrentUser);
