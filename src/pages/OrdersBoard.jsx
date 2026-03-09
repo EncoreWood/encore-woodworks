@@ -220,81 +220,35 @@ export default function OrdersBoard() {
           </div>
         </div>
 
-        <Card className="bg-white shadow-lg overflow-x-auto">
+        {/* Desktop Table */}
+        <Card className="hidden sm:block bg-white shadow-lg overflow-x-auto">
           <div className="min-w-[1400px]">
-            {/* Header */}
             <div className="grid grid-cols-[250px_repeat(9,_1fr)] border-b-2 border-slate-300 bg-slate-100">
-              <div className="p-4 font-bold text-slate-900 border-r-2 border-slate-300">
-                Project
-              </div>
+              <div className="p-4 font-bold text-slate-900 border-r-2 border-slate-300">Project</div>
               {orderColumns.map((col) => (
-                <div
-                  key={col.id}
-                  className="p-4 font-bold text-slate-900 text-center border-r border-slate-200 text-sm"
-                >
-                  {col.label}
-                </div>
+                <div key={col.id} className="p-4 font-bold text-slate-900 text-center border-r border-slate-200 text-sm">{col.label}</div>
               ))}
             </div>
-
-            {/* Rows */}
             {projects.map((project) => (
-              <div
-                key={project.id}
-                className="grid grid-cols-[250px_repeat(9,_1fr)] border-b border-slate-200 hover:bg-slate-50"
-              >
-                <div
-                  className="p-4 font-medium text-slate-900 border-r-2 border-slate-200"
-                  style={project.card_color ? { borderLeft: `4px solid ${project.card_color}` } : {}}
-                >
+              <div key={project.id} className="grid grid-cols-[250px_repeat(9,_1fr)] border-b border-slate-200 hover:bg-slate-50">
+                <div className="p-4 font-medium text-slate-900 border-r-2 border-slate-200" style={project.card_color ? { borderLeft: `4px solid ${project.card_color}` } : {}}>
                   <div className="flex items-center gap-2">
-                    {project.card_color && (
-                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: project.card_color }} />
-                    )}
+                    {project.card_color && <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: project.card_color }} />}
                     <span className="font-semibold">{project.project_name}</span>
-                    <Link 
-                      to={createPageUrl("Kanban") + `?project=${project.id}`}
-                      className="text-slate-400 hover:text-amber-600 transition-colors"
-                      title="View on Board"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </Link>
+                    <Link to={createPageUrl("Kanban") + `?project=${project.id}`} className="text-slate-400 hover:text-amber-600 transition-colors"><ExternalLink className="w-3.5 h-3.5" /></Link>
                   </div>
                   <div className="text-xs text-slate-500">{project.client_name}</div>
                 </div>
                 {orderColumns.map((col) => {
                   const order = getOrder(project.id, col.id);
                   return (
-                    <button
-                      key={col.id}
-                      onClick={() => handleCellClick(project, col.id)}
-                      className="p-3 border-r border-slate-200 hover:bg-amber-50 transition-colors text-left"
-                    >
+                    <button key={col.id} onClick={() => handleCellClick(project, col.id)} className="p-3 border-r border-slate-200 hover:bg-amber-50 transition-colors text-left">
                       {order ? (
                         <div className="space-y-1">
-                          <div
-                            className={`text-xs px-2 py-1 rounded font-medium inline-block ${
-                              statusColors[order.status]
-                            }`}
-                          >
-                            {order.status.replace("_", " ").toUpperCase()}
-                          </div>
-                          {order.rooms?.length > 0 && (
-                            <div className="text-xs text-slate-600">
-                              {order.rooms.length} room{order.rooms.length > 1 ? "s" : ""}
-                            </div>
-                          )}
-                          {order.notes && (
-                            <div className="text-xs text-slate-600 line-clamp-2">
-                              {order.notes}
-                            </div>
-                          )}
-                          {order.files?.length > 0 && (
-                            <div className="text-xs text-blue-600 flex items-center gap-1">
-                              <FileText className="w-3 h-3" />
-                              {order.files.length} file{order.files.length > 1 ? "s" : ""}
-                            </div>
-                          )}
+                          <div className={`text-xs px-2 py-1 rounded font-medium inline-block ${statusColors[order.status]}`}>{order.status.replace("_", " ").toUpperCase()}</div>
+                          {order.rooms?.length > 0 && <div className="text-xs text-slate-600">{order.rooms.length} room{order.rooms.length > 1 ? "s" : ""}</div>}
+                          {order.notes && <div className="text-xs text-slate-600 line-clamp-2">{order.notes}</div>}
+                          {order.files?.length > 0 && <div className="text-xs text-blue-600 flex items-center gap-1"><FileText className="w-3 h-3" />{order.files.length} file{order.files.length > 1 ? "s" : ""}</div>}
                         </div>
                       ) : (
                         <div className="text-xs text-slate-400">Click to add</div>
@@ -306,6 +260,38 @@ export default function OrdersBoard() {
             ))}
           </div>
         </Card>
+
+        {/* Mobile Card Layout */}
+        <div className="sm:hidden space-y-4">
+          {projects.map((project) => (
+            <Card key={project.id} className="bg-white shadow-sm overflow-hidden" style={project.card_color ? { borderLeft: `4px solid ${project.card_color}` } : {}}>
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-slate-900">{project.project_name}</div>
+                  <div className="text-sm text-slate-500">{project.client_name}</div>
+                </div>
+                <Link to={createPageUrl("Kanban") + `?project=${project.id}`} className="text-slate-400 hover:text-amber-600">
+                  <ExternalLink className="w-4 h-4" />
+                </Link>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {orderColumns.map((col) => {
+                  const order = getOrder(project.id, col.id);
+                  if (!order) return null;
+                  return (
+                    <button key={col.id} onClick={() => handleCellClick(project, col.id)} className="w-full flex items-start justify-between p-3 hover:bg-amber-50 text-left">
+                      <span className="text-sm font-medium text-slate-700">{col.label}</span>
+                      <span className={`text-xs px-2 py-1 rounded font-medium ${statusColors[order.status]}`}>{order.status.replace(/_/g, " ")}</span>
+                    </button>
+                  );
+                })}
+                <button onClick={() => handleCellClick(project, orderColumns[0].id)} className="w-full p-3 text-sm text-amber-600 hover:bg-amber-50 text-left font-medium">
+                  + Add / Edit Orders
+                </button>
+              </div>
+            </Card>
+          ))}
+        </div>
 
         {/* Edit Dialog */}
         <Dialog open={editDialog} onOpenChange={setEditDialog}>
