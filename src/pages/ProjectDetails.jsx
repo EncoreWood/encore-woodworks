@@ -668,5 +668,6 @@ export default function ProjectDetails() {
         </AlertDialog>
       </div>
     </div>
+    </PageSlideWrapper>
   );
 }
