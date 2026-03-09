@@ -93,6 +93,17 @@ export default function PickupList() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.PickupItem.update(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ["pickupItems"] });
+      const prev = queryClient.getQueryData(["pickupItems"]);
+      queryClient.setQueryData(["pickupItems"], (old = []) =>
+        old.map(item => item.id === id ? { ...item, ...data } : item)
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["pickupItems"], ctx.prev);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pickupItems"] });
       setShowForm(false);
@@ -102,6 +113,15 @@ export default function PickupList() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.PickupItem.delete(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["pickupItems"] });
+      const prev = queryClient.getQueryData(["pickupItems"]);
+      queryClient.setQueryData(["pickupItems"], (old = []) => old.filter(item => item.id !== id));
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(["pickupItems"], ctx.prev);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pickupItems"] })
   });
 
