@@ -240,15 +240,13 @@ export default function Inventory() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="overflow-x-auto">
+                    {/* Desktop Table */}
+                    <div className="hidden sm:block overflow-x-auto">
                       <table className="w-full">
                         <thead>
                           <tr className="border-b-2 border-slate-300">
                             {headers.map((header, index) => (
-                              <th
-                                key={index}
-                                className="text-left py-3 px-4 text-sm font-semibold text-slate-900 bg-slate-100 whitespace-nowrap"
-                              >
+                              <th key={index} className="text-left py-3 px-4 text-sm font-semibold text-slate-900 bg-slate-100 whitespace-nowrap">
                                 {header}
                               </th>
                             ))}
@@ -259,72 +257,27 @@ export default function Inventory() {
                             const itemId = row[0];
                             const notes = row[headers.indexOf("Notes")];
                             const supplierLink = getSupplierLink(itemId, notes);
-                            
                             return (
-                              <tr
-                                key={rowIndex}
-                                className="border-b border-slate-100 hover:bg-amber-50 transition-colors"
-                              >
+                              <tr key={rowIndex} className="border-b border-slate-100 hover:bg-amber-50 transition-colors">
                                 {row.map((cell, cellIndex) => {
                                   const header = headers[cellIndex];
                                   const isStatus = header === "Status";
                                   const isNotes = header === "Notes";
-                                  const isEditing = editingCell?.sheetName === sheetName && 
-                                                   editingCell?.rowIndex === rowIndex && 
-                                                   editingCell?.colIndex === cellIndex;
-                                  
+                                  const isEditing = editingCell?.sheetName === sheetName && editingCell?.rowIndex === rowIndex && editingCell?.colIndex === cellIndex;
                                   return (
-                                    <td
-                                      key={cellIndex}
-                                      className="py-3 px-4 text-sm text-slate-700"
-                                      onDoubleClick={() => startEdit(sheetName, rowIndex, cellIndex, cell)}
-                                    >
+                                    <td key={cellIndex} className="py-3 px-4 text-sm text-slate-700" onDoubleClick={() => startEdit(sheetName, rowIndex, cellIndex, cell)}>
                                       {isEditing ? (
                                         <div className="flex gap-1">
-                                          <Input
-                                            value={editValue}
-                                            onChange={(e) => setEditValue(e.target.value)}
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter') saveEdit();
-                                              if (e.key === 'Escape') cancelEdit();
-                                            }}
-                                            className="h-8 text-sm"
-                                            autoFocus
-                                          />
-                                          <Button
-                                            size="sm"
-                                            onClick={saveEdit}
-                                            className="h-8 px-2 bg-green-600 hover:bg-green-700"
-                                          >
-                                            Save
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            onClick={cancelEdit}
-                                            className="h-8 px-2"
-                                          >
-                                            Cancel
-                                          </Button>
+                                          <Input value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }} className="h-8 text-sm" autoFocus />
+                                          <Button size="sm" onClick={saveEdit} className="h-8 px-2 bg-green-600 hover:bg-green-700">Save</Button>
+                                          <Button size="sm" variant="outline" onClick={cancelEdit} className="h-8 px-2">Cancel</Button>
                                         </div>
                                       ) : isStatus && cell ? (
-                                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cell)}`}>
-                                          {cell}
-                                        </span>
+                                        <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(cell)}`}>{cell}</span>
                                       ) : isNotes && supplierLink ? (
-                                        <a
-                                          href={supplierLink}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="flex items-center gap-1 text-amber-600 hover:text-amber-700 font-medium"
-                                        >
-                                          {cell}
-                                          <ExternalLink className="w-3 h-3" />
-                                        </a>
+                                        <a href={supplierLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-amber-600 hover:text-amber-700 font-medium">{cell}<ExternalLink className="w-3 h-3" /></a>
                                       ) : (
-                                        <span className="cursor-pointer hover:bg-slate-100 px-2 py-1 rounded">
-                                          {cell || '-'}
-                                        </span>
+                                        <span className="cursor-pointer hover:bg-slate-100 px-2 py-1 rounded">{cell || '-'}</span>
                                       )}
                                     </td>
                                   );
@@ -334,6 +287,37 @@ export default function Inventory() {
                           })}
                         </tbody>
                       </table>
+                    </div>
+
+                    {/* Mobile Card Layout */}
+                    <div className="sm:hidden space-y-3">
+                      {data.map((row, rowIndex) => {
+                        const itemId = row[0];
+                        const notes = row[headers.indexOf("Notes")];
+                        const supplierLink = getSupplierLink(itemId, notes);
+                        return (
+                          <div key={rowIndex} className="border border-slate-200 rounded-lg p-3 bg-slate-50 space-y-1.5">
+                            {row.map((cell, cellIndex) => {
+                              const header = headers[cellIndex];
+                              if (!cell && cell !== 0) return null;
+                              const isStatus = header === "Status";
+                              const isNotes = header === "Notes";
+                              return (
+                                <div key={cellIndex} className="flex items-start justify-between gap-2 text-sm">
+                                  <span className="text-slate-500 font-medium shrink-0">{header}:</span>
+                                  {isStatus ? (
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(cell)}`}>{cell}</span>
+                                  ) : isNotes && supplierLink ? (
+                                    <a href={supplierLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-amber-600 font-medium text-right">{cell}<ExternalLink className="w-3 h-3 shrink-0" /></a>
+                                  ) : (
+                                    <span className="text-slate-800 text-right">{cell}</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {data.length === 0 && (

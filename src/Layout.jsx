@@ -446,6 +446,28 @@ export default function Layout({ children, currentPageName }) {
         </div>
           </aside>
 
+      {/* Mobile Header */}
+      {(() => {
+        const rootTabs = ["Dashboard", "Kanban", "ShopProduction", "ChatBoard"];
+        const isRoot = rootTabs.includes(currentPageName);
+        // Find display name from navGroups
+        let displayName = currentPageName;
+        Object.values(navGroups).forEach(group => {
+          const found = group.items.find(i => i.page === currentPageName);
+          if (found) displayName = found.name;
+        });
+        return (
+          <div className="sm:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-2 px-4 h-12 border-b border-slate-400 shadow-sm" style={{ backgroundColor: "#9ca3af", paddingTop: "env(safe-area-inset-top)" }}>
+            {!isRoot && (
+              <button onClick={() => window.history.back()} className="flex items-center text-slate-800 font-medium text-sm">
+                <ChevronLeft className="w-5 h-5" />Back
+              </button>
+            )}
+            <span className={`font-semibold text-slate-900 text-base ${!isRoot ? "ml-2" : ""}`}>{displayName}</span>
+          </div>
+        );
+      })()}
+
       {/* Page Content */}
       <main
         className="flex-1 overflow-auto"
@@ -454,7 +476,7 @@ export default function Layout({ children, currentPageName }) {
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        <div className="sm:hidden h-0" />
+        <div className="sm:hidden h-12" style={{ paddingTop: "env(safe-area-inset-top)" }} />
         {children}
         {/* Bottom spacer for mobile tab bar */}
         <div className="sm:hidden h-16" />
