@@ -92,3 +92,9 @@
     user-select: none;
   }
 }
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    @apply dark;
+  }
+}
