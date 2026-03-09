@@ -48,6 +48,15 @@ export default function Invoicing() {
 
   const updateProjectMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Project.update(id, data),
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ["projects"] });
+      const previous = queryClient.getQueryData(["projects"]);
+      queryClient.setQueryData(["projects"], old => old?.map(p => p.id === id ? { ...p, ...data } : p) || []);
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(["projects"], context.previous);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setEditingProject(null);

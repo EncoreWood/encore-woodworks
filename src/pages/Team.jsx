@@ -89,14 +89,21 @@ export default function Team() {
       
       return employee;
     },
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: ["employees"] });
+      const previous = queryClient.getQueryData(["employees"]);
+      queryClient.setQueryData(["employees"], old => old?.map(e => e.id === id ? { ...e, ...data } : e) || []);
+      return { previous };
+    },
+    onError: (error, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(["employees"], context.previous);
+      toast.error(error.message || "Failed to update employee");
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       setShowEmployeeForm(false);
       setEditingEmployee(null);
       toast.success("Employee updated successfully");
-    },
-    onError: (error) => {
-      toast.error(error.message || "Failed to update employee");
     }
   });
 
