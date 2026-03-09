@@ -134,5 +134,6 @@ export default function AccountSettings() {
         </AlertDialog>
       </div>
     </div>
+    </PageSlideWrapper>
   );
 }
