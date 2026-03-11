@@ -542,17 +542,21 @@ export default function CalendarPage() {
            <div className="flex-1 overflow-auto p-3 flex flex-col">
 
              <style>{`
-                .rdp-day { position: relative; height: 160px; }
-                .rdp-day_button { width: 100%; height: 100%; padding: 0.125rem; }
-                .rdp-month { width: 100%; }
-                .rdp-months { display: flex; flex: 1; height: 100%; }
-                .rdp { width: 100%; height: 100%; display: flex; flex-direction: column; }
-                .rdp-months { display: grid; grid-auto-flow: column; }
-                .rdp-month { display: flex; flex-direction: column; }
-                .rdp-table { width: 100%; flex: 1; }
+                .rdp { width: 100%; height: 100%; }
+                .rdp-months { width: 100%; height: 100%; display: flex; flex-direction: column; }
+                .rdp-month { width: 100%; height: 100%; display: flex; flex-direction: column; }
+                .rdp-caption { flex-shrink: 0; }
+                .rdp-head_cell { text-align: center; font-weight: 600; font-size: 0.875rem; padding: 0.5rem; border: 1px solid #cbd5e1; }
+                .rdp-table { width: 100%; height: 100%; border-collapse: collapse; }
                 .rdp-tbody { display: flex; flex-direction: column; flex: 1; }
                 .rdp-row { display: flex; flex: 1; }
-                .rdp-cell { flex: 1; }
+                .rdp-cell { flex: 1; padding: 0; border: 1px solid #cbd5e1; background: #f8fafc; position: relative; }
+                .rdp-day { width: 100%; height: 100%; display: flex; flex-direction: column; position: relative; }
+                .rdp-day_button { width: 100%; height: 100%; padding: 0.375rem; text-align: left; font-weight: 400; font-size: 0.875rem; border: none; background: white; cursor: pointer; }
+                .rdp-day:hover .rdp-day_button { background: #fef3c7; }
+                .rdp-day_selected .rdp-day_button { background: #fcd34d; color: #92400e; font-weight: 600; }
+                .rdp-day_today .rdp-day_button { background: #dbeafe; font-weight: 700; border: 1px solid #60a5fa; }
+                .rdp-day_outside .rdp-day_button { color: #cbd5e1; opacity: 0.3; }
               `}</style>
 
              <CalendarComponent
