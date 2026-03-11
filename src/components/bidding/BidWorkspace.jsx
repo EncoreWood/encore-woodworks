@@ -116,32 +116,55 @@ export default function BidWorkspace({ bidId, onClose, onSaved }) {
   const handleAnalyze = async () => {
     if (!planFileUrl) return;
     setIsAnalyzing(true);
+    setAnalyzeError(null);
 
     const styleLabel = BID_STYLES.find((s) => s.key === bidType)?.label || "standard";
     const config = pricingConfigs.find((c) => c.style_key === bidType);
     const pricingNote = config
-      ? `Pricing: Base cabinets $${config.bases_lf}/LF, Upper/Wall cabinets $${config.uppers_lf}/LF, Tall cabinets $${config.tall_lf}/LF.`
+      ? `Pricing rates: Base cabinets $${config.bases_lf}/LF, Upper/Wall cabinets $${config.uppers_lf}/LF, Tall cabinets $${config.tall_lf}/LF.`
       : "";
 
+    // Step 1: Extract any text/annotation data from the file (works for PDFs and images)
+    let extractedText = "";
+    try {
+      const extracted = await base44.integrations.Core.ExtractDataFromUploadedFile({
+        file_url: planFileUrl,
+        json_schema: {
+          type: "object",
+          properties: {
+            room_labels: { type: "array", items: { type: "string" }, description: "All room names found in the plans" },
+            dimensions: { type: "array", items: { type: "string" }, description: "Any dimensions or measurements found" },
+            notes: { type: "string", description: "Any text annotations or notes found in the plans" }
+          }
+        }
+      });
+      if (extracted?.status === "success" && extracted.output) {
+        extractedText = `\n\nExtracted text from the plans: ${JSON.stringify(extracted.output)}`;
+      }
+    } catch (_) { /* continue without extracted text */ }
+
+    // Step 2: Visual AI analysis of the plans
     const result = await base44.integrations.Core.InvokeLLM({
-      model: "claude_sonnet_4_6",
-      prompt: `You are a professional cabinet estimator reviewing architectural floor plans for a ${styleLabel} cabinet project. ${pricingNote}
+      model: "gemini_3_pro",
+      prompt: `You are a professional cabinet estimator. You are looking at architectural floor plans for a residential home. Your job is to identify EVERY location where cabinetry will be installed and estimate linear footage.
 
-Carefully analyze the floor plans and identify EVERY area where cabinetry will be installed: kitchens, bathrooms, pantries, laundry rooms, mudrooms, closets, built-ins, bars, offices — anywhere cabinets go.
+Cabinet style: ${styleLabel}. ${pricingNote}
+${extractedText}
 
-For EACH cabinet run, provide a SEPARATE entry:
-- room_name: e.g. "Kitchen", "Master Bath"
-- cabinet_type: describe what kind, e.g. "Perimeter Bases", "Island", "Wall Cabinets", "Pantry Tower", "Linen Closet"
-- cabinet_category: MUST be one of "base", "upper", or "tall"
-  - "base": base/floor cabinets and islands
-  - "upper": wall/upper cabinets mounted above counters
-  - "tall": pantry towers, tall storage, full-height built-ins
-- linear_feet: estimated linear feet for this specific run. Measure carefully.
-- notes: corner situations, special features, stacked uppers, anything the estimator should know.
+INSTRUCTIONS:
+1. Look carefully at the entire floor plan for ALL of these cabinet locations: Kitchen (base cabs, wall cabs, island), all Bathrooms (vanities), Pantry, Laundry room, Mudroom, Closets, Built-ins, Home office, Bar, any other cabinet areas.
+2. For EACH cabinet run, create a SEPARATE line item entry.
+3. Split bases, uppers/wall cabs, and tall cabinets into separate rows.
+4. Estimate linear feet by looking at the wall dimensions shown — base cabinet runs typically follow wall lengths.
+5. If you can see dimension lines or room sizes, use them to estimate LF accurately.
 
-Split each room into separate base, upper, and tall entries where applicable.
+For cabinet_category use ONLY:
+- "base" = floor-level base cabinets and islands
+- "upper" = wall-mounted upper/wall cabinets above counters  
+- "tall" = full-height pantry towers, tall cabinets, linen closets, full-height built-ins
 
-Also provide general_notes about overall project complexity.`,
+Be thorough — a typical house has 40–120+ linear feet of cabinetry across all rooms.
+If the image is unclear or this does not appear to be a floor plan, still provide your best estimate based on what you can see.`,
       file_urls: [planFileUrl],
       response_json_schema: {
         type: "object",
@@ -159,12 +182,19 @@ Also provide general_notes about overall project complexity.`,
               }
             }
           },
-          general_notes: { type: "string" }
+          general_notes: { type: "string" },
+          plan_readable: { type: "boolean", description: "Was the AI able to read and interpret the floor plan?" }
         }
       }
     });
 
-    const newRooms = (result.rooms || []).map((r, i) => {
+    if (!result.rooms || result.rooms.length === 0) {
+      setAnalyzeError("AI couldn't identify cabinet areas. Try uploading a clearer image of the floor plan (PNG/JPG works best), or add rows manually below.");
+      setIsAnalyzing(false);
+      return;
+    }
+
+    const newRooms = result.rooms.map((r, i) => {
       const cat = ["base", "upper", "tall"].includes(r.cabinet_category) ? r.cabinet_category : "base";
       const price = getPriceForCategory(cat);
       return {
