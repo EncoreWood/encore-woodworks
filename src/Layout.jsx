@@ -96,6 +96,9 @@ export default function Layout({ children, currentPageName }) {
                 parsed[groupKey].items.push(defaultItem);
               }
             });
+          } else {
+            // Add missing groups
+            parsed[groupKey] = group;
           }
         });
         return parsed;
