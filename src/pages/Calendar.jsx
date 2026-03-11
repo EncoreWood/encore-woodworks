@@ -525,43 +525,42 @@ export default function CalendarPage() {
           {/* Calendar */}
           <div className="flex-1 overflow-hidden p-3">
 
-          <style>{`
-            .rdp-day { position: relative; height: ${viewType === "week" ? "120px" : viewType === "month" ? "100px" : "56px"}; }
-            .rdp-day_button { width: 100%; height: 100%; }
-            .rdp-month { width: 100%; }
-            .rdp-months {
-              ${(viewType === "3months" || viewType === "6months") ? "display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;" : ""}
-              ${viewType === "year" ? "display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 0.5rem;" : ""}
-            }
-          `}</style>
+            <style>{`
+              .rdp-day { position: relative; height: ${viewType === "month" ? "calc((100vh - 280px) / 6)" : "60px"}; }
+              .rdp-day_button { width: 100%; height: 100%; }
+              .rdp-month { width: 100%; }
+              .rdp-months { display: flex; }
+              .rdp { width: 100%; height: 100%; }
+              .rdp-months, .rdp-month, .rdp-table { height: 100%; }
+            `}</style>
 
-          <CalendarComponent
-            mode="single"
-            selected={selectedDate}
-            onSelect={(date) => { if (date) setSelectedDate(date); }}
-            month={currentMonth}
-            onMonthChange={setCurrentMonth}
-            numberOfMonths={viewType === "3months" ? 3 : viewType === "6months" ? 6 : viewType === "year" ? 12 : 1}
-            disabled={viewType === "week" ? (date) => {
-              const ws = startOfWeek(currentMonth); const we = endOfWeek(currentMonth);
-              return date < ws || date > we;
-            } : undefined}
-            className="w-full"
-            classNames={{
-              months: "w-full",
-              month: "w-full",
-              table: "w-full border-collapse table-fixed",
-              head_cell: viewType === "month" || viewType === "week" ? "text-slate-600 font-semibold text-sm py-3 w-[14.28%]" : "text-slate-500 font-semibold text-xs py-2 w-[14.28%]",
-              cell: "relative p-0 text-center border border-slate-200 w-[14.28%] bg-slate-100",
-              day: "relative w-full p-0 font-normal hover:bg-amber-50 transition-colors bg-white",
-              day_selected: "bg-amber-100 text-amber-900 font-semibold",
-              day_today: "bg-blue-50 font-bold ring-2 ring-inset ring-blue-400",
-              day_outside: "text-slate-300 opacity-40 bg-slate-50"
-            }}
-            components={{
-              DayContent: ({ date }) => renderDayContent(date, viewType !== "month" && viewType !== "week")
-            }}
-          />
+            <CalendarComponent
+              mode="single"
+              selected={selectedDate}
+              onSelect={(date) => { if (date) setSelectedDate(date); }}
+              month={currentMonth}
+              onMonthChange={setCurrentMonth}
+              numberOfMonths={viewType === "3months" ? 3 : viewType === "6months" ? 6 : viewType === "year" ? 12 : 1}
+              disabled={viewType === "week" ? (date) => {
+                const ws = startOfWeek(currentMonth); const we = endOfWeek(currentMonth);
+                return date < ws || date > we;
+              } : undefined}
+              className="w-full h-full"
+              classNames={{
+                months: "w-full h-full",
+                month: "w-full h-full",
+                table: "w-full h-full border-collapse table-fixed",
+                head_cell: "text-slate-600 font-semibold text-xs py-2 w-[14.28%] border border-slate-200",
+                cell: "relative p-0 text-center border border-slate-200 w-[14.28%] bg-slate-50",
+                day: "relative w-full p-0.5 font-normal hover:bg-amber-50 transition-colors bg-white text-sm",
+                day_selected: "bg-amber-100 text-amber-900 font-semibold",
+                day_today: "bg-blue-50 font-bold ring-1 ring-blue-400",
+                day_outside: "text-slate-200 opacity-30 bg-slate-50"
+              }}
+              components={{
+                DayContent: ({ date }) => renderDayContent(date, true)
+              }}
+            />
 
           <div className="mt-4 flex flex-wrap gap-3 text-xs">
             <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-red-600" /><span className="text-slate-600">Overdue</span></div>
