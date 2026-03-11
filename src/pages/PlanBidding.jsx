@@ -3,14 +3,26 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, FileText, Trash2, ChevronRight } from "lucide-react";
+import { Plus, FileText, Trash2, ChevronRight, Link2 } from "lucide-react";
 import { format } from "date-fns";
+import { createPageUrl } from "@/utils";
 import BidWorkspace from "@/components/bidding/BidWorkspace";
 
 export default function PlanBidding() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlProjectId = urlParams.get("project_id");
+
   const [activeBidId, setActiveBidId] = useState(null);
-  const [isCreating, setIsCreating] = useState(false);
+  // If launched from a project card, start in creating mode immediately
+  const [isCreating, setIsCreating] = useState(!!urlProjectId);
   const queryClient = useQueryClient();
+
+  // Load the project if coming from a project card link
+  const { data: linkedProjectData } = useQuery({
+    queryKey: ["project_for_bid", urlProjectId],
+    queryFn: () => base44.entities.Project.filter({ id: urlProjectId }).then(r => r[0]),
+    enabled: !!urlProjectId,
+  });
 
   const { data: bids = [], isLoading } = useQuery({
     queryKey: ["bids"],
@@ -29,6 +41,7 @@ export default function PlanBidding() {
     return (
       <BidWorkspace
         bidId={activeBidId}
+        project={!activeBidId ? linkedProjectData : undefined}
         onClose={() => { setActiveBidId(null); setIsCreating(false); }}
         onSaved={handleSaved}
       />

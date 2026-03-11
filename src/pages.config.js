@@ -61,6 +61,7 @@ import MorningMeeting from './pages/MorningMeeting';
 import Notepad from './pages/Notepad';
 import OrdersBoard from './pages/OrdersBoard';
 import PickupList from './pages/PickupList';
+import PlanBidding from './pages/PlanBidding';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import ProjectDetails from './pages/ProjectDetails';
 import PurchaseOrders from './pages/PurchaseOrders';
@@ -71,7 +72,6 @@ import Suppliers from './pages/Suppliers';
 import Team from './pages/Team';
 import TimeSheet from './pages/TimeSheet';
 import Tools from './pages/Tools';
-import PlanBidding from './pages/PlanBidding';
 import __Layout from './Layout.jsx';
 
 
@@ -90,6 +90,7 @@ export const PAGES = {
     "Notepad": Notepad,
     "OrdersBoard": OrdersBoard,
     "PickupList": PickupList,
+    "PlanBidding": PlanBidding,
     "PrivacyPolicy": PrivacyPolicy,
     "ProjectDetails": ProjectDetails,
     "PurchaseOrders": PurchaseOrders,
@@ -100,7 +101,6 @@ export const PAGES = {
     "Team": Team,
     "TimeSheet": TimeSheet,
     "Tools": Tools,
-    "PlanBidding": PlanBidding,
 }
 
 export const pagesConfig = {
