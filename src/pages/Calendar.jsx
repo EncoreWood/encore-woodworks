@@ -322,36 +322,42 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Project Calendar</h1>
-          <p className="text-slate-500 mt-1">Track active projects, installs, and deadlines</p>
-          <div className="flex flex-wrap gap-2 mt-4">
-            <div className="flex flex-wrap gap-2">
-              {filterOptions.map((filter) => (
-                <Button key={filter.id} variant={activeFilter === filter.id ? "default" : "outline"} size="sm"
-                  onClick={() => setActiveFilter(filter.id)}
-                  className={activeFilter === filter.id ? "bg-amber-600 hover:bg-amber-700" : ""}
-                >
-                  <span className="mr-1.5">{filter.icon}</span>{filter.label}
-                </Button>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-2 ml-auto">
-              {[{ id: "week", label: "Week" }, { id: "month", label: "Month" }, { id: "3months", label: "3 Months" }, { id: "6months", label: "6 Months" }, { id: "year", label: "Year" }].map((view) => (
-                <Button key={view.id} variant={viewType === view.id ? "default" : "outline"} size="sm"
-                  onClick={() => setViewType(view.id)}
-                  className={viewType === view.id ? "bg-blue-600 hover:bg-blue-700" : ""}
-                >
-                  {view.label}
-                </Button>
-              ))}
-            </div>
+    <div className="h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200 overflow-hidden flex flex-col">
+      {/* Header */}
+      <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between border-b border-slate-200 bg-white/40 backdrop-blur-sm flex-shrink-0">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Project Calendar</h1>
+          <p className="text-xs text-slate-500 mt-0.5">Track active projects, installs, and deadlines</p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <div className="flex gap-1.5">
+            {filterOptions.map((filter) => (
+              <Button key={filter.id} variant={activeFilter === filter.id ? "default" : "outline"} size="sm"
+                onClick={() => setActiveFilter(filter.id)}
+                className={`text-xs ${activeFilter === filter.id ? "bg-amber-600 hover:bg-amber-700" : ""}`}
+              >
+                <span className="mr-0.5">{filter.icon}</span>
+              </Button>
+            ))}
+          </div>
+          <div className="border-l border-slate-200 mx-1" />
+          <div className="flex gap-1.5">
+            {[{ id: "week", label: "W" }, { id: "month", label: "M" }, { id: "3months", label: "3M" }, { id: "6months", label: "6M" }, { id: "year", label: "Y" }].map((view) => (
+              <Button key={view.id} variant={viewType === view.id ? "default" : "outline"} size="sm"
+                onClick={() => setViewType(view.id)}
+                className={`text-xs ${viewType === view.id ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+              >
+                {view.label}
+              </Button>
+            ))}
           </div>
         </div>
+      </div>
+
+      {/* Two-Column Layout */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Column (35%) */}
+        <div className="w-[35%] border-r border-slate-300 bg-white overflow-y-auto flex flex-col">
 
         {/* ── TODAY'S FOCUS PANEL ── */}
         <Card className="mb-4 border-0 shadow-lg overflow-hidden">
