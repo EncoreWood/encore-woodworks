@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Plus, Pencil, Eraser, Undo2, Trash2, Type, Search, StickyNote, Menu, X } from "lucide-react";
 import { format } from "date-fns";
+import ReactQuill from "react-quill";
 
 const COLORS = ["#1e1e1e", "#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#ec4899"];
 const NOTE_COLORS = ["#fffef5", "#fff0f0", "#f0f7ff", "#f0fff4", "#fffbf0", "#faf0ff"];
