@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, ChevronDown, ChevronRight, Plus, Paperclip, FileText, Loader2 } from "lucide-react";
-import PdfViewerModal from "./PdfViewerModal";
+import PDFAnnotator from "../production/PDFAnnotator";
 
 import { getCategoryStyle } from "./BidCatalogEditor";
 
 export default function BidRoomSection({ room, catalogItems, categories, pricingConfigs, bidType, onChange, onDelete }) {
   const [collapsed, setCollapsed] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
-  const [viewingPdf, setViewingPdf] = useState(false);
+  const [annotating, setAnnotating] = useState(false);
   const [catalogFilter, setCatalogFilter] = useState("all");
 
   const handlePdfUpload = async (e) => {
@@ -22,6 +22,10 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
     onChange({ ...room, pdf_url: file_url, pdf_name: file.name });
     setUploadingPdf(false);
+  };
+
+  const handleAnnotationSave = (paths, notes) => {
+    onChange({ ...room, pdf_annotations: paths, pdf_notes: notes });
   };
 
   const getPrice = (category, measureType, catalogItem) => {
