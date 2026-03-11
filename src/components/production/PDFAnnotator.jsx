@@ -230,6 +230,19 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
           </div>
         </div>
 
+        {/* Notes for AI */}
+        {showNotesField && (
+          <div className="pb-3 border-b">
+            <label className="text-xs font-semibold text-slate-500 mb-1 block">Notes for AI (included in analysis)</label>
+            <textarea
+              value={aiNotes}
+              onChange={e => setAiNotes(e.target.value)}
+              placeholder="e.g. Include island with seating, double stacked uppers in kitchen, built-in pantry..."
+              className="w-full border border-slate-200 rounded-lg p-2 text-sm resize-none h-16 focus:outline-none focus:ring-1 focus:ring-amber-400"
+            />
+          </div>
+        )}
+
         {/* PDF Viewer */}
         <div className="flex-1 overflow-auto bg-slate-100 rounded-lg relative">
           <div className="flex items-center justify-center min-h-full p-4">
