@@ -64,7 +64,7 @@ export default function BidPricingSettings({ open, onClose, onPricingUpdated }) 
     await Promise.all(
       configs.map((c) =>
         c.id
-          ? base44.entities.BidPricingConfig.update(c.id, { bases_lf: c.bases_lf, uppers_lf: c.uppers_lf, tall_lf: c.tall_lf, wood_species: c.wood_species, door_style: c.door_style, handles: c.handles, drawerbox: c.drawerbox, drawer_glides: c.drawer_glides, hinges: c.hinges })
+          ? base44.entities.BidPricingConfig.update(c.id, { bases_lf: c.bases_lf, uppers_lf: c.uppers_lf, tall_lf: c.tall_lf, description: c.description, wood_species: c.wood_species, door_style: c.door_style, handles: c.handles, drawerbox: c.drawerbox, drawer_glides: c.drawer_glides, hinges: c.hinges })
           : base44.entities.BidPricingConfig.create(c)
       )
     );
@@ -100,6 +100,11 @@ export default function BidPricingSettings({ open, onClose, onPricingUpdated }) 
                   <label className="text-xs text-slate-500 mb-1 block">Tall $/LF</label>
                   <Input type="number" value={c.tall_lf} onChange={(e) => update(c.style_key, "tall_lf", e.target.value)} className="h-9 text-sm text-center" />
                 </div>
+              </div>
+              {/* Description */}
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Short Description (shown on style card)</label>
+                <Input value={c.description || ""} onChange={(e) => update(c.style_key, "description", e.target.value)} className="h-9 text-sm" placeholder="e.g. Full overlay, frameless construction" />
               </div>
               {/* Specs */}
               <div className="grid grid-cols-2 gap-3">
