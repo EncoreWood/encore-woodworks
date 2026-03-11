@@ -112,7 +112,7 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
         {room.pdf_url ? (
           <Button
             variant="ghost" size="sm"
-            onClick={e => { e.stopPropagation(); setViewingPdf(true); }}
+            onClick={e => { e.stopPropagation(); setAnnotating(true); }}
             className="h-7 px-2 text-xs text-blue-300 hover:text-blue-100 hover:bg-slate-700 gap-1 flex-shrink-0"
           >
             <FileText className="w-3.5 h-3.5" />
@@ -302,11 +302,15 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
         </div>
       )}
 
-      <PdfViewerModal
-        open={viewingPdf}
-        onClose={() => setViewingPdf(false)}
-        url={room.pdf_url}
-        name={room.pdf_name}
+      <PDFAnnotator
+        open={annotating}
+        onOpenChange={setAnnotating}
+        pdfUrl={room.pdf_url}
+        annotations={room.pdf_annotations || []}
+        onSave={handleAnnotationSave}
+        showNotesField={true}
+        initialNotes={room.pdf_notes || ""}
+        hideDownload={true}
       />
     </Card>
   );
