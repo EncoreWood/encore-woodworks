@@ -188,10 +188,16 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
       }
     } catch (_) {}
 
+    const roomNotes = rooms
+      .filter(r => r.pdf_notes)
+      .map(r => `${r.room_name || "Room"}: ${r.pdf_notes}`)
+      .join("\n");
+    const roomNotesSection = roomNotes ? `\n\nAdditional notes from plans:\n${roomNotes}` : "";
+
     const result = await base44.integrations.Core.InvokeLLM({
       model: "gemini_3_pro",
       prompt: `You are a professional cabinet estimator analyzing architectural floor plans for a ${styleLabel} cabinet project. ${pricingNote}
-${extractedText}
+${extractedText}${roomNotesSection}
 
 Identify EVERY cabinet location (Kitchen, Bathrooms, Pantry, Laundry, Mudroom, Closets, Built-ins, Bars, Offices, etc.).
 
