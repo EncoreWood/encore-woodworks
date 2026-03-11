@@ -571,6 +571,7 @@ export default function CalendarPage() {
           </div>
         </div>
       </div>
+    </div>
 
       {/* Add Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
