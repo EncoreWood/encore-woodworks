@@ -111,33 +111,10 @@ export default function Layout({ children, currentPageName }) {
 
   const [navGroups, setNavGroups] = useState(loadNavGroups);
 
-  // Force sync to new structure on mount
+  // Force reset to defaults on mount
   useEffect(() => {
-    const saved = localStorage.getItem('navGroups');
     const merged = JSON.parse(JSON.stringify(defaultNavGroups)); // Deep copy defaults
     
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Only keep pages that exist in the new default structure
-        Object.keys(merged).forEach(groupKey => {
-          if (parsed[groupKey]) {
-            const validPages = new Set(merged[groupKey].items.map(i => i.page));
-            merged[groupKey].items = parsed[groupKey].items.filter(item =>
-              validPages.has(item.page)
-            );
-            // Restore icons from defaults
-            merged[groupKey].items = merged[groupKey].items.map(item => ({
-              ...item,
-              icon: merged[groupKey].items.find(d => d.page === item.page)?.icon
-            }));
-          }
-        });
-      } catch (error) {
-        console.error('Failed to parse saved nav groups');
-      }
-    }
-
     // Restore all icon components
     Object.keys(merged).forEach(groupKey => {
       merged[groupKey].items = merged[groupKey].items.map(item => ({
