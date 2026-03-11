@@ -55,6 +55,9 @@ export default function BidClientView({ open, onClose, bid, bidType }) {
           .payment-terms { margin-top: 24px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 16px; }
           .payment-terms h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 8px; }
           .payment-terms p { font-size: 12px; color: #475569; line-height: 1.6; }
+          .disclaimer { margin-top: 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 14px 16px; }
+          .disclaimer h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #1d4ed8; margin-bottom: 6px; }
+          .disclaimer p { font-size: 11px; color: #1e3a5f; line-height: 1.6; }
           @media print { body { padding: 20px; } }
         </style>
       </head>
