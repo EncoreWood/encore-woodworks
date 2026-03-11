@@ -153,7 +153,7 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {(room.items || []).filter(item => catalogFilter === "all" || item.cabinet_category === catalogFilter).map(item => {
+                  {(room.items || []).map(item => {
                     const sub = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
                     return (
                       <tr key={item.id} className="hover:bg-slate-50">
@@ -207,7 +207,7 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
 
           {/* Mobile Cards */}
           <div className="sm:hidden space-y-2 mb-3">
-            {(room.items || []).filter(item => catalogFilter === "all" || item.cabinet_category === catalogFilter).map(item => {
+            {(room.items || []).map(item => {
               const sub = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
               return (
                 <div key={item.id} className="border border-slate-200 rounded-lg p-3 space-y-2 bg-white">
