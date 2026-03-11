@@ -62,6 +62,12 @@ export default function Layout({ children, currentPageName }) {
     }
   };
 
+  const iconMap = {
+    KanbanIcon, LayoutDashboard, Calendar, Factory, Coffee, Users, MessageSquare,
+    Package, Clipboard, ShoppingCart, FileText: FileTextIcon, Wrench, Truck, Home, Building2, 
+    PieChart, BarChart3, Hammer, Archive, StickyNote
+  };
+
   const loadNavGroups = () => {
     try {
       const saved = localStorage.getItem('navGroups');

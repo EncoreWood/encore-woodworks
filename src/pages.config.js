@@ -47,14 +47,64 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
+import AccountSettings from './pages/AccountSettings';
+import Calendar from './pages/Calendar';
+import ChatBoard from './pages/ChatBoard';
+import ContactsBoard from './pages/ContactsBoard';
+import Dashboard from './pages/Dashboard';
+import EncoreDocs from './pages/EncoreDocs';
+import Forms from './pages/Forms';
+import Inventory from './pages/Inventory';
 import Invoicing from './pages/Invoicing';
+import Kanban from './pages/Kanban';
+import MorningMeeting from './pages/MorningMeeting';
+import Notepad from './pages/Notepad';
+import OrdersBoard from './pages/OrdersBoard';
+import PickupList from './pages/PickupList';
+import PlanBidding from './pages/PlanBidding';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import ProjectDetails from './pages/ProjectDetails';
+import PurchaseOrders from './pages/PurchaseOrders';
+import SOPBoard from './pages/SOPBoard';
+import ShopProduction from './pages/ShopProduction';
+import StretchingRoutine from './pages/StretchingRoutine';
+import Suppliers from './pages/Suppliers';
+import Team from './pages/Team';
+import TimeSheet from './pages/TimeSheet';
+import Tools from './pages/Tools';
+import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
+    "AccountSettings": AccountSettings,
+    "Calendar": Calendar,
+    "ChatBoard": ChatBoard,
+    "ContactsBoard": ContactsBoard,
+    "Dashboard": Dashboard,
+    "EncoreDocs": EncoreDocs,
+    "Forms": Forms,
+    "Inventory": Inventory,
     "Invoicing": Invoicing,
+    "Kanban": Kanban,
+    "MorningMeeting": MorningMeeting,
+    "Notepad": Notepad,
+    "OrdersBoard": OrdersBoard,
+    "PickupList": PickupList,
+    "PlanBidding": PlanBidding,
+    "PrivacyPolicy": PrivacyPolicy,
+    "ProjectDetails": ProjectDetails,
+    "PurchaseOrders": PurchaseOrders,
+    "SOPBoard": SOPBoard,
+    "ShopProduction": ShopProduction,
+    "StretchingRoutine": StretchingRoutine,
+    "Suppliers": Suppliers,
+    "Team": Team,
+    "TimeSheet": TimeSheet,
+    "Tools": Tools,
 }
 
 export const pagesConfig = {
     mainPage: "Invoicing",
     Pages: PAGES,
+    Layout: __Layout,
 };
