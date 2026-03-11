@@ -192,10 +192,11 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
     } catch (_) {}
 
     const roomNotes = rooms
-      .filter(r => r.pdf_notes)
-      .map(r => `${r.room_name || "Room"}: ${r.pdf_notes}`)
-      .join("\n");
-    const roomNotesSection = roomNotes ? `\n\nAdditional notes from plans:\n${roomNotes}` : "";
+       .filter(r => r.pdf_notes)
+       .map(r => `${r.room_name || "Room"}: ${r.pdf_notes}`)
+       .join("\n");
+     const roomNotesSection = roomNotes ? `\n\nAdditional notes from room annotations:\n${roomNotes}` : "";
+     const mainPlanNotesSection = aiNotes ? `\n\nMain plan annotations and notes:\n${aiNotes}` : "";
 
     const result = await base44.integrations.Core.InvokeLLM({
       model: "gemini_3_pro",
