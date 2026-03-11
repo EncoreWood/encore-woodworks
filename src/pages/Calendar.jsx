@@ -504,23 +504,26 @@ export default function CalendarPage() {
         {/* Right Column (65%) */}
         <div className="flex-1 bg-white overflow-hidden flex flex-col">
 
-        {/* ── CALENDAR ── */}
-        <Card className="p-6 bg-white border-0 shadow-lg mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-slate-900">
-              {viewType === "week" && format(startOfWeek(currentMonth), "MMM d") + " – " + format(endOfWeek(currentMonth), "MMM d, yyyy")}
-              {viewType === "month" && format(currentMonth, "MMMM yyyy")}
-              {viewType === "3months" && format(currentMonth, "MMMM yyyy") + " – " + format(addMonths(currentMonth, 2), "MMMM yyyy")}
-              {viewType === "6months" && format(currentMonth, "MMMM yyyy") + " – " + format(addMonths(currentMonth, 5), "MMMM yyyy")}
-              {viewType === "year" && format(currentMonth, "yyyy")}
-            </h2>
-            <div className="flex gap-2">
-              <AddDropdown />
-              <Button variant="outline" size="icon" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}><ChevronLeft className="w-4 h-4" /></Button>
-              <Button variant="outline" onClick={() => setCurrentMonth(new Date())}>Today</Button>
-              <Button variant="outline" size="icon" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}><ChevronRight className="w-4 h-4" /></Button>
+          {/* ── CALENDAR ── */}
+          <div className="flex-shrink-0 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-slate-900 text-sm">
+                {viewType === "week" && format(startOfWeek(currentMonth), "MMM d") + " – " + format(endOfWeek(currentMonth), "MMM d, yyyy")}
+                {viewType === "month" && format(currentMonth, "MMMM yyyy")}
+                {viewType === "3months" && format(currentMonth, "MMMM yyyy") + " – " + format(addMonths(currentMonth, 2), "MMMM yyyy")}
+                {viewType === "6months" && format(currentMonth, "MMMM yyyy") + " – " + format(addMonths(currentMonth, 5), "MMMM yyyy")}
+                {viewType === "year" && format(currentMonth, "yyyy")}
+              </h3>
+            </div>
+            <div className="flex gap-1.5">
+              <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}><ChevronLeft className="w-3.5 h-3.5" /></Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => setCurrentMonth(new Date())}>Today</Button>
+              <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}><ChevronRight className="w-3.5 h-3.5" /></Button>
             </div>
           </div>
+
+          {/* Calendar */}
+          <div className="flex-1 overflow-hidden p-3">
 
           <style>{`
             .rdp-day { position: relative; height: ${viewType === "week" ? "120px" : viewType === "month" ? "100px" : "56px"}; }
