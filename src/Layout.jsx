@@ -33,7 +33,7 @@ export default function Layout({ children, currentPageName }) {
         { name: "Encore Docs", icon: FileText, iconName: "FileText", page: "EncoreDocs" },
         { name: "Project Orders", icon: ShoppingCart, iconName: "ShoppingCart", page: "OrdersBoard" },
         { name: "Pick Up List", icon: Clipboard, iconName: "Clipboard", page: "PickupList" },
-        { name: "Plan Bidding", icon: FileText, iconName: "FileText", page: "PlanBidding" },
+        { name: "Project Estimates", icon: FileText, iconName: "FileText", page: "PlanBidding" },
       ]
     },
     operations: {

@@ -205,7 +205,15 @@ export default function BidClientView({ open, onClose, bid, bidType }) {
             </div>
           )}
 
-          <div className="mt-8 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">
+          {/* Disclaimer */}
+          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-blue-700 mb-2">Important Disclaimer</h3>
+            <p className="text-xs text-blue-900 leading-relaxed">
+              This estimate is based on house plans and is intended as a preliminary budget reference only. For a more accurate and detailed bid, a design drawing fee will be collected prior to producing detailed drawings. <strong>This fee is non-refundable</strong>, except in the event that you accept the final bid — at which point the full drawing fee will be applied toward your project cost.
+            </p>
+          </div>
+
+          <div className="mt-4 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">
             This estimate is valid for 30 days from the date issued. Prices subject to change based on final measurements and specifications.
           </div>
         </div>
