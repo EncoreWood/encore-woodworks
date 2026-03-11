@@ -9,8 +9,18 @@ export default function NextActionBanner({ project, onSave }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
 
-  // Only show the banner if there's a next_action value
-  if (!project.next_action && !editing) return null;
+  // When empty and not editing, show a subtle "Set Next Action" button
+  if (!project.next_action && !editing) {
+    return (
+      <button
+        onClick={startEdit}
+        className="w-full mb-6 flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-slate-300 text-slate-400 hover:border-amber-400 hover:text-amber-600 transition-all text-sm font-medium"
+      >
+        <Zap className="w-4 h-4" />
+        Set Next Action
+      </button>
+    );
+  }
 
   const startEdit = () => {
     setDraft({
