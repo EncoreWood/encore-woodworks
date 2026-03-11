@@ -14,11 +14,11 @@ import BidRoomSection from "./BidRoomSection";
 import BidClientView from "./BidClientView";
 
 const BID_STYLES = [
-  { key: "basic_euro",          label: "Basic Euro" },
-  { key: "high_end_euro",       label: "High End Euro" },
-  { key: "basic_face_frame",    label: "Basic Face Frame" },
-  { key: "mid_face_frame",      label: "Mid Face Frame" },
-  { key: "high_end_face_frame", label: "High End Face Frame" },
+  { key: "basic_euro",          label: "Tier 1 Euro" },
+  { key: "high_end_euro",       label: "Tier 3 Euro" },
+  { key: "basic_face_frame",    label: "Tier 1 Face Frame" },
+  { key: "mid_face_frame",      label: "Tier 2 Face Frame" },
+  { key: "high_end_face_frame", label: "Tier 3 Face Frame" },
 ];
 
 // project prop: optional pre-linked project object (when opened from ProjectDetails)
