@@ -87,12 +87,12 @@ export default function NextActionBanner({ project, onSave }) {
 
   if (!hasNextAction) {
     return (
-      <div className="border border-dashed border-slate-300 rounded-xl p-4 bg-slate-50 mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-slate-400">
+      <div className="border-2 border-dashed border-amber-300 rounded-xl p-4 bg-amber-50 mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-amber-600">
           <Zap className="w-4 h-4" />
-          <span className="text-sm">No next action set</span>
+          <span className="text-sm font-medium">No next action set — what needs to happen next?</span>
         </div>
-        <Button size="sm" variant="outline" className="h-7 gap-1 text-xs" onClick={startEdit}>
+        <Button size="sm" className="h-7 gap-1 text-xs bg-amber-600 hover:bg-amber-700" onClick={startEdit}>
           <Plus className="w-3 h-3" /> Set Next Action
         </Button>
       </div>
