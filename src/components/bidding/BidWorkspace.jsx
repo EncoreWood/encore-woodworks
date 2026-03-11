@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Upload, Sparkles, Plus, Save, Check, RefreshCw, FileText, Settings2, AlertCircle, BookOpen, Send, Link2 } from "lucide-react";
+import { ArrowLeft, Upload, Sparkles, Plus, Save, Check, RefreshCw, FileText, Settings2, AlertCircle, BookOpen, Send, Link2, Kanban } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BidPricingSettings from "./BidPricingSettings";
