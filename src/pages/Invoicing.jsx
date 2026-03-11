@@ -30,9 +30,9 @@ export default function Invoicing() {
     deposit_paid: 0,
     actual_cost: 0
   });
-  const [addingPayment, setAddingPayment] = useState(null); // project
+  const [addingPayment, setAddingPayment] = useState(null);
   const [paymentForm, setPaymentForm] = useState({ amount: "", date: "", notes: "" });
-  const [viewingPayments, setViewingPayments] = useState(null); // project
+  const [viewingPayments, setViewingPayments] = useState(null);
 
   const queryClient = useQueryClient();
 
@@ -156,7 +156,6 @@ export default function Invoicing() {
     const newInvoiceStatus = destination.droppableId;
     let newProjectStatus = project.status;
     
-    // Auto-update project status based on invoice status
     if (newInvoiceStatus === "deposit_received" && (project.status === "inquiry" || project.status === "side_projects")) {
       newProjectStatus = "approved";
     } else if (newInvoiceStatus === "ninety_percent_received" && project.status === "approved") {
@@ -174,20 +173,22 @@ export default function Invoicing() {
     });
   };
 
-  // Calculate invoicing status for each project
   const getInvoicingStatus = (project) => {
-    // Use project's invoice_status field if set, otherwise default to first column
     return project.invoice_status || "deposit_invoice_sent";
   };
 
+  // Only show projects that are approved or further along
+  const invoicingStatuses = ["approved", "in_design", "in_production", "ready_for_install", "installing", "completed"];
+  const invoicingProjects = projects.filter(p => invoicingStatuses.includes(p.status));
+
   // Group projects by invoicing status
   const groupedProjects = {
-    deposit_invoice_sent: projects.filter(p => getInvoicingStatus(p) === "deposit_invoice_sent"),
-    deposit_received: projects.filter(p => getInvoicingStatus(p) === "deposit_received"),
-    ninety_percent_sent: projects.filter(p => getInvoicingStatus(p) === "ninety_percent_sent"),
-    ninety_percent_received: projects.filter(p => getInvoicingStatus(p) === "ninety_percent_received"),
-    final_sent: projects.filter(p => getInvoicingStatus(p) === "final_sent"),
-    paid_in_full: projects.filter(p => getInvoicingStatus(p) === "paid_in_full"),
+    deposit_invoice_sent: invoicingProjects.filter(p => getInvoicingStatus(p) === "deposit_invoice_sent"),
+    deposit_received: invoicingProjects.filter(p => getInvoicingStatus(p) === "deposit_received"),
+    ninety_percent_sent: invoicingProjects.filter(p => getInvoicingStatus(p) === "ninety_percent_sent"),
+    ninety_percent_received: invoicingProjects.filter(p => getInvoicingStatus(p) === "ninety_percent_received"),
+    final_sent: invoicingProjects.filter(p => getInvoicingStatus(p) === "final_sent"),
+    paid_in_full: invoicingProjects.filter(p => getInvoicingStatus(p) === "paid_in_full"),
   };
 
   // Filter projects by search term
@@ -497,7 +498,6 @@ export default function Invoicing() {
 
               return (
                 <div className="space-y-6 py-4">
-                  {/* Pricing Breakdown */}
                   <Card className="p-6">
                     <h3 className="font-semibold text-lg mb-4">Pricing Breakdown</h3>
                     <div className="space-y-3">
@@ -543,7 +543,6 @@ export default function Invoicing() {
                     </div>
                   </Card>
 
-                  {/* Proposal */}
                   {proposal ? (
                     <Card className="p-6">
                       <div className="flex items-center justify-between mb-4">
@@ -613,7 +612,6 @@ export default function Invoicing() {
                     </Card>
                   )}
 
-                  {/* Client Info */}
                   <Card className="p-6">
                     <h3 className="font-semibold text-lg mb-4">Client Information</h3>
                     <div className="space-y-2 text-sm">
