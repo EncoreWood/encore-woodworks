@@ -111,6 +111,29 @@ export default function Layout({ children, currentPageName }) {
 
   const [navGroups, setNavGroups] = useState(loadNavGroups);
 
+  // Force sync to new structure on mount
+  useEffect(() => {
+    const merged = { ...defaultNavGroups };
+    const saved = localStorage.getItem('navGroups');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Only keep pages from new structure, discard old ones
+        Object.keys(merged).forEach(groupKey => {
+          if (parsed[groupKey]) {
+            merged[groupKey].items = parsed[groupKey].items.filter(item =>
+              merged[groupKey].items.some(defaultItem => defaultItem.page === item.page)
+            );
+          }
+        });
+      } catch (error) {
+        console.error('Failed to parse saved nav groups');
+      }
+    }
+    setNavGroups(merged);
+    localStorage.setItem('navGroups', JSON.stringify(merged));
+  }, []);
+
   const [showSettings, setShowSettings] = useState(false);
   const [editingGroupKey, setEditingGroupKey] = useState(null);
   const [editingGroupName, setEditingGroupName] = useState("");
