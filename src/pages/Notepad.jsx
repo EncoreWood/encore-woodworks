@@ -328,8 +328,10 @@ export default function Notepad() {
   );
 
   const preview = (note) => {
-    const lines = note.content.split("\n").filter((l) => l.trim());
-    return lines[0] || (note.paths?.length ? "✏️ Drawing" : "No additional text");
+    if (note.paths?.length && !note.content) return "✏️ Drawing";
+    // Strip HTML tags for preview
+    const stripped = note.content?.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    return stripped || (note.paths?.length ? "✏️ Drawing" : "No additional text");
   };
 
   return (
