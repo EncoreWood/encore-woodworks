@@ -632,6 +632,9 @@ export default function ProjectDetails() {
               )}
             </Card>
 
+            {/* Payment Log */}
+            <PaymentLog project={project} onSave={(data) => updateMutation.mutate(data)} />
+
             {/* Budget */}
             <Card className="p-6 bg-white border-0 shadow-sm">
               <div className="flex items-center justify-between mb-4">
