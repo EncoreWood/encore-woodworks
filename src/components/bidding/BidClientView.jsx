@@ -85,7 +85,8 @@ export default function BidClientView({ open, onClose, bid, bidType }) {
         {/* Preview */}
         <div className="p-6 bg-white" ref={printRef}>
           {/* Header */}
-          <div className="text-center border-b-2 border-amber-800 pb-6 mb-7">
+          <div className="text-center border-b-2 border-amber-800 pb-6 mb-7 relative">
+            <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png" alt="Encore Woodworks" className="absolute left-0 top-0 h-16 w-auto" />
             <p className="text-xs font-bold tracking-widest text-amber-700 uppercase mb-1">Cabinet Estimate</p>
             <h1 className="text-2xl font-bold text-slate-900">{bid.project_name || "Untitled Project"}</h1>
             <div className="text-sm text-slate-500 mt-2 space-x-4">

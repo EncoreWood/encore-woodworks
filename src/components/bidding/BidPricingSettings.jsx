@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Save, Check } from "lucide-react";
 
 const DEFAULT_PRICING = [
-  { style_key: "basic_euro",          style_label: "Basic Euro",          bases_lf: 350, uppers_lf: 250, tall_lf: 400,  wood_species: "Maple",  door_style: "Slab",          handles: "Bar Pull",     drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Concealed" },
-  { style_key: "high_end_euro",       style_label: "High End Euro",       bases_lf: 550, uppers_lf: 400, tall_lf: 650,  wood_species: "Walnut", door_style: "Slab",          handles: "Integrated",   drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Concealed" },
-  { style_key: "basic_face_frame",    style_label: "Basic Face Frame",    bases_lf: 400, uppers_lf: 300, tall_lf: 450,  wood_species: "Maple",  door_style: "Shaker",        handles: "Bar Pull",     drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Concealed" },
-  { style_key: "mid_face_frame",      style_label: "Mid Face Frame",      bases_lf: 600, uppers_lf: 450, tall_lf: 700,  wood_species: "Cherry", door_style: "Raised Panel",  handles: "Cup Pull",     drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Concealed" },
-  { style_key: "high_end_face_frame", style_label: "High End Face Frame", bases_lf: 900, uppers_lf: 700, tall_lf: 1100, wood_species: "Walnut", door_style: "Inset Shaker",  handles: "Custom",       drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Inset Concealed" },
+  { style_key: "basic_euro",          style_label: "Tier 1 Euro",         bases_lf: 350, uppers_lf: 250, tall_lf: 400,  wood_species: "Maple",  door_style: "Slab",          handles: "Bar Pull",     drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Concealed" },
+  { style_key: "high_end_euro",       style_label: "Tier 3 Euro",         bases_lf: 550, uppers_lf: 400, tall_lf: 650,  wood_species: "Walnut", door_style: "Slab",          handles: "Integrated",   drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Concealed" },
+  { style_key: "basic_face_frame",    style_label: "Tier 1 Face Frame",   bases_lf: 400, uppers_lf: 300, tall_lf: 450,  wood_species: "Maple",  door_style: "Shaker",        handles: "Bar Pull",     drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Concealed" },
+  { style_key: "mid_face_frame",      style_label: "Tier 2 Face Frame",   bases_lf: 600, uppers_lf: 450, tall_lf: 700,  wood_species: "Cherry", door_style: "Raised Panel",  handles: "Cup Pull",     drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Concealed" },
+  { style_key: "high_end_face_frame", style_label: "Tier 3 Face Frame",   bases_lf: 900, uppers_lf: 700, tall_lf: 1100, wood_species: "Walnut", door_style: "Inset Shaker",  handles: "Custom",       drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Inset Concealed" },
 ];
 
 export default function BidPricingSettings({ open, onClose, onPricingUpdated }) {
