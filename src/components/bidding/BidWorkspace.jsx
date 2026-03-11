@@ -365,18 +365,21 @@ A typical home has 40–120+ LF of cabinetry. Be thorough.`,
               const isSelected = bidType === s.key;
               return (
                 <button
-                  key={s.key}
-                  onClick={() => handleBidTypeChange(s.key)}
-                  className={`rounded-xl border-2 p-3 text-left transition-all ${isSelected ? "border-amber-500 bg-amber-50" : "border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/50"}`}
+                 key={s.key}
+                 onClick={() => handleBidTypeChange(s.key)}
+                 className={`rounded-xl border-2 p-3 text-left transition-all ${isSelected ? "border-amber-500 bg-amber-50" : "border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/50"}`}
                 >
-                  <div className={`text-sm font-semibold mb-1 ${isSelected ? "text-amber-800" : "text-slate-800"}`}>{s.label}</div>
-                  {cfg ? (
-                    <div className="text-xs text-slate-500 space-y-0.5">
-                      <div>Base: <span className="font-medium text-slate-700">${cfg.bases_lf}/LF</span></div>
-                      <div>Upper: <span className="font-medium text-slate-700">${cfg.uppers_lf}/LF</span></div>
-                      <div>Tall: <span className="font-medium text-slate-700">${cfg.tall_lf}/LF</span></div>
-                    </div>
-                  ) : <div className="text-xs text-slate-400">Loading...</div>}
+                 <div className={`text-sm font-semibold mb-1 ${isSelected ? "text-amber-800" : "text-slate-800"}`}>{s.label}</div>
+                 {cfg?.description && (
+                   <div className="text-xs text-slate-500 italic mb-1 leading-snug">{cfg.description}</div>
+                 )}
+                 {cfg ? (
+                   <div className="text-xs text-slate-500 space-y-0.5">
+                     <div>Base: <span className="font-medium text-slate-700">${cfg.bases_lf}/LF</span></div>
+                     <div>Upper: <span className="font-medium text-slate-700">${cfg.uppers_lf}/LF</span></div>
+                     <div>Tall: <span className="font-medium text-slate-700">${cfg.tall_lf}/LF</span></div>
+                   </div>
+                 ) : <div className="text-xs text-slate-400">Loading...</div>}
                 </button>
               );
             })}
