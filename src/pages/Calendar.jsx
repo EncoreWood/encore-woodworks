@@ -359,126 +359,150 @@ export default function CalendarPage() {
         {/* Left Column (35%) */}
         <div className="w-[35%] border-r border-slate-300 bg-white overflow-y-auto flex flex-col">
 
-        {/* ── TODAY'S FOCUS PANEL ── */}
-        <Card className="mb-4 border-0 shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-amber-600 to-amber-500 px-6 py-3 flex items-center gap-3">
-            <CalendarIcon className="w-5 h-5 text-white" />
-            <h2 className="text-white font-bold text-lg">Today's Focus — {format(TODAY, "EEEE, MMMM d")}</h2>
-            {overdueProjects.length > 0 && (
-              <div className="ml-auto flex items-center gap-1.5 bg-red-700 text-white text-sm font-semibold px-3 py-1 rounded-full">
-                <AlertTriangle className="w-4 h-4" />
-                {overdueProjects.length} Overdue
-              </div>
-            )}
+          {/* ── TODAY'S FOCUS PANEL ── */}
+          <div className="flex-shrink-0 p-3 border-b border-slate-200 bg-gradient-to-r from-amber-600 to-amber-500">
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="w-4 h-4 text-white flex-shrink-0" />
+              <h2 className="text-white font-bold text-sm">
+                {selectedDate && !isSameDay(selectedDate, TODAY) 
+                  ? format(selectedDate, "EEE, MMM d") 
+                  : `Today — ${format(TODAY, "MMM d")}`}
+              </h2>
+              {selectedDate && isSameDay(selectedDate, TODAY) && overdueProjects.length > 0 && (
+                <div className="ml-auto flex items-center gap-0.5 bg-red-700 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                  <AlertTriangle className="w-3 h-3" />
+                  {overdueProjects.length}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="p-5">
-            {todayActiveProjects.length === 0 && todayNextActions.length === 0 && overdueProjects.length === 0 ? (
-              <p className="text-slate-400 text-sm italic">Nothing active today — clear schedule!</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {todayActiveProjects.map((project) => {
-                  const overdue = isProjectOverdue(project);
-                  const isInstall = todayInstalls.some(p => p.id === project.id);
-                  const sc = statusConfig[project.status];
-                  return (
-                    <Link key={project.id} to={createPageUrl("ProjectDetails") + "?id=" + project.id}
-                      className={`block p-4 rounded-xl border-2 transition-all hover:shadow-md ${overdue ? "border-red-300 bg-red-50 hover:border-red-400" : "border-slate-200 bg-white hover:border-amber-300"}`}
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          {isInstall && <Hammer className="w-4 h-4 text-orange-500 flex-shrink-0" />}
-                          {overdue && !isInstall && <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />}
-                          <span className={`font-semibold text-sm truncate ${overdue ? "text-red-700" : "text-slate-900"}`}>{project.project_name}</span>
-                        </div>
-                        <Badge className={`text-xs border-0 flex-shrink-0 text-white ${overdue ? "bg-red-600" : (sc?.color || "bg-slate-500")}`}>
-                          {overdue ? "OVERDUE" : (sc?.label || project.status)}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-slate-500 mb-2">{project.client_name || project.contractor?.name || "—"}</p>
-                      {project.next_action && (
-                        <div className="flex items-start gap-1.5 pt-2 border-t border-slate-100">
-                          <ArrowRight className={`w-3 h-3 mt-0.5 flex-shrink-0 ${overdue ? "text-red-500" : "text-amber-600"}`} />
-                          <div>
-                            <p className="text-xs text-slate-700">{project.next_action}</p>
-                            {project.next_action_owner && <p className="text-xs text-slate-400 mt-0.5">→ {project.next_action_owner}</p>}
-                          </div>
-                        </div>
-                      )}
-                      {overdue && project.estimated_completion && (
-                        <p className="text-xs text-red-600 font-semibold mt-1.5">Due: {format(parseLocalDate(project.estimated_completion), "MMM d, yyyy")}</p>
-                      )}
-                    </Link>
-                  );
-                })}
-                {todayNextActions.map((project) => {
-                  const sc = statusConfig[project.status];
-                  return (
-                    <Link key={"na-" + project.id} to={createPageUrl("ProjectDetails") + "?id=" + project.id}
-                      className="block p-4 rounded-xl border-2 border-blue-200 bg-blue-50 hover:border-blue-400 hover:shadow-md transition-all"
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-1.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                          <span className="font-semibold text-sm truncate text-slate-900">{project.project_name}</span>
-                        </div>
-                        <Badge className={`text-xs border-0 flex-shrink-0 text-white ${sc?.color || "bg-slate-500"}`}>{sc?.label || project.status}</Badge>
-                      </div>
-                      <p className="text-xs text-slate-500 mb-2">{project.client_name || project.contractor?.name || "—"}</p>
-                      {project.next_action && (
-                        <div className="flex items-start gap-1.5 pt-2 border-t border-blue-100">
-                          <ArrowRight className="w-3 h-3 mt-0.5 flex-shrink-0 text-blue-500" />
-                          <div>
-                            <p className="text-xs text-slate-700">{project.next_action}</p>
-                            {project.next_action_owner && <p className="text-xs text-slate-400 mt-0.5">→ {project.next_action_owner}</p>}
-                          </div>
-                        </div>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </Card>
 
-        {/* ── NEXT 7 DAYS STRIP ── */}
-        <Card className="mb-6 border-0 shadow-lg p-4">
-          <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">Next 7 Days</h3>
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {next7Days.map((day) => {
-              const spanning = getProjectsSpanningDate(day);
-              const installs = getInstallProjectsSpanningDate(day);
-              const deadlines = projects.filter(p => p.estimated_completion && isSameDay(parseLocalDate(p.estimated_completion), day));
-              const nextActions = projects.filter(p => p.next_action_due && isSameDay(parseLocalDate(p.next_action_due), day));
-              const isWeekend = [0, 6].includes(day.getDay());
-              const isSelected = selectedDate && isSameDay(selectedDate, day);
+          {/* Day Details */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            {(() => {
+              const date = selectedDate || TODAY;
+              const activeProjects = getActiveProjectsForDay(date);
+              const installsOnDay = getInstallProjectsSpanningDate(date);
+              const presenter = getPresenterForDate(date);
+              const meetings = getDesignMeetingsForDate(date);
+              const cleanings = getBathroomCleaningsForDate(date);
+              const vacs = getVacationsForDate(date);
+              const dayTasks = getTasksForDate(date);
+              const isEmpty = !presenter && activeProjects.length === 0 && meetings.length === 0 && cleanings.length === 0 && vacs.length === 0 && dayTasks.length === 0;
 
               return (
-                <button key={format(day, "yyyy-MM-dd")} onClick={() => { setSelectedDate(day); setCurrentMonth(day); }}
-                  className={`flex-shrink-0 w-32 p-3 rounded-xl border-2 text-left transition-all hover:shadow-md ${isSelected ? "border-amber-400 bg-amber-50" : isWeekend ? "border-slate-100 bg-slate-50 opacity-70" : "border-slate-200 bg-white hover:border-amber-200"}`}
-                >
-                  <div className="text-[10px] font-bold text-slate-400 uppercase">{format(day, "EEE")}</div>
-                  <div className="text-2xl font-bold text-slate-900 leading-none my-0.5">{format(day, "d")}</div>
-                  <div className="text-[10px] text-slate-400 mb-2">{format(day, "MMM")}</div>
-                  {spanning.length === 0 && installs.length === 0 && deadlines.length === 0 && nextActions.length === 0 ? (
-                    <div className="text-[10px] text-slate-300">Free</div>
-                  ) : (
-                    <div className="space-y-0.5">
-                      {spanning.length > 0 && <div className="text-[10px] font-medium text-slate-600">{spanning.length} project{spanning.length > 1 ? "s" : ""}</div>}
-                      {installs.length > 0 && (
-                        <div className="flex items-center gap-1 text-[10px] text-orange-600 font-medium">
-                          <Hammer className="w-2.5 h-2.5" />{installs.length} install{installs.length > 1 ? "s" : ""}
-                        </div>
-                      )}
-                      {deadlines.length > 0 && <div className="text-[10px] text-red-600 font-medium">⚑ {deadlines.length} deadline{deadlines.length > 1 ? "s" : ""}</div>}
-                      {nextActions.length > 0 && <div className="text-[10px] text-blue-600 font-medium">→ {nextActions.length} action{nextActions.length > 1 ? "s" : ""}</div>}
+                <>
+                  {presenter && (activeFilter === "all" || activeFilter === "presenter") && (
+                    <div className="p-2.5 bg-blue-50 rounded-lg flex items-start gap-2 text-sm">
+                      <User className="w-3.5 h-3.5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-blue-800">Presenter</p>
+                        <p className="text-xs text-blue-700 truncate">{presenter.presenter_name}</p>
+                      </div>
                     </div>
                   )}
-                </button>
+
+                  {(activeFilter === "all" || activeFilter === "projects") && activeProjects.map((project) => {
+                    const overdue = isProjectOverdue(project);
+                    const isInstall = installsOnDay.some(p => p.id === project.id);
+                    const sc = statusConfig[project.status];
+                    return (
+                      <Link key={project.id} to={createPageUrl("ProjectDetails") + "?id=" + project.id}
+                        className={`block p-2.5 rounded-lg border-l-3 text-sm transition-all ${overdue ? "border-red-500 bg-red-50" : "border-amber-400 bg-amber-50"}`}
+                      >
+                        <div className="flex items-center justify-between gap-1.5 mb-0.5">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {isInstall && <Hammer className="w-3 h-3 text-orange-500 flex-shrink-0" />}
+                            {overdue && !isInstall && <AlertTriangle className="w-3 h-3 text-red-500 flex-shrink-0" />}
+                            <span className={`font-semibold text-xs truncate ${overdue ? "text-red-800" : "text-slate-900"}`}>{project.project_name}</span>
+                          </div>
+                          <Badge className={`text-[10px] border-0 flex-shrink-0 text-white px-1.5 py-0 ${overdue ? "bg-red-600" : (sc?.color || "bg-slate-500")}`}>
+                            {overdue ? "OVER" : (sc?.label?.split(" ")[0] || project.status)}
+                          </Badge>
+                        </div>
+                        <p className="text-[10px] text-slate-500 truncate">{project.client_name || "—"}</p>
+                        {project.next_action && (
+                          <p className="text-[10px] text-slate-600 mt-1 leading-tight">{project.next_action.substring(0, 50)}{project.next_action.length > 50 ? "..." : ""}</p>
+                        )}
+                      </Link>
+                    );
+                  })}
+
+                  {(activeFilter === "all" || activeFilter === "meetings") && meetings.map((m) => (
+                    <div key={m.id} className="p-2.5 bg-violet-50 rounded-lg text-sm">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-violet-900 mb-0.5"><Users className="w-3 h-3" />Design Meeting</div>
+                      <p className="text-xs text-violet-700 truncate">{m.client_name}</p>
+                      {m.project_name && <p className="text-[10px] text-violet-600 truncate">{m.project_name}</p>}
+                    </div>
+                  ))}
+
+                  {(activeFilter === "all" || activeFilter === "cleaning") && cleanings.map((c) => (
+                    <div key={c.id} className="p-2.5 bg-cyan-50 rounded-lg text-sm">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-cyan-900 mb-0.5"><Sparkles className="w-3 h-3" />Cleaning</div>
+                      <p className="text-[10px] text-cyan-700">{c.assigned_to.join(", ")}</p>
+                    </div>
+                  ))}
+
+                  {(activeFilter === "all" || activeFilter === "vacations") && vacs.map((v) => (
+                    <div key={v.id} className="p-2.5 bg-pink-50 rounded-lg text-sm">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-pink-900 mb-0.5"><CalendarIcon className="w-3 h-3" />Vacation</div>
+                      <p className="text-xs text-pink-700 truncate">{v.employee_name}</p>
+                    </div>
+                  ))}
+
+                  {(activeFilter === "all" || activeFilter === "tasks") && dayTasks.length > 0 && (
+                    <div className="border-t border-slate-200 pt-2.5">
+                      <h4 className="text-xs font-semibold text-slate-700 mb-2 flex items-center gap-1.5"><CheckCircle2 className="w-3 h-3" />Tasks</h4>
+                      <div className="space-y-1.5">
+                        {dayTasks.map((task) => (
+                          <div key={task.id} className={`flex items-center gap-1.5 p-1.5 rounded text-xs ${task.completed ? "bg-slate-50" : "bg-white border border-slate-200"}`}>
+                            <Checkbox checked={task.completed} onCheckedChange={() => updateTaskMutation.mutate({ id: task.id, data: { completed: !task.completed } })} className="data-[state=checked]:bg-purple-600" />
+                            <span className={task.completed ? "text-slate-400 line-through" : "text-slate-700"}>{task.task}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {isEmpty && <p className="text-xs text-slate-400 text-center py-4 italic">No items scheduled</p>}
+                </>
               );
-            })}
+            })()}
           </div>
-        </Card>
+
+          {/* ── NEXT 7 DAYS STRIP ── */}
+          <div className="flex-shrink-0 border-t border-slate-200 bg-slate-50 p-2.5 max-h-[200px] overflow-y-auto">
+            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Next 7 Days</h3>
+            <div className="space-y-1.5">
+              {next7Days.map((day) => {
+                const spanning = getProjectsSpanningDate(day);
+                const installs = getInstallProjectsSpanningDate(day);
+                const deadlines = projects.filter(p => p.estimated_completion && isSameDay(parseLocalDate(p.estimated_completion), day));
+                const isSelected = selectedDate && isSameDay(selectedDate, day);
+
+                return (
+                  <button key={format(day, "yyyy-MM-dd")} onClick={() => { setSelectedDate(day); setCurrentMonth(day); }}
+                    className={`w-full text-left px-2 py-1.5 rounded border text-xs transition-all ${isSelected ? "border-amber-400 bg-amber-50 font-semibold" : "border-slate-200 bg-white hover:border-slate-300"}`}
+                  >
+                    <div className="font-semibold text-slate-900">{format(day, "EEE, MMM d")}</div>
+                    {spanning.length === 0 && installs.length === 0 && deadlines.length === 0 ? (
+                      <div className="text-[10px] text-slate-300">Free</div>
+                    ) : (
+                      <div className="text-[9px] text-slate-600 mt-0.5 space-y-0.5">
+                        {spanning.length > 0 && <div>{spanning.length} project{spanning.length > 1 ? "s" : ""}</div>}
+                        {installs.length > 0 && <div className="text-orange-600">⚒ {installs.length} install{installs.length > 1 ? "s" : ""}</div>}
+                        {deadlines.length > 0 && <div className="text-red-600">⚑ {deadlines.length} deadline{deadlines.length > 1 ? "s" : ""}</div>}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column (65%) */}
+        <div className="flex-1 bg-white overflow-hidden flex flex-col">
 
         {/* ── CALENDAR ── */}
         <Card className="p-6 bg-white border-0 shadow-lg mb-6">
