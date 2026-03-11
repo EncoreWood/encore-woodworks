@@ -201,7 +201,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
     const result = await base44.integrations.Core.InvokeLLM({
       model: "gemini_3_pro",
       prompt: `You are a professional cabinet estimator analyzing architectural floor plans for a ${styleLabel} cabinet project. ${pricingNote}
-${extractedText}${roomNotesSection}
+${extractedText}${mainPlanNotesSection}${roomNotesSection}
 
 CRITICAL: First, locate and read the SCALE RATIO on the plans (e.g., "1/4" = 1", "1/8" = 1", etc.). Use this scale to accurately convert measured distances to actual linear feet. If no scale is visible, assume 1/4" = 1" standard architectural scale.
 
