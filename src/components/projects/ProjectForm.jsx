@@ -392,6 +392,42 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
               </div>
               </div>
 
+          {/* Next Action */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Next Action</h3>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="next_action">What needs to happen next?</Label>
+                <Input
+                  id="next_action"
+                  value={formData.next_action || ""}
+                  onChange={(e) => handleChange("next_action", e.target.value)}
+                  placeholder="e.g. Send revised drawings to client"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="next_action_owner">Owner</Label>
+                  <Input
+                    id="next_action_owner"
+                    value={formData.next_action_owner || ""}
+                    onChange={(e) => handleChange("next_action_owner", e.target.value)}
+                    placeholder="Who's responsible?"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="next_action_due">Due Date</Label>
+                  <Input
+                    id="next_action_due"
+                    type="date"
+                    value={formData.next_action_due || ""}
+                    onChange={(e) => handleChange("next_action_due", e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Project Files */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Project Files</h3>
