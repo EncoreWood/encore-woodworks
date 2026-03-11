@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function Layout({ children, currentPageName }) {
   const [expandedGroups, setExpandedGroups] = useState({
+    dashboard: true,
     projects: true,
     operations: true,
     team: true
@@ -23,15 +24,19 @@ export default function Layout({ children, currentPageName }) {
   const [employees, setEmployees] = useState([]);
 
   const defaultNavGroups = {
+    dashboard: {
+      name: "Dashboard",
+      items: [
+        { name: "Dashboard", icon: LayoutDashboard, iconName: "LayoutDashboard", page: "Dashboard" },
+      ]
+    },
     projects: {
       name: "Projects",
       items: [
-        { name: "Dashboard", icon: LayoutDashboard, iconName: "LayoutDashboard", page: "Dashboard" },
         { name: "Projects board", icon: Home, iconName: "Home", page: "Kanban" },
         { name: "Invoicing", icon: FileTextIcon, iconName: "FileText", page: "Invoicing" },
         { name: "Contacts Board", icon: Users, iconName: "Users", page: "ContactsBoard" },
         { name: "Presentations", icon: FileText, iconName: "FileText", page: "Presentations" },
-        { name: "Encore Docs", icon: FileText, iconName: "FileText", page: "EncoreDocs" },
         { name: "Project Orders", icon: ShoppingCart, iconName: "ShoppingCart", page: "OrdersBoard" },
         { name: "Pick Up List", icon: Clipboard, iconName: "Clipboard", page: "PickupList" },
         { name: "Project Estimates", icon: FileText, iconName: "FileText", page: "PlanBidding" },
@@ -46,6 +51,7 @@ export default function Layout({ children, currentPageName }) {
           { name: "Inventory", icon: Coffee, iconName: "Coffee", page: "Inventory" },
           { name: "Purchase Orders", icon: Package, iconName: "Package", page: "PurchaseOrders" },
           { name: "Suppliers", icon: Truck, iconName: "Truck", page: "Suppliers" },
+          { name: "Encore Docs", icon: FileText, iconName: "FileText", page: "EncoreDocs" },
           { name: "SOPs", icon: FileText, iconName: "FileText", page: "SOPBoard" },
           { name: "Notepad", icon: StickyNote, iconName: "StickyNote", page: "Notepad" },
         ]
