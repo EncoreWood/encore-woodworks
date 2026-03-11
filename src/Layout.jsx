@@ -80,6 +80,17 @@ export default function Layout({ children, currentPageName }) {
             icon: iconMap[item.iconName] || KanbanIcon
           }));
         });
+        // Merge any missing default items back in
+        Object.entries(defaultNavGroups).forEach(([groupKey, group]) => {
+          if (parsed[groupKey]) {
+            const existingPages = parsed[groupKey].items.map(i => i.page);
+            group.items.forEach(defaultItem => {
+              if (!existingPages.includes(defaultItem.page)) {
+                parsed[groupKey].items.push(defaultItem);
+              }
+            });
+          }
+        });
         return parsed;
       }
     } catch (error) {
