@@ -28,6 +28,7 @@ import FileViewer from "../components/projects/FileViewer";
 import ProposalForm from "../components/proposals/ProposalForm";
 import ProposalViewer from "../components/proposals/ProposalViewer";
 import RoomManager from "../components/projects/RoomManager";
+import PaymentLog from "../components/projects/PaymentLog";
 import PageSlideWrapper from "@/components/PageSlideWrapper";
 
 const statusConfig = {
