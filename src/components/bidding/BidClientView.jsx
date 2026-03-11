@@ -48,6 +48,9 @@ export default function BidClientView({ open, onClose, bid, bidType }) {
           .total-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 14px; color: #475569; }
           .grand-total { display: flex; justify-content: space-between; padding: 14px 0 0; font-size: 22px; font-weight: 700; color: #1e1e1e; border-top: 1px solid #e2e8f0; margin-top: 8px; }
           .grand-total .amount { color: #92400e; }
+          .specs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 24px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 24px; }
+          .spec-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; }
+          .spec-value { font-size: 13px; font-weight: 600; color: #1e293b; margin-top: 2px; }
           .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 18px; font-size: 11px; color: #94a3b8; text-align: center; }
           .payment-terms { margin-top: 24px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 16px; }
           .payment-terms h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 8px; }
