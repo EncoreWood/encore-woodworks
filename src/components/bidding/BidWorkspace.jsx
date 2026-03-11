@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Upload, Sparkles, Plus, Trash2, Save, Check, RefreshCw, FileText, Settings2 } from "lucide-react";
+import { ArrowLeft, Upload, Sparkles, Plus, Trash2, Save, Check, RefreshCw, FileText, Settings2, AlertCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BidPricingSettings from "./BidPricingSettings";
 
@@ -42,6 +42,7 @@ export default function BidWorkspace({ bidId, onClose, onSaved }) {
   const [saved, setSaved] = useState(false);
   const [showPricingSettings, setShowPricingSettings] = useState(false);
   const [pricingConfigs, setPricingConfigs] = useState([]);
+  const [analyzeError, setAnalyzeError] = useState(null);
 
   const { data: bidData } = useQuery({
     queryKey: ["bid", bidId],
@@ -390,7 +391,13 @@ If the image is unclear or this does not appear to be a floor plan, still provid
                 }
               </Button>
               {!bidType && <p className="text-xs text-amber-600 text-center">Select a cabinet style above first</p>}
-              {isAnalyzing && <p className="text-xs text-center text-slate-500">Reading plans and identifying cabinet locations... 30–60 seconds.</p>}
+              {isAnalyzing && <p className="text-xs text-center text-slate-500">Reading plans and identifying cabinet locations... this may take up to 60 seconds.</p>}
+              {analyzeError && (
+                <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 p-3 rounded-lg">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <span>{analyzeError}</span>
+                </div>
+              )}
             </div>
           )}
 
