@@ -200,14 +200,16 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
       prompt: `You are a professional cabinet estimator analyzing architectural floor plans for a ${styleLabel} cabinet project. ${pricingNote}
 ${extractedText}${roomNotesSection}
 
+CRITICAL: First, locate and read the SCALE RATIO on the plans (e.g., "1/4" = 1", "1/8" = 1", etc.). Use this scale to accurately convert measured distances to actual linear feet. If no scale is visible, assume 1/4" = 1" standard architectural scale.
+
 Identify EVERY cabinet location (Kitchen, Bathrooms, Pantry, Laundry, Mudroom, Closets, Built-ins, Bars, Offices, etc.).
 
-Group by room. For each room provide a list of items. Split Base Cabinets, Wall/Upper Cabinets, and Tall Cabinets into separate items per room. Measure linear feet from wall dimensions.
+Group by room. For each room provide a list of items. Split Base Cabinets, Wall/Upper Cabinets, and Tall Cabinets into separate items per room. Measure linear feet from wall dimensions using the scale ratio.
 
 For measure_type: use "lf" for cabinet runs (base, upper, tall), use "qty" for individual pieces (islands, towers, appliance panels).
 For cabinet_category: "base" = floor cabinets/islands, "upper" = wall-mounted upper cabs, "tall" = full-height pantries/towers, "misc" = accessories.
 
-A typical home has 40–120+ LF of cabinetry. Be thorough.`,
+A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scale conversions.`,
       file_urls: [planFileUrl],
       response_json_schema: {
         type: "object",
