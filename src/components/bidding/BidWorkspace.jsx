@@ -374,10 +374,21 @@ A typical home has 40–120+ LF of cabinetry. Be thorough.`,
           placeholder="Project Name"
           className="text-lg font-bold border-none shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent flex-1"
         />
-        {linkedProjectId && (
+        {linkedProjectId ? (
           <a href={createPageUrl("ProjectDetails") + "?id=" + linkedProjectId} className="hidden sm:flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 hover:bg-amber-100 transition-colors flex-shrink-0">
             <Link2 className="w-3.5 h-3.5" /> View Project
           </a>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCreateProjectCard}
+            disabled={isCreatingProject}
+            className="hidden sm:flex h-9 gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+          >
+            <Kanban className="w-4 h-4" />
+            {isCreatingProject ? "Creating..." : "Create Project Card"}
+          </Button>
         )}
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="w-32 h-9 text-sm">
