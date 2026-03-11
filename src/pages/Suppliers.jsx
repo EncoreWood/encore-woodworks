@@ -452,11 +452,11 @@ export default function Suppliers() {
         </Dialog>
 
         <Dialog open={!!embeddedUrl} onOpenChange={() => setEmbeddedUrl(null)}>
-          <DialogContent className="max-w-[95vw] max-h-[95vh] h-[95vh] p-0">
-            <DialogHeader className="p-4 pb-2">
+          <DialogContent className="max-w-[95vw] max-h-[95vh] h-[95vh] p-0 flex flex-col">
+            <DialogHeader className="px-4 py-2 flex-shrink-0 border-b">
               <DialogTitle>Supplier Website</DialogTitle>
             </DialogHeader>
-            <div className="h-full pb-4 px-4">
+            <div className="flex-1 min-h-0 p-2">
               <iframe
                 src={embeddedUrl}
                 className="w-full h-full border-0 rounded-lg"
