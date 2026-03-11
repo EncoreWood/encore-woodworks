@@ -71,6 +71,7 @@ import Suppliers from './pages/Suppliers';
 import Team from './pages/Team';
 import TimeSheet from './pages/TimeSheet';
 import Tools from './pages/Tools';
+import PlanBidding from './pages/PlanBidding';
 import __Layout from './Layout.jsx';
 
 
@@ -99,6 +100,7 @@ export const PAGES = {
     "Team": Team,
     "TimeSheet": TimeSheet,
     "Tools": Tools,
+    "PlanBidding": PlanBidding,
 }
 
 export const pagesConfig = {
