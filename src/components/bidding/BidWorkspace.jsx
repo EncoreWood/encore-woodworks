@@ -272,6 +272,46 @@ A typical home has 40–120+ LF of cabinetry. Be thorough.`,
     setIsAnalyzing(false);
   };
 
+  const handleCreateProjectCard = async () => {
+    setIsCreatingProject(true);
+    const name = projectName || "Untitled Bid";
+    const newProject = await base44.entities.Project.create({
+      project_name: name,
+      client_name: clientName,
+      address,
+      project_type: "kitchen",
+      status: "inquiry",
+      estimated_budget: grandTotal > 0 ? Math.round(grandTotal) : undefined,
+    });
+    // Link bid to the new project
+    const bidData = {
+      project_name: name,
+      client_name: clientName,
+      address,
+      project_id: newProject.id,
+      plan_file_url: planFileUrl,
+      plan_file_name: planFileName,
+      bid_type: bidType,
+      ...specs,
+      rooms,
+      total: Math.round(grandTotal),
+      total_lf: Math.round(totalLf * 10) / 10,
+      ai_notes: aiNotes,
+      notes,
+      status
+    };
+    if (bidId) {
+      await base44.entities.Bid.update(bidId, bidData);
+    } else {
+      await base44.entities.Bid.create(bidData);
+    }
+    setLinkedProjectId(newProject.id);
+    setIsCreatingProject(false);
+    onSaved?.();
+    // Navigate to the project board
+    window.location.href = createPageUrl("Kanban");
+  };
+
   const addRoom = () => {
     setRooms(prev => [...prev, { id: `room_${Date.now()}`, room_name: "", items: [] }]);
   };
