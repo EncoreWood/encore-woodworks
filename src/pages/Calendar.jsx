@@ -369,8 +369,8 @@ export default function CalendarPage() {
 
       {/* Two-Column Layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Column (35%) */}
-        <div className="w-[35%] border-r border-slate-300 bg-white flex flex-col">
+        {/* Left Column (25%) */}
+        <div className="w-[25%] border-r border-slate-300 bg-white flex flex-col">
 
           {/* ── TODAY'S FOCUS PANEL ── */}
           <div className="flex-shrink-0 p-3 border-b border-slate-200 bg-gradient-to-r from-amber-600 to-amber-500">
@@ -542,13 +542,13 @@ export default function CalendarPage() {
           <div className="flex-1 overflow-hidden p-3">
 
             <style>{`
-              .rdp-day { position: relative; height: ${viewType === "month" ? "calc((100vh - 280px) / 6)" : "60px"}; }
-              .rdp-day_button { width: 100%; height: 100%; }
-              .rdp-month { width: 100%; }
-              .rdp-months { display: flex; }
-              .rdp { width: 100%; height: 100%; }
-              .rdp-months, .rdp-month, .rdp-table { height: 100%; }
-            `}</style>
+               .rdp-day { position: relative; height: ${viewType === "month" ? "calc((100vh - 200px) / 6)" : "80px"}; }
+               .rdp-day_button { width: 100%; height: 100%; }
+               .rdp-month { width: 100%; }
+               .rdp-months { display: flex; }
+               .rdp { width: 100%; height: 100%; }
+               .rdp-months, .rdp-month, .rdp-table { height: 100%; }
+             `}</style>
 
             <CalendarComponent
               mode="single"
