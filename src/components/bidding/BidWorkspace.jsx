@@ -44,6 +44,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const [showClientView, setShowClientView] = useState(false);
   const [pricingConfigs, setPricingConfigs] = useState([]);
   const [catalogItems, setCatalogItems] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [analyzeError, setAnalyzeError] = useState(null);
 
   const { data: bidData } = useQuery({
@@ -55,6 +56,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   useEffect(() => {
     loadPricing();
     loadCatalog();
+    loadCategories();
   }, []);
 
   // Pre-fill from linked project when creating a new bid from a project card
@@ -93,6 +95,11 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const loadCatalog = async () => {
     const items = await base44.entities.BidItemCatalog.list("sort_order");
     setCatalogItems(items);
+  };
+
+  const loadCategories = async () => {
+    const cats = await base44.entities.BidCategory.list("sort_order");
+    if (cats.length > 0) setCategories(cats);
   };
 
   const getPriceForCategory = (category) => {
@@ -478,6 +485,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough.`,
               key={room.id}
               room={room}
               catalogItems={catalogItems}
+              categories={categories}
               pricingConfigs={pricingConfigs}
               bidType={bidType}
               onChange={updated => setRooms(prev => prev.map(r => r.id === room.id ? updated : r))}
@@ -513,7 +521,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough.`,
       </div>
 
       <BidPricingSettings open={showPricingSettings} onClose={() => setShowPricingSettings(false)} onPricingUpdated={loadPricing} />
-      <BidCatalogEditor open={showCatalogEditor} onClose={() => setShowCatalogEditor(false)} onSaved={loadCatalog} />
+      <BidCatalogEditor open={showCatalogEditor} onClose={() => setShowCatalogEditor(false)} onSaved={() => { loadCatalog(); loadCategories(); }} />
       <BidClientView open={showClientView} onClose={() => setShowClientView(false)} bid={{ project_name: projectName, client_name: clientName, address, rooms, notes, ...specs }} bidType={BID_STYLES.find(s => s.key === bidType)?.label} />
     </div>
   );
