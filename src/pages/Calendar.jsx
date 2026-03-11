@@ -287,6 +287,16 @@ export default function CalendarPage() {
               </div>
             );
           })}
+          {(activeFilter === "all" || activeFilter === "projects") && projOverflow > 0 && (
+            <div className={`${pillH} rounded-sm flex items-center px-1 bg-slate-600 text-white`} title={`${projOverflow} more project${projOverflow > 1 ? "s" : ""}`}>
+              <span className={`${pillFont} font-medium`}>+{projOverflow}</span>
+            </div>
+          )}
+          {(activeFilter === "all" || activeFilter === "projects") && installOverflow > 0 && (
+            <div className={`${pillH} rounded-sm flex items-center px-1 bg-slate-600 text-white`} title={`${installOverflow} more install${installOverflow > 1 ? "s" : ""}`}>
+              <span className={`${pillFont} font-medium`}>+{installOverflow}I</span>
+            </div>
+          )}
         </div>
         <div className="flex gap-0.5 flex-wrap mt-0.5 relative z-10">
           {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
