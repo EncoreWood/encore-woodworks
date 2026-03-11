@@ -23,6 +23,19 @@ export default function NextActionBanner({ project, onSave }) {
     setEditing(false);
   };
 
+  // When empty and not editing, show a subtle "Set Next Action" button
+  if (!project.next_action && !editing) {
+    return (
+      <button
+        onClick={startEdit}
+        className="w-full mb-6 flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-slate-300 text-slate-400 hover:border-amber-400 hover:text-amber-600 transition-all text-sm font-medium"
+      >
+        <Zap className="w-4 h-4" />
+        Set Next Action
+      </button>
+    );
+  }
+
   const dueDate = project.next_action_due ? parseISO(project.next_action_due) : null;
   const isOverdue = dueDate && isPast(dueDate) && !isToday(dueDate);
   const isDueToday = dueDate && isToday(dueDate);
