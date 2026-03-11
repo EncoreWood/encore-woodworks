@@ -64,7 +64,7 @@ export default function BidPricingSettings({ open, onClose, onPricingUpdated }) 
     await Promise.all(
       configs.map((c) =>
         c.id
-          ? base44.entities.BidPricingConfig.update(c.id, { bases_lf: c.bases_lf, uppers_lf: c.uppers_lf, tall_lf: c.tall_lf, description: c.description, wood_species: c.wood_species, door_style: c.door_style, handles: c.handles, drawerbox: c.drawerbox, drawer_glides: c.drawer_glides, hinges: c.hinges })
+          ? base44.entities.BidPricingConfig.update(c.id, { style_label: c.style_label, bases_lf: c.bases_lf, uppers_lf: c.uppers_lf, tall_lf: c.tall_lf, description: c.description, wood_species: c.wood_species, door_style: c.door_style, handles: c.handles, drawerbox: c.drawerbox, drawer_glides: c.drawer_glides, hinges: c.hinges })
           : base44.entities.BidPricingConfig.create(c)
       )
     );
@@ -85,7 +85,10 @@ export default function BidPricingSettings({ open, onClose, onPricingUpdated }) 
         <div className="space-y-5 mt-2">
           {configs.map((c) => (
             <div key={c.style_key} className="border border-slate-200 rounded-lg p-4 space-y-3">
-              <div className="font-bold text-slate-800 text-sm border-b border-slate-100 pb-2">{c.style_label}</div>
+              <div className="border-b border-slate-100 pb-2">
+                <label className="text-xs text-slate-500 mb-1 block">Style Name</label>
+                <Input value={c.style_label || ""} onChange={(e) => update(c.style_key, "style_label", e.target.value)} className="h-9 text-sm font-bold" placeholder="Style name" />
+              </div>
               {/* Pricing */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
