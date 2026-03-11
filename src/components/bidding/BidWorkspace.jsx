@@ -606,6 +606,15 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
       <BidPricingSettings open={showPricingSettings} onClose={() => setShowPricingSettings(false)} onPricingUpdated={loadPricing} />
       <BidCatalogEditor open={showCatalogEditor} onClose={() => setShowCatalogEditor(false)} onSaved={() => { loadCatalog(); loadCategories(); }} />
       <BidClientView open={showClientView} onClose={() => setShowClientView(false)} bid={{ project_name: projectName, client_name: clientName, address, rooms, notes, ...specs }} bidType={pricingConfigs.find(c => c.style_key === bidType)?.style_label || BID_STYLES.find(s => s.key === bidType)?.label} />
-    </div>
-  );
-}
+      <PDFAnnotator
+        open={showPlanViewer}
+        onOpenChange={setShowPlanViewer}
+        pdfUrl={planFileUrl}
+        onSave={(paths, notes) => setAiNotes(notes)}
+        showNotesField={true}
+        initialNotes={aiNotes}
+        hideDownload={false}
+      />
+      </div>
+      );
+      }
