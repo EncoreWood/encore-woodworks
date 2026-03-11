@@ -164,7 +164,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
     setIsAnalyzing(true);
     setAnalyzeError(null);
 
-    const styleLabel = BID_STYLES.find(s => s.key === bidType)?.label || "standard";
+    const styleLabel = pricingConfigs.find(c => c.style_key === bidType)?.style_label || BID_STYLES.find(s => s.key === bidType)?.label || "standard";
     const config = pricingConfigs.find(c => c.style_key === bidType);
     const pricingNote = config
       ? `Pricing: Base $${config.bases_lf}/LF, Upper/Wall $${config.uppers_lf}/LF, Tall $${config.tall_lf}/LF.`
@@ -376,6 +376,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough.`,
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {BID_STYLES.map(s => {
               const cfg = pricingConfigs.find(c => c.style_key === s.key);
+              const label = cfg?.style_label || s.label;
               const isSelected = bidType === s.key;
               return (
                 <button
@@ -383,7 +384,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough.`,
                  onClick={() => handleBidTypeChange(s.key)}
                  className={`rounded-xl border-2 p-3 text-left transition-all ${isSelected ? "border-amber-500 bg-amber-50" : "border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/50"}`}
                 >
-                 <div className={`text-sm font-semibold mb-1 ${isSelected ? "text-amber-800" : "text-slate-800"}`}>{s.label}</div>
+                 <div className={`text-sm font-semibold mb-1 ${isSelected ? "text-amber-800" : "text-slate-800"}`}>{label}</div>
                  {cfg?.description && (
                    <div className="text-xs text-slate-500 italic mb-1 leading-snug">{cfg.description}</div>
                  )}
@@ -529,7 +530,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough.`,
 
       <BidPricingSettings open={showPricingSettings} onClose={() => setShowPricingSettings(false)} onPricingUpdated={loadPricing} />
       <BidCatalogEditor open={showCatalogEditor} onClose={() => setShowCatalogEditor(false)} onSaved={() => { loadCatalog(); loadCategories(); }} />
-      <BidClientView open={showClientView} onClose={() => setShowClientView(false)} bid={{ project_name: projectName, client_name: clientName, address, rooms, notes, ...specs }} bidType={BID_STYLES.find(s => s.key === bidType)?.label} />
+      <BidClientView open={showClientView} onClose={() => setShowClientView(false)} bid={{ project_name: projectName, client_name: clientName, address, rooms, notes, ...specs }} bidType={pricingConfigs.find(c => c.style_key === bidType)?.style_label || BID_STYLES.find(s => s.key === bidType)?.label} />
     </div>
   );
 }
