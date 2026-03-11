@@ -20,7 +20,7 @@ import {
 import {
   ArrowLeft, Edit, Trash2, User, Mail, Phone, MapPin, Calendar,
   DollarSign, Palette, Wrench, FileText, Loader2, DoorOpen,
-  ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X
+  ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X, Calculator
 } from "lucide-react";
 import { format } from "date-fns";
 import ProjectForm from "../components/projects/ProjectForm";
@@ -115,6 +115,12 @@ export default function ProjectDetails() {
   const { data: projectOrders = [] } = useQuery({
     queryKey: ["projectOrders", projectId],
     queryFn: () => base44.entities.ProjectOrder.filter({ project_id: projectId }),
+    enabled: !!projectId
+  });
+
+  const { data: linkedBids = [] } = useQuery({
+    queryKey: ["bids_for_project", projectId],
+    queryFn: () => base44.entities.Bid.filter({ project_id: projectId }),
     enabled: !!projectId
   });
 
@@ -588,6 +594,42 @@ export default function ProjectDetails() {
                 </Card>
               );
             })()}
+
+            {/* Plan Bid */}
+            <Card className="p-6 bg-white border-0 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                  <Calculator className="w-5 h-5 text-amber-500" /> Plan Bids
+                </h2>
+                <a href={createPageUrl("PlanBidding") + "?project_id=" + projectId}>
+                  <Button size="sm" className="bg-amber-600 hover:bg-amber-700 h-8 gap-1.5">
+                    <Plus className="w-3.5 h-3.5" /> New Bid
+                  </Button>
+                </a>
+              </div>
+              {linkedBids.length === 0 ? (
+                <p className="text-sm text-slate-400">No bids linked yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {linkedBids.map(bid => {
+                    const statusColors = { draft: "bg-amber-100 text-amber-700", finalized: "bg-green-100 text-green-700", sent: "bg-blue-100 text-blue-700" };
+                    return (
+                      <a key={bid.id} href={createPageUrl("PlanBidding") + "?bid_id=" + bid.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:border-amber-200 hover:bg-amber-50 transition-all">
+                        <FileText className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">{bid.project_name}</p>
+                          <p className="text-xs text-slate-400">{bid.rooms?.length || 0} rooms · {bid.total_lf ? `${bid.total_lf} LF` : "—"}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold text-slate-800">${(bid.total || 0).toLocaleString()}</p>
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statusColors[bid.status] || statusColors.draft}`}>{bid.status || "draft"}</span>
+                        </div>
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
 
             {/* Budget */}
             <Card className="p-6 bg-white border-0 shadow-sm">
