@@ -37,6 +37,7 @@ export default function BidWorkspace({ bidId, onClose, onSaved }) {
   const [saved, setSaved] = useState(false);
   const [showPricingSettings, setShowPricingSettings] = useState(false);
   const [showCatalogEditor, setShowCatalogEditor] = useState(false);
+  const [showClientView, setShowClientView] = useState(false);
   const [pricingConfigs, setPricingConfigs] = useState([]);
   const [catalogItems, setCatalogItems] = useState([]);
   const [analyzeError, setAnalyzeError] = useState(null);
@@ -283,6 +284,11 @@ A typical home has 40–120+ LF of cabinetry. Be thorough.`,
             <SelectItem value="sent">Sent</SelectItem>
           </SelectContent>
         </Select>
+        {rooms.length > 0 && (
+          <Button onClick={() => setShowClientView(true)} variant="outline" className="h-9 gap-1.5 hidden sm:flex">
+            <Send className="w-4 h-4" /> Client View
+          </Button>
+        )}
         <Button onClick={handleSave} disabled={isSaving} className="bg-amber-600 hover:bg-amber-700 h-9">
           {saved ? <><Check className="w-4 h-4 mr-1" />Saved</> : isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-1" />Save</>}
         </Button>
@@ -436,6 +442,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough.`,
 
       <BidPricingSettings open={showPricingSettings} onClose={() => setShowPricingSettings(false)} onPricingUpdated={loadPricing} />
       <BidCatalogEditor open={showCatalogEditor} onClose={() => setShowCatalogEditor(false)} onSaved={loadCatalog} />
+      <BidClientView open={showClientView} onClose={() => setShowClientView(false)} bid={{ project_name: projectName, client_name: clientName, address, rooms, notes }} bidType={BID_STYLES.find(s => s.key === bidType)?.label} />
     </div>
   );
 }
