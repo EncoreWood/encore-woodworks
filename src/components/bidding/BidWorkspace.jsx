@@ -46,6 +46,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const [catalogItems, setCatalogItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [analyzeError, setAnalyzeError] = useState(null);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   const { data: bidData } = useQuery({
     queryKey: ["bid", bidId],
