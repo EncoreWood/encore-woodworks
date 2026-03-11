@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Upload, Sparkles, Plus, Save, Check, RefreshCw, FileText, Settings2, AlertCircle, BookOpen } from "lucide-react";
+import { ArrowLeft, Upload, Sparkles, Plus, Save, Check, RefreshCw, FileText, Settings2, AlertCircle, BookOpen, Send } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BidPricingSettings from "./BidPricingSettings";
 import BidCatalogEditor from "./BidCatalogEditor";
 import BidRoomSection from "./BidRoomSection";
+import BidClientView from "./BidClientView";
 
 const BID_STYLES = [
   { key: "basic_euro",          label: "Basic Euro" },
