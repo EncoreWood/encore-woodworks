@@ -347,6 +347,31 @@ A typical home has 40–120+ LF of cabinetry. Be thorough.`,
           </div>
         </Card>
 
+        {/* Job Specifications */}
+        <Card className="p-4 sm:p-5">
+          <h2 className="font-bold text-slate-900 mb-3">Job Specifications</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[
+              { field: "wood_species", label: "Wood Species" },
+              { field: "door_style",   label: "Door Style" },
+              { field: "handles",      label: "Handles" },
+              { field: "drawerbox",    label: "Drawerbox" },
+              { field: "drawer_glides",label: "Drawer Glides" },
+              { field: "hinges",       label: "Hinges" },
+            ].map(({ field, label }) => (
+              <div key={field}>
+                <label className="text-xs font-semibold text-slate-500 mb-1 block">{label}</label>
+                <Input
+                  value={specs[field] || ""}
+                  onChange={e => setSpecs(prev => ({ ...prev, [field]: e.target.value }))}
+                  placeholder={bidType ? label : "Select style first"}
+                  className="h-9 text-sm"
+                />
+              </div>
+            ))}
+          </div>
+        </Card>
+
         {/* AI Plan Analysis */}
         <Card className="p-4 sm:p-5">
           <div className="flex items-center justify-between mb-3">
@@ -450,7 +475,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough.`,
 
       <BidPricingSettings open={showPricingSettings} onClose={() => setShowPricingSettings(false)} onPricingUpdated={loadPricing} />
       <BidCatalogEditor open={showCatalogEditor} onClose={() => setShowCatalogEditor(false)} onSaved={loadCatalog} />
-      <BidClientView open={showClientView} onClose={() => setShowClientView(false)} bid={{ project_name: projectName, client_name: clientName, address, rooms, notes }} bidType={BID_STYLES.find(s => s.key === bidType)?.label} />
+      <BidClientView open={showClientView} onClose={() => setShowClientView(false)} bid={{ project_name: projectName, client_name: clientName, address, rooms, notes, ...specs }} bidType={BID_STYLES.find(s => s.key === bidType)?.label} />
     </div>
   );
 }
