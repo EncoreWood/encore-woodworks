@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, GripVertical, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { createPageUrl } from "@/utils";
-import SlideThumbnails from "@/components/presentations/SlideThumbnails";
-import SlideEditor from "@/components/presentations/SlideEditor";
+import SlideThumbnails from "@/components/presentations/SlideThumbnails.jsx";
+import SlideEditor from "@/components/presentations/SlideEditor.jsx";
 
 export default function PresentationEditor() {
   const queryClient = useQueryClient();
