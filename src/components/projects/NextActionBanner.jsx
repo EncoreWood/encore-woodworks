@@ -2,14 +2,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Edit, Save, X, Zap, User, Calendar, AlertCircle, Plus } from "lucide-react";
+import { Edit, Save, X, Zap, User, Calendar, AlertCircle } from "lucide-react";
 import { format, isPast, isToday, parseISO } from "date-fns";
 
 export default function NextActionBanner({ project, onSave }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState({});
 
-  const hasNextAction = project.next_action || project.next_action_owner || project.next_action_due;
+  // Only show the banner if there's a next_action value
+  if (!project.next_action && !editing) return null;
 
   const startEdit = () => {
     setDraft({
@@ -81,20 +82,6 @@ export default function NextActionBanner({ project, onSave }) {
             <X className="w-3.5 h-3.5" /> Cancel
           </Button>
         </div>
-      </div>
-    );
-  }
-
-  if (!hasNextAction) {
-    return (
-      <div className="border-2 border-dashed border-amber-300 rounded-xl p-4 bg-amber-50 mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-amber-600">
-          <Zap className="w-4 h-4" />
-          <span className="text-sm font-medium">No next action set — what needs to happen next?</span>
-        </div>
-        <Button size="sm" className="h-7 gap-1 text-xs bg-amber-600 hover:bg-amber-700" onClick={startEdit}>
-          <Plus className="w-3 h-3" /> Set Next Action
-        </Button>
       </div>
     );
   }
