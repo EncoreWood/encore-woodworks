@@ -7,16 +7,9 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Trash2, ChevronDown, ChevronRight, Plus, Paperclip, FileText, Loader2 } from "lucide-react";
 import PdfViewerModal from "./PdfViewerModal";
 
-const CAT_COLORS = {
-  base:  "bg-amber-100 text-amber-700",
-  upper: "bg-blue-100 text-blue-700",
-  tall:  "bg-purple-100 text-purple-700",
-  misc:  "bg-slate-100 text-slate-600",
-};
+import { getCategoryStyle } from "./BidCatalogEditor";
 
-const CAT_LABELS = { base: "Base Cabinets", upper: "Upper/Wall Cabinets", tall: "Tall Cabinets", misc: "Misc / Add-ons" };
-
-export default function BidRoomSection({ room, catalogItems, pricingConfigs, bidType, onChange, onDelete }) {
+export default function BidRoomSection({ room, catalogItems, categories, pricingConfigs, bidType, onChange, onDelete }) {
   const [collapsed, setCollapsed] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [viewingPdf, setViewingPdf] = useState(false);
@@ -80,13 +73,20 @@ export default function BidRoomSection({ room, catalogItems, pricingConfigs, bid
   const roomTotal = (room.items || []).reduce((s, i) => s + (parseFloat(i.quantity) || 0) * (parseFloat(i.unit_price) || 0), 0);
   const roomLf = (room.items || []).filter(i => i.measure_type === "lf").reduce((s, i) => s + (parseFloat(i.quantity) || 0), 0);
 
-  // Group catalog for dropdown
+  // Group catalog for dropdown by category
   const byCategory = {};
   (catalogItems || []).forEach(c => {
     const cat = c.cabinet_category || "misc";
     if (!byCategory[cat]) byCategory[cat] = [];
     byCategory[cat].push(c);
   });
+
+  const getCatLabel = (key) => (categories || []).find(c => c.key === key)?.label || key;
+  const getCatClass = (key) => {
+    const color = (categories || []).find(c => c.key === key)?.color;
+    const style = getCategoryStyle(color || "slate");
+    return `${style.bg} ${style.text}`;
+  };
 
   return (
     <Card className="overflow-hidden border border-slate-200">
