@@ -113,23 +113,39 @@ export default function Layout({ children, currentPageName }) {
 
   // Force sync to new structure on mount
   useEffect(() => {
-    const merged = { ...defaultNavGroups };
     const saved = localStorage.getItem('navGroups');
+    const merged = JSON.parse(JSON.stringify(defaultNavGroups)); // Deep copy defaults
+    
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Only keep pages from new structure, discard old ones
+        // Only keep pages that exist in the new default structure
         Object.keys(merged).forEach(groupKey => {
           if (parsed[groupKey]) {
+            const validPages = new Set(merged[groupKey].items.map(i => i.page));
             merged[groupKey].items = parsed[groupKey].items.filter(item =>
-              merged[groupKey].items.some(defaultItem => defaultItem.page === item.page)
+              validPages.has(item.page)
             );
+            // Restore icons from defaults
+            merged[groupKey].items = merged[groupKey].items.map(item => ({
+              ...item,
+              icon: merged[groupKey].items.find(d => d.page === item.page)?.icon
+            }));
           }
         });
       } catch (error) {
         console.error('Failed to parse saved nav groups');
       }
     }
+
+    // Restore all icon components
+    Object.keys(merged).forEach(groupKey => {
+      merged[groupKey].items = merged[groupKey].items.map(item => ({
+        ...item,
+        icon: iconMap[item.iconName] || KanbanIcon
+      }));
+    });
+
     setNavGroups(merged);
     localStorage.setItem('navGroups', JSON.stringify(merged));
   }, []);
