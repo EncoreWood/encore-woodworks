@@ -489,13 +489,25 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
         </Card>
 
         {/* AI Plan Analysis */}
-        <Card className="p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-slate-900 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-amber-600" /> AI Plan Analysis
-            </h2>
-            {planFileUrl && <button onClick={() => { setPlanFileUrl(null); setPlanFileName(null); }} className="text-xs text-slate-400 hover:text-red-500">Remove</button>}
-          </div>
+         <Card className="p-4 sm:p-5">
+           <div className="flex items-center justify-between mb-3">
+             <h2 className="font-bold text-slate-900 flex items-center gap-2">
+               <Sparkles className="w-5 h-5 text-amber-600" /> AI Plan Analysis
+             </h2>
+             <div className="flex items-center gap-2">
+               {planFileUrl && (
+                 <Button
+                   variant="outline"
+                   size="sm"
+                   onClick={() => setShowPlanViewer(true)}
+                   className="h-8 gap-1.5 text-xs"
+                 >
+                   View & Mark Up
+                 </Button>
+               )}
+               {planFileUrl && <button onClick={() => { setPlanFileUrl(null); setPlanFileName(null); setAiNotes(""); }} className="text-xs text-slate-400 hover:text-red-500">Remove</button>}
+             </div>
+           </div>
 
           {!planFileUrl ? (
             <label className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center gap-3 cursor-pointer transition-colors ${isUploading ? "border-amber-300 bg-amber-50" : "border-slate-300 hover:border-amber-400 hover:bg-amber-50"}`}>
