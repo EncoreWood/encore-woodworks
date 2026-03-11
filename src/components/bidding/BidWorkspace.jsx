@@ -27,6 +27,7 @@ export default function BidWorkspace({ bidId, onClose, onSaved }) {
   const [planFileUrl, setPlanFileUrl] = useState(null);
   const [planFileName, setPlanFileName] = useState(null);
   const [bidType, setBidType] = useState(null);
+  const [specs, setSpecs] = useState({ wood_species: "", door_style: "", handles: "", drawerbox: "", drawer_glides: "", hinges: "" });
   const [rooms, setRooms] = useState([]);
   const [aiNotes, setAiNotes] = useState("");
   const [notes, setNotes] = useState("");
@@ -63,6 +64,7 @@ export default function BidWorkspace({ bidId, onClose, onSaved }) {
       setPlanFileName(b.plan_file_name || null);
       setBidType(b.bid_type || null);
       setRooms(b.rooms || []);
+      setSpecs({ wood_species: b.wood_species || "", door_style: b.door_style || "", handles: b.handles || "", drawerbox: b.drawerbox || "", drawer_glides: b.drawer_glides || "", hinges: b.hinges || "" });
       setAiNotes(b.ai_notes || "");
       setNotes(b.notes || "");
       setStatus(b.status || "draft");
@@ -91,6 +93,11 @@ export default function BidWorkspace({ bidId, onClose, onSaved }) {
 
   const handleBidTypeChange = (val) => {
     setBidType(val);
+    // Auto-fill specs from pricing config
+    const cfg = pricingConfigs.find(c => c.style_key === val);
+    if (cfg) {
+      setSpecs({ wood_species: cfg.wood_species || "", door_style: cfg.door_style || "", handles: cfg.handles || "", drawerbox: cfg.drawerbox || "", drawer_glides: cfg.drawer_glides || "", hinges: cfg.hinges || "" });
+    }
     // Update all LF-based items prices when style changes
     setRooms(prev => prev.map(room => ({
       ...room,
@@ -243,6 +250,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough.`,
       plan_file_url: planFileUrl,
       plan_file_name: planFileName,
       bid_type: bidType,
+      ...specs,
       rooms,
       total: Math.round(grandTotal),
       total_lf: Math.round(totalLf * 10) / 10,
