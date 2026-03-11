@@ -680,14 +680,13 @@ export default function CalendarPage() {
           </DialogContent>
         </Dialog>
 
-        <ProjectForm
-          open={showProjectForm}
-          onOpenChange={setShowProjectForm}
-          onSubmit={handleSubmitProject}
-          initialData={editingProject}
-          isLoading={createProjectMutation.isPending || updateProjectMutation.isPending}
-        />
-      </div>
+      <ProjectForm
+        open={showProjectForm}
+        onOpenChange={setShowProjectForm}
+        onSubmit={handleSubmitProject}
+        initialData={editingProject}
+        isLoading={createProjectMutation.isPending || updateProjectMutation.isPending}
+      />
     </div>
   );
 }
