@@ -42,6 +42,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const [showPricingSettings, setShowPricingSettings] = useState(false);
   const [showCatalogEditor, setShowCatalogEditor] = useState(false);
   const [showClientView, setShowClientView] = useState(false);
+  const [showPlanViewer, setShowPlanViewer] = useState(false);
   const [pricingConfigs, setPricingConfigs] = useState([]);
   const [catalogItems, setCatalogItems] = useState([]);
   const [categories, setCategories] = useState([]);
