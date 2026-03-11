@@ -246,10 +246,12 @@ export default function CalendarPage() {
     const meetingCount = getDesignMeetingsForDate(date).length;
     const taskCount = getTasksForDate(date).length;
     const cleaningCount = getBathroomCleaningsForDate(date).length;
-    const pillH = isSmall ? "h-3.5" : "h-4";
+    const pillH = isSmall ? "h-4" : "h-5";
     const pillFont = isSmall ? "text-[8px]" : "text-[9px]";
-    const maxP = isSmall ? 2 : 3;
-    const maxI = isSmall ? 1 : 2;
+    const maxP = isSmall ? 1 : 2;
+    const maxI = isSmall ? 1 : 1;
+    const projOverflow = spanningProjects.length - maxP;
+    const installOverflow = installProjects.length - maxI;
 
     return (
       <div className="w-full h-full flex flex-col p-2 relative">
@@ -332,12 +334,13 @@ export default function CalendarPage() {
         <div className="flex flex-wrap gap-1.5">
           <div className="flex gap-1.5">
             {filterOptions.map((filter) => (
-              <Button key={filter.id} variant={activeFilter === filter.id ? "default" : "outline"} size="sm"
-                onClick={() => setActiveFilter(filter.id)}
-                className={`text-xs ${activeFilter === filter.id ? "bg-amber-600 hover:bg-amber-700" : ""}`}
-              >
-                <span className="mr-0.5">{filter.icon}</span>
-              </Button>
+             <Button key={filter.id} variant={activeFilter === filter.id ? "default" : "outline"} size="sm"
+               onClick={() => setActiveFilter(filter.id)}
+               className={`text-xs ${activeFilter === filter.id ? "bg-amber-600 hover:bg-amber-700" : ""}`}
+             >
+               <span className="mr-1">{filter.icon}</span>
+               <span className="hidden sm:inline">{filter.label}</span>
+             </Button>
             ))}
           </div>
           <div className="border-l border-slate-200 mx-1" />
@@ -357,7 +360,7 @@ export default function CalendarPage() {
       {/* Two-Column Layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Column (35%) */}
-        <div className="w-[35%] border-r border-slate-300 bg-white overflow-y-auto flex flex-col">
+        <div className="w-[35%] border-r border-slate-300 bg-white flex flex-col">
 
           {/* ── TODAY'S FOCUS PANEL ── */}
           <div className="flex-shrink-0 p-3 border-b border-slate-200 bg-gradient-to-r from-amber-600 to-amber-500">
@@ -421,6 +424,9 @@ export default function CalendarPage() {
                           </Badge>
                         </div>
                         <p className="text-[10px] text-slate-500 truncate">{project.client_name || "—"}</p>
+                        {project.estimated_completion && (
+                          <p className="text-[10px] text-slate-500 mt-0.5">Due: {format(parseLocalDate(project.estimated_completion), "MMM d")}</p>
+                        )}
                         {project.next_action && (
                           <p className="text-[10px] text-slate-600 mt-1 leading-tight">{project.next_action.substring(0, 50)}{project.next_action.length > 50 ? "..." : ""}</p>
                         )}
@@ -471,7 +477,7 @@ export default function CalendarPage() {
           </div>
 
           {/* ── NEXT 7 DAYS STRIP ── */}
-          <div className="flex-shrink-0 border-t border-slate-200 bg-slate-50 p-2.5 max-h-[200px] overflow-y-auto">
+          <div className="flex-shrink-0 border-t border-slate-200 bg-slate-50 p-2.5 overflow-y-auto max-h-[30%]">
             <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">Next 7 Days</h3>
             <div className="space-y-1.5">
               {next7Days.map((day) => {
