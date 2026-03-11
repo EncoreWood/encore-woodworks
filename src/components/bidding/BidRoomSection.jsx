@@ -161,14 +161,11 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
                         </td>
                         <td className="py-1.5 pr-2">
                           <Select value={item.cabinet_category} onValueChange={v => updateItem(item.id, "cabinet_category", v)}>
-                            <SelectTrigger className={`h-8 text-xs font-semibold ${CAT_COLORS[item.cabinet_category] || CAT_COLORS.misc}`}>
+                            <SelectTrigger className={`h-8 text-xs font-semibold ${getCatClass(item.cabinet_category)}`}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="base">Base</SelectItem>
-                              <SelectItem value="upper">Upper</SelectItem>
-                              <SelectItem value="tall">Tall</SelectItem>
-                              <SelectItem value="misc">Misc</SelectItem>
+                              {(categories || []).map(c => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         </td>
@@ -219,12 +216,9 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <Select value={item.cabinet_category} onValueChange={v => updateItem(item.id, "cabinet_category", v)}>
-                      <SelectTrigger className={`h-8 text-xs ${CAT_COLORS[item.cabinet_category] || CAT_COLORS.misc}`}><SelectValue /></SelectTrigger>
+                      <SelectTrigger className={`h-8 text-xs ${getCatClass(item.cabinet_category)}`}><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="base">Base</SelectItem>
-                        <SelectItem value="upper">Upper</SelectItem>
-                        <SelectItem value="tall">Tall</SelectItem>
-                        <SelectItem value="misc">Misc</SelectItem>
+                        {(categories || []).map(c => <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     <Select value={item.measure_type} onValueChange={v => updateItem(item.id, "measure_type", v)}>
@@ -264,7 +258,7 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
               <SelectItem value="__custom__">✏️ Custom Item</SelectItem>
               {Object.entries(byCategory).map(([cat, items]) => (
                 <SelectGroup key={cat}>
-                  <SelectLabel className="text-xs text-slate-400">{CAT_LABELS[cat] || cat}</SelectLabel>
+                  <SelectLabel className="text-xs text-slate-400">{getCatLabel(cat)}</SelectLabel>
                   {items.map(ci => (
                     <SelectItem key={ci.id} value={ci.id}>
                       {ci.name}
