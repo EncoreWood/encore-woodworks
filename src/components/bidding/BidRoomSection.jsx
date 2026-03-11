@@ -13,6 +13,7 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
   const [collapsed, setCollapsed] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [viewingPdf, setViewingPdf] = useState(false);
+  const [catalogFilter, setCatalogFilter] = useState("all");
 
   const handlePdfUpload = async (e) => {
     const file = e.target.files[0];
@@ -249,26 +250,51 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
             })}
           </div>
 
-          {/* Add Item Dropdown */}
-          <Select value="" onValueChange={addFromCatalog}>
-            <SelectTrigger className="h-9 border-dashed text-slate-500 text-sm">
-              <SelectValue placeholder="+ Add item from catalog..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__custom__">✏️ Custom Item</SelectItem>
-              {Object.entries(byCategory).map(([cat, items]) => (
-                <SelectGroup key={cat}>
-                  <SelectLabel className="text-xs text-slate-400">{getCatLabel(cat)}</SelectLabel>
-                  {items.map(ci => (
-                    <SelectItem key={ci.id} value={ci.id}>
-                      {ci.name}
-                      <span className="text-slate-400 text-xs ml-1">({ci.measure_type === "lf" ? "LF" : "Qty"})</span>
-                    </SelectItem>
+          {/* Add Item — Category Filter + Dropdown */}
+          <div className="space-y-2">
+            <div className="flex gap-1.5 flex-wrap">
+              <button
+                onClick={() => setCatalogFilter("all")}
+                className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${catalogFilter === "all" ? "bg-slate-700 text-white border-transparent" : "text-slate-600 bg-slate-100 border-slate-200 hover:border-slate-300"}`}
+              >
+                All
+              </button>
+              {(categories || []).map(cat => {
+                const style = getCategoryStyle(cat.color);
+                const isActive = catalogFilter === cat.key;
+                return (
+                  <button
+                    key={cat.key}
+                    onClick={() => setCatalogFilter(cat.key)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-all ${isActive ? `${style.active} border-transparent` : `${style.text} ${style.bg} border-slate-200 hover:border-slate-300`}`}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+            <Select value="" onValueChange={addFromCatalog}>
+              <SelectTrigger className="h-9 border-dashed text-slate-500 text-sm">
+                <SelectValue placeholder="+ Add item from catalog..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__custom__">✏️ Custom Item</SelectItem>
+                {Object.entries(byCategory)
+                  .filter(([cat]) => catalogFilter === "all" || cat === catalogFilter)
+                  .map(([cat, items]) => (
+                    <SelectGroup key={cat}>
+                      <SelectLabel className="text-xs text-slate-400">{getCatLabel(cat)}</SelectLabel>
+                      {items.map(ci => (
+                        <SelectItem key={ci.id} value={ci.id}>
+                          {ci.name}
+                          <span className="text-slate-400 text-xs ml-1">({ci.measure_type === "lf" ? "LF" : ci.measure_type === "sqft" ? "SqFt" : "Qty"})</span>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   ))}
-                </SelectGroup>
-              ))}
-            </SelectContent>
-          </Select>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       )}
 
