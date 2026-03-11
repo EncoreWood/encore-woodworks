@@ -24,11 +24,20 @@ export const DEFAULT_CATALOG = [
   { name: "Filler Panel",            cabinet_category: "misc",  measure_type: "qty", default_price: 75,  sort_order: 15 },
 ];
 
+const CATEGORIES = [
+  { key: "all",   label: "All",   color: "text-slate-700",   bg: "bg-slate-100",   activeBg: "bg-slate-700 text-white" },
+  { key: "base",  label: "Base",  color: "text-amber-700",   bg: "bg-amber-50",    activeBg: "bg-amber-600 text-white" },
+  { key: "upper", label: "Upper", color: "text-blue-700",    bg: "bg-blue-50",     activeBg: "bg-blue-600 text-white" },
+  { key: "tall",  label: "Tall",  color: "text-purple-700",  bg: "bg-purple-50",   activeBg: "bg-purple-600 text-white" },
+  { key: "misc",  label: "Misc",  color: "text-slate-600",   bg: "bg-slate-50",    activeBg: "bg-slate-500 text-white" },
+];
+
 const CAT_COLORS = { base: "text-amber-700", upper: "text-blue-700", tall: "text-purple-700", misc: "text-slate-600" };
 
 export default function BidCatalogEditor({ open, onClose, onSaved }) {
   const [items, setItems] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
     if (open) loadItems();
@@ -45,7 +54,8 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
   };
 
   const addNew = () => {
-    setItems(prev => [...prev, { _isNew: true, id: `new_${Date.now()}`, name: "", cabinet_category: "misc", measure_type: "lf", default_price: 0, sort_order: prev.length + 1 }]);
+    const cat = activeTab === "all" ? "misc" : activeTab;
+    setItems(prev => [...prev, { _isNew: true, id: `new_${Date.now()}`, name: "", cabinet_category: cat, measure_type: "lf", default_price: 0, sort_order: prev.length + 1 }]);
   };
 
   const updateLocal = (id, field, value) => {
@@ -69,15 +79,41 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
     onClose();
   };
 
+  const visibleItems = activeTab === "all" ? items : items.filter(i => i.cabinet_category === activeTab);
+
+  const countFor = (cat) => cat === "all" ? items.length : items.filter(i => i.cabinet_category === cat).length;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Item Catalog</DialogTitle>
           <p className="text-sm text-slate-500">Manage items available in the "Add item" dropdown for each room.</p>
         </DialogHeader>
 
-        <div className="space-y-2 mt-2">
+        {/* Category Tabs */}
+        <div className="flex gap-1.5 flex-wrap mt-1">
+          {CATEGORIES.map(cat => {
+            const isActive = activeTab === cat.key;
+            return (
+              <button
+                key={cat.key}
+                onClick={() => setActiveTab(cat.key)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
+                  isActive
+                    ? `${cat.activeBg} border-transparent shadow`
+                    : `${cat.color} ${cat.bg} border-slate-200 hover:border-slate-300`
+                }`}
+              >
+                {cat.label}
+                <span className={`ml-1.5 ${isActive ? "opacity-80" : "opacity-60"}`}>({countFor(cat.key)})</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="space-y-2 mt-1">
+          {/* Header row */}
           <div className="grid grid-cols-[1fr_100px_60px_90px_36px] gap-2 text-xs font-semibold text-slate-500 px-1">
             <div>Item Name</div>
             <div>Category</div>
@@ -86,7 +122,11 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
             <div></div>
           </div>
 
-          {items.map(item => (
+          {visibleItems.length === 0 && (
+            <div className="text-center py-6 text-slate-400 text-sm">No items in this category yet.</div>
+          )}
+
+          {visibleItems.map(item => (
             <div key={item.id} className="grid grid-cols-[1fr_100px_60px_90px_36px] gap-2 items-center">
               <Input value={item.name} onChange={e => updateLocal(item.id, "name", e.target.value)} className="h-9 text-sm" placeholder="Item name" />
               <Select value={item.cabinet_category} onValueChange={v => updateLocal(item.id, "cabinet_category", v)}>
@@ -117,7 +157,7 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
         </div>
 
         <Button onClick={addNew} variant="outline" className="w-full border-dashed mt-2 h-9">
-          <Plus className="w-4 h-4 mr-1" /> Add Item
+          <Plus className="w-4 h-4 mr-1" /> Add Item {activeTab !== "all" ? `to ${CATEGORIES.find(c=>c.key===activeTab)?.label}` : ""}
         </Button>
 
         <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
