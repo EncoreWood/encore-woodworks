@@ -99,7 +99,14 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
 
   const loadCategories = async () => {
     const cats = await base44.entities.BidCategory.list("sort_order");
-    if (cats.length > 0) setCategories(cats);
+    if (cats.length > 0) {
+      setCategories(cats);
+    } else {
+      // Seed defaults if none exist yet
+      const { DEFAULT_CATEGORIES } = await import("./BidCatalogEditor");
+      const created = await Promise.all(DEFAULT_CATEGORIES.map(c => base44.entities.BidCategory.create(c)));
+      setCategories(created);
+    }
   };
 
   const getPriceForCategory = (category) => {
