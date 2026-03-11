@@ -1,9 +1,11 @@
 import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { Trash2, ChevronDown, ChevronRight, Plus, Paperclip, FileText, Loader2 } from "lucide-react";
+import PdfViewerModal from "./PdfViewerModal";
 
 const CAT_COLORS = {
   base:  "bg-amber-100 text-amber-700",
@@ -16,6 +18,17 @@ const CAT_LABELS = { base: "Base Cabinets", upper: "Upper/Wall Cabinets", tall: 
 
 export default function BidRoomSection({ room, catalogItems, pricingConfigs, bidType, onChange, onDelete }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [viewingPdf, setViewingPdf] = useState(false);
+
+  const handlePdfUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingPdf(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    onChange({ ...room, pdf_url: file_url, pdf_name: file.name });
+    setUploadingPdf(false);
+  };
 
   const getPrice = (category, measureType, catalogItem) => {
     if (measureType === "lf" && ["base", "upper", "tall"].includes(category)) {
@@ -90,8 +103,27 @@ export default function BidRoomSection({ room, catalogItems, pricingConfigs, bid
           className="flex-1 font-bold text-white bg-transparent border-none shadow-none h-auto p-0 focus-visible:ring-0 placeholder:text-slate-500 text-base"
           placeholder="Room Name"
         />
-        <div className="text-xs text-slate-400 mr-2 whitespace-nowrap">{roomLf > 0 ? `${roomLf.toFixed(1)} LF` : ""}</div>
-        <div className="text-amber-400 font-bold text-sm mr-3 whitespace-nowrap">${roomTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+        {/* PDF Attach */}
+        {room.pdf_url ? (
+          <Button
+            variant="ghost" size="sm"
+            onClick={e => { e.stopPropagation(); setViewingPdf(true); }}
+            className="h-7 px-2 text-xs text-blue-300 hover:text-blue-100 hover:bg-slate-700 gap-1 flex-shrink-0"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline max-w-[80px] truncate">{room.pdf_name || "Plan"}</span>
+          </Button>
+        ) : (
+          <label onClick={e => e.stopPropagation()} className="flex-shrink-0 cursor-pointer">
+            {uploadingPdf
+              ? <Loader2 className="w-4 h-4 text-slate-400 animate-spin" />
+              : <Paperclip className="w-4 h-4 text-slate-400 hover:text-slate-200 transition-colors" />
+            }
+            <input type="file" accept=".pdf,image/*" onChange={handlePdfUpload} className="hidden" disabled={uploadingPdf} />
+          </label>
+        )}
+        <div className="text-xs text-slate-400 whitespace-nowrap">{roomLf > 0 ? `${roomLf.toFixed(1)} LF` : ""}</div>
+        <div className="text-amber-400 font-bold text-sm mr-1 whitespace-nowrap">${roomTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
         <Button
           variant="ghost" size="icon"
           onClick={e => { e.stopPropagation(); onDelete(); }}
@@ -112,7 +144,7 @@ export default function BidRoomSection({ room, catalogItems, pricingConfigs, bid
                     <th className="text-left py-2 pr-2 font-semibold">Item</th>
                     <th className="py-2 pr-2 font-semibold w-24 text-center">Category</th>
                     <th className="py-2 pr-2 font-semibold w-16 text-center">Type</th>
-                    <th className="py-2 pr-2 font-semibold w-24 text-center">Qty / LF</th>
+                    <th className="py-2 pr-2 font-semibold w-24 text-center">Qty/LF/SqFt</th>
                     <th className="py-2 pr-2 font-semibold w-24 text-center">Unit Price</th>
                     <th className="py-2 pr-2 font-semibold w-24 text-right">Subtotal</th>
                     <th className="py-2 font-semibold">Notes</th>
@@ -141,13 +173,14 @@ export default function BidRoomSection({ room, catalogItems, pricingConfigs, bid
                           </Select>
                         </td>
                         <td className="py-1.5 pr-2">
-                          <Select value={item.measure_type} onValueChange={v => updateItem(item.id, "measure_type", v)}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="lf">LF</SelectItem>
-                              <SelectItem value="qty">Qty</SelectItem>
-                            </SelectContent>
-                          </Select>
+                         <Select value={item.measure_type} onValueChange={v => updateItem(item.id, "measure_type", v)}>
+                           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="lf">LF</SelectItem>
+                             <SelectItem value="qty">Qty</SelectItem>
+                             <SelectItem value="sqft">SqFt</SelectItem>
+                           </SelectContent>
+                         </Select>
                         </td>
                         <td className="py-1.5 pr-2">
                           <Input type="number" value={item.quantity} onChange={e => updateItem(item.id, "quantity", e.target.value)} className="h-8 text-sm text-center" />
@@ -195,16 +228,17 @@ export default function BidRoomSection({ room, catalogItems, pricingConfigs, bid
                       </SelectContent>
                     </Select>
                     <Select value={item.measure_type} onValueChange={v => updateItem(item.id, "measure_type", v)}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="lf">Linear Feet</SelectItem>
-                        <SelectItem value="qty">Quantity</SelectItem>
-                      </SelectContent>
+                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value="lf">Linear Feet</SelectItem>
+                       <SelectItem value="qty">Quantity</SelectItem>
+                       <SelectItem value="sqft">Square Feet</SelectItem>
+                     </SelectContent>
                     </Select>
                   </div>
                   <div className="grid grid-cols-3 gap-2 items-end">
                     <div>
-                      <label className="text-xs text-slate-500">{item.measure_type === "lf" ? "Lin. Feet" : "Qty"}</label>
+                      <label className="text-xs text-slate-500">{item.measure_type === "lf" ? "Lin. Feet" : item.measure_type === "sqft" ? "Sq. Feet" : "Qty"}</label>
                       <Input type="number" value={item.quantity} onChange={e => updateItem(item.id, "quantity", e.target.value)} className="h-8 text-sm mt-0.5" />
                     </div>
                     <div>
