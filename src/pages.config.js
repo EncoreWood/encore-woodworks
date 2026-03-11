@@ -73,9 +73,6 @@ import Team from './pages/Team';
 import TimeSheet from './pages/TimeSheet';
 import Tools from './pages/Tools';
 import Presentations from './pages/Presentations';
-import PresentationEditor from './pages/PresentationEditor';
-import PresentationView from './pages/PresentationView';
-import PresentationShare from './pages/PresentationShare';
 import __Layout from './Layout.jsx';
 
 
@@ -106,9 +103,6 @@ export const PAGES = {
     "TimeSheet": TimeSheet,
     "Tools": Tools,
     "Presentations": Presentations,
-    "PresentationEditor": PresentationEditor,
-    "PresentationView": PresentationView,
-    "PresentationShare": PresentationShare,
 }
 
 export const pagesConfig = {
