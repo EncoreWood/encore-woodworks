@@ -477,16 +477,29 @@ export default function Notepad() {
             </div>
 
             {/* Note content */}
-            <div className="flex-1 overflow-hidden" style={{ backgroundColor: selectedNote.color }}>
+            <div className="flex-1 overflow-hidden flex flex-col" style={{ backgroundColor: selectedNote.color }}>
               {selectedNote.mode === "text" ? (
-                <textarea
-                  value={selectedNote.content}
-                  onChange={(e) => updateNote(selectedNote.id, { content: e.target.value })}
-                  placeholder="Start writing..."
-                  className="w-full h-full p-6 resize-none outline-none text-slate-700 leading-relaxed bg-transparent"
-                  style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "16px" }}
-                  autoFocus
-                />
+                <div className="flex-1 overflow-hidden flex flex-col notepad-quill">
+                  <ReactQuill
+                    key={selectedNote.id}
+                    value={selectedNote.content}
+                    onChange={(val) => updateNote(selectedNote.id, { content: val })}
+                    placeholder="Start writing..."
+                    theme="snow"
+                    modules={{
+                      toolbar: [
+                        [{ font: [] }, { size: ["small", false, "large", "huge"] }],
+                        ["bold", "italic", "underline", "strike"],
+                        [{ color: [] }, { background: [] }],
+                        [{ list: "ordered" }, { list: "bullet" }],
+                        [{ indent: "-1" }, { indent: "+1" }],
+                        [{ align: [] }],
+                        ["link", "blockquote", "clean"],
+                      ],
+                    }}
+                    style={{ flex: 1, display: "flex", flexDirection: "column", height: "100%" }}
+                  />
+                </div>
               ) : (
                 <DrawCanvas
                   paths={selectedNote.paths || []}
