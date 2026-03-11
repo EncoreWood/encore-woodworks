@@ -90,9 +90,13 @@ export default function PlanBidding() {
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-slate-900">{bid.project_name}</div>
                   <div className="text-sm text-slate-500 truncate">{bid.client_name || bid.address || "No details"}</div>
-                  <div className="text-xs text-slate-400 mt-0.5">
-                    {bid.rooms?.length || 0} cabinet areas · {bid.total_lf ? `${bid.total_lf} LF · ` : ""}
-                    {format(new Date(bid.created_date), "MMM d, yyyy")}
+                  <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                    <span>{bid.rooms?.length || 0} cabinet areas · {bid.total_lf ? `${bid.total_lf} LF · ` : ""}{format(new Date(bid.created_date), "MMM d, yyyy")}</span>
+                    {bid.project_id && (
+                      <a href={createPageUrl("ProjectDetails") + "?id=" + bid.project_id} onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 text-amber-600 hover:text-amber-700 font-medium">
+                        <Link2 className="w-3 h-3" /> Project
+                      </a>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
