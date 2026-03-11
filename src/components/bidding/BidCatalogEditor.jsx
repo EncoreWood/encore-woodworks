@@ -105,6 +105,7 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
                 <SelectContent>
                   <SelectItem value="lf">LF</SelectItem>
                   <SelectItem value="qty">Qty</SelectItem>
+                  <SelectItem value="sqft">SqFt</SelectItem>
                 </SelectContent>
               </Select>
               <Input type="number" value={item.default_price} onChange={e => updateLocal(item.id, "default_price", parseFloat(e.target.value) || 0)} className="h-9 text-sm text-center" placeholder="0" />
