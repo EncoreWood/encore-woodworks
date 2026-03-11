@@ -277,6 +277,13 @@ export default function BidRoomSection({ room, catalogItems, pricingConfigs, bid
           </Select>
         </div>
       )}
+
+      <PdfViewerModal
+        open={viewingPdf}
+        onClose={() => setViewingPdf(false)}
+        url={room.pdf_url}
+        name={room.pdf_name}
+      />
     </Card>
   );
 }
