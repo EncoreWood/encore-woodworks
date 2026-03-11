@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Save, Check } from "lucide-react";
 
 const DEFAULT_PRICING = [
-  { style_key: "basic_euro",         style_label: "Basic Euro",           bases_lf: 350, uppers_lf: 250, tall_lf: 400 },
-  { style_key: "high_end_euro",      style_label: "High End Euro",        bases_lf: 550, uppers_lf: 400, tall_lf: 650 },
-  { style_key: "basic_face_frame",   style_label: "Basic Face Frame",     bases_lf: 400, uppers_lf: 300, tall_lf: 450 },
-  { style_key: "mid_face_frame",     style_label: "Mid Face Frame",       bases_lf: 600, uppers_lf: 450, tall_lf: 700 },
-  { style_key: "high_end_face_frame",style_label: "High End Face Frame",  bases_lf: 900, uppers_lf: 700, tall_lf: 1100 },
+  { style_key: "basic_euro",          style_label: "Basic Euro",          bases_lf: 350, uppers_lf: 250, tall_lf: 400,  wood_species: "Maple",  door_style: "Slab",          handles: "Bar Pull",     drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Concealed" },
+  { style_key: "high_end_euro",       style_label: "High End Euro",       bases_lf: 550, uppers_lf: 400, tall_lf: 650,  wood_species: "Walnut", door_style: "Slab",          handles: "Integrated",   drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Concealed" },
+  { style_key: "basic_face_frame",    style_label: "Basic Face Frame",    bases_lf: 400, uppers_lf: 300, tall_lf: 450,  wood_species: "Maple",  door_style: "Shaker",        handles: "Bar Pull",     drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Concealed" },
+  { style_key: "mid_face_frame",      style_label: "Mid Face Frame",      bases_lf: 600, uppers_lf: 450, tall_lf: 700,  wood_species: "Cherry", door_style: "Raised Panel",  handles: "Cup Pull",     drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Concealed" },
+  { style_key: "high_end_face_frame", style_label: "High End Face Frame", bases_lf: 900, uppers_lf: 700, tall_lf: 1100, wood_species: "Walnut", door_style: "Inset Shaker",  handles: "Custom",       drawerbox: "Dovetail",       drawer_glides: "Soft-Close", hinges: "Inset Concealed" },
 ];
 
 export default function BidPricingSettings({ open, onClose, onPricingUpdated }) {
@@ -51,7 +51,11 @@ export default function BidPricingSettings({ open, onClose, onPricingUpdated }) 
 
   const update = (styleKey, field, value) => {
     setConfigs((prev) =>
-      prev.map((c) => c.style_key === styleKey ? { ...c, [field]: parseFloat(value) || 0 } : c)
+      prev.map((c) => {
+        if (c.style_key !== styleKey) return c;
+        const isNumber = ["bases_lf", "uppers_lf", "tall_lf"].includes(field);
+        return { ...c, [field]: isNumber ? (parseFloat(value) || 0) : value };
+      })
     );
   };
 
@@ -60,7 +64,7 @@ export default function BidPricingSettings({ open, onClose, onPricingUpdated }) 
     await Promise.all(
       configs.map((c) =>
         c.id
-          ? base44.entities.BidPricingConfig.update(c.id, { bases_lf: c.bases_lf, uppers_lf: c.uppers_lf, tall_lf: c.tall_lf })
+          ? base44.entities.BidPricingConfig.update(c.id, { bases_lf: c.bases_lf, uppers_lf: c.uppers_lf, tall_lf: c.tall_lf, wood_species: c.wood_species, door_style: c.door_style, handles: c.handles, drawerbox: c.drawerbox, drawer_glides: c.drawer_glides, hinges: c.hinges })
           : base44.entities.BidPricingConfig.create(c)
       )
     );
@@ -78,36 +82,41 @@ export default function BidPricingSettings({ open, onClose, onPricingUpdated }) 
           <p className="text-sm text-slate-500">Set the price per linear foot for each cabinet category and style. These rates are used by AI when generating bids.</p>
         </DialogHeader>
 
-        <div className="space-y-4 mt-2">
-          {/* Column headers */}
-          <div className="grid grid-cols-[1fr_100px_100px_100px] gap-3 text-xs font-semibold text-slate-500 px-1">
-            <div>Style</div>
-            <div className="text-center">Bases $/LF</div>
-            <div className="text-center">Uppers $/LF</div>
-            <div className="text-center">Tall $/LF</div>
-          </div>
-
+        <div className="space-y-5 mt-2">
           {configs.map((c) => (
-            <div key={c.style_key} className="grid grid-cols-[1fr_100px_100px_100px] gap-3 items-center bg-slate-50 rounded-lg px-3 py-3">
-              <div className="font-semibold text-slate-800 text-sm">{c.style_label}</div>
-              <Input
-                type="number"
-                value={c.bases_lf}
-                onChange={(e) => update(c.style_key, "bases_lf", e.target.value)}
-                className="h-9 text-sm text-center"
-              />
-              <Input
-                type="number"
-                value={c.uppers_lf}
-                onChange={(e) => update(c.style_key, "uppers_lf", e.target.value)}
-                className="h-9 text-sm text-center"
-              />
-              <Input
-                type="number"
-                value={c.tall_lf}
-                onChange={(e) => update(c.style_key, "tall_lf", e.target.value)}
-                className="h-9 text-sm text-center"
-              />
+            <div key={c.style_key} className="border border-slate-200 rounded-lg p-4 space-y-3">
+              <div className="font-bold text-slate-800 text-sm border-b border-slate-100 pb-2">{c.style_label}</div>
+              {/* Pricing */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Bases $/LF</label>
+                  <Input type="number" value={c.bases_lf} onChange={(e) => update(c.style_key, "bases_lf", e.target.value)} className="h-9 text-sm text-center" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Uppers $/LF</label>
+                  <Input type="number" value={c.uppers_lf} onChange={(e) => update(c.style_key, "uppers_lf", e.target.value)} className="h-9 text-sm text-center" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Tall $/LF</label>
+                  <Input type="number" value={c.tall_lf} onChange={(e) => update(c.style_key, "tall_lf", e.target.value)} className="h-9 text-sm text-center" />
+                </div>
+              </div>
+              {/* Specs */}
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  { field: "wood_species", label: "Wood Species" },
+                  { field: "door_style", label: "Door Style" },
+                  { field: "handles", label: "Handles" },
+                  { field: "drawerbox", label: "Drawerbox" },
+                  { field: "drawer_glides", label: "Drawer Glides" },
+                  { field: "hinges", label: "Hinges" },
+                ].map(({ field, label }) => (
+                  <div key={field}>
+                    <label className="text-xs text-slate-500 mb-1 block">{label}</label>
+                    <Input value={c[field] || ""} onChange={(e) => update(c.style_key, field, e.target.value)} className="h-9 text-sm" placeholder={label} />
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
