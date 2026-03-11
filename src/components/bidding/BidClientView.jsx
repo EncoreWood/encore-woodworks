@@ -96,6 +96,25 @@ export default function BidClientView({ open, onClose, bid, bidType }) {
             )}
           </div>
 
+          {/* Specs */}
+          {(bid.wood_species || bid.door_style || bid.handles || bid.drawerbox || bid.drawer_glides || bid.hinges) && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 mb-7 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+              {[
+                { label: "Wood Species",  value: bid.wood_species },
+                { label: "Door Style",    value: bid.door_style },
+                { label: "Handles",       value: bid.handles },
+                { label: "Drawerbox",     value: bid.drawerbox },
+                { label: "Drawer Glides", value: bid.drawer_glides },
+                { label: "Hinges",        value: bid.hinges },
+              ].filter(s => s.value).map(s => (
+                <div key={s.label}>
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{s.label}</span>
+                  <p className="text-sm font-medium text-slate-800 mt-0.5">{s.value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Rooms */}
           <div className="space-y-5">
             {rooms.map((room) => {
