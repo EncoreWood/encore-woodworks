@@ -8,7 +8,7 @@ import "react-pdf/dist/esm/Page/TextLayer.css";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave }) {
+export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", hideDownload = false }) {
   if (!pdfUrl) return null;
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
@@ -20,6 +20,11 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const [currentPath, setCurrentPath] = useState([]);
   const canvasRef = useRef(null);
   const [color, setColor] = useState("#FF0000");
+  const [aiNotes, setAiNotes] = useState(initialNotes);
+
+  useEffect(() => {
+    setAiNotes(initialNotes);
+  }, [initialNotes]);
 
   useEffect(() => {
     setPaths(annotations);
@@ -101,12 +106,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const clearAll = () => setPaths([]);
 
   const handleSave = () => {
-    onSave(paths);
+    onSave(paths, aiNotes);
     onOpenChange(false);
-  };
-
-  const handleDownload = () => {
-    window.open(pdfUrl, '_blank', 'noopener,noreferrer');
   };
 
   useEffect(() => {
@@ -217,10 +218,12 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
           </Button>
 
           <div className="ml-auto flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownload}>
-              <Download className="w-4 h-4 mr-1" />
-              Download
-            </Button>
+            {!hideDownload && (
+              <Button variant="outline" size="sm" onClick={() => window.open(pdfUrl, '_blank', 'noopener,noreferrer')}>
+                <Download className="w-4 h-4 mr-1" />
+                Download
+              </Button>
+            )}
             <Button onClick={handleSave} className="bg-amber-600 hover:bg-amber-700">
               Save Annotations
             </Button>
