@@ -542,12 +542,12 @@ export default function CalendarPage() {
           <div className="flex-1 overflow-hidden p-3">
 
             <style>{`
-               .rdp-day { position: relative; height: ${viewType === "month" ? "calc((100vh - 140px) / 5)" : "120px"}; }
+               .rdp-day { position: relative; height: 160px; }
                .rdp-day_button { width: 100%; height: 100%; }
                .rdp-month { width: 100%; }
                .rdp-months { display: flex; }
                .rdp { width: 100%; height: 100%; }
-               .rdp-months, .rdp-month, .rdp-table { height: 100%; }
+               .rdp-months, .rdp-month, .rdp-table { height: auto; }
              `}</style>
 
             <CalendarComponent
