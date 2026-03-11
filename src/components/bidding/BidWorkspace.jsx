@@ -20,10 +20,12 @@ const BID_STYLES = [
   { key: "high_end_face_frame", label: "High End Face Frame" },
 ];
 
-export default function BidWorkspace({ bidId, onClose, onSaved }) {
+// project prop: optional pre-linked project object (when opened from ProjectDetails)
+export default function BidWorkspace({ bidId, project: linkedProject, onClose, onSaved }) {
   const [projectName, setProjectName] = useState("");
   const [clientName, setClientName] = useState("");
   const [address, setAddress] = useState("");
+  const [linkedProjectId, setLinkedProjectId] = useState(linkedProject?.id || null);
   const [planFileUrl, setPlanFileUrl] = useState(null);
   const [planFileName, setPlanFileName] = useState(null);
   const [bidType, setBidType] = useState(null);
@@ -54,12 +56,23 @@ export default function BidWorkspace({ bidId, onClose, onSaved }) {
     loadCatalog();
   }, []);
 
+  // Pre-fill from linked project when creating a new bid from a project card
+  useEffect(() => {
+    if (!bidId && linkedProject) {
+      setProjectName(linkedProject.project_name || "");
+      setClientName(linkedProject.client_name || linkedProject.home_owner?.name || linkedProject.contractor?.name || "");
+      setAddress(linkedProject.address || "");
+      setLinkedProjectId(linkedProject.id);
+    }
+  }, [linkedProject, bidId]);
+
   useEffect(() => {
     if (bidData?.[0]) {
       const b = bidData[0];
       setProjectName(b.project_name || "");
       setClientName(b.client_name || "");
       setAddress(b.address || "");
+      setLinkedProjectId(b.project_id || null);
       setPlanFileUrl(b.plan_file_url || null);
       setPlanFileName(b.plan_file_name || null);
       setBidType(b.bid_type || null);
@@ -243,10 +256,27 @@ A typical home has 40–120+ LF of cabinetry. Be thorough.`,
 
   const handleSave = async () => {
     setIsSaving(true);
+    const name = projectName || "Untitled Bid";
+
+    // If this is a new bid and not already linked to a project, auto-create one
+    let projectIdToLink = linkedProjectId;
+    if (!bidId && !projectIdToLink) {
+      const newProject = await base44.entities.Project.create({
+        project_name: name,
+        client_name: clientName,
+        address,
+        project_type: "custom",
+        status: "inquiry"
+      });
+      projectIdToLink = newProject.id;
+      setLinkedProjectId(newProject.id);
+    }
+
     const data = {
-      project_name: projectName || "Untitled Bid",
+      project_name: name,
       client_name: clientName,
       address,
+      project_id: projectIdToLink,
       plan_file_url: planFileUrl,
       plan_file_name: planFileName,
       bid_type: bidType,
