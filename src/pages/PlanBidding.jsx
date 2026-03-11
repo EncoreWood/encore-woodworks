@@ -11,8 +11,9 @@ import BidWorkspace from "@/components/bidding/BidWorkspace";
 export default function PlanBidding() {
   const urlParams = new URLSearchParams(window.location.search);
   const urlProjectId = urlParams.get("project_id");
+  const urlBidId = urlParams.get("bid_id");
 
-  const [activeBidId, setActiveBidId] = useState(null);
+  const [activeBidId, setActiveBidId] = useState(urlBidId || null);
   // If launched from a project card, start in creating mode immediately
   const [isCreating, setIsCreating] = useState(!!urlProjectId);
   const queryClient = useQueryClient();
