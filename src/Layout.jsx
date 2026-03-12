@@ -397,9 +397,13 @@ export default function Layout({ children, currentPageName }) {
     setElapsedTime("00:00:00");
   };
 
-  // Route-level protection: if non-admin user tries to access a page they're not allowed, redirect to first allowed page
+  // Route-level protection: if non-admin user tries to access a page they're not allowed, redirect
+  // Only enforce after we know the user's role AND (if non-admin) we've checked their employee record
+  const authLoaded = currentUser !== null;
+  const permissionsLoaded = currentUser?.role === "admin" || employeeAllowedPages !== null || authLoaded;
   const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy"]);
-  if (currentUser && currentUser.role !== "admin" && currentPageName && !ALWAYS_ALLOWED.has(currentPageName)) {
+
+  if (authLoaded && currentUser.role !== "admin" && currentPageName && !ALWAYS_ALLOWED.has(currentPageName)) {
     if (!USER_ALLOWED_PAGES.has(currentPageName)) {
       const firstAllowed = [...USER_ALLOWED_PAGES][0] || "AccountSettings";
       return <Navigate to={createPageUrl(firstAllowed)} replace />;
