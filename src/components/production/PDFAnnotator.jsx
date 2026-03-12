@@ -63,7 +63,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     } else if (tool === "eraser") {
       setIsPointerDown(true);
       eraseAt(pos);
-    } else if (tool === "arrow" || tool === "line") {
+    } else if (tool === "arrow" || tool === "line" || tool === "highlight") {
       setIsPointerDown(true);
       setCurrentLine({ start: pos, end: pos });
     } else if (tool === "text") {
