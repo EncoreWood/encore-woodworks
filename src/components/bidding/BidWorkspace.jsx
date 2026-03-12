@@ -614,7 +614,11 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
         open={showPlanViewer}
         onOpenChange={setShowPlanViewer}
         pdfUrl={planFileUrl}
-        onSave={(paths, notes) => setAiNotes(notes)}
+        annotations={planAnnotations}
+        onSave={(savedAnnotations, notes) => {
+          setPlanAnnotations(savedAnnotations);
+          setAiNotes(notes);
+        }}
         showNotesField={true}
         initialNotes={aiNotes}
         hideDownload={false}
