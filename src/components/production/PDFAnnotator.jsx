@@ -204,8 +204,16 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     }
   }, [annList, currentPath, currentLine, pageNumber, color, canvasSize]);
 
+  const HIGHLIGHT_COLORS = [
+    { label: "Base", color: "#f59e0b", hex: "rgba(245,158,11,0.3)" },
+    { label: "Upper", color: "#3b82f6", hex: "rgba(59,130,246,0.3)" },
+    { label: "Tall", color: "#a855f7", hex: "rgba(168,85,247,0.3)" },
+    { label: "Misc", color: "#64748b", hex: "rgba(100,116,139,0.3)" },
+  ];
+
   const toolConfig = [
     { key: "pen", label: "Draw", icon: Pencil, activeClass: "bg-amber-600 hover:bg-amber-700" },
+    { key: "highlight", label: "Highlight", icon: Highlighter, activeClass: "bg-yellow-500 hover:bg-yellow-600" },
     { key: "arrow", label: "Arrow", icon: ArrowRight, activeClass: "bg-blue-600 hover:bg-blue-700" },
     { key: "line", label: "Line", icon: Minus, activeClass: "bg-green-600 hover:bg-green-700" },
     { key: "text", label: "Text Note", icon: Type, activeClass: "bg-purple-600 hover:bg-purple-700" },
