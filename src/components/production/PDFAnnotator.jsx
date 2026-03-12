@@ -80,7 +80,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       setCurrentPath(prev => [...prev, pos]);
     } else if (tool === "eraser") {
       eraseAt(pos);
-    } else if (tool === "arrow" || tool === "line") {
+    } else if (tool === "arrow" || tool === "line" || tool === "highlight") {
       setCurrentLine(prev => prev ? { ...prev, end: pos } : null);
     }
   };
