@@ -303,10 +303,32 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
           </Button>
           <Button variant="outline" size="sm" onClick={clearPage}>Clear Page</Button>
 
-          <div className="flex items-center gap-1.5 ml-1">
-            <label className="text-sm text-slate-600">Color:</label>
-            <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-8 h-8 rounded border cursor-pointer" />
-          </div>
+          {tool === "highlight" ? (
+            <div className="flex items-center gap-1.5 ml-1">
+              <label className="text-sm text-slate-600 font-medium">Category:</label>
+              {HIGHLIGHT_COLORS.map(hc => (
+                <button
+                  key={hc.label}
+                  onClick={() => setHighlightColor(hc.color)}
+                  title={hc.label}
+                  className="flex items-center gap-1 px-2 py-1 rounded border text-xs font-bold transition-all"
+                  style={{
+                    background: highlightColor === hc.color ? hc.color : `${hc.hex}`,
+                    borderColor: hc.color,
+                    color: highlightColor === hc.color ? "white" : hc.color,
+                    boxShadow: highlightColor === hc.color ? `0 0 0 2px ${hc.color}` : "none"
+                  }}
+                >
+                  {hc.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 ml-1">
+              <label className="text-sm text-slate-600">Color:</label>
+              <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-8 h-8 rounded border cursor-pointer" />
+            </div>
+          )}
 
           <div className="border-l h-6 mx-1" />
 
