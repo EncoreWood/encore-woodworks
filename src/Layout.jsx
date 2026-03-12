@@ -73,15 +73,8 @@ export default function Layout({ children, currentPageName }) {
   const [employeeAllowedPages, setEmployeeAllowedPages] = useState(null);
   const [permissionsReady, setPermissionsReady] = useState(false);
 
-  const DEFAULT_USER_ALLOWED_PAGES = new Set([
-    "OrdersBoard", "PickupList", "Calendar", "ShopProduction", "Tools",
-    "Inventory", "PurchaseOrders", "SOPBoard", "Notepad", "MorningMeeting",
-    "Team", "ChatBoard", "PrivacyPolicy"
-  ]);
-
-  const USER_ALLOWED_PAGES = employeeAllowedPages !== null
-    ? employeeAllowedPages
-    : DEFAULT_USER_ALLOWED_PAGES;
+  // For non-admin users: only use their explicitly assigned pages. No defaults.
+  const USER_ALLOWED_PAGES = employeeAllowedPages !== null ? employeeAllowedPages : new Set();
 
   const iconMap = {
     KanbanIcon, LayoutDashboard, Calendar, Factory, Coffee, Users, MessageSquare,
