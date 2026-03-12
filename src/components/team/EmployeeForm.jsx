@@ -92,7 +92,7 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
         profile_image: "",
         user_email: "",
         user_role: "user",
-        allowed_pages: [],
+        allowed_pages: ["ShopProduction", "Calendar", "Notepad", "ChatBoard", "MorningMeeting", "PickupList", "OrdersBoard"],
         files: [],
         notes: ""
       });
