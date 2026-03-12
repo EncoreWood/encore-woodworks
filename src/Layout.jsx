@@ -69,11 +69,18 @@ export default function Layout({ children, currentPageName }) {
     }
   };
 
-  const USER_ALLOWED_PAGES = new Set([
+  // Build allowed pages set from employee record if available, fallback to default set
+  const [employeeAllowedPages, setEmployeeAllowedPages] = useState(null);
+
+  const DEFAULT_USER_ALLOWED_PAGES = new Set([
     "OrdersBoard", "PickupList", "Calendar", "ShopProduction", "Tools",
     "Inventory", "PurchaseOrders", "SOPBoard", "Notepad", "MorningMeeting",
     "Team", "ChatBoard", "PrivacyPolicy"
   ]);
+
+  const USER_ALLOWED_PAGES = employeeAllowedPages !== null
+    ? employeeAllowedPages
+    : DEFAULT_USER_ALLOWED_PAGES;
 
   const iconMap = {
     KanbanIcon, LayoutDashboard, Calendar, Factory, Coffee, Users, MessageSquare,
