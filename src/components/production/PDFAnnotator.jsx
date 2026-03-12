@@ -270,7 +270,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     { key: "eraser", label: "Eraser", icon: Eraser, activeClass: "bg-slate-600 hover:bg-slate-700" },
   ];
 
-  const cursorStyle = tool === "text" ? "text" : "crosshair";
+  const cursorStyle = tool === "text" ? "text" : tool === "highlight" ? "cell" : "crosshair";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
