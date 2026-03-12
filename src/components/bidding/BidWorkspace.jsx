@@ -34,6 +34,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const [specs, setSpecs] = useState({ wood_species: "", door_style: "", handles: "", drawerbox: "", drawer_glides: "", hinges: "" });
   const [rooms, setRooms] = useState([]);
   const [aiNotes, setAiNotes] = useState("");
+  const [planAnnotations, setPlanAnnotations] = useState([]);
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState("draft");
   const [isUploading, setIsUploading] = useState(false);
