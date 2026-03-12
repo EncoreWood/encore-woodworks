@@ -255,10 +255,10 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   }, [annList, currentPath, currentLine, pageNumber, color, highlightColor, canvasSize, tool]);
 
   const HIGHLIGHT_COLORS = [
-    { label: "Base", color: "#f59e0b", hex: "rgba(245,158,11,0.3)" },
-    { label: "Upper", color: "#3b82f6", hex: "rgba(59,130,246,0.3)" },
-    { label: "Tall", color: "#a855f7", hex: "rgba(168,85,247,0.3)" },
-    { label: "Misc", color: "#64748b", hex: "rgba(100,116,139,0.3)" },
+    { label: "Base",   color: "#d97706", hex: "rgba(251,191,36,0.25)" },
+    { label: "Upper",  color: "#3b82f6", hex: "rgba(147,197,253,0.3)" },
+    { label: "Tall",   color: "#ef4444", hex: "rgba(252,165,165,0.3)" },
+    { label: "Misc",   color: "#6b7280", hex: "rgba(209,213,219,0.45)" },
   ];
 
   const toolConfig = [
