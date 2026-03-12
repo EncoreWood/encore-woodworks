@@ -71,6 +71,7 @@ export default function Layout({ children, currentPageName }) {
 
   // Build allowed pages set from employee record if available, fallback to default set
   const [employeeAllowedPages, setEmployeeAllowedPages] = useState(null);
+  const [permissionsReady, setPermissionsReady] = useState(false);
 
   const DEFAULT_USER_ALLOWED_PAGES = new Set([
     "OrdersBoard", "PickupList", "Calendar", "ShopProduction", "Tools",
