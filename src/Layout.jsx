@@ -339,14 +339,14 @@ export default function Layout({ children, currentPageName }) {
       const emps = await base44.entities.Employee.list();
       setEmployees(emps);
 
-      // If non-admin, find employee record and load their allowed_pages
+      // If non-admin, find employee record and load their allowed_pages strictly
       if (user?.role !== "admin") {
         const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
-        if (emp && emp.allowed_pages && emp.allowed_pages.length > 0) {
-          setEmployeeAllowedPages(new Set(emp.allowed_pages));
-        } else {
-          // No custom permissions — use the default set (mark ready with null stays)
+        if (emp) {
+          // Always use the employee's allowed_pages exactly — even if empty (= no access)
+          setEmployeeAllowedPages(new Set(emp.allowed_pages || []));
         }
+        // If no employee record found, employeeAllowedPages stays null → DEFAULT_USER_ALLOWED_PAGES used
       }
       setPermissionsReady(true);
     };
