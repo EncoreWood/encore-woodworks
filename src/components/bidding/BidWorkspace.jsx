@@ -355,7 +355,8 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
       total_lf: Math.round(totalLf * 10) / 10,
       ai_notes: aiNotes,
       notes,
-      status
+      status,
+      plan_annotations: planAnnotations
     };
     if (bidId) {
       await base44.entities.Bid.update(bidId, data);
