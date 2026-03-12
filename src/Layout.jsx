@@ -394,9 +394,19 @@ export default function Layout({ children, currentPageName }) {
     setElapsedTime("00:00:00");
   };
 
-  // Route-level protection: wait until permissions are fully loaded before enforcing
   const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy"]);
-  if (permissionsReady && currentUser && currentUser.role !== "admin" && currentPageName && !ALWAYS_ALLOWED.has(currentPageName)) {
+
+  // Block render until we know who the user is and what they can access
+  if (!permissionsReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#d1d5db" }}>
+        <div className="w-8 h-8 border-4 border-amber-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Route-level protection: redirect non-admin users away from pages they don't have access to
+  if (currentUser && currentUser.role !== "admin" && currentPageName && !ALWAYS_ALLOWED.has(currentPageName)) {
     if (!USER_ALLOWED_PAGES.has(currentPageName)) {
       const firstAllowed = [...USER_ALLOWED_PAGES][0] || "AccountSettings";
       return <Navigate to={createPageUrl(firstAllowed)} replace />;
