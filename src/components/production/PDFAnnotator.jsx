@@ -119,6 +119,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     const t = 18;
     setAnnList(prev => prev.filter(ann => {
       if (ann.page !== pageNumber) return true;
+      if (ann.type === "highlight") return !(x >= ann.x && x <= ann.x + ann.w && y >= ann.y && y <= ann.y + ann.h);
       if (ann.type === "pen") return !ann.points.some(pt => Math.hypot(pt.x - x, pt.y - y) < t);
       if (ann.type === "arrow" || ann.type === "line") {
         return Math.hypot(ann.start.x - x, ann.start.y - y) >= t && Math.hypot(ann.end.x - x, ann.end.y - y) >= t;
