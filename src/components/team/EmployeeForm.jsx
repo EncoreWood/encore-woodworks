@@ -75,7 +75,9 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
         profile_image: employee.profile_image || "",
         user_email: employee.user_email || "",
         user_role: employee.user_role || "user",
-        allowed_pages: employee.allowed_pages || [],
+        allowed_pages: (employee.allowed_pages && employee.allowed_pages.length > 0)
+          ? employee.allowed_pages
+          : ["ShopProduction", "Calendar", "Notepad", "ChatBoard", "MorningMeeting", "PickupList", "OrdersBoard"],
         files: employee.files || [],
         notes: employee.notes || ""
       });
