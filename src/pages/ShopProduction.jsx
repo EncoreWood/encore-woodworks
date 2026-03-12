@@ -185,13 +185,14 @@ export default function ShopProduction() {
 
   const returnToFolder = async (item) => {
     const files = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
-    await base44.entities.ProductionItem.update(item.id, { ...item, files, is_job_info: true });
+    await base44.entities.ProductionItem.update(item.id, { ...item, files, is_job_info: false, stage: null });
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+    setActiveTab("job_packets");
   };
 
   const returnToFolderFromJobInfo = async (item) => {
     const files = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
-    await base44.entities.ProductionItem.update(item.id, { ...item, files, is_job_info: true });
+    await base44.entities.ProductionItem.update(item.id, { ...item, files, is_job_info: false, stage: null });
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
     setActiveTab("job_packets");
   };
