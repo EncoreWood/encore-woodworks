@@ -178,7 +178,25 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
 
-      if (ann.type === "pen") {
+      if (ann.type === "highlight") {
+        // Parse the hex color to get rgba with opacity
+        const hexColor = ann.color;
+        const r = parseInt(hexColor.slice(1,3),16);
+        const g = parseInt(hexColor.slice(3,5),16);
+        const b = parseInt(hexColor.slice(5,7),16);
+        ctx.fillStyle = `rgba(${r},${g},${b},0.35)`;
+        ctx.strokeStyle = `rgba(${r},${g},${b},0.7)`;
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(ann.x, ann.y, ann.w, ann.h);
+        ctx.strokeRect(ann.x, ann.y, ann.w, ann.h);
+        // Label
+        const hlLabel = HIGHLIGHT_COLORS.find(c => c.color === ann.color)?.label;
+        if (hlLabel) {
+          ctx.font = "bold 10px sans-serif";
+          ctx.fillStyle = `rgba(${r},${g},${b},1)`;
+          ctx.fillText(hlLabel, ann.x + 3, ann.y + 12);
+        }
+      } else if (ann.type === "pen") {
         ctx.beginPath();
         ann.points.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
         ctx.stroke();
