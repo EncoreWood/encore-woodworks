@@ -25,6 +25,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const canvasRef = useRef(null);
   const pageContainerRef = useRef(null);
   const [color, setColor] = useState("#e53e3e");
+  const [highlightColor, setHighlightColor] = useState("#f59e0b");
   const [aiNotes, setAiNotes] = useState(initialNotes);
   const [canvasSize, setCanvasSize] = useState({ width: 595, height: 842 });
 
