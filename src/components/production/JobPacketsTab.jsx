@@ -181,7 +181,7 @@ export default function JobPacketsTab({ projects, items, openFolderContext, onFo
     <div className="space-y-8">
       {projects.map(project => {
         const rooms = project.rooms?.map(r => r.room_name).filter(Boolean) || [];
-        const projectItems = items.filter(i => i.project_id === project.id && i.is_job_info);
+        const projectItems = items.filter(i => i.project_id === project.id && !i.is_job_info && !i.stage);
 
         return (
           <div key={project.id} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
