@@ -423,7 +423,12 @@ export default function Layout({ children, currentPageName }) {
 
         {/* Nav Groups */}
         <nav className="p-4 space-y-4 flex-1">
-          {Object.entries(navGroups).map(([groupKey, group]) => (
+          {Object.entries(navGroups).map(([groupKey, group]) => {
+            const visibleItems = currentUser?.role === "admin"
+              ? group.items
+              : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page));
+            if (visibleItems.length === 0) return null;
+            return (
             <div key={groupKey}>
               <button
                 onClick={() => toggleGroup(groupKey)}
@@ -440,7 +445,7 @@ export default function Layout({ children, currentPageName }) {
 
               {expandedGroups[groupKey] && (
                 <div className="space-y-1 mt-2 ml-2">
-                  {group.items.map((item) => (
+                  {visibleItems.map((item) => (
                     <Link
                       key={item.page}
                       to={createPageUrl(item.page)}
