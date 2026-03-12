@@ -466,7 +466,8 @@ export default function Layout({ children, currentPageName }) {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
         </nav>
 
         {/* Bottom Buttons */}
