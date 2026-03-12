@@ -311,12 +311,13 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                   key={hc.label}
                   onClick={() => setHighlightColor(hc.color)}
                   title={hc.label}
-                  className="flex items-center gap-1 px-2 py-1 rounded border text-xs font-bold transition-all"
+                  className="px-3 py-1 rounded-full text-xs font-semibold transition-all border"
                   style={{
-                    background: highlightColor === hc.color ? hc.color : `${hc.hex}`,
-                    borderColor: hc.color,
-                    color: highlightColor === hc.color ? "white" : hc.color,
-                    boxShadow: highlightColor === hc.color ? `0 0 0 2px ${hc.color}` : "none"
+                    background: hc.hex,
+                    borderColor: highlightColor === hc.color ? hc.color : "transparent",
+                    color: hc.color,
+                    boxShadow: highlightColor === hc.color ? `0 0 0 2px ${hc.color}` : "none",
+                    outline: "none"
                   }}
                 >
                   {hc.label}
