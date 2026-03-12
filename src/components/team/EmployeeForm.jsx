@@ -348,6 +348,51 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
             )}
           </div>
 
+          {/* Page Permissions */}
+          <div className="border-t pt-4">
+            <Label className="text-base font-semibold">Page Permissions</Label>
+            <p className="text-xs text-slate-500 mb-3">Select which pages this employee can access (applies when role is "User")</p>
+            <div className="space-y-3">
+              {PAGE_PERMISSIONS.map((group) => (
+                <div key={group.group} className="border rounded-lg p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Checkbox
+                      id={`group-${group.group}`}
+                      checked={group.pages.every(p => (formData.allowed_pages || []).includes(p.key))}
+                      onCheckedChange={(checked) => {
+                        const keys = group.pages.map(p => p.key);
+                        const current = formData.allowed_pages || [];
+                        const updated = checked
+                          ? [...new Set([...current, ...keys])]
+                          : current.filter(k => !keys.includes(k));
+                        setFormData({ ...formData, allowed_pages: updated });
+                      }}
+                    />
+                    <label htmlFor={`group-${group.group}`} className="text-sm font-semibold text-slate-800 cursor-pointer">{group.group}</label>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1 pl-6">
+                    {group.pages.map((page) => (
+                      <div key={page.key} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`perm-${page.key}`}
+                          checked={(formData.allowed_pages || []).includes(page.key)}
+                          onCheckedChange={(checked) => {
+                            const current = formData.allowed_pages || [];
+                            const updated = checked
+                              ? [...current, page.key]
+                              : current.filter(k => k !== page.key);
+                            setFormData({ ...formData, allowed_pages: updated });
+                          }}
+                        />
+                        <label htmlFor={`perm-${page.key}`} className="text-xs text-slate-700 cursor-pointer">{page.label}</label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div>
             <Label>Files</Label>
             <div className="space-y-2">
