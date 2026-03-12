@@ -397,6 +397,15 @@ export default function Layout({ children, currentPageName }) {
     setElapsedTime("00:00:00");
   };
 
+  // Route-level protection: if non-admin user tries to access a page they're not allowed, redirect to first allowed page
+  const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy"]);
+  if (currentUser && currentUser.role !== "admin" && currentPageName && !ALWAYS_ALLOWED.has(currentPageName)) {
+    if (!USER_ALLOWED_PAGES.has(currentPageName)) {
+      const firstAllowed = [...USER_ALLOWED_PAGES][0] || "AccountSettings";
+      return <Navigate to={createPageUrl(firstAllowed)} replace />;
+    }
+  }
+
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: "#d1d5db" }}>
       {/* Sidebar — hidden on mobile */}
