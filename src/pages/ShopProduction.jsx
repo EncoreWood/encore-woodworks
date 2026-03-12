@@ -487,7 +487,7 @@ export default function ShopProduction() {
           onOpenChange={(open) => { setShowForm(open); if (!open) { setEditingItem(null); setJobInfoMode(false); setPacketsFormContext(null); } }}
           onSubmit={(data) => {
             const finalData = packetsFormContext
-              ? { ...data, is_job_info: true, project_id: packetsFormContext.project.id, project_name: packetsFormContext.project.project_name, room_name: packetsFormContext.roomName }
+              ? { ...data, is_job_info: false, project_id: packetsFormContext.project.id, project_name: packetsFormContext.project.project_name, room_name: packetsFormContext.roomName }
               : data;
             if (editingItem?.id) {
               updateMutation.mutate({ id: editingItem.id, data: finalData, syncToProject: editingItem.project_id ? { project_id: editingItem.project_id, room_name: editingItem.room_name } : null });
