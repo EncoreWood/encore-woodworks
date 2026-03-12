@@ -230,13 +230,29 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     }
 
     // Current arrow/line preview
-    if (currentLine) {
+    if (currentLine && (tool === "arrow" || tool === "line")) {
       ctx.strokeStyle = color;
       ctx.lineWidth = 2.5;
       ctx.lineCap = "round";
       drawArrow(ctx, currentLine.start, currentLine.end, tool === "arrow");
     }
-  }, [annList, currentPath, currentLine, pageNumber, color, canvasSize]);
+
+    // Current highlight preview
+    if (currentLine && tool === "highlight") {
+      const r = parseInt(highlightColor.slice(1,3),16);
+      const g = parseInt(highlightColor.slice(3,5),16);
+      const b = parseInt(highlightColor.slice(5,7),16);
+      const x = Math.min(currentLine.start.x, currentLine.end.x);
+      const y = Math.min(currentLine.start.y, currentLine.end.y);
+      const w = Math.abs(currentLine.end.x - currentLine.start.x);
+      const h = Math.abs(currentLine.end.y - currentLine.start.y);
+      ctx.fillStyle = `rgba(${r},${g},${b},0.35)`;
+      ctx.strokeStyle = `rgba(${r},${g},${b},0.8)`;
+      ctx.lineWidth = 1.5;
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeRect(x, y, w, h);
+    }
+  }, [annList, currentPath, currentLine, pageNumber, color, highlightColor, canvasSize, tool]);
 
   const HIGHLIGHT_COLORS = [
     { label: "Base", color: "#f59e0b", hex: "rgba(245,158,11,0.3)" },
