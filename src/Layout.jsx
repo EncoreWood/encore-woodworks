@@ -337,6 +337,14 @@ export default function Layout({ children, currentPageName }) {
       setCurrentUser(user);
       const emps = await base44.entities.Employee.list();
       setEmployees(emps);
+
+      // If non-admin, find employee record and load their allowed_pages
+      if (user?.role !== "admin") {
+        const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
+        if (emp && emp.allowed_pages && emp.allowed_pages.length > 0) {
+          setEmployeeAllowedPages(new Set(emp.allowed_pages));
+        }
+      }
     };
     fetchData();
   }, []);
