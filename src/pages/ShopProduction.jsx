@@ -462,7 +462,7 @@ export default function ShopProduction() {
             onAddCard={(project, roomName) => {
               setPacketsFormContext({ project, roomName });
               setJobInfoMode(true);
-              setEditingItem({ project_id: project.id, project_name: project.project_name, room_name: roomName, is_job_info: true, type: "cabinet" });
+              setEditingItem({ project_id: project.id, project_name: project.project_name, room_name: roomName, is_job_info: false, type: "cabinet" });
               setShowForm(true);
             }}
             onSendToProduction={async (selectedItems) => {
