@@ -97,6 +97,20 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         setAnnList(prev => [...prev, { type: tool, start: currentLine.start, end: pos, color, page: pageNumber }]);
       }
       setCurrentLine(null);
+    } else if (tool === "highlight" && currentLine) {
+      const w = Math.abs(pos.x - currentLine.start.x);
+      const h = Math.abs(pos.y - currentLine.start.y);
+      if (w > 5 && h > 5) {
+        setAnnList(prev => [...prev, {
+          type: "highlight",
+          x: Math.min(currentLine.start.x, pos.x),
+          y: Math.min(currentLine.start.y, pos.y),
+          w, h,
+          color: highlightColor,
+          page: pageNumber
+        }]);
+      }
+      setCurrentLine(null);
     }
     setIsPointerDown(false);
   };
