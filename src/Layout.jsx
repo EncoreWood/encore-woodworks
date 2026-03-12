@@ -428,43 +428,45 @@ export default function Layout({ children, currentPageName }) {
               ? group.items
               : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page));
             if (visibleItems.length === 0) return null;
-            return <div key={groupKey}>
-              <button
-                onClick={() => toggleGroup(groupKey)}
-                className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-800 hover:bg-amber-700/20 transition-all group"
-              >
-                <ChevronDown
-                  className={cn(
-                    "w-4 h-4 flex-shrink-0 transition-transform",
-                    !expandedGroups[groupKey] && "-rotate-90"
-                  )}
-                />
-                <span className="flex-1 text-left">{group.name}</span>
-              </button>
+            return (
+              <div key={groupKey}>
+                <button
+                  onClick={() => toggleGroup(groupKey)}
+                  className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-800 hover:bg-amber-700/20 transition-all group"
+                >
+                  <ChevronDown
+                    className={cn(
+                      "w-4 h-4 flex-shrink-0 transition-transform",
+                      !expandedGroups[groupKey] && "-rotate-90"
+                    )}
+                  />
+                  <span className="flex-1 text-left">{group.name}</span>
+                </button>
 
-              {expandedGroups[groupKey] && (
-                <div className="space-y-1 mt-2 ml-2">
-                  {visibleItems.map((item) => (
-                    <Link
-                      key={item.page}
-                      to={createPageUrl(item.page)}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                        currentPageName === item.page
-                          ? "text-white shadow-md"
-                          : "text-slate-800 hover:text-slate-900"
-                      )}
-                      style={currentPageName === item.page ? { backgroundColor: "#8a7560" } : undefined}
-                      onMouseEnter={e => { if (currentPageName !== item.page) e.currentTarget.style.backgroundColor = "rgba(180,150,100,0.25)"; }}
-                      onMouseLeave={e => { if (currentPageName !== item.page) e.currentTarget.style.backgroundColor = ""; }}
+                {expandedGroups[groupKey] && (
+                  <div className="space-y-1 mt-2 ml-2">
+                    {visibleItems.map((item) => (
+                      <Link
+                        key={item.page}
+                        to={createPageUrl(item.page)}
+                        className={cn(
+                          "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                          currentPageName === item.page
+                            ? "text-white shadow-md"
+                            : "text-slate-800 hover:text-slate-900"
+                        )}
+                        style={currentPageName === item.page ? { backgroundColor: "#8a7560" } : undefined}
+                        onMouseEnter={e => { if (currentPageName !== item.page) e.currentTarget.style.backgroundColor = "rgba(180,150,100,0.25)"; }}
+                        onMouseLeave={e => { if (currentPageName !== item.page) e.currentTarget.style.backgroundColor = ""; }}
                       >
-                      <item.icon className="w-4 h-4 flex-shrink-0" />
-                      <span>{item.name}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>;
+                        <item.icon className="w-4 h-4 flex-shrink-0" />
+                        <span>{item.name}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
           })}
         </nav>
 
