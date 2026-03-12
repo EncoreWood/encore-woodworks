@@ -18,7 +18,7 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
   }, [autoOpen]);
   const [selected, setSelected] = useState(new Set());
 
-  const roomItems = items.filter(i => i.project_id === project.id && i.room_name === roomName && i.is_job_info);
+  const roomItems = items.filter(i => i.project_id === project.id && i.room_name === roomName && !i.is_job_info && !i.stage);
 
   const toggleSelect = (id) => {
     setSelected(prev => {
