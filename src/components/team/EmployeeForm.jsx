@@ -75,6 +75,7 @@ export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, i
         profile_image: employee.profile_image || "",
         user_email: employee.user_email || "",
         user_role: employee.user_role || "user",
+        allowed_pages: employee.allowed_pages || [],
         files: employee.files || [],
         notes: employee.notes || ""
       });
