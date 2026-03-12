@@ -429,7 +429,7 @@ export default function Layout({ children, currentPageName }) {
               : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page));
             if (visibleItems.length === 0) return null;
             return (
-            <div key={groupKey}>
+            <div key={groupKey} style={{display:"contents"}}><div>
               <button
                 onClick={() => toggleGroup(groupKey)}
                 className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-800 hover:bg-amber-700/20 transition-all group"
