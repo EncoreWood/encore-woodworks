@@ -69,6 +69,12 @@ export default function Layout({ children, currentPageName }) {
     }
   };
 
+  const USER_ALLOWED_PAGES = new Set([
+    "OrdersBoard", "PickupList", "Calendar", "ShopProduction", "Tools",
+    "Inventory", "PurchaseOrders", "SOPBoard", "Notepad", "MorningMeeting",
+    "Team", "ChatBoard", "PrivacyPolicy"
+  ]);
+
   const iconMap = {
     KanbanIcon, LayoutDashboard, Calendar, Factory, Coffee, Users, MessageSquare,
     Package, Clipboard, ShoppingCart, FileText: FileTextIcon, Wrench, Truck, Home, Building2, 
