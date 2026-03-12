@@ -88,6 +88,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
       setAiNotes(b.ai_notes || "");
       setNotes(b.notes || "");
       setStatus(b.status || "draft");
+      setPlanAnnotations(b.plan_annotations || []);
     }
   }, [bidData]);
 
