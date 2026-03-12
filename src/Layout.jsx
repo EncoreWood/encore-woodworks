@@ -344,8 +344,11 @@ export default function Layout({ children, currentPageName }) {
         const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
         if (emp && emp.allowed_pages && emp.allowed_pages.length > 0) {
           setEmployeeAllowedPages(new Set(emp.allowed_pages));
+        } else {
+          // No custom permissions — use the default set (mark ready with null stays)
         }
       }
+      setPermissionsReady(true);
     };
     fetchData();
   }, []);
