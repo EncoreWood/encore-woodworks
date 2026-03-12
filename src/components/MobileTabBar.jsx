@@ -1,19 +1,41 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { LayoutDashboard, Home, Factory, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { base44 } from "@/api/base44Client";
 
-const tabs = [
+const ALL_TABS = [
   { label: "Dashboard", icon: LayoutDashboard, page: "Dashboard", scope: ["Dashboard"] },
   { label: "Projects", icon: Home, page: "Kanban", scope: ["Kanban", "ProjectDetails"] },
   { label: "Shop", icon: Factory, page: "ShopProduction", scope: ["ShopProduction"] },
   { label: "Chat", icon: MessageSquare, page: "ChatBoard", scope: ["ChatBoard"] },
 ];
 
+// Always accessible regardless of permissions
+const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy"]);
+
 export default function MobileTabBar({ currentPageName }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const [tabs, setTabs] = useState(ALL_TABS);
+
+  useEffect(() => {
+    const load = async () => {
+      const user = await base44.auth.me();
+      if (user?.role === "admin") {
+        setTabs(ALL_TABS);
+        return;
+      }
+      const emps = await base44.entities.Employee.list();
+      const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
+      if (emp) {
+        const allowed = new Set(emp.allowed_pages || []);
+        setTabs(ALL_TABS.filter(tab => tab.scope.some(p => allowed.has(p) || ALWAYS_ALLOWED.has(p))));
+      }
+    };
+    load();
+  }, []);
 
   // Save current full URL to the owning tab's storage slot
   useEffect(() => {
@@ -23,7 +45,7 @@ export default function MobileTabBar({ currentPageName }) {
         break;
       }
     }
-  }, [currentPageName, location]);
+  }, [currentPageName, location, tabs]);
 
   const handleTabClick = (e, tab) => {
     const saved = sessionStorage.getItem(`tab_last_${tab.page}`);
