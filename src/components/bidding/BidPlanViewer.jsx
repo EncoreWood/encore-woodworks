@@ -493,24 +493,6 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         )}
       </DialogContent>
 
-      {/* Pending measurement dialog */}
-      {pendingMeasure && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
-          <div className="bg-white rounded-xl shadow-2xl p-5 w-80">
-            <h3 className="font-bold text-slate-900 mb-2">Save Measurement</h3>
-            {pendingMeasure.realFeet != null
-              ? <p className="text-2xl font-bold text-emerald-600 mb-3">{pendingMeasure.realFeet.toFixed(2)} linear feet</p>
-              : <p className="text-sm text-amber-600 mb-3 p-2 bg-amber-50 rounded">No scale calibrated — measurement saved without real-world distance</p>
-            }
-            <Input value={pendingLabel} onChange={e=>setPendingLabel(e.target.value)} placeholder="e.g. Kitchen Base Cabinets" className="mb-3" autoFocus onKeyDown={e=>e.key==="Enter"&&saveMeasurement()} />
-            <div className="flex gap-2">
-              <Button onClick={saveMeasurement} className="flex-1 bg-emerald-600 hover:bg-emerald-700">Save</Button>
-              <Button variant="outline" onClick={()=>{setPendingMeasure(null);setPendingLabel("");}}>Cancel</Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Calibration dialog */}
       {pendingCalib && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
