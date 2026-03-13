@@ -521,24 +521,24 @@ export default function CalendarPage() {
           </div>
 
           {/* Calendar */}
-           <div className="flex-1 overflow-auto p-3 flex flex-col">
+           <div className="flex-1 overflow-auto p-3">
 
              <style>{`
-                .rdp { width: 100%; height: 100%; }
-                .rdp-months { width: 100%; height: 100%; display: flex; flex-direction: column; }
-                .rdp-month { width: 100%; height: 100%; display: flex; flex-direction: column; }
-                .rdp-caption { flex-shrink: 0; }
-                .rdp-head_cell { text-align: center; font-weight: 600; font-size: 0.875rem; padding: 0.5rem; border: 1px solid #cbd5e1; }
-                .rdp-table { width: 100%; height: 100%; border-collapse: collapse; }
-                .rdp-tbody { display: flex; flex-direction: column; flex: 1; }
-                .rdp-row { display: flex; flex: 1; }
-                .rdp-cell { flex: 1; padding: 0; border: 1px solid #cbd5e1; background: #f8fafc; position: relative; }
-                .rdp-day { width: 100%; height: 100%; display: flex; flex-direction: column; position: relative; }
-                .rdp-day_button { width: 100%; height: 100%; padding: 0.375rem; text-align: left; font-weight: 400; font-size: 0.875rem; border: none; background: white; cursor: pointer; }
+                .rdp { width: 100%; }
+                .rdp-months { width: 100%; }
+                .rdp-month { width: 100%; }
+                .rdp-caption { display: none; }
+                .rdp-head_cell { text-align: center; font-weight: 600; font-size: 0.7rem; padding: 0.4rem 0; border: 1px solid #cbd5e1; }
+                .rdp-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+                .rdp-tbody { display: table-row-group; }
+                .rdp-row { display: table-row; }
+                .rdp-cell { display: table-cell; padding: 0; border: 1px solid #cbd5e1; background: #f8fafc; vertical-align: top; }
+                .rdp-day { width: 100%; display: block; min-height: 120px; }
+                .rdp-day_button { width: 100%; min-height: 120px; padding: 0; text-align: left; border: none; background: white; cursor: pointer; display: block; }
                 .rdp-day:hover .rdp-day_button { background: #fef3c7; }
-                .rdp-day_selected .rdp-day_button { background: #fcd34d; color: #92400e; font-weight: 600; }
-                .rdp-day_today .rdp-day_button { background: #dbeafe; font-weight: 700; border: 1px solid #60a5fa; }
-                .rdp-day_outside .rdp-day_button { color: #cbd5e1; opacity: 0.3; }
+                .rdp-day_selected .rdp-day_button { background: #fcd34d80; }
+                .rdp-day_today .rdp-day_button { background: #dbeafe; outline: 2px solid #60a5fa; outline-offset: -2px; }
+                .rdp-day_outside .rdp-day_button { opacity: 0.3; background: #f8fafc; }
               `}</style>
 
              <CalendarComponent
@@ -552,24 +552,24 @@ export default function CalendarPage() {
                  const ws = startOfWeek(currentMonth); const we = endOfWeek(currentMonth);
                  return date < ws || date > we;
                } : undefined}
-               className="w-full h-full flex flex-col"
+               className="w-full"
                classNames={{
-                 months: "w-full h-full flex flex-col",
-                 month: "w-full h-full flex flex-col",
-                 table: "w-full h-full border-collapse table-fixed flex-1 flex flex-col",
-                 head_cell: "text-slate-600 font-semibold text-xs py-2 w-[14.28%] border border-slate-200",
-                 cell: "relative p-0 text-center border border-slate-200 w-[14.28%] bg-slate-50 flex-1",
-                 day: "relative w-full p-0.5 font-normal hover:bg-amber-50 transition-colors bg-white text-sm flex flex-col",
-                 day_selected: "bg-amber-100 text-amber-900 font-semibold",
-                 day_today: "bg-blue-50 font-bold ring-1 ring-blue-400",
-                 day_outside: "text-slate-200 opacity-30 bg-slate-50"
+                 months: "w-full",
+                 month: "w-full",
+                 table: "w-full border-collapse",
+                 head_cell: "text-slate-600 font-semibold text-xs py-2 border border-slate-200",
+                 cell: "p-0 border border-slate-200 bg-slate-50 align-top",
+                 day: "w-full block font-normal hover:bg-amber-50 transition-colors bg-white",
+                 day_selected: "bg-amber-100 text-amber-900",
+                 day_today: "bg-blue-50 font-bold",
+                 day_outside: "opacity-30 bg-slate-50"
                }}
                components={{
-                 DayContent: ({ date }) => renderDayContent(date, true)
+                 DayContent: ({ date }) => renderDayContent(date)
                }}
              />
 
-          <div className="flex-shrink-0 px-4 py-2 border-t border-slate-200 flex flex-wrap gap-3 text-xs bg-slate-50">
+          <div className="mt-3 px-1 py-2 border-t border-slate-200 flex flex-wrap gap-3 text-xs bg-slate-50">
             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-red-600" /><span className="text-slate-600 text-[11px]">Overdue</span></div>
             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-amber-500" /><span className="text-slate-600 text-[11px]">Project</span></div>
             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-orange-500" /><span className="text-slate-600 text-[11px]">Install</span></div>
