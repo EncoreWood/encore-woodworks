@@ -184,7 +184,13 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
 
     if (tool === "measure") {
       if (!measureStart) { setMeasureStart(pos); }
-      else { setPendingMeasure({ start: measureStart, end: pos, realFeet: computeRealFeet(measureStart, pos), page: pageNumber }); setPendingLabel(""); setMeasureStart(null); setMeasurePreview(null); }
+      else {
+        const realFeet = computeRealFeet(measureStart, pos);
+        const newM = { type: "measurement", start: measureStart, end: pos, realFeet, page: pageNumber, id: `m_${Date.now()}`, label: `Measurement ${measurements.length + 1}` };
+        setMeasurements(p => [...p, newM]);
+        setMeasureStart(null);
+        setMeasurePreview(null);
+      }
       return;
     }
     if (tool === "calibrate") {
