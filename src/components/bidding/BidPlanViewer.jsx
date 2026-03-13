@@ -69,8 +69,6 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const [measureStart, setMeasureStart] = useState(null);
   const [measurePreview, setMeasurePreview] = useState(null);
   const [measurements, setMeasurements] = useState([]);
-  const [pendingMeasure, setPendingMeasure] = useState(null);
-  const [pendingLabel, setPendingLabel] = useState("");
 
   // Calibrate state
   const [calibStart, setCalibStart] = useState(null);
