@@ -21,6 +21,7 @@ export default function Layout({ children, currentPageName }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [clockInTime, setClockInTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
+  const [openTimeEntryId, setOpenTimeEntryId] = useState(null);
   const [employees, setEmployees] = useState([]);
 
   const defaultNavGroups = {
