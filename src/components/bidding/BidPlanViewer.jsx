@@ -183,10 +183,48 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     return (Math.hypot(p2.x - p1.x, p2.y - p1.y) / scale) / pxPerFtAtScale1;
   };
 
+  const hitTestAnnotations = (pos) => {
+    const T = 12;
+    // Check measurements first
+    for (let i = measurements.length - 1; i >= 0; i--) {
+      const m = measurements[i];
+      if (m.page !== pageNumber) continue;
+      const midX = (m.start.x + m.end.x) / 2, midY = (m.start.y + m.end.y) / 2;
+      if (Math.hypot(pos.x - midX, pos.y - midY) < 20) return { kind: "measurement", idx: i };
+      if (Math.hypot(pos.x - m.start.x, pos.y - m.start.y) < T) return { kind: "measurement", idx: i };
+      if (Math.hypot(pos.x - m.end.x, pos.y - m.end.y) < T) return { kind: "measurement", idx: i };
+    }
+    // Check annotations (reverse = top-first)
+    const pageAnns = annList.map((a, i) => ({ a, i })).filter(({ a }) => a.page === pageNumber);
+    for (let j = pageAnns.length - 1; j >= 0; j--) {
+      const { a, i } = pageAnns[j];
+      if (a.type === "highlight") { if (pos.x >= a.x && pos.x <= a.x + a.w && pos.y >= a.y && pos.y <= a.y + a.h) return { kind: "ann", idx: i }; }
+      else if (a.type === "text") { if (Math.hypot(pos.x - a.x, pos.y - a.y) < 30) return { kind: "ann", idx: i }; }
+      else if (a.type === "pen") { if (a.points.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) < T)) return { kind: "ann", idx: i }; }
+      else if (a.type === "arrow" || a.type === "line") {
+        if (Math.hypot(pos.x - a.start.x, pos.y - a.start.y) < T || Math.hypot(pos.x - a.end.x, pos.y - a.end.y) < T) return { kind: "ann", idx: i };
+      }
+    }
+    return null;
+  };
+
   const handlePointerDown = (e) => {
     e.preventDefault();
     canvasRef.current?.setPointerCapture(e.pointerId);
     const pos = getPos(e);
+
+    if (tool === "pointer") {
+      const hit = hitTestAnnotations(pos);
+      if (hit) {
+        const canvasRect = canvasRef.current.getBoundingClientRect();
+        setDeletePopup({ x: e.clientX - canvasRect.left, y: e.clientY - canvasRect.top, ...hit });
+      } else {
+        setDeletePopup(null);
+      }
+      return;
+    }
+
+    setDeletePopup(null);
 
     if (tool === "measure") {
       if (!measureStart) { setMeasureStart(pos); }
