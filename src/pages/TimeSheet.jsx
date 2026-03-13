@@ -25,6 +25,7 @@ export default function TimeSheet() {
   });
   const [clockInTime, setClockInTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
+  const [openTimeEntryId, setOpenTimeEntryId] = useState(null);
   const [settingsData, setSettingsData] = useState({
     hours_per_year: 160,
     accrual_rate: 0.0192,
