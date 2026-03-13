@@ -365,12 +365,16 @@ export default function ChatBoard() {
           });
 
           // Sync photos to linked project's files array
-          const photoAttachments = attachments.filter(a => a.type === 'photo');
+          const IMAGE_EXTS = ['jpg','jpeg','png','gif','webp'];
+          const photoAttachments = attachments.filter(a => {
+            const ext = (a.name || '').split('.').pop().toLowerCase();
+            return a.type === 'photo' || IMAGE_EXTS.includes(ext);
+          });
           if (photoAttachments.length > 0 && selectedRoom.project_id && selectedRoom.project_id !== 'manual') {
             const proj = projects.find(p => p.id === selectedRoom.project_id);
             if (proj) {
               const existingFiles = proj.files || [];
-              const newFiles = photoAttachments.map(a => ({ name: a.name, url: a.url }));
+              const newFiles = photoAttachments.map(a => ({ name: a.name, url: a.url, tag: 'job_photo' }));
               base44.entities.Project.update(proj.id, { files: [...existingFiles, ...newFiles] });
               queryClient.invalidateQueries({ queryKey: ['projects'] });
             }
