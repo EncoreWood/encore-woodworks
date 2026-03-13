@@ -679,6 +679,12 @@ export default function ChatBoard() {
         </DialogContent>
       </Dialog>
 
+      {/* Chat Image Lightbox */}
+      {createPortal(
+        <ChatImageLightbox images={lightboxImages} index={lightboxIndex} onClose={handleLightboxClose} />,
+        document.body
+      )}
+
       {/* Settings Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
         <DialogContent className="max-w-xl max-h-[80vh] overflow-y-auto">
