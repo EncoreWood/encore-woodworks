@@ -40,6 +40,14 @@ export default function TimeSheet() {
 
   const queryClient = useQueryClient();
 
+  // Live updates for time entries
+  useEffect(() => {
+    const unsub = base44.entities.TimeEntry.subscribe(() => {
+      queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
+    });
+    return unsub;
+  }, [queryClient]);
+
   const { data: employees = [] } = useQuery({
     queryKey: ["employees"],
     queryFn: () => base44.entities.Employee.list()
