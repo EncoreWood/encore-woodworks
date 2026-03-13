@@ -54,23 +54,23 @@ export default function TodayPanel({ inProductionProjects }) {
     queryFn: () => base44.entities.Task.filter({ due_date: todayStr })
   });
 
-  const { data: settings = [] } = useQuery({
-    queryKey: ["settings"],
-    queryFn: () => base44.entities.Settings.list()
+  const { data: dashboardSettings = [] } = useQuery({
+    queryKey: ["dashboardSettings"],
+    queryFn: () => base44.entities.DashboardSettings.list()
   });
 
-  const bookSetting = settings.find(s => s.key === "book_of_month");
+  const bookSetting = dashboardSettings.find(s => s.section === "book_of_month");
 
   const saveMutation = useMutation({
     mutationFn: async (value) => {
       if (bookSetting) {
-        return base44.entities.Settings.update(bookSetting.id, { value });
+        return base44.entities.DashboardSettings.update(bookSetting.id, { value });
       } else {
-        return base44.entities.Settings.create({ key: "book_of_month", value });
+        return base44.entities.DashboardSettings.create({ section: "book_of_month", value });
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardSettings"] });
       setEditingBook(false);
     }
   });
