@@ -38,6 +38,22 @@ function drawArrow(ctx, from, to, withHead) {
   }
 }
 
+// ─── coordinate helpers ────────────────────────────────────────────────────
+// All committed annotations store plan-relative coords: rx/ry ∈ [0,1].
+// "old" annotations (no rx field) are treated as fixed screen pixels (legacy).
+
+function makeToRel(w, h) {
+  return (pos) => ({ rx: pos.x / w, ry: pos.y / h });
+}
+function makeToScr(w, h) {
+  return (rel) => ({ x: rel.rx * w, y: rel.ry * h });
+}
+// Works for both new {rx,ry} and legacy {x,y} points
+function ptToScr(pt, w, h) {
+  if (pt.rx !== undefined) return { x: pt.rx * w, y: pt.ry * h };
+  return { x: pt.x, y: pt.y };
+}
+
 export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", rooms = [], onAddToRoom }) {
   if (!pdfUrl) return null;
 
@@ -51,13 +67,13 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const [canvasSize, setCanvasSize] = useState({ width: 595, height: 842 });
 
   // Annotation state
-  const [tool, setTool] = useState("pen");
+  const [tool, setTool] = useState("pointer");
   const [color, setColor] = useState("#e53e3e");
   const [highlightColor, setHighlightColor] = useState("#d97706");
   const [annList, setAnnList] = useState([]);
-  const [currentPath, setCurrentPath] = useState([]);
-  const [currentLine, setCurrentLine] = useState(null);
-  const [textInput, setTextInput] = useState(null);
+  const [currentPath, setCurrentPath] = useState([]); // screen coords (transient)
+  const [currentLine, setCurrentLine] = useState(null); // screen coords (transient)
+  const [textInput, setTextInput] = useState(null); // screen coords
   const [textValue, setTextValue] = useState("");
   const [isPointerDown, setIsPointerDown] = useState(false);
   const [aiNotes, setAiNotes] = useState(initialNotes);
@@ -69,20 +85,21 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const [manualScaleInput, setManualScaleInput] = useState("");
   const [showScaleOverride, setShowScaleOverride] = useState(false);
 
-  // Measure state
+  // Measure state (screen coords — transient)
   const [measureStart, setMeasureStart] = useState(null);
   const [measurePreview, setMeasurePreview] = useState(null);
   const [measurements, setMeasurements] = useState([]);
 
-  // Calibrate state
+  // Calibrate state (screen coords — transient)
   const [calibStart, setCalibStart] = useState(null);
   const [calibPreview, setCalibPreview] = useState(null);
   const [pendingCalib, setPendingCalib] = useState(null);
   const [calibKnownFeet, setCalibKnownFeet] = useState("");
 
   // Pointer/select state
-  const [selectedAnn, setSelectedAnn] = useState(null); // { kind: "ann"|"measurement", idx }
-  const [deletePopup, setDeletePopup] = useState(null); // { x, y, kind, idx }
+  const [selectedAnn, setSelectedAnn] = useState(null); // { kind, idx }
+  const [showDeletePopup, setShowDeletePopup] = useState(null); // { x, y, kind, idx }
+  const dragRef = useRef(null); // { kind, idx, lastPos }
 
   // Send to bid state
   const [sendingM, setSendingM] = useState(null);
@@ -94,6 +111,11 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const scrollRef = useRef(null);
   const scaleDetectedRef = useRef(false);
 
+  // Derived coord helpers (capture current canvas size)
+  const toRel = useCallback((pos) => makeToRel(canvasSize.width, canvasSize.height)(pos), [canvasSize]);
+  const toScr = useCallback((rel) => makeToScr(canvasSize.width, canvasSize.height)(rel), [canvasSize]);
+  const pToScr = useCallback((pt) => ptToScr(pt, canvasSize.width, canvasSize.height), [canvasSize]);
+
   // Reset on open
   useEffect(() => {
     if (open) {
@@ -103,13 +125,15 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       setAutoFitted(false);
       setNaturalPageWidth(null);
       setPageNumber(1);
-      setTool("pen");
+      setTool("pointer");
       setMeasureStart(null);
       setCalibStart(null);
+      setSelectedAnn(null);
+      setShowDeletePopup(null);
     }
   }, [open]);
 
-  // Auto-fit when natural width known
+  // Auto-fit
   useEffect(() => {
     if (naturalPageWidth && !autoFitted && scrollRef.current) {
       const w = scrollRef.current.clientWidth - 64;
@@ -118,7 +142,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     }
   }, [naturalPageWidth, autoFitted]);
 
-  // AI scale detection on open
+  // AI scale detection
   useEffect(() => {
     if (open && pdfUrl && !scaleDetectedRef.current) {
       scaleDetectedRef.current = true;
@@ -183,31 +207,79 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     return (Math.hypot(p2.x - p1.x, p2.y - p1.y) / scale) / pxPerFtAtScale1;
   };
 
+  // ── Hit-test (works in current screen space) ──────────────────────────────
   const hitTestAnnotations = (pos) => {
-    const T = 12;
-    // Check measurements first
+    const T = 14;
+    const W = canvasSize.width, H = canvasSize.height;
+
+    // Measurements
     for (let i = measurements.length - 1; i >= 0; i--) {
       const m = measurements[i];
       if (m.page !== pageNumber) continue;
-      const midX = (m.start.x + m.end.x) / 2, midY = (m.start.y + m.end.y) / 2;
-      if (Math.hypot(pos.x - midX, pos.y - midY) < 20) return { kind: "measurement", idx: i };
-      if (Math.hypot(pos.x - m.start.x, pos.y - m.start.y) < T) return { kind: "measurement", idx: i };
-      if (Math.hypot(pos.x - m.end.x, pos.y - m.end.y) < T) return { kind: "measurement", idx: i };
+      const s = ptToScr(m.start, W, H), en = ptToScr(m.end, W, H);
+      const midX = (s.x + en.x) / 2, midY = (s.y + en.y) / 2;
+      if (Math.hypot(pos.x - midX, pos.y - midY) < 24) return { kind: "measurement", idx: i };
+      if (Math.hypot(pos.x - s.x, pos.y - s.y) < T) return { kind: "measurement", idx: i };
+      if (Math.hypot(pos.x - en.x, pos.y - en.y) < T) return { kind: "measurement", idx: i };
     }
-    // Check annotations (reverse = top-first)
+    // Annotations (reverse = top-first)
     const pageAnns = annList.map((a, i) => ({ a, i })).filter(({ a }) => a.page === pageNumber);
     for (let j = pageAnns.length - 1; j >= 0; j--) {
       const { a, i } = pageAnns[j];
-      if (a.type === "highlight") { if (pos.x >= a.x && pos.x <= a.x + a.w && pos.y >= a.y && pos.y <= a.y + a.h) return { kind: "ann", idx: i }; }
-      else if (a.type === "text") { if (Math.hypot(pos.x - a.x, pos.y - a.y) < 30) return { kind: "ann", idx: i }; }
-      else if (a.type === "pen") { if (a.points.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) < T)) return { kind: "ann", idx: i }; }
-      else if (a.type === "arrow" || a.type === "line") {
-        if (Math.hypot(pos.x - a.start.x, pos.y - a.start.y) < T || Math.hypot(pos.x - a.end.x, pos.y - a.end.y) < T) return { kind: "ann", idx: i };
+      if (a.type === "highlight") {
+        const ox = ptToScr({ rx: a.rx, ry: a.ry }, W, H);
+        const sw = a.rw * W, sh = a.rh * H;
+        if (pos.x >= ox.x && pos.x <= ox.x + sw && pos.y >= ox.y && pos.y <= ox.y + sh) return { kind: "ann", idx: i };
+        // legacy
+        if (a.x !== undefined && pos.x >= a.x && pos.x <= a.x + a.w && pos.y >= a.y && pos.y <= a.y + a.h) return { kind: "ann", idx: i };
+      } else if (a.type === "text") {
+        const tp = ptToScr(a.rx !== undefined ? { rx: a.rx, ry: a.ry } : { rx: a.x / W, ry: a.y / H }, W, H);
+        if (Math.hypot(pos.x - tp.x, pos.y - tp.y) < 32) return { kind: "ann", idx: i };
+      } else if (a.type === "pen") {
+        const pts = a.rpoints ? a.rpoints.map(p => ptToScr(p, W, H)) : (a.points || []);
+        if (pts.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) < T)) return { kind: "ann", idx: i };
+      } else if (a.type === "arrow" || a.type === "line") {
+        const s2 = ptToScr(a.rstart || (a.start?.rx !== undefined ? a.start : { rx: a.start.x / W, ry: a.start.y / H }), W, H);
+        const e2 = ptToScr(a.rend   || (a.end?.rx   !== undefined ? a.end   : { rx: a.end.x   / W, ry: a.end.y   / H }), W, H);
+        if (Math.hypot(pos.x - s2.x, pos.y - s2.y) < T || Math.hypot(pos.x - e2.x, pos.y - e2.y) < T) return { kind: "ann", idx: i };
       }
     }
     return null;
   };
 
+  // ── Translate annotation by screen-space delta ────────────────────────────
+  const translateAnn = (ann, dx, dy) => {
+    const W = canvasSize.width, H = canvasSize.height;
+    const drx = dx / W, dry = dy / H;
+    if (ann.type === "pen") {
+      if (ann.rpoints) return { ...ann, rpoints: ann.rpoints.map(p => ({ rx: p.rx + drx, ry: p.ry + dry })) };
+      return { ...ann, points: ann.points.map(p => ({ x: p.x + dx, y: p.y + dy })) };
+    }
+    if (ann.type === "highlight") {
+      if (ann.rx !== undefined) return { ...ann, rx: ann.rx + drx, ry: ann.ry + dry };
+      return { ...ann, x: ann.x + dx, y: ann.y + dy };
+    }
+    if (ann.type === "text") {
+      if (ann.rx !== undefined) return { ...ann, rx: ann.rx + drx, ry: ann.ry + dry };
+      return { ...ann, x: ann.x + dx, y: ann.y + dy };
+    }
+    if (ann.type === "arrow" || ann.type === "line") {
+      if (ann.rstart) return { ...ann, rstart: { rx: ann.rstart.rx + drx, ry: ann.rstart.ry + dry }, rend: { rx: ann.rend.rx + drx, ry: ann.rend.ry + dry } };
+      return { ...ann, start: { x: ann.start.x + dx, y: ann.start.y + dy }, end: { x: ann.end.x + dx, y: ann.end.y + dy } };
+    }
+    return ann;
+  };
+
+  const translateMeasurement = (m, dx, dy) => {
+    const W = canvasSize.width, H = canvasSize.height;
+    const drx = dx / W, dry = dy / H;
+    if (m.start?.rx !== undefined) {
+      return { ...m, start: { rx: m.start.rx + drx, ry: m.start.ry + dry }, end: { rx: m.end.rx + drx, ry: m.end.ry + dry } };
+    }
+    return { ...m, start: { x: m.start.x + dx, y: m.start.y + dy }, end: { x: m.end.x + dx, y: m.end.y + dy } };
+  };
+
+  // ── Event handlers ─────────────────────────────────────────────────────────
   const handlePointerDown = (e) => {
     e.preventDefault();
     canvasRef.current?.setPointerCapture(e.pointerId);
@@ -216,21 +288,34 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     if (tool === "pointer") {
       const hit = hitTestAnnotations(pos);
       if (hit) {
-        const canvasRect = canvasRef.current.getBoundingClientRect();
-        setDeletePopup({ x: e.clientX - canvasRect.left, y: e.clientY - canvasRect.top, ...hit });
+        setSelectedAnn(hit);
+        dragRef.current = { ...hit, lastPos: pos, moved: false };
+        setShowDeletePopup(null);
       } else {
-        setDeletePopup(null);
+        setSelectedAnn(null);
+        setShowDeletePopup(null);
+        dragRef.current = null;
       }
       return;
     }
 
-    setDeletePopup(null);
+    setShowDeletePopup(null);
+    setSelectedAnn(null);
 
     if (tool === "measure") {
       if (!measureStart) { setMeasureStart(pos); }
       else {
         const realFeet = computeRealFeet(measureStart, pos);
-        const newM = { type: "measurement", start: measureStart, end: pos, realFeet, page: pageNumber, id: `m_${Date.now()}`, label: `Measurement ${measurements.length + 1}` };
+        // Store start/end in relative coords
+        const newM = {
+          type: "measurement",
+          start: toRel(measureStart),
+          end: toRel(pos),
+          realFeet,
+          page: pageNumber,
+          id: `m_${Date.now()}`,
+          label: `Measurement ${measurements.length + 1}`
+        };
         setMeasurements(p => [...p, newM]);
         setMeasureStart(null);
         setMeasurePreview(null);
@@ -239,7 +324,11 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     }
     if (tool === "calibrate") {
       if (!calibStart) { setCalibStart(pos); }
-      else { const dist = Math.hypot(pos.x - calibStart.x, pos.y - calibStart.y); setPendingCalib({ start: calibStart, end: pos, pixelDist: dist }); setCalibStart(null); setCalibPreview(null); }
+      else {
+        const dist = Math.hypot(pos.x - calibStart.x, pos.y - calibStart.y);
+        setPendingCalib({ start: calibStart, end: pos, pixelDist: dist });
+        setCalibStart(null); setCalibPreview(null);
+      }
       return;
     }
     if (tool === "pen") { setIsPointerDown(true); setCurrentPath([pos]); }
@@ -250,6 +339,20 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
 
   const handlePointerMove = (e) => {
     const pos = getPos(e);
+
+    // Drag selected annotation
+    if (tool === "pointer" && dragRef.current) {
+      const { kind, idx, lastPos } = dragRef.current;
+      const dx = pos.x - lastPos.x, dy = pos.y - lastPos.y;
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+        dragRef.current.moved = true;
+        dragRef.current.lastPos = pos;
+        if (kind === "ann") setAnnList(p => p.map((a, i) => i === idx ? translateAnn(a, dx, dy) : a));
+        else setMeasurements(p => p.map((m, i) => i === idx ? translateMeasurement(m, dx, dy) : m));
+      }
+      return;
+    }
+
     if (tool === "measure" && measureStart) { setMeasurePreview(pos); return; }
     if (tool === "calibrate" && calibStart) { setCalibPreview(pos); return; }
     if (!isPointerDown) return;
@@ -262,33 +365,71 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const handlePointerUp = (e) => {
     e.preventDefault();
     const pos = getPos(e);
-    if (tool === "pen" && currentPath.length > 1) { setAnnList(p => [...p, { type: "pen", points: currentPath, color, page: pageNumber }]); setCurrentPath([]); }
-    else if ((tool === "arrow" || tool === "line") && currentLine) {
+
+    // Pointer tool: if no drag, show delete popup
+    if (tool === "pointer") {
+      if (dragRef.current && !dragRef.current.moved && selectedAnn) {
+        const canvasRect = canvasRef.current.getBoundingClientRect();
+        setShowDeletePopup({ x: e.clientX - canvasRect.left, y: e.clientY - canvasRect.top, ...selectedAnn });
+      }
+      dragRef.current = null;
+      return;
+    }
+
+    // Store in relative coords
+    if (tool === "pen" && currentPath.length > 1) {
+      setAnnList(p => [...p, { type: "pen", rpoints: currentPath.map(pt => toRel(pt)), color, page: pageNumber }]);
+      setCurrentPath([]);
+    } else if ((tool === "arrow" || tool === "line") && currentLine) {
       if (Math.hypot(pos.x - currentLine.start.x, pos.y - currentLine.start.y) > 5)
-        setAnnList(p => [...p, { type: tool, start: currentLine.start, end: pos, color, page: pageNumber }]);
+        setAnnList(p => [...p, { type: tool, rstart: toRel(currentLine.start), rend: toRel(pos), color, page: pageNumber }]);
       setCurrentLine(null);
     } else if (tool === "highlight" && currentLine) {
       const w = Math.abs(pos.x - currentLine.start.x), h = Math.abs(pos.y - currentLine.start.y);
-      if (w > 5 && h > 5) setAnnList(p => [...p, { type: "highlight", x: Math.min(currentLine.start.x, pos.x), y: Math.min(currentLine.start.y, pos.y), w, h, color: highlightColor, page: pageNumber }]);
+      if (w > 5 && h > 5) {
+        const origin = { x: Math.min(currentLine.start.x, pos.x), y: Math.min(currentLine.start.y, pos.y) };
+        setAnnList(p => [...p, {
+          type: "highlight",
+          rx: origin.x / canvasSize.width, ry: origin.y / canvasSize.height,
+          rw: w / canvasSize.width, rh: h / canvasSize.height,
+          color: highlightColor, page: pageNumber
+        }]);
+      }
       setCurrentLine(null);
     }
     setIsPointerDown(false);
   };
 
   const eraseAt = ({ x, y }) => {
-    const t = 18;
+    const t = 18, W = canvasSize.width, H = canvasSize.height;
     setAnnList(p => p.filter(a => {
       if (a.page !== pageNumber) return true;
-      if (a.type === "highlight") return !(x >= a.x && x <= a.x + a.w && y >= a.y && y <= a.y + a.h);
-      if (a.type === "pen") return !a.points.some(pt => Math.hypot(pt.x - x, pt.y - y) < t);
-      if (a.type === "arrow" || a.type === "line") return Math.hypot(a.start.x - x, a.start.y - y) >= t && Math.hypot(a.end.x - x, a.end.y - y) >= t;
-      if (a.type === "text") return Math.hypot(a.x - x, a.y - y) >= t * 2;
+      if (a.type === "highlight") {
+        const ox = a.rx !== undefined ? a.rx * W : a.x;
+        const oy = a.rx !== undefined ? a.ry * H : a.y;
+        const sw = a.rw !== undefined ? a.rw * W : a.w;
+        const sh = a.rh !== undefined ? a.rh * H : a.h;
+        return !(x >= ox && x <= ox + sw && y >= oy && y <= oy + sh);
+      }
+      if (a.type === "pen") {
+        const pts = a.rpoints ? a.rpoints.map(p => ptToScr(p, W, H)) : a.points;
+        return !pts.some(pt => Math.hypot(pt.x - x, pt.y - y) < t);
+      }
+      if (a.type === "arrow" || a.type === "line") {
+        const s = ptToScr(a.rstart || a.start, W, H), en = ptToScr(a.rend || a.end, W, H);
+        return Math.hypot(s.x - x, s.y - y) >= t && Math.hypot(en.x - x, en.y - y) >= t;
+      }
+      if (a.type === "text") {
+        const tp = a.rx !== undefined ? ptToScr({ rx: a.rx, ry: a.ry }, W, H) : { x: a.x, y: a.y };
+        return Math.hypot(tp.x - x, tp.y - y) >= t * 2;
+      }
       return true;
     }));
   };
 
   const commitText = () => {
-    if (textInput && textValue.trim()) setAnnList(p => [...p, { type: "text", x: textInput.x, y: textInput.y, text: textValue.trim(), color, page: pageNumber }]);
+    if (textInput && textValue.trim())
+      setAnnList(p => [...p, { type: "text", rx: textInput.x / canvasSize.width, ry: textInput.y / canvasSize.height, text: textValue.trim(), color, page: pageNumber }]);
     setTextInput(null); setTextValue("");
   };
 
@@ -304,42 +445,70 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
 
   const handleSave = () => { onSave([...annList, ...measurements], aiNotes); onOpenChange(false); };
 
-  // Canvas render
+  // ── Canvas render ──────────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const W = canvasSize.width, H = canvasSize.height;
 
-    annList.filter(a => a.page === pageNumber).forEach(ann => {
+    annList.filter(a => a.page === pageNumber).forEach((ann, listIdx) => {
+      const isSelected = selectedAnn?.kind === "ann" && annList.indexOf(ann) === selectedAnn.idx;
       ctx.strokeStyle = ann.color; ctx.fillStyle = ann.color; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+
       if (ann.type === "highlight") {
+        const ox = ann.rx !== undefined ? ann.rx * W : ann.x;
+        const oy = ann.rx !== undefined ? ann.ry * H : ann.y;
+        const sw = ann.rw !== undefined ? ann.rw * W : ann.w;
+        const sh = ann.rh !== undefined ? ann.rh * H : ann.h;
         const [r,g,b] = [parseInt(ann.color.slice(1,3),16),parseInt(ann.color.slice(3,5),16),parseInt(ann.color.slice(5,7),16)];
-        ctx.fillStyle = `rgba(${r},${g},${b},0.35)`; ctx.strokeStyle = `rgba(${r},${g},${b},0.7)`; ctx.lineWidth = 1.5;
-        ctx.fillRect(ann.x,ann.y,ann.w,ann.h); ctx.strokeRect(ann.x,ann.y,ann.w,ann.h);
+        ctx.fillStyle = `rgba(${r},${g},${b},0.35)`; ctx.strokeStyle = `rgba(${r},${g},${b},0.7)`; ctx.lineWidth = isSelected ? 2.5 : 1.5;
+        ctx.fillRect(ox,oy,sw,sh); ctx.strokeRect(ox,oy,sw,sh);
+        if (isSelected) { ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 2.5; ctx.strokeRect(ox-2,oy-2,sw+4,sh+4); }
         const lbl = HIGHLIGHT_COLORS.find(c => c.color === ann.color)?.label;
-        if (lbl) { ctx.font="bold 10px sans-serif"; ctx.fillStyle=`rgba(${r},${g},${b},1)`; ctx.fillText(lbl, ann.x+3, ann.y+12); }
+        if (lbl) { ctx.font="bold 10px sans-serif"; ctx.fillStyle=`rgba(${r},${g},${b},1)`; ctx.fillText(lbl, ox+3, oy+12); }
+
       } else if (ann.type === "pen") {
-        ctx.beginPath(); ann.points.forEach((pt,i) => i===0 ? ctx.moveTo(pt.x,pt.y) : ctx.lineTo(pt.x,pt.y)); ctx.stroke();
-      } else if (ann.type === "arrow") { drawArrow(ctx, ann.start, ann.end, true); }
-      else if (ann.type === "line") { drawArrow(ctx, ann.start, ann.end, false); }
-      else if (ann.type === "text") {
+        const pts = ann.rpoints ? ann.rpoints.map(p => ptToScr(p, W, H)) : ann.points;
+        ctx.strokeStyle = isSelected ? "#3b82f6" : ann.color;
+        ctx.lineWidth = isSelected ? 3.5 : 2.5;
+        ctx.beginPath(); pts.forEach((pt,i) => i===0 ? ctx.moveTo(pt.x,pt.y) : ctx.lineTo(pt.x,pt.y)); ctx.stroke();
+
+      } else if (ann.type === "arrow" || ann.type === "line") {
+        const s = ptToScr(ann.rstart || ann.start, W, H);
+        const en = ptToScr(ann.rend || ann.end, W, H);
+        ctx.strokeStyle = isSelected ? "#3b82f6" : ann.color;
+        ctx.lineWidth = isSelected ? 3.5 : 2.5;
+        drawArrow(ctx, s, en, ann.type === "arrow");
+        if (isSelected) { ctx.fillStyle = "#3b82f6"; [s,en].forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);ctx.fill();}); }
+
+      } else if (ann.type === "text") {
+        const tp = ann.rx !== undefined ? ptToScr({ rx: ann.rx, ry: ann.ry }, W, H) : { x: ann.x, y: ann.y };
         ctx.font="bold 13px sans-serif"; const m=ctx.measureText(ann.text);
-        ctx.fillStyle="rgba(255,255,255,0.85)"; ctx.fillRect(ann.x-3,ann.y-15,m.width+6,19);
-        ctx.strokeStyle=ann.color; ctx.lineWidth=1; ctx.strokeRect(ann.x-3,ann.y-15,m.width+6,19);
-        ctx.fillStyle=ann.color; ctx.fillText(ann.text,ann.x,ann.y);
+        if (isSelected) { ctx.fillStyle="rgba(59,130,246,0.15)"; ctx.fillRect(tp.x-5,tp.y-18,m.width+10,23); ctx.strokeStyle="#3b82f6"; ctx.lineWidth=1.5; ctx.strokeRect(tp.x-5,tp.y-18,m.width+10,23); }
+        else { ctx.fillStyle="rgba(255,255,255,0.85)"; ctx.fillRect(tp.x-3,tp.y-15,m.width+6,19); ctx.strokeStyle=ann.color; ctx.lineWidth=1; ctx.strokeRect(tp.x-3,tp.y-15,m.width+6,19); }
+        ctx.fillStyle=isSelected?"#1d4ed8":ann.color; ctx.fillText(ann.text,tp.x,tp.y);
       }
     });
 
-    // Draw saved measurements (red)
-    measurements.filter(m => m.page === pageNumber).forEach(m => {
-      ctx.strokeStyle="#ef4444"; ctx.fillStyle="#ef4444"; ctx.lineWidth=2.5; ctx.setLineDash([]);
-      ctx.beginPath(); ctx.moveTo(m.start.x,m.start.y); ctx.lineTo(m.end.x,m.end.y); ctx.stroke();
-      [m.start,m.end].forEach(pt => { ctx.beginPath(); ctx.arc(pt.x,pt.y,4,0,Math.PI*2); ctx.fill(); });
-      const mx=(m.start.x+m.end.x)/2, my=(m.start.y+m.end.y)/2;
+    // Saved measurements
+    measurements.filter(m => m.page === pageNumber).forEach((m, idx) => {
+      const isSelected = selectedAnn?.kind === "measurement" && selectedAnn.idx === idx;
+      const s = ptToScr(m.start, W, H), en = ptToScr(m.end, W, H);
+      ctx.strokeStyle = isSelected ? "#3b82f6" : "#ef4444";
+      ctx.fillStyle = isSelected ? "#3b82f6" : "#ef4444";
+      ctx.lineWidth = isSelected ? 3 : 2.5; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(s.x,s.y); ctx.lineTo(en.x,en.y); ctx.stroke();
+      [s,en].forEach(pt => { ctx.beginPath(); ctx.arc(pt.x,pt.y,4,0,Math.PI*2); ctx.fill(); });
+      const mx=(s.x+en.x)/2, my=(s.y+en.y)/2;
       const lbl=m.realFeet!=null?`${m.realFeet.toFixed(1)} LF`:"?";
       ctx.font="bold 11px sans-serif"; const tm=ctx.measureText(lbl);
-      ctx.fillStyle="rgba(239,68,68,0.92)"; ctx.beginPath(); ctx.roundRect?ctx.roundRect(mx-tm.width/2-5,my-15,tm.width+10,19,4):ctx.rect(mx-tm.width/2-5,my-15,tm.width+10,19); ctx.fill();
+      ctx.fillStyle = isSelected ? "rgba(59,130,246,0.95)" : "rgba(239,68,68,0.92)";
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(mx-tm.width/2-5,my-15,tm.width+10,19,4);
+      else ctx.rect(mx-tm.width/2-5,my-15,tm.width+10,19);
+      ctx.fill();
       ctx.fillStyle="white"; ctx.fillText(lbl,mx-tm.width/2,my);
     });
 
@@ -368,7 +537,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       }
     }
 
-    // Annotation previews
+    // Transient previews (screen space — no conversion needed)
     if (currentPath.length > 1) { ctx.strokeStyle=color; ctx.lineWidth=2.5; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.beginPath(); currentPath.forEach((pt,i)=>i===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y)); ctx.stroke(); }
     if (currentLine && (tool==="arrow"||tool==="line")) { ctx.strokeStyle=color; ctx.lineWidth=2.5; ctx.lineCap="round"; drawArrow(ctx,currentLine.start,currentLine.end,tool==="arrow"); }
     if (currentLine && tool==="highlight") {
@@ -377,21 +546,28 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       ctx.fillStyle=`rgba(${r2},${g2},${b2},0.35)`; ctx.strokeStyle=`rgba(${r2},${g2},${b2},0.8)`; ctx.lineWidth=1.5;
       ctx.fillRect(x,y,w,h); ctx.strokeRect(x,y,w,h);
     }
-  }, [annList, measurements, currentPath, currentLine, pageNumber, color, highlightColor, canvasSize, tool, measureStart, measurePreview, calibStart, calibPreview]);
+  }, [annList, measurements, currentPath, currentLine, pageNumber, color, highlightColor, canvasSize, tool, measureStart, measurePreview, calibStart, calibPreview, selectedAnn]);
 
+  // ── Toolbar config ─────────────────────────────────────────────────────────
   const toolConfig = [
-    { key: "pointer", label: "Select", icon: MousePointer2, cls: "bg-slate-700 hover:bg-slate-800" },
-    { key: "pen", label: "Draw", icon: Pencil, cls: "bg-amber-600 hover:bg-amber-700" },
-    { key: "highlight", label: "Highlight", icon: Highlighter, cls: "bg-yellow-500 hover:bg-yellow-600" },
-    { key: "arrow", label: "Arrow", icon: ArrowRight, cls: "bg-blue-600 hover:bg-blue-700" },
-    { key: "line", label: "Line", icon: Minus, cls: "bg-green-600 hover:bg-green-700" },
-    { key: "text", label: "Text", icon: Type, cls: "bg-purple-600 hover:bg-purple-700" },
-    { key: "eraser", label: "Eraser", icon: Eraser, cls: "bg-slate-600 hover:bg-slate-700" },
-    { key: "measure", label: "Measure", icon: Ruler, cls: "bg-orange-500 hover:bg-orange-600" },
-    { key: "calibrate", label: "Calibrate", icon: Target, cls: "bg-violet-600 hover:bg-violet-700" },
+    { key: "pointer",   label: "Select",    icon: MousePointer2, cls: "bg-slate-700 hover:bg-slate-800 text-white" },
+    { key: "pen",       label: "Draw",      icon: Pencil,        cls: "bg-amber-600 hover:bg-amber-700 text-white" },
+    { key: "highlight", label: "Highlight", icon: Highlighter,   cls: "bg-yellow-500 hover:bg-yellow-600 text-white" },
+    { key: "arrow",     label: "Arrow",     icon: ArrowRight,    cls: "bg-blue-600 hover:bg-blue-700 text-white" },
+    { key: "line",      label: "Line",      icon: Minus,         cls: "bg-green-600 hover:bg-green-700 text-white" },
+    { key: "text",      label: "Text",      icon: Type,          cls: "bg-purple-600 hover:bg-purple-700 text-white" },
+    { key: "eraser",    label: "Eraser",    icon: Eraser,        cls: "bg-slate-500 hover:bg-slate-600 text-white" },
+    { key: "measure",   label: "Measure",   icon: Ruler,         cls: "bg-orange-500 hover:bg-orange-600 text-white" },
+    { key: "calibrate", label: "Calibrate", icon: Target,        cls: "bg-violet-600 hover:bg-violet-700 text-white" },
   ];
 
-  const cursor = tool === "pointer" ? "default" : ["measure","calibrate"].includes(tool) ? "crosshair" : tool==="text" ? "text" : tool==="highlight" ? "cell" : "crosshair";
+  const cursor = tool === "pointer"
+    ? (dragRef.current ? "grabbing" : "default")
+    : ["measure","calibrate"].includes(tool) ? "crosshair"
+    : tool === "text" ? "text"
+    : tool === "highlight" ? "cell"
+    : "crosshair";
+
   const scaleLabel = detectedScale ? (detectedScale.scale_text || `${detectedScale.inches_per_foot}" = 1'`) : null;
 
   return (
@@ -435,10 +611,13 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         {/* Toolbar */}
         <div className="flex items-center gap-1 px-3 py-2 border-b bg-white flex-wrap flex-shrink-0">
           {toolConfig.map(({ key, label, icon: Icon, cls }) => (
-            <Button key={key} variant={tool===key?"default":"outline"} size="sm"
-              onClick={() => { setTool(key); setTextInput(null); setMeasureStart(null); setCalibStart(null); setDeletePopup(null); }}
-              className={`h-8 text-xs ${tool===key ? cls : ""}`}>
-              <Icon className="w-3.5 h-3.5 mr-1" />{label}
+            <Button key={key}
+              variant={tool === key ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setTool(key); setTextInput(null); setMeasureStart(null); setCalibStart(null); setShowDeletePopup(null); dragRef.current = null; }}
+              className={`h-8 text-xs gap-1 ${tool === key ? cls : "text-slate-700"}`}
+              title={label}>
+              <Icon className="w-3.5 h-3.5" />{label}
             </Button>
           ))}
           <div className="border-l h-5 mx-1" />
@@ -455,9 +634,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
               ))}
               <input type="color" value={highlightColor} onChange={e=>setHighlightColor(e.target.value)} title="Custom color" className="w-6 h-6 rounded border cursor-pointer" />
             </div>
-          ) : (
+          ) : tool !== "pointer" && tool !== "eraser" && tool !== "measure" && tool !== "calibrate" ? (
             <input type="color" value={color} onChange={e=>setColor(e.target.value)} className="w-7 h-7 rounded border cursor-pointer ml-1" />
-          )}
+          ) : null}
           <div className="border-l h-5 mx-1" />
           <Button variant="outline" size="sm" className="h-8" onClick={()=>setScale(s=>Math.max(0.3,s-0.15))}><ZoomOut className="w-4 h-4"/></Button>
           <span className="text-xs text-slate-600 w-9 text-center">{Math.round(scale*100)}%</span>
@@ -466,7 +645,8 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         </div>
 
         {/* Tool hints */}
-        {tool==="measure" && <div className="px-4 py-1.5 bg-orange-50 border-b text-xs text-orange-700 font-medium flex-shrink-0">{!measureStart?"Click first point on the plan":"Click second point — distance will be calculated automatically"}</div>}
+        {tool==="pointer"   && <div className="px-4 py-1.5 bg-slate-50 border-b text-xs text-slate-600 font-medium flex-shrink-0">Click annotation to select • Drag to move • Click selected to delete</div>}
+        {tool==="measure"   && <div className="px-4 py-1.5 bg-orange-50 border-b text-xs text-orange-700 font-medium flex-shrink-0">{!measureStart?"Click first point on the plan":"Click second point — distance will be calculated automatically"}</div>}
         {tool==="calibrate" && <div className="px-4 py-1.5 bg-violet-50 border-b text-xs text-violet-700 font-medium flex-shrink-0">{!calibStart?"Draw a line over a known-length segment on the scale bar — click first point":"Click second point to complete the calibration line"}</div>}
 
         {/* Main area */}
@@ -486,9 +666,10 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                 </Document>
                 <canvas ref={canvasRef} className="absolute top-0 left-0" style={{ cursor, touchAction:"none" }}
                   width={canvasSize.width} height={canvasSize.height}
-                  onPointerDown={handlePointerDown} onPointerMove={handlePointerMove}
+                  onPointerDown={handlePointerDown}
+                  onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
-                  onPointerLeave={e=>{ if(!["measure","calibrate"].includes(tool)) handlePointerUp(e); }}
+                  onPointerLeave={e=>{ if(!["measure","calibrate","pointer"].includes(tool)) handlePointerUp(e); }}
                 />
                 {textInput && (
                   <input autoFocus type="text" value={textValue} onChange={e=>setTextValue(e.target.value)}
@@ -497,32 +678,30 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                     placeholder="Type note & Enter"
                   />
                 )}
-                {/* Delete popup for pointer tool */}
-                {deletePopup && (
-                  <div style={{ position:"absolute", left: deletePopup.x + 8, top: deletePopup.y - 20, zIndex:30 }}
-                    className="flex items-center gap-1 bg-white border border-red-300 shadow-lg rounded-lg px-2 py-1">
+                {/* Delete popup */}
+                {showDeletePopup && (
+                  <div style={{ position:"absolute", left: showDeletePopup.x + 8, top: Math.max(4, showDeletePopup.y - 38), zIndex:30 }}
+                    className="flex items-center gap-1 bg-white border border-slate-300 shadow-xl rounded-lg px-2 py-1.5">
                     <span className="text-xs text-slate-600 font-medium">Delete?</span>
                     <button
                       onClick={() => {
-                        if (deletePopup.kind === "ann") setAnnList(p => p.filter((_,i) => i !== deletePopup.idx));
-                        else setMeasurements(p => p.filter((_,i) => i !== deletePopup.idx));
-                        setDeletePopup(null);
+                        if (showDeletePopup.kind === "ann") setAnnList(p => p.filter((_,i) => i !== showDeletePopup.idx));
+                        else setMeasurements(p => p.filter((_,i) => i !== showDeletePopup.idx));
+                        setShowDeletePopup(null); setSelectedAnn(null);
                       }}
                       className="text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded px-2 py-0.5 flex items-center gap-1">
                       <Trash2 className="w-3 h-3"/> Yes
                     </button>
-                    <button onClick={()=>setDeletePopup(null)} className="text-xs text-slate-500 hover:text-slate-700 px-1">✕</button>
+                    <button onClick={()=>{setShowDeletePopup(null);}} className="text-xs text-slate-400 hover:text-slate-700 px-1">✕</button>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Sidebar: measurements + text notes */}
+          {/* Sidebar */}
           {(measurements.length > 0 || annList.some(a => a.type === "text")) && (
             <div className="w-56 border-l bg-white flex flex-col overflow-hidden flex-shrink-0">
-
-              {/* Measurements */}
               {measurements.length > 0 && (
                 <>
                   <div className="px-3 py-2 border-b bg-slate-50 flex items-center justify-between flex-shrink-0">
@@ -530,25 +709,17 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                   </div>
                   <div className="overflow-y-auto p-2 space-y-2 max-h-64">
                     {measurements.map((m, idx) => (
-                      <div key={m.id||idx} className="p-2 bg-red-50 rounded-lg border border-red-200">
+                      <div key={m.id||idx} className={`p-2 rounded-lg border ${selectedAnn?.kind==="measurement" && selectedAnn.idx===idx ? "border-blue-400 bg-blue-50" : "border-red-200 bg-red-50"}`}>
                         <div className="flex items-start justify-between gap-1 mb-1">
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={m.realFeet != null ? m.realFeet : ""}
+                          <input type="number" step="0.1" value={m.realFeet != null ? m.realFeet : ""}
                             onChange={e => setMeasurements(p => p.map((x,i) => i===idx ? {...x, realFeet: parseFloat(e.target.value)||null} : x))}
-                            className="w-20 text-sm font-bold text-red-700 border border-red-200 rounded px-1 focus:outline-none focus:ring-1 focus:ring-red-300 bg-white"
-                            placeholder="LF"
-                          />
+                            className="w-20 text-sm font-bold text-red-700 border border-red-200 rounded px-1 focus:outline-none focus:ring-1 focus:ring-red-300 bg-white" placeholder="LF" />
                           <span className="text-xs text-red-500 font-semibold mt-1">LF</span>
                           <button onClick={()=>setMeasurements(p=>p.filter((_,i)=>i!==idx))} className="text-slate-300 hover:text-red-500 flex-shrink-0 mt-0.5"><X className="w-3 h-3"/></button>
                         </div>
-                        <input
-                          value={m.label}
+                        <input value={m.label}
                           onChange={e => setMeasurements(p => p.map((x,i) => i===idx ? {...x, label: e.target.value} : x))}
-                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 text-slate-600 focus:outline-none focus:ring-1 focus:ring-red-300 bg-white mb-1.5"
-                          placeholder="Label (e.g. Kitchen Base)"
-                        />
+                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 text-slate-600 focus:outline-none focus:ring-1 focus:ring-red-300 bg-white mb-1.5" placeholder="Label" />
                         {rooms.length > 0 && m.realFeet != null && (
                           <button onClick={()=>{ setSendingM(m); setSendRoomId(rooms[0]?.id||""); setSendCategory("base"); }}
                             className="w-full flex items-center justify-center gap-1 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded px-2 py-1 transition-colors font-medium">
@@ -560,8 +731,6 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                   </div>
                 </>
               )}
-
-              {/* Text notes */}
               {annList.some(a => a.type === "text") && (
                 <>
                   <div className="px-3 py-2 border-b bg-slate-50 flex items-center justify-between flex-shrink-0">
@@ -571,24 +740,15 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                     {annList.filter(a => a.type === "text" && a.page === pageNumber).map((ann) => {
                       const globalIdx = annList.indexOf(ann);
                       return (
-                        <div key={globalIdx} className="p-2 bg-purple-50 rounded-lg border border-purple-200">
+                        <div key={globalIdx} className={`p-2 rounded-lg border ${selectedAnn?.kind==="ann" && selectedAnn.idx===globalIdx ? "border-blue-400 bg-blue-50" : "border-purple-200 bg-purple-50"}`}>
                           <div className="flex items-start gap-1">
-                            <input
-                              value={ann.text}
+                            <input value={ann.text}
                               onChange={e => setAnnList(p => p.map((x,i) => i===globalIdx ? {...x, text: e.target.value} : x))}
-                              className="flex-1 text-xs border border-slate-200 rounded px-1.5 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-purple-300 bg-white font-medium"
-                              placeholder="Note text"
-                            />
+                              className="flex-1 text-xs border border-slate-200 rounded px-1.5 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-purple-300 bg-white font-medium" />
                             <button onClick={()=>setAnnList(p=>p.filter((_,i)=>i!==globalIdx))} className="text-slate-300 hover:text-red-500 flex-shrink-0 mt-1"><X className="w-3 h-3"/></button>
                           </div>
                           <div className="flex items-center gap-1 mt-1.5">
-                            <div className="w-3 h-3 rounded-full border border-slate-300 flex-shrink-0" style={{background: ann.color}}/>
-                            <input
-                              type="color"
-                              value={ann.color}
-                              onChange={e => setAnnList(p => p.map((x,i) => i===globalIdx ? {...x, color: e.target.value} : x))}
-                              className="w-5 h-5 rounded cursor-pointer border-0 p-0"
-                            />
+                            <input type="color" value={ann.color} onChange={e => setAnnList(p => p.map((x,i) => i===globalIdx ? {...x, color: e.target.value} : x))} className="w-5 h-5 rounded cursor-pointer border-0 p-0" />
                             <span className="text-xs text-slate-400">p.{ann.page}</span>
                           </div>
                         </div>
