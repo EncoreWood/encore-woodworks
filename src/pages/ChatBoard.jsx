@@ -73,11 +73,36 @@ function Avatar({ name, color, size = 'md' }) {
   );
 }
 
+function PdfViewerModal({ url, name, onClose }) {
+  if (!url) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/80 flex flex-col items-center justify-center p-4">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col" style={{ height: '90vh' }}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-red-500" />
+            <span className="text-sm font-medium text-slate-800 truncate">{name}</span>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-full transition-colors">
+            <X className="w-4 h-4 text-slate-500" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-hidden rounded-b-xl">
+          <iframe src={url} title={name} className="w-full h-full border-0 rounded-b-xl" />
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function FileEmbed({ att, onImageClick }) {
+  const [pdfOpen, setPdfOpen] = useState(false);
   const url = att.url;
   const name = att.name || 'file';
   const ext = name.split('.').pop().toLowerCase();
   const isImage = att.type === 'photo' || ['jpg','jpeg','png','gif','webp'].includes(ext);
+  const isPdf = ext === 'pdf';
 
   if (isImage) {
     return (
@@ -92,14 +117,27 @@ function FileEmbed({ att, onImageClick }) {
     );
   }
 
-  // PDFs and all other files: open in new tab
+  if (isPdf) {
+    return (
+      <>
+        <button
+          onClick={() => setPdfOpen(true)}
+          className="mt-1 flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs text-slate-600 transition-colors">
+          <FileText className="w-3.5 h-3.5 flex-shrink-0 text-red-500" />
+          <span className="truncate flex-1">{name}</span>
+          <span className="text-slate-400 text-[10px]">Click to view</span>
+        </button>
+        {pdfOpen && <PdfViewerModal url={url} name={name} onClose={() => setPdfOpen(false)} />}
+      </>
+    );
+  }
+
+  // Other files: file card, no external link
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer"
-      className="mt-1 flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs text-slate-600 transition-colors">
-      <FileText className="w-3.5 h-3.5 flex-shrink-0 text-red-500" />
+    <div className="mt-1 flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-xl text-xs text-slate-600">
+      <FileText className="w-3.5 h-3.5 flex-shrink-0 text-slate-500" />
       <span className="truncate flex-1">{name}</span>
-      <ExternalLink className="w-3 h-3 text-slate-400 flex-shrink-0" />
-    </a>
+    </div>
   );
 }
 
