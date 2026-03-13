@@ -30,7 +30,7 @@ function StatBox({ label, value, subtitle, icon: Icon, onClick }) {
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
         {Icon && <Icon className="w-4 h-4 text-slate-400" />}
       </div>
-      <p className="text-3xl font-bold text-slate-900">{value}</p>
+      <p className="font-bold text-slate-900 truncate" style={{ fontSize: "clamp(0.85rem, 2.5vw, 1.875rem)" }}>{value}</p>
       {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
     </div>
   );
