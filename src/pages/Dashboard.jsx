@@ -203,22 +203,15 @@ export default function Dashboard() {
           {/* Today Panel */}
           <TodayPanel inProductionProjects={inProductionProjects} />
 
-          {/* PTS Overview */}
-          <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">PTS Overview</h3>
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: "Day", value: dayPts },
-                { label: "Week", value: weekPts },
-                { label: "Month", value: monthPts },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex flex-col items-center justify-center bg-slate-50 rounded-xl py-6">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">{label}</p>
-                  <p className="text-5xl font-bold text-slate-800">{value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+          <PtsOverviewCard
+            dayPts={dayPts}
+            weekPts={weekPts}
+            monthPts={monthPts}
+            productionItems={productionItems}
+            dashboardSettings={dashboardSettings}
+            currentUser={currentUser}
+            onSettingsUpdated={() => queryClient.invalidateQueries({ queryKey: ["dashboardSettings"] })}
+          />
         </div>
 
         {getSectionVisibility("stats") && (
