@@ -199,31 +199,8 @@ export default function Dashboard() {
 
         {/* Top Row: Current Projects + PTS Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
-          {/* In Production */}
-          <div className="lg:col-span-1 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col">
-            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">Current Projects</h3>
-            <div className="overflow-y-auto max-h-64 space-y-2 pr-1">
-              {inProductionProjects.length === 0 ? (
-                <p className="text-slate-400 text-sm">No active production projects</p>
-              ) : (
-                inProductionProjects.map(p => (
-                  <Link key={p.id} to={createPageUrl("ProjectDetails") + "?id=" + p.id}>
-                    <div className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 transition-colors">
-                      <div>
-                        <p className="text-sm font-semibold" style={p.card_color ? { color: p.card_color } : { color: "#1e293b" }}>{p.project_name}</p>
-                        <p className="text-xs text-slate-400">{p.client_name}</p>
-                      </div>
-                      {p.estimated_completion && (
-                        <span className="text-xs text-slate-400 flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />{format(new Date(p.estimated_completion), "MMM d")}
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
+          {/* Today Panel */}
+          <TodayPanel inProductionProjects={inProductionProjects} />
 
           {/* PTS Overview */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
