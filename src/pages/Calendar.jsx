@@ -239,66 +239,48 @@ export default function CalendarPage() {
   });
 
   // Shared pill renderer
-  const renderDayContent = (date, isSmall = false) => {
+  const renderDayContent = (date) => {
     const presenter = getPresenterForDate(date);
     const spanningProjects = getProjectsSpanningDate(date);
     const installProjects = getInstallProjectsSpanningDate(date);
     const meetingCount = getDesignMeetingsForDate(date).length;
     const taskCount = getTasksForDate(date).length;
     const cleaningCount = getBathroomCleaningsForDate(date).length;
-    const pillH = isSmall ? "h-4" : "h-5";
-    const pillFont = isSmall ? "text-[8px]" : "text-[9px]";
-    const maxP = isSmall ? 1 : 2;
-    const maxI = isSmall ? 1 : 1;
-    const projOverflow = spanningProjects.length - maxP;
-    const installOverflow = installProjects.length - maxI;
 
     return (
-      <div className="w-full h-full flex flex-col p-2 relative">
-        <div className={`${isSmall ? "text-sm" : "text-base"} font-semibold mb-auto flex items-center justify-between z-10`}>
+      <div className="w-full flex flex-col gap-0.5 p-1">
+        <div className="text-xs font-semibold flex items-center justify-between mb-0.5">
           {format(date, "d")}
           {presenter && (activeFilter === "all" || activeFilter === "presenter") && (
             <User className="w-3 h-3 text-blue-600" />
           )}
         </div>
-        <div className="absolute bottom-2 left-0 right-0 px-1 flex flex-col gap-0.5">
-          {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.slice(0, maxP).map((project) => {
-            const overdue = isProjectOverdue(project);
-            const sc = statusConfig[project.status];
-            const bgClass = overdue ? "bg-red-600" : (project.status === "side_projects" ? "" : (!project.card_color ? (sc?.color || "bg-slate-400") : ""));
-            const bgStyle = overdue ? {} : (project.status === "side_projects" ? { backgroundColor: "#374151" } : (project.card_color ? { backgroundColor: project.card_color } : {}));
-            return (
-              <div key={project.id} className={`${pillH} rounded-sm flex items-center px-1 overflow-hidden gap-0.5 ${bgClass}`} style={bgStyle} title={project.project_name}>
-                {overdue
-                  ? <AlertTriangle className="w-2 h-2 text-white flex-shrink-0" />
-                  : sc?.short && <span className="text-white text-[6px] font-bold opacity-80 flex-shrink-0">{sc.short}·</span>
-                }
-                <span className={`text-white ${pillFont} font-medium truncate leading-none`} style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
-              </div>
-            );
-          })}
-          {(activeFilter === "all" || activeFilter === "projects") && installProjects.slice(0, maxI).map((project) => {
-            const bgClass = project.status === "side_projects" ? "" : (!project.card_color ? (statusConfig[project.status]?.color || "bg-slate-400") : "");
-            const bgStyle = project.status === "side_projects" ? { backgroundColor: "#374151" } : (project.card_color ? { backgroundColor: project.card_color } : {});
-            return (
-              <div key={"i-" + project.id} className={`${pillH} rounded-sm flex items-center gap-0.5 px-1 overflow-hidden ${bgClass}`} style={bgStyle} title={"Install: " + project.project_name}>
-                <Hammer className="w-2 h-2 text-white flex-shrink-0" style={{ filter: "drop-shadow(0 0 2px rgba(0,0,0,0.5))" }} />
-                <span className={`text-white ${pillFont} font-medium truncate leading-none`} style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
-              </div>
-            );
-          })}
-          {(activeFilter === "all" || activeFilter === "projects") && projOverflow > 0 && (
-            <div className={`${pillH} rounded-sm flex items-center px-1 bg-slate-600 text-white`} title={`${projOverflow} more project${projOverflow > 1 ? "s" : ""}`}>
-              <span className={`${pillFont} font-medium`}>+{projOverflow}</span>
+        {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.map((project) => {
+          const overdue = isProjectOverdue(project);
+          const sc = statusConfig[project.status];
+          const bgClass = overdue ? "bg-red-600" : (project.status === "side_projects" ? "" : (!project.card_color ? (sc?.color || "bg-slate-400") : ""));
+          const bgStyle = overdue ? {} : (project.status === "side_projects" ? { backgroundColor: "#374151" } : (project.card_color ? { backgroundColor: project.card_color } : {}));
+          return (
+            <div key={project.id} className={`h-4 rounded-sm flex items-center px-1 gap-0.5 overflow-hidden ${bgClass}`} style={bgStyle} title={project.project_name}>
+              {overdue
+                ? <AlertTriangle className="w-2 h-2 text-white flex-shrink-0" />
+                : sc?.short && <span className="text-white text-[6px] font-bold opacity-80 flex-shrink-0">{sc.short}·</span>
+              }
+              <span className="text-white text-[9px] font-medium truncate leading-none" style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
             </div>
-          )}
-          {(activeFilter === "all" || activeFilter === "projects") && installOverflow > 0 && (
-            <div className={`${pillH} rounded-sm flex items-center px-1 bg-slate-600 text-white`} title={`${installOverflow} more install${installOverflow > 1 ? "s" : ""}`}>
-              <span className={`${pillFont} font-medium`}>+{installOverflow}I</span>
+          );
+        })}
+        {(activeFilter === "all" || activeFilter === "projects") && installProjects.map((project) => {
+          const bgClass = project.status === "side_projects" ? "" : (!project.card_color ? (statusConfig[project.status]?.color || "bg-slate-400") : "");
+          const bgStyle = project.status === "side_projects" ? { backgroundColor: "#374151" } : (project.card_color ? { backgroundColor: project.card_color } : {});
+          return (
+            <div key={"i-" + project.id} className={`h-4 rounded-sm flex items-center gap-0.5 px-1 overflow-hidden ${bgClass}`} style={bgStyle} title={"Install: " + project.project_name}>
+              <Hammer className="w-2 h-2 text-white flex-shrink-0" style={{ filter: "drop-shadow(0 0 2px rgba(0,0,0,0.5))" }} />
+              <span className="text-white text-[9px] font-medium truncate leading-none" style={{ textShadow: "0 0 3px rgba(0,0,0,0.5)" }}>{project.project_name}</span>
             </div>
-          )}
-        </div>
-        <div className="flex gap-0.5 flex-wrap mt-0.5 relative z-10">
+          );
+        })}
+        <div className="flex gap-0.5 flex-wrap">
           {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
             <div className="text-[9px] px-1 py-0.5 bg-violet-500 text-white rounded font-medium">{meetingCount}M</div>
           )}
