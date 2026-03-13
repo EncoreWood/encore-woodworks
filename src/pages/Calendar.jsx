@@ -238,6 +238,78 @@ export default function CalendarPage() {
     return (s && s >= monthStart && s <= monthEnd) || (e && e >= monthStart && e <= monthEnd);
   });
 
+  // Build weeks for month grid
+  const buildWeeks = (monthDate) => {
+    const start = startOfWeek(startOfMonth(monthDate));
+    const end = endOfWeek(endOfMonth(monthDate));
+    const weeks = [];
+    let day = start;
+    while (day <= end) {
+      const week = [];
+      for (let i = 0; i < 7; i++) {
+        week.push(day);
+        day = addDays(day, 1);
+      }
+      weeks.push(week);
+    }
+    return weeks;
+  };
+
+  const renderMonthGrid = () => {
+    const monthsToRender = viewType === "3months" ? 3 : viewType === "6months" ? 6 : viewType === "year" ? 12 : 1;
+    const monthDates = Array.from({ length: monthsToRender }, (_, i) => addMonths(currentMonth, i));
+    const DAY_HEADERS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+    return (
+      <div className="space-y-6">
+        {monthDates.map((monthDate, mi) => {
+          const weeks = buildWeeks(monthDate);
+          return (
+            <div key={mi}>
+              {monthsToRender > 1 && (
+                <div className="text-sm font-bold text-slate-700 mb-2">{format(monthDate, "MMMM yyyy")}</div>
+              )}
+              <table className="w-full border-collapse table-fixed">
+                <thead>
+                  <tr>
+                    {DAY_HEADERS.map(d => (
+                      <th key={d} className="border border-slate-200 bg-slate-100 text-slate-600 font-semibold text-xs py-2 text-center w-[14.285%]">{d}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {weeks.map((week, wi) => (
+                    <tr key={wi}>
+                      {week.map((date) => {
+                        const isOutside = date.getMonth() !== monthDate.getMonth();
+                        const isToday = isSameDay(date, TODAY);
+                        const isSelected = selectedDate && isSameDay(date, selectedDate);
+                        let cellBg = "bg-white";
+                        if (isSelected) cellBg = "bg-amber-100";
+                        else if (isToday) cellBg = "bg-blue-50";
+                        else if (isOutside) cellBg = "bg-slate-50";
+                        return (
+                          <td
+                            key={format(date, "yyyy-MM-dd")}
+                            className={`border border-slate-200 align-top ${cellBg} ${isOutside ? "opacity-40" : ""} ${isToday ? "ring-2 ring-inset ring-blue-400" : ""} cursor-pointer hover:bg-amber-50 transition-colors`}
+                            style={{ minHeight: "140px" }}
+                            onClick={() => { setSelectedDate(date); setCurrentMonth(date); }}
+                          >
+                            {renderDayContent(date)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   // Shared pill renderer
   const renderDayContent = (date) => {
     const presenter = getPresenterForDate(date);
