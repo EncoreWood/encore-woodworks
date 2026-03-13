@@ -496,6 +496,23 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                     placeholder="Type note & Enter"
                   />
                 )}
+                {/* Delete popup for pointer tool */}
+                {deletePopup && (
+                  <div style={{ position:"absolute", left: deletePopup.x + 8, top: deletePopup.y - 20, zIndex:30 }}
+                    className="flex items-center gap-1 bg-white border border-red-300 shadow-lg rounded-lg px-2 py-1">
+                    <span className="text-xs text-slate-600 font-medium">Delete?</span>
+                    <button
+                      onClick={() => {
+                        if (deletePopup.kind === "ann") setAnnList(p => p.filter((_,i) => i !== deletePopup.idx));
+                        else setMeasurements(p => p.filter((_,i) => i !== deletePopup.idx));
+                        setDeletePopup(null);
+                      }}
+                      className="text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded px-2 py-0.5 flex items-center gap-1">
+                      <Trash2 className="w-3 h-3"/> Yes
+                    </button>
+                    <button onClick={()=>setDeletePopup(null)} className="text-xs text-slate-500 hover:text-slate-700 px-1">✕</button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
