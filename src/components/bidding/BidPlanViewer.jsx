@@ -445,14 +445,15 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => { const pa=annList.filter(a=>a.page===pageNumber); if(!pa.length)return; const last=pa[pa.length-1]; setAnnList(p=>p.filter(a=>a!==last)); }}><Undo2 className="w-3.5 h-3.5 mr-1"/>Undo</Button>
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setAnnList(p=>p.filter(a=>a.page!==pageNumber))}>Clear Page</Button>
           {tool==="highlight" ? (
-            <div className="flex items-center gap-1.5 ml-1">
+            <div className="flex items-center gap-1 ml-1 flex-wrap">
               {HIGHLIGHT_COLORS.map(hc => (
                 <button key={hc.label} onClick={()=>setHighlightColor(hc.color)} title={hc.label}
-                  className="px-2 py-1 rounded-full text-xs font-semibold border transition-all"
-                  style={{ background: hc.hex, borderColor: highlightColor===hc.color?hc.color:"transparent", color: hc.color, boxShadow: highlightColor===hc.color?`0 0 0 2px ${hc.color}`:"none" }}>
+                  className="px-2 py-0.5 rounded-full text-xs font-semibold border transition-all"
+                  style={{ background: hc.hex, borderColor: highlightColor===hc.color?hc.color:"#e2e8f0", color: hc.color, boxShadow: highlightColor===hc.color?`0 0 0 2px ${hc.color}`:"none" }}>
                   {hc.label}
                 </button>
               ))}
+              <input type="color" value={highlightColor} onChange={e=>setHighlightColor(e.target.value)} title="Custom color" className="w-6 h-6 rounded border cursor-pointer" />
             </div>
           ) : (
             <input type="color" value={color} onChange={e=>setColor(e.target.value)} className="w-7 h-7 rounded border cursor-pointer ml-1" />
