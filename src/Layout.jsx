@@ -373,37 +373,43 @@ export default function Layout({ children, currentPageName }) {
     return () => clearInterval(interval);
   }, [clockInTime]);
 
-  const handleClockIn = () => {
-    setClockInTime(new Date());
-  };
-
-  const handleClockOut = async () => {
-    if (!clockInTime || !currentUser) return;
-    const employee = employees.find(e => e.user_email === currentUser.email);
+  const handleClockIn = async () => {
+    if (!currentUser) return;
+    const employee = employees.find(e => e.user_email === currentUser.email || e.email === currentUser.email);
     if (!employee) return;
 
     const now = new Date();
-    const clockInStr = format(clockInTime, "HH:mm");
-    const clockOutStr = format(now, "HH:mm");
-    const [inH, inM] = clockInStr.split(":").map(Number);
-    const [outH, outM] = clockOutStr.split(":").map(Number);
-    const inMinutes = inH * 60 + inM;
-    const outMinutes = outH * 60 + outM;
-    const hours = ((outMinutes - inMinutes) / 60).toFixed(2);
-
-    await base44.entities.TimeEntry.create({
+    const clockInStr = format(now, "HH:mm");
+    const entry = await base44.entities.TimeEntry.create({
       employee_id: employee.id,
       employee_name: employee.full_name,
-      date: format(new Date(), "yyyy-MM-dd"),
+      date: format(now, "yyyy-MM-dd"),
       clock_in: clockInStr,
-      clock_out: clockOutStr,
-      hours_worked: parseFloat(hours),
       entry_type: "work",
       notes: ""
+    });
+    setOpenTimeEntryId(entry.id);
+    setClockInTime(now);
+  };
+
+  const handleClockOut = async () => {
+    if (!clockInTime || !openTimeEntryId) return;
+
+    const now = new Date();
+    const clockOutStr = format(now, "HH:mm");
+    const clockInStr = format(clockInTime, "HH:mm");
+    const [inH, inM] = clockInStr.split(":").map(Number);
+    const [outH, outM] = clockOutStr.split(":").map(Number);
+    const hours = ((outH * 60 + outM - inH * 60 - inM) / 60).toFixed(2);
+
+    await base44.entities.TimeEntry.update(openTimeEntryId, {
+      clock_out: clockOutStr,
+      hours_worked: parseFloat(hours)
     });
 
     setClockInTime(null);
     setElapsedTime("00:00:00");
+    setOpenTimeEntryId(null);
   };
 
   const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy"]);
