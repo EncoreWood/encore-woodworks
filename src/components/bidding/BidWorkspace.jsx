@@ -12,7 +12,7 @@ import BidPricingSettings from "./BidPricingSettings";
 import BidCatalogEditor from "./BidCatalogEditor";
 import BidRoomSection from "./BidRoomSection";
 import BidClientView from "./BidClientView";
-import PDFAnnotator from "../production/PDFAnnotator";
+import BidPlanViewer from "./BidPlanViewer";
 
 const BID_STYLES = [
   { key: "basic_euro",          label: "Tier 1 Euro" },
