@@ -320,9 +320,9 @@ export default function CalendarPage() {
     const cleaningCount = getBathroomCleaningsForDate(date).length;
 
     return (
-      <div className="w-full flex flex-col gap-0.5 p-1">
-        <div className="text-xs font-semibold flex items-center justify-between mb-0.5">
-          {format(date, "d")}
+      <div className="w-full flex flex-col gap-0.5 p-1.5" style={{ minHeight: "140px" }}>
+        <div className="text-sm font-semibold flex items-center justify-between mb-1">
+          <span>{format(date, "d")}</span>
           {presenter && (activeFilter === "all" || activeFilter === "presenter") && (
             <User className="w-3 h-3 text-blue-600" />
           )}
