@@ -45,8 +45,9 @@ export default function TimeSheet() {
   });
 
   const { data: timeEntries = [] } = useQuery({
-    queryKey: ["timeEntries", selectedDate],
-    queryFn: () => base44.entities.TimeEntry.list()
+    queryKey: ["timeEntries"],
+    queryFn: () => base44.entities.TimeEntry.list(),
+    refetchInterval: 30000
   });
 
   const { data: settings = [] } = useQuery({
