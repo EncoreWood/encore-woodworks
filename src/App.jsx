@@ -61,6 +61,7 @@ const AuthenticatedApp = () => {
           }
         />
       ))}
+      <Route path="/EmployeeDashboard" element={<LayoutWrapper currentPageName="EmployeeDashboard"><EmployeeDashboard /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
