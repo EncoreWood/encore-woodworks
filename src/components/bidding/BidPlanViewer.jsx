@@ -453,35 +453,85 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
             </div>
           </div>
 
-          {/* Measurements sidebar */}
-          {measurements.length > 0 && (
+          {/* Sidebar: measurements + text notes */}
+          {(measurements.length > 0 || annList.some(a => a.type === "text")) && (
             <div className="w-56 border-l bg-white flex flex-col overflow-hidden flex-shrink-0">
-              <div className="px-3 py-2.5 border-b bg-slate-50 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5"><Ruler className="w-4 h-4 text-red-500"/>Measurements</h3>
-                <span className="text-xs text-slate-400">{measurements.length}</span>
-              </div>
-              <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                {measurements.map((m, idx) => (
-                  <div key={m.id||idx} className="p-2 bg-red-50 rounded-lg border border-red-200">
-                    <div className="flex items-start justify-between gap-1 mb-1">
-                      <p className="text-base font-bold text-red-700 leading-tight">{m.realFeet!=null?`${m.realFeet.toFixed(2)} LF`:<span className="text-xs text-amber-600">No scale</span>}</p>
-                      <button onClick={()=>setMeasurements(p=>p.filter((_,i)=>i!==idx))} className="text-slate-300 hover:text-red-500 flex-shrink-0 mt-0.5"><X className="w-3 h-3"/></button>
-                    </div>
-                    <input
-                      value={m.label}
-                      onChange={e => setMeasurements(p => p.map((x,i) => i===idx ? {...x, label: e.target.value} : x))}
-                      className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 text-slate-600 focus:outline-none focus:ring-1 focus:ring-red-300 bg-white mb-1.5"
-                      placeholder="Label (e.g. Kitchen Base)"
-                    />
-                    {rooms.length > 0 && m.realFeet != null && (
-                      <button onClick={()=>{ setSendingM(m); setSendRoomId(rooms[0]?.id||""); setSendCategory("base"); }}
-                        className="w-full flex items-center justify-center gap-1 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded px-2 py-1 transition-colors font-medium">
-                        <Send className="w-3 h-3"/> Send to Bid
-                      </button>
-                    )}
+
+              {/* Measurements */}
+              {measurements.length > 0 && (
+                <>
+                  <div className="px-3 py-2 border-b bg-slate-50 flex items-center justify-between flex-shrink-0">
+                    <h3 className="text-xs font-bold text-slate-700 flex items-center gap-1.5"><Ruler className="w-3.5 h-3.5 text-red-500"/>Measurements ({measurements.length})</h3>
                   </div>
-                ))}
-              </div>
+                  <div className="overflow-y-auto p-2 space-y-2 max-h-64">
+                    {measurements.map((m, idx) => (
+                      <div key={m.id||idx} className="p-2 bg-red-50 rounded-lg border border-red-200">
+                        <div className="flex items-start justify-between gap-1 mb-1">
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={m.realFeet != null ? m.realFeet : ""}
+                            onChange={e => setMeasurements(p => p.map((x,i) => i===idx ? {...x, realFeet: parseFloat(e.target.value)||null} : x))}
+                            className="w-20 text-sm font-bold text-red-700 border border-red-200 rounded px-1 focus:outline-none focus:ring-1 focus:ring-red-300 bg-white"
+                            placeholder="LF"
+                          />
+                          <span className="text-xs text-red-500 font-semibold mt-1">LF</span>
+                          <button onClick={()=>setMeasurements(p=>p.filter((_,i)=>i!==idx))} className="text-slate-300 hover:text-red-500 flex-shrink-0 mt-0.5"><X className="w-3 h-3"/></button>
+                        </div>
+                        <input
+                          value={m.label}
+                          onChange={e => setMeasurements(p => p.map((x,i) => i===idx ? {...x, label: e.target.value} : x))}
+                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 text-slate-600 focus:outline-none focus:ring-1 focus:ring-red-300 bg-white mb-1.5"
+                          placeholder="Label (e.g. Kitchen Base)"
+                        />
+                        {rooms.length > 0 && m.realFeet != null && (
+                          <button onClick={()=>{ setSendingM(m); setSendRoomId(rooms[0]?.id||""); setSendCategory("base"); }}
+                            className="w-full flex items-center justify-center gap-1 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded px-2 py-1 transition-colors font-medium">
+                            <Send className="w-3 h-3"/> Send to Bid
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Text notes */}
+              {annList.some(a => a.type === "text") && (
+                <>
+                  <div className="px-3 py-2 border-b bg-slate-50 flex items-center justify-between flex-shrink-0">
+                    <h3 className="text-xs font-bold text-slate-700 flex items-center gap-1.5"><Type className="w-3.5 h-3.5 text-purple-500"/>Notes ({annList.filter(a=>a.type==="text" && a.page===pageNumber).length})</h3>
+                  </div>
+                  <div className="overflow-y-auto p-2 space-y-2 flex-1">
+                    {annList.filter(a => a.type === "text" && a.page === pageNumber).map((ann) => {
+                      const globalIdx = annList.indexOf(ann);
+                      return (
+                        <div key={globalIdx} className="p-2 bg-purple-50 rounded-lg border border-purple-200">
+                          <div className="flex items-start gap-1">
+                            <input
+                              value={ann.text}
+                              onChange={e => setAnnList(p => p.map((x,i) => i===globalIdx ? {...x, text: e.target.value} : x))}
+                              className="flex-1 text-xs border border-slate-200 rounded px-1.5 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-purple-300 bg-white font-medium"
+                              placeholder="Note text"
+                            />
+                            <button onClick={()=>setAnnList(p=>p.filter((_,i)=>i!==globalIdx))} className="text-slate-300 hover:text-red-500 flex-shrink-0 mt-1"><X className="w-3 h-3"/></button>
+                          </div>
+                          <div className="flex items-center gap-1 mt-1.5">
+                            <div className="w-3 h-3 rounded-full border border-slate-300 flex-shrink-0" style={{background: ann.color}}/>
+                            <input
+                              type="color"
+                              value={ann.color}
+                              onChange={e => setAnnList(p => p.map((x,i) => i===globalIdx ? {...x, color: e.target.value} : x))}
+                              className="w-5 h-5 rounded cursor-pointer border-0 p-0"
+                            />
+                            <span className="text-xs text-slate-400">p.{ann.page}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
