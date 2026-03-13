@@ -569,28 +569,23 @@ export default function ProjectDetails() {
               </div>
             </Card>
 
-            {/* Project Photos */}
+            {/* Job Photos */}
             {(() => {
-              const photos = (project.files || []).filter(f => f.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i));
+              const jobPhotos = (project.files || []).filter(f => f.tag === 'job_photo');
+              const allPhotos = (project.files || []).filter(f => f.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i));
+              const photos = jobPhotos.length > 0 ? jobPhotos : allPhotos;
               if (photos.length === 0) return null;
               return (
                 <Card className="p-6 bg-white border-0 shadow-sm">
-                  <button
-                    className="flex items-center justify-between w-full"
-                    onClick={() => setShowPhotos(p => !p)}
-                  >
-                    <h2 className="text-lg font-semibold text-slate-900">Project Photos ({photos.length})</h2>
+                  <button className="flex items-center justify-between w-full" onClick={() => setShowPhotos(p => !p)}>
+                    <h2 className="text-lg font-semibold text-slate-900">Job Photos ({photos.length})</h2>
                     <span className="text-sm text-amber-600">{showPhotos ? "Hide" : "View"}</span>
                   </button>
                   {showPhotos && (
                     <div className="grid grid-cols-3 gap-2 mt-4">
                       {photos.map((photo, idx) => (
-                        <button key={idx} onClick={() => setLightboxPhoto(photo)} className="focus:outline-none">
-                          <img
-                            src={photo.url}
-                            alt={photo.name}
-                            className="w-full h-20 object-cover rounded-lg border border-slate-200 hover:opacity-90 transition-opacity"
-                          />
+                        <button key={idx} onClick={() => setLightboxPhoto({ ...photo, allPhotos: photos, idx })} className="focus:outline-none">
+                          <img src={photo.url} alt={photo.name} className="w-full h-20 object-cover rounded-lg border border-slate-200 hover:opacity-90 transition-opacity" />
                         </button>
                       ))}
                     </div>
