@@ -337,10 +337,21 @@ export default function Layout({ children, currentPageName }) {
       if (user?.role !== "admin") {
         const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
         if (emp) {
-          // Always use the employee's allowed_pages exactly — even if empty (= no access)
           setEmployeeAllowedPages(new Set(emp.allowed_pages || []));
+
+          // Check if already clocked in today (open entry = has clock_in but no clock_out)
+          const todayStr = format(new Date(), "yyyy-MM-dd");
+          const entries = await base44.entities.TimeEntry.filter({ employee_id: emp.id });
+          const openEntry = entries.find(e => e.date === todayStr && e.clock_in && !e.clock_out);
+          if (openEntry) {
+            setOpenTimeEntryId(openEntry.id);
+            // Reconstruct clockInTime from stored clock_in string
+            const [h, m] = openEntry.clock_in.split(":").map(Number);
+            const reconstructed = new Date();
+            reconstructed.setHours(h, m, 0, 0);
+            setClockInTime(reconstructed);
+          }
         }
-        // If no employee record found, employeeAllowedPages stays null → DEFAULT_USER_ALLOWED_PAGES used
       }
       setPermissionsReady(true);
     };
