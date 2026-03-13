@@ -697,11 +697,23 @@ export default function ProjectDetails() {
 
         {/* Photo Lightbox */}
         {lightboxPhoto && (
-          <Dialog open={!!lightboxPhoto} onOpenChange={() => setLightboxPhoto(null)}>
-            <DialogContent className="max-w-4xl p-2 bg-black border-0">
-              <img src={lightboxPhoto.url} alt={lightboxPhoto.name} className="w-full max-h-[85vh] object-contain rounded" />
-            </DialogContent>
-          </Dialog>
+          <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4" onClick={() => setLightboxPhoto(null)}>
+            <div className="relative max-w-5xl max-h-full" onClick={e => e.stopPropagation()}>
+              <img src={lightboxPhoto.url} alt={lightboxPhoto.name} className="max-h-[90vh] max-w-full rounded-xl object-contain" />
+              <button className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1.5" onClick={() => setLightboxPhoto(null)}>
+                <X className="w-4 h-4" />
+              </button>
+              {lightboxPhoto.allPhotos && lightboxPhoto.idx > 0 && (
+                <button className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full px-3 py-2 text-2xl leading-none"
+                  onClick={e => { e.stopPropagation(); const prev = lightboxPhoto.allPhotos[lightboxPhoto.idx - 1]; setLightboxPhoto({ ...prev, allPhotos: lightboxPhoto.allPhotos, idx: lightboxPhoto.idx - 1 }); }}>‹</button>
+              )}
+              {lightboxPhoto.allPhotos && lightboxPhoto.idx < lightboxPhoto.allPhotos.length - 1 && (
+                <button className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full px-3 py-2 text-2xl leading-none"
+                  onClick={e => { e.stopPropagation(); const next = lightboxPhoto.allPhotos[lightboxPhoto.idx + 1]; setLightboxPhoto({ ...next, allPhotos: lightboxPhoto.allPhotos, idx: lightboxPhoto.idx + 1 }); }}>›</button>
+              )}
+              {lightboxPhoto.allPhotos && <p className="absolute bottom-2 left-1/2 -translate-x-1/2 text-white/60 text-xs">{lightboxPhoto.idx + 1} / {lightboxPhoto.allPhotos.length}</p>}
+            </div>
+          </div>
         )}
 
         {/* Delete Confirmation */}
