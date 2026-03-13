@@ -403,6 +403,25 @@ export default function ChatBoard() {
   // Build reply source map from messages
   const messageMap = Object.fromEntries(messages.map(m => [m.id, m]));
 
+  // Collect all images in the current room for lightbox navigation
+  const chatImages = messages.flatMap(m =>
+    (m.attachments || []).filter(a => {
+      const ext = (a.name || '').split('.').pop().toLowerCase();
+      return a.type === 'photo' || ['jpg','jpeg','png','gif','webp'].includes(ext);
+    }).map(a => ({ url: a.url, name: a.name }))
+  );
+
+  const handleImageClick = (url) => {
+    const idx = chatImages.findIndex(img => img.url === url);
+    setLightboxImages(chatImages);
+    setLightboxIndex(idx >= 0 ? idx : 0);
+  };
+
+  const handleLightboxClose = (newIndex) => {
+    if (typeof newIndex === 'number') setLightboxIndex(newIndex);
+    else { setLightboxIndex(null); setLightboxImages([]); }
+  };
+
 
 
   return (
