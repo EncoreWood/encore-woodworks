@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import ProjectForm from "../components/projects/ProjectForm";
 import ProductionStatsPanel from "../components/dashboard/ProductionStatsPanel";
+import PtsOverviewCard from "../components/dashboard/PtsOverviewCard";
 import TodayPanel from "../components/dashboard/TodayPanel";
 import WeatherWidget from "../components/dashboard/WeatherWidget";
 import { Link } from "react-router-dom";
