@@ -217,8 +217,10 @@ export default function ChatBoard() {
   const [showFilesDialog, setShowFilesDialog] = useState(false);
   const [showPhotosDialog, setShowPhotosDialog] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [replyTo, setReplyTo] = useState(null); // message being replied to
-  const [unreadCounts, setUnreadCounts] = useState({}); // roomId -> count
+  const [replyTo, setReplyTo] = useState(null);
+  const [lightboxImages, setLightboxImages] = useState([]);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [unreadCounts, setUnreadCounts] = useState({});
   const [lastSeenTimestamps, setLastSeenTimestamps] = useState(() => {
     try { return JSON.parse(localStorage.getItem('chatLastSeen') || '{}'); } catch { return {}; }
   });
