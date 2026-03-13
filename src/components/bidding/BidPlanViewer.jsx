@@ -380,6 +380,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   }, [annList, measurements, currentPath, currentLine, pageNumber, color, highlightColor, canvasSize, tool, measureStart, measurePreview, calibStart, calibPreview]);
 
   const toolConfig = [
+    { key: "pointer", label: "Select", icon: MousePointer2, cls: "bg-slate-700 hover:bg-slate-800" },
     { key: "pen", label: "Draw", icon: Pencil, cls: "bg-amber-600 hover:bg-amber-700" },
     { key: "highlight", label: "Highlight", icon: Highlighter, cls: "bg-yellow-500 hover:bg-yellow-600" },
     { key: "arrow", label: "Arrow", icon: ArrowRight, cls: "bg-blue-600 hover:bg-blue-700" },
@@ -390,7 +391,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     { key: "calibrate", label: "Calibrate", icon: Target, cls: "bg-violet-600 hover:bg-violet-700" },
   ];
 
-  const cursor = ["measure","calibrate"].includes(tool) ? "crosshair" : tool==="text" ? "text" : tool==="highlight" ? "cell" : "crosshair";
+  const cursor = tool === "pointer" ? "default" : ["measure","calibrate"].includes(tool) ? "crosshair" : tool==="text" ? "text" : tool==="highlight" ? "cell" : "crosshair";
   const scaleLabel = detectedScale ? (detectedScale.scale_text || `${detectedScale.inches_per_foot}" = 1'`) : null;
 
   return (
