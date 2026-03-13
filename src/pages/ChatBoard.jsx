@@ -149,7 +149,7 @@ function RoomItem({ room, selectedRoomId, unreadCounts = {}, projects = [], onSe
   );
 }
 
-function MessageBubble({ msg, currentUser, onReply, replySource, accentColor }) {
+function MessageBubble({ msg, currentUser, onReply, replySource, accentColor, onImageClick }) {
   const isMe = msg.user_name === (currentUser?.full_name || currentUser?.email);
   const time = msg.created_date ? new Date(msg.created_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
@@ -186,7 +186,9 @@ function MessageBubble({ msg, currentUser, onReply, replySource, accentColor }) 
 
         {msg.attachments?.length > 0 && (
           <div className="mt-1 w-full space-y-1">
-            {msg.attachments.map((att, idx) => <FileEmbed key={idx} att={att} />)}
+            {msg.attachments.map((att, idx) => (
+              <FileEmbed key={idx} att={att} onImageClick={onImageClick} />
+            ))}
           </div>
         )}
       </div>
