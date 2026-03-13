@@ -80,6 +80,10 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const [pendingCalib, setPendingCalib] = useState(null);
   const [calibKnownFeet, setCalibKnownFeet] = useState("");
 
+  // Pointer/select state
+  const [selectedAnn, setSelectedAnn] = useState(null); // { kind: "ann"|"measurement", idx }
+  const [deletePopup, setDeletePopup] = useState(null); // { x, y, kind, idx }
+
   // Send to bid state
   const [sendingM, setSendingM] = useState(null);
   const [sendRoomId, setSendRoomId] = useState("");
