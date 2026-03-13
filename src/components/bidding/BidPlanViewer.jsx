@@ -15,14 +15,14 @@ import "react-pdf/dist/esm/Page/TextLayer.css";
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const HIGHLIGHT_COLORS = [
-  { label: "Base",     color: "#d97706", hex: "rgba(217,119,6,0.28)" },
-  { label: "Upper",    color: "#3b82f6", hex: "rgba(59,130,246,0.28)" },
-  { label: "Tall",     color: "#ef4444", hex: "rgba(239,68,68,0.28)" },
-  { label: "Misc",     color: "#6b7280", hex: "rgba(107,114,128,0.35)" },
-  { label: "Green",    color: "#16a34a", hex: "rgba(22,163,74,0.28)" },
-  { label: "Purple",   color: "#9333ea", hex: "rgba(147,51,234,0.28)" },
-  { label: "Pink",     color: "#db2777", hex: "rgba(219,39,119,0.28)" },
-  { label: "Teal",     color: "#0891b2", hex: "rgba(8,145,178,0.28)" },
+  { label: "Base",   color: "#d97706", hex: "rgba(217,119,6,0.28)" },
+  { label: "Upper",  color: "#3b82f6", hex: "rgba(59,130,246,0.28)" },
+  { label: "Tall",   color: "#ef4444", hex: "rgba(239,68,68,0.28)" },
+  { label: "Misc",   color: "#6b7280", hex: "rgba(107,114,128,0.35)" },
+  { label: "Green",  color: "#16a34a", hex: "rgba(22,163,74,0.28)" },
+  { label: "Purple", color: "#9333ea", hex: "rgba(147,51,234,0.28)" },
+  { label: "Pink",   color: "#db2777", hex: "rgba(219,39,119,0.28)" },
+  { label: "Teal",   color: "#0891b2", hex: "rgba(8,145,178,0.28)" },
 ];
 
 function drawArrow(ctx, from, to, withHead) {
@@ -38,102 +38,132 @@ function drawArrow(ctx, from, to, withHead) {
   }
 }
 
-// ─── coordinate helpers ────────────────────────────────────────────────────
-// All committed annotations store plan-relative coords: rx/ry ∈ [0,1].
-// "old" annotations (no rx field) are treated as fixed screen pixels (legacy).
+// ─── Coordinate helpers ──────────────────────────────────────────────────────
+// All annotations are stored in "natural" coordinates: the pixel position at scale=1.
+// The canvas drawing-buffer is always naturalW × naturalH.
+// The canvas CSS size is displayW × displayH (= naturalW*scale × naturalH*scale).
+// This means canvas draw coordinates == annotation coordinates == always stable.
 
-function makeToRel(w, h) {
-  return (pos) => ({ rx: pos.x / w, ry: pos.y / h });
+// Convert a saved annotation point to natural coords.
+// Old format may have {x,y} (old screen-px, best-effort) or {rx,ry} (fraction).
+function toNatPt(pt, nw, nh) {
+  if (!pt) return { x: 0, y: 0 };
+  if (pt.rx !== undefined) return { x: pt.rx * nw, y: pt.ry * nh };
+  return { x: pt.x ?? 0, y: pt.y ?? 0 };
 }
-function makeToScr(w, h) {
-  return (rel) => ({ x: rel.rx * w, y: rel.ry * h });
+function annToNatural(ann, nw, nh) {
+  if (ann._natural) return ann; // already converted
+  if (ann.type === "pen") {
+    const pts = ann.rpoints
+      ? ann.rpoints.map(p => toNatPt(p, nw, nh))
+      : (ann.points || []);
+    return { ...ann, points: pts, rpoints: undefined, _natural: true };
+  }
+  if (ann.type === "highlight") {
+    const o = toNatPt({ rx: ann.rx, ry: ann.ry }, nw, nh);
+    if (ann.rx !== undefined) {
+      return { ...ann, x: o.x, y: o.y, w: ann.rw * nw, h: ann.rh * nh, rx: undefined, ry: undefined, rw: undefined, rh: undefined, _natural: true };
+    }
+    return { ...ann, _natural: true };
+  }
+  if (ann.type === "text") {
+    if (ann.rx !== undefined) {
+      const p = toNatPt({ rx: ann.rx, ry: ann.ry }, nw, nh);
+      return { ...ann, x: p.x, y: p.y, rx: undefined, ry: undefined, _natural: true };
+    }
+    return { ...ann, _natural: true };
+  }
+  if (ann.type === "arrow" || ann.type === "line") {
+    if (ann.rstart) {
+      return { ...ann, start: toNatPt(ann.rstart, nw, nh), end: toNatPt(ann.rend, nw, nh), rstart: undefined, rend: undefined, _natural: true };
+    }
+    return { ...ann, _natural: true };
+  }
+  return { ...ann, _natural: true };
 }
-// Works for both new {rx,ry} and legacy {x,y} points
-function ptToScr(pt, w, h) {
-  if (pt.rx !== undefined) return { x: pt.rx * w, y: pt.ry * h };
-  return { x: pt.x, y: pt.y };
+function measToNatural(m, nw, nh) {
+  if (m._natural) return m;
+  return { ...m, start: toNatPt(m.start, nw, nh), end: toNatPt(m.end, nw, nh), _natural: true };
 }
 
 export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", rooms = [], onAddToRoom }) {
   if (!pdfUrl) return null;
 
-  // PDF state
-  const [numPages, setNumPages] = useState(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [scale, setScale] = useState(1.0);
-  const [rotation, setRotation] = useState(0);
-  const [naturalPageWidth, setNaturalPageWidth] = useState(null);
-  const [autoFitted, setAutoFitted] = useState(false);
-  const [canvasSize, setCanvasSize] = useState({ width: 595, height: 842 });
+  // PDF / view state
+  const [numPages, setNumPages]         = useState(null);
+  const [pageNumber, setPageNumber]     = useState(1);
+  const [scale, setScale]               = useState(1.0);
+  const [rotation, setRotation]         = useState(0);
+  const [autoFitted, setAutoFitted]     = useState(false);
 
-  // Annotation state
-  const [tool, setTool] = useState("pointer");
-  const [color, setColor] = useState("#e53e3e");
+  // Natural page dimensions (at scale=1). Fixed once set.
+  // displaySize = naturalSize * scale (CSS pixels shown on screen)
+  const [naturalSize, setNaturalSize]   = useState({ w: 595, h: 842 });
+  const [displaySize, setDisplaySize]   = useState({ w: 595, h: 842 });
+  const naturalRef                       = useRef({ w: 595, h: 842 });
+
+  // Annotation state — all coords in natural-px space
+  const [tool, setTool]                 = useState("pointer");
+  const [color, setColor]               = useState("#e53e3e");
   const [highlightColor, setHighlightColor] = useState("#d97706");
-  const [annList, setAnnList] = useState([]);
-  const [currentPath, setCurrentPath] = useState([]); // screen coords (transient)
-  const [currentLine, setCurrentLine] = useState(null); // screen coords (transient)
-  const [textInput, setTextInput] = useState(null); // screen coords
-  const [textValue, setTextValue] = useState("");
+  const [annList, setAnnList]           = useState([]);
+  const [currentPath, setCurrentPath]   = useState([]);
+  const [currentLine, setCurrentLine]   = useState(null);
+  const [textInput, setTextInput]       = useState(null); // { nat:{x,y}, css:{x,y} }
+  const [textValue, setTextValue]       = useState("");
   const [isPointerDown, setIsPointerDown] = useState(false);
-  const [aiNotes, setAiNotes] = useState(initialNotes);
+  const [aiNotes, setAiNotes]           = useState(initialNotes);
 
-  // Scale / calibration state
-  const [detectedScale, setDetectedScale] = useState(null);
+  // Scale / calibration
+  const [detectedScale, setDetectedScale]   = useState(null);
   const [detectingScale, setDetectingScale] = useState(false);
-  const [pxPerFtAtScale1, setPxPerFtAtScale1] = useState(null);
+  const [pxPerFtNat, setPxPerFtNat]         = useState(null); // natural px per real foot
   const [manualScaleInput, setManualScaleInput] = useState("");
   const [showScaleOverride, setShowScaleOverride] = useState(false);
 
-  // Measure state (screen coords — transient)
-  const [measureStart, setMeasureStart] = useState(null);
+  // Measure (natural-px transient coords)
+  const [measureStart, setMeasureStart]   = useState(null);
   const [measurePreview, setMeasurePreview] = useState(null);
-  const [measurements, setMeasurements] = useState([]);
+  const [measurements, setMeasurements]   = useState([]);
 
-  // Calibrate state (screen coords — transient)
-  const [calibStart, setCalibStart] = useState(null);
+  // Calibrate
+  const [calibStart, setCalibStart]   = useState(null);
   const [calibPreview, setCalibPreview] = useState(null);
   const [pendingCalib, setPendingCalib] = useState(null);
   const [calibKnownFeet, setCalibKnownFeet] = useState("");
 
-  // Pointer/select state
-  const [selectedAnn, setSelectedAnn] = useState(null); // { kind, idx }
-  const [showDeletePopup, setShowDeletePopup] = useState(null); // { x, y, kind, idx }
-  const dragRef = useRef(null); // { kind, idx, lastPos }
+  // Pointer / select / drag
+  const [selectedAnn, setSelectedAnn]       = useState(null); // { kind:"ann"|"measurement", idx }
+  const [deletePopup, setDeletePopup]       = useState(null); // { cssX, cssY, kind, idx }
+  const dragRef                              = useRef(null);
 
-  // Send to bid state
-  const [sendingM, setSendingM] = useState(null);
+  // Send to bid
+  const [sendingM, setSendingM]     = useState(null);
   const [sendRoomId, setSendRoomId] = useState("");
   const [sendCategory, setSendCategory] = useState("base");
 
-  const canvasRef = useRef(null);
+  const canvasRef        = useRef(null);
   const pageContainerRef = useRef(null);
-  const scrollRef = useRef(null);
+  const scrollRef        = useRef(null);
   const scaleDetectedRef = useRef(false);
 
-  // Derived coord helpers (capture current canvas size)
-  const toRel = useCallback((pos) => makeToRel(canvasSize.width, canvasSize.height)(pos), [canvasSize]);
-  const toScr = useCallback((rel) => makeToScr(canvasSize.width, canvasSize.height)(rel), [canvasSize]);
-  const pToScr = useCallback((pt) => ptToScr(pt, canvasSize.width, canvasSize.height), [canvasSize]);
-
-  // Reset on open
+  // ── Reset on open ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (open) {
       setAnnList(annotations.filter(a => a.type !== "measurement"));
       setMeasurements(annotations.filter(a => a.type === "measurement"));
       setAiNotes(initialNotes);
       setAutoFitted(false);
-      setNaturalPageWidth(null);
       setPageNumber(1);
       setTool("pointer");
-      setMeasureStart(null);
-      setCalibStart(null);
-      setSelectedAnn(null);
-      setShowDeletePopup(null);
+      setMeasureStart(null); setCalibStart(null);
+      setSelectedAnn(null); setDeletePopup(null);
+      dragRef.current = null;
     }
   }, [open]);
 
-  // Auto-fit
+  // ── Auto-fit ──────────────────────────────────────────────────────────────
+  const [naturalPageWidth, setNaturalPageWidth] = useState(null);
   useEffect(() => {
     if (naturalPageWidth && !autoFitted && scrollRef.current) {
       const w = scrollRef.current.clientWidth - 64;
@@ -142,7 +172,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     }
   }, [naturalPageWidth, autoFitted]);
 
-  // AI scale detection
+  // ── AI scale detection ───────────────────────────────────────────────────
   useEffect(() => {
     if (open && pdfUrl && !scaleDetectedRef.current) {
       scaleDetectedRef.current = true;
@@ -156,13 +186,15 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     try {
       const result = await base44.integrations.Core.InvokeLLM({
         model: "gemini_3_flash",
-        prompt: `Look at this architectural floor plan. Find the scale indicator (scale bar or written scale like "1/4\" = 1'-0\""). Return inches_per_foot (for "1/4\" = 1'-0\"" return 0.25, for "1/8\" = 1'" return 0.125) and the exact scale_text as shown. If unclear, return 0.25 with a note.`,
+        prompt: `Look at this architectural floor plan. Find the scale indicator. Return inches_per_foot (for "1/4\\"=1'-0\\"" return 0.25, for "1/8\\"=1'" return 0.125) and scale_text. If unclear return 0.25.`,
         file_urls: [pdfUrl],
         response_json_schema: { type: "object", properties: { inches_per_foot: { type: "number" }, scale_text: { type: "string" }, confidence: { type: "string" } } }
       });
       if (result.inches_per_foot > 0) {
         setDetectedScale(result);
-        setPxPerFtAtScale1(result.inches_per_foot * 72);
+        // pxPerFtNat: at scale=1, PDF renders at 72 DPI. 1 foot = inches_per_foot * 12 inches * 72px/in... 
+        // wait: inches_per_foot = plan_inches_per_real_foot, so 1 real foot = inches_per_foot plan-inches = inches_per_foot*72 natural-px
+        setPxPerFtNat(result.inches_per_foot * 72);
       }
     } catch (_) {}
     setDetectingScale(false);
@@ -171,7 +203,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const applyManualScale = () => {
     const val = manualScaleInput.trim();
     let ipf = val.includes("/") ? (() => { const [n,d] = val.split("/").map(Number); return n&&d ? n/d : null; })() : parseFloat(val);
-    if (ipf > 0) { setPxPerFtAtScale1(ipf * 72); setDetectedScale({ inches_per_foot: ipf, scale_text: `${val}" = 1'`, confidence: "manual" }); }
+    if (ipf > 0) { setPxPerFtNat(ipf * 72); setDetectedScale({ inches_per_foot: ipf, scale_text: `${val}" = 1'`, confidence: "manual" }); }
     setShowScaleOverride(false); setManualScaleInput("");
   };
 
@@ -181,174 +213,187 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     setScale(Math.min(Math.max(w / naturalPageWidth, 0.3), 3.0));
   }, [naturalPageWidth]);
 
-  const syncCanvasSize = () => {
+  // ── Sync sizes from PDF page ──────────────────────────────────────────────
+  const syncSizes = useCallback(() => {
     const el = pageContainerRef.current?.querySelector(".react-pdf__Page__canvas");
-    if (el) setCanvasSize({ width: el.offsetWidth, height: el.offsetHeight });
-  };
+    if (!el) return;
+    const dw = el.offsetWidth, dh = el.offsetHeight;
+    if (!dw || !dh) return;
+    setDisplaySize({ w: dw, h: dh });
+    // Natural size is fixed by page+rotation; compute from display size and current scale
+    const nw = Math.round(dw / scale), nh = Math.round(dh / scale);
+    naturalRef.current = { w: nw, h: nh };
+    setNaturalSize({ w: nw, h: nh });
+  }, [scale]);
 
   const onDocumentLoadSuccess = ({ numPages }) => setNumPages(numPages);
   const onPageLoadSuccess = () => {
     setTimeout(() => {
       const el = pageContainerRef.current?.querySelector(".react-pdf__Page__canvas");
-      if (el) setNaturalPageWidth(el.offsetWidth / scale);
-      syncCanvasSize();
+      if (el) {
+        const nw = el.offsetWidth / scale;
+        if (!autoFitted) setNaturalPageWidth(nw);
+      }
+      syncSizes();
     }, 80);
   };
 
-  useEffect(() => { setTimeout(syncCanvasSize, 100); }, [scale, rotation, pageNumber]);
+  useEffect(() => { setTimeout(syncSizes, 120); }, [scale, rotation, pageNumber]);
 
+  // ── Convert loaded annotations to natural coords once naturalSize is known ─
+  const convertedRef = useRef(false);
+  useEffect(() => {
+    if (!naturalSize.w || convertedRef.current) return;
+    if (naturalSize.w === 595 && naturalSize.h === 842) return; // default, not real yet
+    convertedRef.current = true;
+    setAnnList(prev => prev.map(a => annToNatural(a, naturalSize.w, naturalSize.h)));
+    setMeasurements(prev => prev.map(m => measToNatural(m, naturalSize.w, naturalSize.h)));
+  }, [naturalSize]);
+
+  // Reset conversion flag on open
+  useEffect(() => { if (open) convertedRef.current = false; }, [open]);
+
+  // ── Coordinate helpers ───────────────────────────────────────────────────
+  // Get natural-px coords from a pointer event
   const getPos = (e) => {
+    const r = canvasRef.current?.getBoundingClientRect();
+    if (!r || !r.width) return { x: 0, y: 0 };
+    const nat = naturalRef.current;
+    return {
+      x: (e.clientX - r.left) * nat.w / r.width,
+      y: (e.clientY - r.top)  * nat.h / r.height,
+    };
+  };
+  // Get CSS-px coords (for DOM-positioned elements like text input)
+  const getPosCSS = (e) => {
     const r = canvasRef.current?.getBoundingClientRect();
     return r ? { x: e.clientX - r.left, y: e.clientY - r.top } : { x: 0, y: 0 };
   };
-
-  const computeRealFeet = (p1, p2) => {
-    if (!pxPerFtAtScale1) return null;
-    return (Math.hypot(p2.x - p1.x, p2.y - p1.y) / scale) / pxPerFtAtScale1;
+  // Convert natural coords to CSS coords (for DOM elements)
+  const natToCSS = (pos) => {
+    const nat = naturalRef.current;
+    const disp = displaySize;
+    return { x: pos.x * disp.w / nat.w, y: pos.y * disp.h / nat.h };
   };
 
-  // ── Hit-test (works in current screen space) ──────────────────────────────
-  const hitTestAnnotations = (pos) => {
-    const T = 14;
-    const W = canvasSize.width, H = canvasSize.height;
+  const computeRealFeet = (p1, p2) => {
+    if (!pxPerFtNat) return null;
+    // p1, p2 in natural px — no scale division needed
+    return Math.hypot(p2.x - p1.x, p2.y - p1.y) / pxPerFtNat;
+  };
 
-    // Measurements
+  // ── Hit-test (all coords in natural space) ───────────────────────────────
+  const hitTest = (pos) => {
+    const nat = naturalRef.current;
+    // T in natural px: ~14 CSS px → 14 * nat.w / displaySize.w
+    const T = 14 * nat.w / displaySize.w;
+
     for (let i = measurements.length - 1; i >= 0; i--) {
       const m = measurements[i];
       if (m.page !== pageNumber) continue;
-      const s = ptToScr(m.start, W, H), en = ptToScr(m.end, W, H);
-      const midX = (s.x + en.x) / 2, midY = (s.y + en.y) / 2;
-      if (Math.hypot(pos.x - midX, pos.y - midY) < 24) return { kind: "measurement", idx: i };
-      if (Math.hypot(pos.x - s.x, pos.y - s.y) < T) return { kind: "measurement", idx: i };
-      if (Math.hypot(pos.x - en.x, pos.y - en.y) < T) return { kind: "measurement", idx: i };
+      const s = toNatPt(m.start, nat.w, nat.h), en = toNatPt(m.end, nat.w, nat.h);
+      const mid = { x: (s.x+en.x)/2, y: (s.y+en.y)/2 };
+      if (Math.hypot(pos.x-mid.x, pos.y-mid.y) < T*2) return { kind:"measurement", idx:i };
+      if (Math.hypot(pos.x-s.x, pos.y-s.y) < T) return { kind:"measurement", idx:i };
+      if (Math.hypot(pos.x-en.x, pos.y-en.y) < T) return { kind:"measurement", idx:i };
     }
-    // Annotations (reverse = top-first)
-    const pageAnns = annList.map((a, i) => ({ a, i })).filter(({ a }) => a.page === pageNumber);
-    for (let j = pageAnns.length - 1; j >= 0; j--) {
-      const { a, i } = pageAnns[j];
+    const pageAnns = annList.map((a,i)=>({a,i})).filter(({a})=>a.page===pageNumber);
+    for (let j = pageAnns.length-1; j >= 0; j--) {
+      const {a,i} = pageAnns[j];
       if (a.type === "highlight") {
-        const ox = ptToScr({ rx: a.rx, ry: a.ry }, W, H);
-        const sw = a.rw * W, sh = a.rh * H;
-        if (pos.x >= ox.x && pos.x <= ox.x + sw && pos.y >= ox.y && pos.y <= ox.y + sh) return { kind: "ann", idx: i };
-        // legacy
-        if (a.x !== undefined && pos.x >= a.x && pos.x <= a.x + a.w && pos.y >= a.y && pos.y <= a.y + a.h) return { kind: "ann", idx: i };
+        if (pos.x >= a.x && pos.x <= a.x+a.w && pos.y >= a.y && pos.y <= a.y+a.h) return {kind:"ann",idx:i};
       } else if (a.type === "text") {
-        const tp = ptToScr(a.rx !== undefined ? { rx: a.rx, ry: a.ry } : { rx: a.x / W, ry: a.y / H }, W, H);
-        if (Math.hypot(pos.x - tp.x, pos.y - tp.y) < 32) return { kind: "ann", idx: i };
+        if (Math.hypot(pos.x-a.x, pos.y-a.y) < T*2) return {kind:"ann",idx:i};
       } else if (a.type === "pen") {
-        const pts = a.rpoints ? a.rpoints.map(p => ptToScr(p, W, H)) : (a.points || []);
-        if (pts.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) < T)) return { kind: "ann", idx: i };
+        if ((a.points||[]).some(pt=>Math.hypot(pt.x-pos.x, pt.y-pos.y) < T)) return {kind:"ann",idx:i};
       } else if (a.type === "arrow" || a.type === "line") {
-        const s2 = ptToScr(a.rstart || (a.start?.rx !== undefined ? a.start : { rx: a.start.x / W, ry: a.start.y / H }), W, H);
-        const e2 = ptToScr(a.rend   || (a.end?.rx   !== undefined ? a.end   : { rx: a.end.x   / W, ry: a.end.y   / H }), W, H);
-        if (Math.hypot(pos.x - s2.x, pos.y - s2.y) < T || Math.hypot(pos.x - e2.x, pos.y - e2.y) < T) return { kind: "ann", idx: i };
+        const s = a.start, en = a.end;
+        if (Math.hypot(pos.x-s.x, pos.y-s.y)<T || Math.hypot(pos.x-en.x, pos.y-en.y)<T) return {kind:"ann",idx:i};
       }
     }
     return null;
   };
 
-  // ── Translate annotation by screen-space delta ────────────────────────────
+  // ── Translate annotation by natural-px delta ──────────────────────────────
   const translateAnn = (ann, dx, dy) => {
-    const W = canvasSize.width, H = canvasSize.height;
-    const drx = dx / W, dry = dy / H;
-    if (ann.type === "pen") {
-      if (ann.rpoints) return { ...ann, rpoints: ann.rpoints.map(p => ({ rx: p.rx + drx, ry: p.ry + dry })) };
-      return { ...ann, points: ann.points.map(p => ({ x: p.x + dx, y: p.y + dy })) };
-    }
-    if (ann.type === "highlight") {
-      if (ann.rx !== undefined) return { ...ann, rx: ann.rx + drx, ry: ann.ry + dry };
-      return { ...ann, x: ann.x + dx, y: ann.y + dy };
-    }
-    if (ann.type === "text") {
-      if (ann.rx !== undefined) return { ...ann, rx: ann.rx + drx, ry: ann.ry + dry };
-      return { ...ann, x: ann.x + dx, y: ann.y + dy };
-    }
-    if (ann.type === "arrow" || ann.type === "line") {
-      if (ann.rstart) return { ...ann, rstart: { rx: ann.rstart.rx + drx, ry: ann.rstart.ry + dry }, rend: { rx: ann.rend.rx + drx, ry: ann.rend.ry + dry } };
-      return { ...ann, start: { x: ann.start.x + dx, y: ann.start.y + dy }, end: { x: ann.end.x + dx, y: ann.end.y + dy } };
-    }
+    if (ann.type === "pen") return { ...ann, points: (ann.points||[]).map(p=>({x:p.x+dx,y:p.y+dy})) };
+    if (ann.type === "highlight") return { ...ann, x: ann.x+dx, y: ann.y+dy };
+    if (ann.type === "text") return { ...ann, x: ann.x+dx, y: ann.y+dy };
+    if (ann.type === "arrow" || ann.type === "line") return { ...ann, start:{x:ann.start.x+dx,y:ann.start.y+dy}, end:{x:ann.end.x+dx,y:ann.end.y+dy} };
     return ann;
   };
+  const translateMeas = (m, dx, dy) => ({
+    ...m,
+    start: { x: m.start.x+dx, y: m.start.y+dy },
+    end:   { x: m.end.x+dx,   y: m.end.y+dy },
+  });
 
-  const translateMeasurement = (m, dx, dy) => {
-    const W = canvasSize.width, H = canvasSize.height;
-    const drx = dx / W, dry = dy / H;
-    if (m.start?.rx !== undefined) {
-      return { ...m, start: { rx: m.start.rx + drx, ry: m.start.ry + dry }, end: { rx: m.end.rx + drx, ry: m.end.ry + dry } };
-    }
-    return { ...m, start: { x: m.start.x + dx, y: m.start.y + dy }, end: { x: m.end.x + dx, y: m.end.y + dy } };
-  };
-
-  // ── Event handlers ─────────────────────────────────────────────────────────
+  // ── Pointer events ────────────────────────────────────────────────────────
   const handlePointerDown = (e) => {
     e.preventDefault();
     canvasRef.current?.setPointerCapture(e.pointerId);
     const pos = getPos(e);
 
     if (tool === "pointer") {
-      const hit = hitTestAnnotations(pos);
+      const hit = hitTest(pos);
       if (hit) {
         setSelectedAnn(hit);
         dragRef.current = { ...hit, lastPos: pos, moved: false };
-        setShowDeletePopup(null);
+        setDeletePopup(null);
       } else {
         setSelectedAnn(null);
-        setShowDeletePopup(null);
+        setDeletePopup(null);
         dragRef.current = null;
       }
       return;
     }
 
-    setShowDeletePopup(null);
+    setDeletePopup(null);
     setSelectedAnn(null);
 
     if (tool === "measure") {
-      if (!measureStart) { setMeasureStart(pos); }
+      if (!measureStart) setMeasureStart(pos);
       else {
         const realFeet = computeRealFeet(measureStart, pos);
-        // Store start/end in relative coords
-        const newM = {
-          type: "measurement",
-          start: toRel(measureStart),
-          end: toRel(pos),
-          realFeet,
-          page: pageNumber,
-          id: `m_${Date.now()}`,
-          label: `Measurement ${measurements.length + 1}`
-        };
-        setMeasurements(p => [...p, newM]);
-        setMeasureStart(null);
-        setMeasurePreview(null);
+        setMeasurements(p => [...p, {
+          type: "measurement", _natural: true,
+          start: measureStart, end: pos,
+          realFeet, page: pageNumber,
+          id: `m_${Date.now()}`, label: `Measurement ${measurements.length+1}`
+        }]);
+        setMeasureStart(null); setMeasurePreview(null);
       }
       return;
     }
     if (tool === "calibrate") {
-      if (!calibStart) { setCalibStart(pos); }
+      if (!calibStart) setCalibStart(pos);
       else {
-        const dist = Math.hypot(pos.x - calibStart.x, pos.y - calibStart.y);
-        setPendingCalib({ start: calibStart, end: pos, pixelDist: dist });
+        const dist = Math.hypot(pos.x-calibStart.x, pos.y-calibStart.y);
+        setPendingCalib({ start: calibStart, end: pos, pixelDistNat: dist });
         setCalibStart(null); setCalibPreview(null);
       }
       return;
     }
     if (tool === "pen") { setIsPointerDown(true); setCurrentPath([pos]); }
     else if (tool === "eraser") { setIsPointerDown(true); eraseAt(pos); }
-    else if (["arrow","line","highlight"].includes(tool)) { setIsPointerDown(true); setCurrentLine({ start: pos, end: pos }); }
-    else if (tool === "text") { setTextInput(pos); setTextValue(""); }
+    else if (["arrow","line","highlight"].includes(tool)) { setIsPointerDown(true); setCurrentLine({start:pos,end:pos}); }
+    else if (tool === "text") {
+      setTextInput({ nat: pos, css: getPosCSS(e) });
+      setTextValue("");
+    }
   };
 
   const handlePointerMove = (e) => {
     const pos = getPos(e);
 
-    // Drag selected annotation
     if (tool === "pointer" && dragRef.current) {
       const { kind, idx, lastPos } = dragRef.current;
       const dx = pos.x - lastPos.x, dy = pos.y - lastPos.y;
-      if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+      if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
         dragRef.current.moved = true;
         dragRef.current.lastPos = pos;
-        if (kind === "ann") setAnnList(p => p.map((a, i) => i === idx ? translateAnn(a, dx, dy) : a));
-        else setMeasurements(p => p.map((m, i) => i === idx ? translateMeasurement(m, dx, dy) : m));
+        if (kind === "ann") setAnnList(p => p.map((a,i) => i===idx ? translateAnn(a,dx,dy) : a));
+        else setMeasurements(p => p.map((m,i) => i===idx ? translateMeas(m,dx,dy) : m));
       }
       return;
     }
@@ -359,77 +404,58 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     e.preventDefault();
     if (tool === "pen") setCurrentPath(p => [...p, pos]);
     else if (tool === "eraser") eraseAt(pos);
-    else if (["arrow","line","highlight"].includes(tool)) setCurrentLine(p => p ? { ...p, end: pos } : null);
+    else if (["arrow","line","highlight"].includes(tool)) setCurrentLine(p => p ? {...p,end:pos} : null);
   };
 
   const handlePointerUp = (e) => {
     e.preventDefault();
     const pos = getPos(e);
 
-    // Pointer tool: if no drag, show delete popup
     if (tool === "pointer") {
       if (dragRef.current && !dragRef.current.moved && selectedAnn) {
-        const canvasRect = canvasRef.current.getBoundingClientRect();
-        setShowDeletePopup({ x: e.clientX - canvasRect.left, y: e.clientY - canvasRect.top, ...selectedAnn });
+        // Show delete popup in CSS coords
+        const cssPos = getPosCSS(e);
+        setDeletePopup({ cssX: cssPos.x, cssY: cssPos.y, ...selectedAnn });
       }
       dragRef.current = null;
       return;
     }
 
-    // Store in relative coords
     if (tool === "pen" && currentPath.length > 1) {
-      setAnnList(p => [...p, { type: "pen", rpoints: currentPath.map(pt => toRel(pt)), color, page: pageNumber }]);
+      setAnnList(p => [...p, { type:"pen", points:currentPath, color, page:pageNumber, _natural:true }]);
       setCurrentPath([]);
-    } else if ((tool === "arrow" || tool === "line") && currentLine) {
-      if (Math.hypot(pos.x - currentLine.start.x, pos.y - currentLine.start.y) > 5)
-        setAnnList(p => [...p, { type: tool, rstart: toRel(currentLine.start), rend: toRel(pos), color, page: pageNumber }]);
+    } else if ((tool==="arrow"||tool==="line") && currentLine) {
+      if (Math.hypot(pos.x-currentLine.start.x, pos.y-currentLine.start.y) > 3)
+        setAnnList(p => [...p, { type:tool, start:currentLine.start, end:pos, color, page:pageNumber, _natural:true }]);
       setCurrentLine(null);
-    } else if (tool === "highlight" && currentLine) {
-      const w = Math.abs(pos.x - currentLine.start.x), h = Math.abs(pos.y - currentLine.start.y);
-      if (w > 5 && h > 5) {
-        const origin = { x: Math.min(currentLine.start.x, pos.x), y: Math.min(currentLine.start.y, pos.y) };
-        setAnnList(p => [...p, {
-          type: "highlight",
-          rx: origin.x / canvasSize.width, ry: origin.y / canvasSize.height,
-          rw: w / canvasSize.width, rh: h / canvasSize.height,
-          color: highlightColor, page: pageNumber
-        }]);
-      }
+    } else if (tool==="highlight" && currentLine) {
+      const w=Math.abs(pos.x-currentLine.start.x), h=Math.abs(pos.y-currentLine.start.y);
+      if (w>3 && h>3) setAnnList(p => [...p, {
+        type:"highlight",
+        x:Math.min(currentLine.start.x,pos.x), y:Math.min(currentLine.start.y,pos.y),
+        w, h, color:highlightColor, page:pageNumber, _natural:true
+      }]);
       setCurrentLine(null);
     }
     setIsPointerDown(false);
   };
 
   const eraseAt = ({ x, y }) => {
-    const t = 18, W = canvasSize.width, H = canvasSize.height;
+    const nat = naturalRef.current;
+    const T = 18 * nat.w / displaySize.w;
     setAnnList(p => p.filter(a => {
       if (a.page !== pageNumber) return true;
-      if (a.type === "highlight") {
-        const ox = a.rx !== undefined ? a.rx * W : a.x;
-        const oy = a.rx !== undefined ? a.ry * H : a.y;
-        const sw = a.rw !== undefined ? a.rw * W : a.w;
-        const sh = a.rh !== undefined ? a.rh * H : a.h;
-        return !(x >= ox && x <= ox + sw && y >= oy && y <= oy + sh);
-      }
-      if (a.type === "pen") {
-        const pts = a.rpoints ? a.rpoints.map(p => ptToScr(p, W, H)) : a.points;
-        return !pts.some(pt => Math.hypot(pt.x - x, pt.y - y) < t);
-      }
-      if (a.type === "arrow" || a.type === "line") {
-        const s = ptToScr(a.rstart || a.start, W, H), en = ptToScr(a.rend || a.end, W, H);
-        return Math.hypot(s.x - x, s.y - y) >= t && Math.hypot(en.x - x, en.y - y) >= t;
-      }
-      if (a.type === "text") {
-        const tp = a.rx !== undefined ? ptToScr({ rx: a.rx, ry: a.ry }, W, H) : { x: a.x, y: a.y };
-        return Math.hypot(tp.x - x, tp.y - y) >= t * 2;
-      }
+      if (a.type==="highlight") return !(x>=a.x && x<=a.x+a.w && y>=a.y && y<=a.y+a.h);
+      if (a.type==="pen") return !(a.points||[]).some(pt=>Math.hypot(pt.x-x,pt.y-y)<T);
+      if (a.type==="arrow"||a.type==="line") return Math.hypot(a.start.x-x,a.start.y-y)>=T && Math.hypot(a.end.x-x,a.end.y-y)>=T;
+      if (a.type==="text") return Math.hypot(a.x-x,a.y-y)>=T*2;
       return true;
     }));
   };
 
   const commitText = () => {
     if (textInput && textValue.trim())
-      setAnnList(p => [...p, { type: "text", rx: textInput.x / canvasSize.width, ry: textInput.y / canvasSize.height, text: textValue.trim(), color, page: pageNumber }]);
+      setAnnList(p => [...p, { type:"text", x:textInput.nat.x, y:textInput.nat.y, text:textValue.trim(), color, page:pageNumber, _natural:true }]);
     setTextInput(null); setTextValue("");
   };
 
@@ -437,9 +463,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     if (!pendingCalib || !calibKnownFeet) return;
     const ft = parseFloat(calibKnownFeet);
     if (ft <= 0) return;
-    const newPxPerFt = (pendingCalib.pixelDist / scale) / ft;
-    setPxPerFtAtScale1(newPxPerFt);
-    setDetectedScale({ inches_per_foot: newPxPerFt / 72, scale_text: `Calibrated (${calibKnownFeet} ft = drawn line)`, confidence: "manual" });
+    // pixelDistNat is in natural-px; divide by feet to get natural-px per foot
+    setPxPerFtNat(pendingCalib.pixelDistNat / ft);
+    setDetectedScale({ inches_per_foot: (pendingCalib.pixelDistNat/ft)/72, scale_text: `Calibrated (${calibKnownFeet} ft)`, confidence:"manual" });
     setPendingCalib(null); setCalibKnownFeet("");
   };
 
@@ -451,64 +477,49 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const W = canvasSize.width, H = canvasSize.height;
 
-    annList.filter(a => a.page === pageNumber).forEach((ann, listIdx) => {
-      const isSelected = selectedAnn?.kind === "ann" && annList.indexOf(ann) === selectedAnn.idx;
-      ctx.strokeStyle = ann.color; ctx.fillStyle = ann.color; ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    // Draw saved annotations (all in natural px == canvas buffer px)
+    annList.filter(a => a.page===pageNumber).forEach(ann => {
+      const isSel = selectedAnn?.kind==="ann" && annList.indexOf(ann)===selectedAnn.idx;
+      ctx.strokeStyle=ann.color; ctx.fillStyle=ann.color; ctx.lineWidth=2.5; ctx.lineCap="round"; ctx.lineJoin="round";
 
-      if (ann.type === "highlight") {
-        const ox = ann.rx !== undefined ? ann.rx * W : ann.x;
-        const oy = ann.rx !== undefined ? ann.ry * H : ann.y;
-        const sw = ann.rw !== undefined ? ann.rw * W : ann.w;
-        const sh = ann.rh !== undefined ? ann.rh * H : ann.h;
-        const [r,g,b] = [parseInt(ann.color.slice(1,3),16),parseInt(ann.color.slice(3,5),16),parseInt(ann.color.slice(5,7),16)];
-        ctx.fillStyle = `rgba(${r},${g},${b},0.35)`; ctx.strokeStyle = `rgba(${r},${g},${b},0.7)`; ctx.lineWidth = isSelected ? 2.5 : 1.5;
-        ctx.fillRect(ox,oy,sw,sh); ctx.strokeRect(ox,oy,sw,sh);
-        if (isSelected) { ctx.strokeStyle = "#3b82f6"; ctx.lineWidth = 2.5; ctx.strokeRect(ox-2,oy-2,sw+4,sh+4); }
-        const lbl = HIGHLIGHT_COLORS.find(c => c.color === ann.color)?.label;
-        if (lbl) { ctx.font="bold 10px sans-serif"; ctx.fillStyle=`rgba(${r},${g},${b},1)`; ctx.fillText(lbl, ox+3, oy+12); }
+      if (ann.type==="highlight") {
+        const [r,g,b]=[parseInt(ann.color.slice(1,3),16),parseInt(ann.color.slice(3,5),16),parseInt(ann.color.slice(5,7),16)];
+        ctx.fillStyle=`rgba(${r},${g},${b},0.35)`; ctx.strokeStyle=`rgba(${r},${g},${b},0.7)`; ctx.lineWidth=isSel?2.5:1.5;
+        ctx.fillRect(ann.x,ann.y,ann.w,ann.h); ctx.strokeRect(ann.x,ann.y,ann.w,ann.h);
+        if (isSel) { ctx.strokeStyle="#3b82f6"; ctx.lineWidth=2.5; ctx.strokeRect(ann.x-2,ann.y-2,ann.w+4,ann.h+4); }
+        const lbl=HIGHLIGHT_COLORS.find(c=>c.color===ann.color)?.label;
+        if (lbl) { ctx.font="bold 10px sans-serif"; ctx.fillStyle=`rgba(${r},${g},${b},1)`; ctx.fillText(lbl,ann.x+3,ann.y+12); }
 
-      } else if (ann.type === "pen") {
-        const pts = ann.rpoints ? ann.rpoints.map(p => ptToScr(p, W, H)) : ann.points;
-        ctx.strokeStyle = isSelected ? "#3b82f6" : ann.color;
-        ctx.lineWidth = isSelected ? 3.5 : 2.5;
-        ctx.beginPath(); pts.forEach((pt,i) => i===0 ? ctx.moveTo(pt.x,pt.y) : ctx.lineTo(pt.x,pt.y)); ctx.stroke();
+      } else if (ann.type==="pen") {
+        ctx.strokeStyle=isSel?"#3b82f6":ann.color; ctx.lineWidth=isSel?3.5:2.5;
+        ctx.beginPath(); (ann.points||[]).forEach((pt,i)=>i===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y)); ctx.stroke();
 
-      } else if (ann.type === "arrow" || ann.type === "line") {
-        const s = ptToScr(ann.rstart || ann.start, W, H);
-        const en = ptToScr(ann.rend || ann.end, W, H);
-        ctx.strokeStyle = isSelected ? "#3b82f6" : ann.color;
-        ctx.lineWidth = isSelected ? 3.5 : 2.5;
-        drawArrow(ctx, s, en, ann.type === "arrow");
-        if (isSelected) { ctx.fillStyle = "#3b82f6"; [s,en].forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);ctx.fill();}); }
+      } else if (ann.type==="arrow"||ann.type==="line") {
+        ctx.strokeStyle=isSel?"#3b82f6":ann.color; ctx.lineWidth=isSel?3.5:2.5;
+        drawArrow(ctx,ann.start,ann.end,ann.type==="arrow");
+        if (isSel) { ctx.fillStyle="#3b82f6"; [ann.start,ann.end].forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);ctx.fill();}); }
 
-      } else if (ann.type === "text") {
-        const tp = ann.rx !== undefined ? ptToScr({ rx: ann.rx, ry: ann.ry }, W, H) : { x: ann.x, y: ann.y };
+      } else if (ann.type==="text") {
         ctx.font="bold 13px sans-serif"; const m=ctx.measureText(ann.text);
-        if (isSelected) { ctx.fillStyle="rgba(59,130,246,0.15)"; ctx.fillRect(tp.x-5,tp.y-18,m.width+10,23); ctx.strokeStyle="#3b82f6"; ctx.lineWidth=1.5; ctx.strokeRect(tp.x-5,tp.y-18,m.width+10,23); }
-        else { ctx.fillStyle="rgba(255,255,255,0.85)"; ctx.fillRect(tp.x-3,tp.y-15,m.width+6,19); ctx.strokeStyle=ann.color; ctx.lineWidth=1; ctx.strokeRect(tp.x-3,tp.y-15,m.width+6,19); }
-        ctx.fillStyle=isSelected?"#1d4ed8":ann.color; ctx.fillText(ann.text,tp.x,tp.y);
+        if (isSel) { ctx.fillStyle="rgba(59,130,246,0.15)"; ctx.fillRect(ann.x-5,ann.y-18,m.width+10,23); ctx.strokeStyle="#3b82f6"; ctx.lineWidth=1.5; ctx.strokeRect(ann.x-5,ann.y-18,m.width+10,23); }
+        else { ctx.fillStyle="rgba(255,255,255,0.85)"; ctx.fillRect(ann.x-3,ann.y-15,m.width+6,19); ctx.strokeStyle=ann.color; ctx.lineWidth=1; ctx.strokeRect(ann.x-3,ann.y-15,m.width+6,19); }
+        ctx.fillStyle=isSel?"#1d4ed8":ann.color; ctx.fillText(ann.text,ann.x,ann.y);
       }
     });
 
-    // Saved measurements
-    measurements.filter(m => m.page === pageNumber).forEach((m, idx) => {
-      const isSelected = selectedAnn?.kind === "measurement" && selectedAnn.idx === idx;
-      const s = ptToScr(m.start, W, H), en = ptToScr(m.end, W, H);
-      ctx.strokeStyle = isSelected ? "#3b82f6" : "#ef4444";
-      ctx.fillStyle = isSelected ? "#3b82f6" : "#ef4444";
-      ctx.lineWidth = isSelected ? 3 : 2.5; ctx.setLineDash([]);
+    // Draw measurements
+    measurements.filter(m=>m.page===pageNumber).forEach((m,idx)=>{
+      const isSel = selectedAnn?.kind==="measurement" && selectedAnn.idx===idx;
+      const s = m.start, en = m.end;
+      ctx.strokeStyle=isSel?"#3b82f6":"#ef4444"; ctx.fillStyle=isSel?"#3b82f6":"#ef4444";
+      ctx.lineWidth=isSel?3:2.5; ctx.setLineDash([]);
       ctx.beginPath(); ctx.moveTo(s.x,s.y); ctx.lineTo(en.x,en.y); ctx.stroke();
-      [s,en].forEach(pt => { ctx.beginPath(); ctx.arc(pt.x,pt.y,4,0,Math.PI*2); ctx.fill(); });
-      const mx=(s.x+en.x)/2, my=(s.y+en.y)/2;
-      const lbl=m.realFeet!=null?`${m.realFeet.toFixed(1)} LF`:"?";
+      [s,en].forEach(pt=>{ctx.beginPath();ctx.arc(pt.x,pt.y,4,0,Math.PI*2);ctx.fill();});
+      const mx=(s.x+en.x)/2, my=(s.y+en.y)/2, lbl=m.realFeet!=null?`${m.realFeet.toFixed(1)} LF`:"?";
       ctx.font="bold 11px sans-serif"; const tm=ctx.measureText(lbl);
-      ctx.fillStyle = isSelected ? "rgba(59,130,246,0.95)" : "rgba(239,68,68,0.92)";
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(mx-tm.width/2-5,my-15,tm.width+10,19,4);
-      else ctx.rect(mx-tm.width/2-5,my-15,tm.width+10,19);
-      ctx.fill();
+      ctx.fillStyle=isSel?"rgba(59,130,246,0.95)":"rgba(239,68,68,0.92)";
+      ctx.beginPath(); if(ctx.roundRect)ctx.roundRect(mx-tm.width/2-5,my-15,tm.width+10,19,4);else ctx.rect(mx-tm.width/2-5,my-15,tm.width+10,19); ctx.fill();
       ctx.fillStyle="white"; ctx.fillText(lbl,mx-tm.width/2,my);
     });
 
@@ -518,7 +529,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       if (measurePreview) {
         ctx.strokeStyle="#f59e0b"; ctx.lineWidth=2; ctx.setLineDash([8,4]);
         ctx.beginPath(); ctx.moveTo(measureStart.x,measureStart.y); ctx.lineTo(measurePreview.x,measurePreview.y); ctx.stroke(); ctx.setLineDash([]);
-        const rf = computeRealFeet(measureStart, measurePreview);
+        const rf=computeRealFeet(measureStart,measurePreview);
         if (rf!=null) {
           const mx2=(measureStart.x+measurePreview.x)/2, my2=(measureStart.y+measurePreview.y)/2, ltxt=`${rf.toFixed(1)} LF`;
           ctx.font="bold 12px sans-serif"; const m2=ctx.measureText(ltxt);
@@ -537,37 +548,31 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       }
     }
 
-    // Transient previews (screen space — no conversion needed)
-    if (currentPath.length > 1) { ctx.strokeStyle=color; ctx.lineWidth=2.5; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.beginPath(); currentPath.forEach((pt,i)=>i===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y)); ctx.stroke(); }
-    if (currentLine && (tool==="arrow"||tool==="line")) { ctx.strokeStyle=color; ctx.lineWidth=2.5; ctx.lineCap="round"; drawArrow(ctx,currentLine.start,currentLine.end,tool==="arrow"); }
-    if (currentLine && tool==="highlight") {
+    // Transient drawing previews (already in natural px)
+    if (currentPath.length>1) { ctx.strokeStyle=color; ctx.lineWidth=2.5; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.beginPath(); currentPath.forEach((pt,i)=>i===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y)); ctx.stroke(); }
+    if (currentLine&&(tool==="arrow"||tool==="line")) { ctx.strokeStyle=color; ctx.lineWidth=2.5; ctx.lineCap="round"; drawArrow(ctx,currentLine.start,currentLine.end,tool==="arrow"); }
+    if (currentLine&&tool==="highlight") {
       const [r2,g2,b2]=[parseInt(highlightColor.slice(1,3),16),parseInt(highlightColor.slice(3,5),16),parseInt(highlightColor.slice(5,7),16)];
       const x=Math.min(currentLine.start.x,currentLine.end.x), y=Math.min(currentLine.start.y,currentLine.end.y), w=Math.abs(currentLine.end.x-currentLine.start.x), h=Math.abs(currentLine.end.y-currentLine.start.y);
       ctx.fillStyle=`rgba(${r2},${g2},${b2},0.35)`; ctx.strokeStyle=`rgba(${r2},${g2},${b2},0.8)`; ctx.lineWidth=1.5;
       ctx.fillRect(x,y,w,h); ctx.strokeRect(x,y,w,h);
     }
-  }, [annList, measurements, currentPath, currentLine, pageNumber, color, highlightColor, canvasSize, tool, measureStart, measurePreview, calibStart, calibPreview, selectedAnn]);
+  }, [annList, measurements, currentPath, currentLine, pageNumber, color, highlightColor, naturalSize, tool, measureStart, measurePreview, calibStart, calibPreview, selectedAnn]);
 
   // ── Toolbar config ─────────────────────────────────────────────────────────
   const toolConfig = [
-    { key: "pointer",   label: "Select",    icon: MousePointer2, cls: "bg-slate-700 hover:bg-slate-800 text-white" },
-    { key: "pen",       label: "Draw",      icon: Pencil,        cls: "bg-amber-600 hover:bg-amber-700 text-white" },
-    { key: "highlight", label: "Highlight", icon: Highlighter,   cls: "bg-yellow-500 hover:bg-yellow-600 text-white" },
-    { key: "arrow",     label: "Arrow",     icon: ArrowRight,    cls: "bg-blue-600 hover:bg-blue-700 text-white" },
-    { key: "line",      label: "Line",      icon: Minus,         cls: "bg-green-600 hover:bg-green-700 text-white" },
-    { key: "text",      label: "Text",      icon: Type,          cls: "bg-purple-600 hover:bg-purple-700 text-white" },
-    { key: "eraser",    label: "Eraser",    icon: Eraser,        cls: "bg-slate-500 hover:bg-slate-600 text-white" },
-    { key: "measure",   label: "Measure",   icon: Ruler,         cls: "bg-orange-500 hover:bg-orange-600 text-white" },
-    { key: "calibrate", label: "Calibrate", icon: Target,        cls: "bg-violet-600 hover:bg-violet-700 text-white" },
+    { key:"pointer",   label:"Select",    icon:MousePointer2, cls:"bg-slate-700 hover:bg-slate-800 text-white" },
+    { key:"pen",       label:"Draw",      icon:Pencil,        cls:"bg-amber-600 hover:bg-amber-700 text-white" },
+    { key:"highlight", label:"Highlight", icon:Highlighter,   cls:"bg-yellow-500 hover:bg-yellow-600 text-white" },
+    { key:"arrow",     label:"Arrow",     icon:ArrowRight,    cls:"bg-blue-600 hover:bg-blue-700 text-white" },
+    { key:"line",      label:"Line",      icon:Minus,         cls:"bg-green-600 hover:bg-green-700 text-white" },
+    { key:"text",      label:"Text",      icon:Type,          cls:"bg-purple-600 hover:bg-purple-700 text-white" },
+    { key:"eraser",    label:"Eraser",    icon:Eraser,        cls:"bg-slate-500 hover:bg-slate-600 text-white" },
+    { key:"measure",   label:"Measure",   icon:Ruler,         cls:"bg-orange-500 hover:bg-orange-600 text-white" },
+    { key:"calibrate", label:"Calibrate", icon:Target,        cls:"bg-violet-600 hover:bg-violet-700 text-white" },
   ];
 
-  const cursor = tool === "pointer"
-    ? (dragRef.current ? "grabbing" : "default")
-    : ["measure","calibrate"].includes(tool) ? "crosshair"
-    : tool === "text" ? "text"
-    : tool === "highlight" ? "cell"
-    : "crosshair";
-
+  const cursor = tool==="pointer" ? (dragRef.current ? "grabbing" : "grab") : ["measure","calibrate"].includes(tool) ? "crosshair" : tool==="text" ? "text" : tool==="highlight" ? "cell" : "crosshair";
   const scaleLabel = detectedScale ? (detectedScale.scale_text || `${detectedScale.inches_per_foot}" = 1'`) : null;
 
   return (
@@ -577,122 +582,128 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         <div className="flex items-center justify-between px-4 py-2.5 border-b bg-white flex-shrink-0">
           <h2 className="font-bold text-slate-900 text-base">Annotate Plan</h2>
           <div className="flex items-center gap-2">
-            {numPages && numPages > 1 && <span className="text-sm text-slate-500">Page {pageNumber}/{numPages}</span>}
+            {numPages && numPages>1 && <span className="text-sm text-slate-500">Page {pageNumber}/{numPages}</span>}
             <Button onClick={handleSave} className="bg-amber-600 hover:bg-amber-700 h-8 text-sm">Save</Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onOpenChange(false)}><X className="w-4 h-4" /></Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={()=>onOpenChange(false)}><X className="w-4 h-4"/></Button>
           </div>
         </div>
 
         {/* Scale bar */}
         <div className="px-4 py-2 bg-slate-50 border-b flex items-center gap-3 flex-wrap flex-shrink-0">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-amber-500" />
+            <Sparkles className="w-4 h-4 text-amber-500"/>
             <span className="text-xs font-semibold text-slate-600">Detected Scale:</span>
-            {detectingScale
-              ? <span className="text-xs text-slate-400 animate-pulse">Analyzing plan...</span>
-              : scaleLabel
-                ? <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">{scaleLabel}</span>
-                : <span className="text-xs text-slate-400">Not detected</span>
-            }
-            <button onClick={() => setShowScaleOverride(v => !v)} className="text-xs text-amber-600 hover:underline">Override</button>
+            {detectingScale ? <span className="text-xs text-slate-400 animate-pulse">Analyzing plan...</span>
+              : scaleLabel ? <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">{scaleLabel}</span>
+              : <span className="text-xs text-slate-400">Not detected</span>}
+            <button onClick={()=>setShowScaleOverride(v=>!v)} className="text-xs text-amber-600 hover:underline">Override</button>
           </div>
           {showScaleOverride && (
             <div className="flex items-center gap-2">
-              <Input value={manualScaleInput} onChange={e => setManualScaleInput(e.target.value)} placeholder='e.g. 1/4' className="h-7 w-20 text-xs" />
+              <Input value={manualScaleInput} onChange={e=>setManualScaleInput(e.target.value)} placeholder='e.g. 1/4' className="h-7 w-20 text-xs"/>
               <span className="text-xs text-slate-500">inches/foot</span>
               <Button size="sm" className="h-7 text-xs bg-amber-600 hover:bg-amber-700" onClick={applyManualScale}>Apply</Button>
             </div>
           )}
-          {!pxPerFtAtScale1 && !detectingScale && (
-            <span className="text-xs text-amber-600">Use "Calibrate" tool: draw a line over the scale bar to enable accurate measurements</span>
-          )}
+          {!pxPerFtNat && !detectingScale && <span className="text-xs text-amber-600">Use Calibrate tool to enable measurements</span>}
         </div>
 
         {/* Toolbar */}
         <div className="flex items-center gap-1 px-3 py-2 border-b bg-white flex-wrap flex-shrink-0">
-          {toolConfig.map(({ key, label, icon: Icon, cls }) => (
+          {toolConfig.map(({key, label, icon:Icon, cls}) => (
             <Button key={key}
-              variant={tool === key ? "default" : "outline"}
               size="sm"
-              onClick={() => { setTool(key); setTextInput(null); setMeasureStart(null); setCalibStart(null); setShowDeletePopup(null); dragRef.current = null; }}
-              className={`h-8 text-xs gap-1 ${tool === key ? cls : "text-slate-700"}`}
-              title={label}>
-              <Icon className="w-3.5 h-3.5" />{label}
+              variant={tool===key ? "default" : "outline"}
+              onClick={()=>{ setTool(key); setTextInput(null); setMeasureStart(null); setCalibStart(null); setDeletePopup(null); dragRef.current=null; }}
+              className={`h-8 text-xs gap-1 ${tool===key ? cls : "text-slate-700"}`}>
+              <Icon className="w-3.5 h-3.5"/>{label}
             </Button>
           ))}
-          <div className="border-l h-5 mx-1" />
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => { const pa=annList.filter(a=>a.page===pageNumber); if(!pa.length)return; const last=pa[pa.length-1]; setAnnList(p=>p.filter(a=>a!==last)); }}><Undo2 className="w-3.5 h-3.5 mr-1"/>Undo</Button>
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setAnnList(p=>p.filter(a=>a.page!==pageNumber))}>Clear Page</Button>
+          <div className="border-l h-5 mx-1"/>
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={()=>{const pa=annList.filter(a=>a.page===pageNumber);if(!pa.length)return;const last=pa[pa.length-1];setAnnList(p=>p.filter(a=>a!==last));}}><Undo2 className="w-3.5 h-3.5 mr-1"/>Undo</Button>
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={()=>setAnnList(p=>p.filter(a=>a.page!==pageNumber))}>Clear Page</Button>
           {tool==="highlight" ? (
             <div className="flex items-center gap-1 ml-1 flex-wrap">
-              {HIGHLIGHT_COLORS.map(hc => (
+              {HIGHLIGHT_COLORS.map(hc=>(
                 <button key={hc.label} onClick={()=>setHighlightColor(hc.color)} title={hc.label}
                   className="px-2 py-0.5 rounded-full text-xs font-semibold border transition-all"
-                  style={{ background: hc.hex, borderColor: highlightColor===hc.color?hc.color:"#e2e8f0", color: hc.color, boxShadow: highlightColor===hc.color?`0 0 0 2px ${hc.color}`:"none" }}>
+                  style={{background:hc.hex, borderColor:highlightColor===hc.color?hc.color:"#e2e8f0", color:hc.color, boxShadow:highlightColor===hc.color?`0 0 0 2px ${hc.color}`:"none"}}>
                   {hc.label}
                 </button>
               ))}
-              <input type="color" value={highlightColor} onChange={e=>setHighlightColor(e.target.value)} title="Custom color" className="w-6 h-6 rounded border cursor-pointer" />
+              <input type="color" value={highlightColor} onChange={e=>setHighlightColor(e.target.value)} title="Custom" className="w-6 h-6 rounded border cursor-pointer"/>
             </div>
-          ) : tool !== "pointer" && tool !== "eraser" && tool !== "measure" && tool !== "calibrate" ? (
-            <input type="color" value={color} onChange={e=>setColor(e.target.value)} className="w-7 h-7 rounded border cursor-pointer ml-1" />
+          ) : !["pointer","eraser","measure","calibrate"].includes(tool) ? (
+            <input type="color" value={color} onChange={e=>setColor(e.target.value)} className="w-7 h-7 rounded border cursor-pointer ml-1"/>
           ) : null}
-          <div className="border-l h-5 mx-1" />
+          <div className="border-l h-5 mx-1"/>
           <Button variant="outline" size="sm" className="h-8" onClick={()=>setScale(s=>Math.max(0.3,s-0.15))}><ZoomOut className="w-4 h-4"/></Button>
           <span className="text-xs text-slate-600 w-9 text-center">{Math.round(scale*100)}%</span>
           <Button variant="outline" size="sm" className="h-8" onClick={()=>setScale(s=>Math.min(3,s+0.15))}><ZoomIn className="w-4 h-4"/></Button>
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={fitToPage}><Maximize2 className="w-3.5 h-3.5 mr-1"/>Fit</Button>
         </div>
 
-        {/* Tool hints */}
-        {tool==="pointer"   && <div className="px-4 py-1.5 bg-slate-50 border-b text-xs text-slate-600 font-medium flex-shrink-0">Click annotation to select • Drag to move • Click selected to delete</div>}
-        {tool==="measure"   && <div className="px-4 py-1.5 bg-orange-50 border-b text-xs text-orange-700 font-medium flex-shrink-0">{!measureStart?"Click first point on the plan":"Click second point — distance will be calculated automatically"}</div>}
-        {tool==="calibrate" && <div className="px-4 py-1.5 bg-violet-50 border-b text-xs text-violet-700 font-medium flex-shrink-0">{!calibStart?"Draw a line over a known-length segment on the scale bar — click first point":"Click second point to complete the calibration line"}</div>}
+        {/* Tool hint */}
+        {tool==="pointer"   && <div className="px-4 py-1.5 bg-slate-50 border-b text-xs text-slate-600 font-medium flex-shrink-0">Click to select • Drag to move • Click selected to delete</div>}
+        {tool==="measure"   && <div className="px-4 py-1.5 bg-orange-50 border-b text-xs text-orange-700 font-medium flex-shrink-0">{!measureStart?"Click first point":"Click second point"}</div>}
+        {tool==="calibrate" && <div className="px-4 py-1.5 bg-violet-50 border-b text-xs text-violet-700 font-medium flex-shrink-0">{!calibStart?"Click first point on scale bar":"Click second point"}</div>}
 
-        {/* Main area */}
+        {/* Main */}
         <div className="flex flex-1 overflow-hidden">
-          {/* PDF */}
           <div className="flex-1 overflow-auto bg-slate-200" ref={scrollRef}>
             {showNotesField && (
               <div className="p-3 border-b bg-white">
                 <label className="text-xs font-semibold text-slate-500 mb-1 block">Notes for AI</label>
-                <textarea value={aiNotes} onChange={e=>setAiNotes(e.target.value)} className="w-full border rounded p-2 text-sm resize-none h-12 focus:outline-none focus:ring-1 focus:ring-amber-400" placeholder="Notes about the plan..." />
+                <textarea value={aiNotes} onChange={e=>setAiNotes(e.target.value)} className="w-full border rounded p-2 text-sm resize-none h-12 focus:outline-none focus:ring-1 focus:ring-amber-400" placeholder="Notes about the plan..."/>
               </div>
             )}
             <div className="flex items-start justify-center min-h-full p-6">
               <div className="relative inline-block shadow-xl" ref={pageContainerRef}>
                 <Document file={pdfUrl} onLoadSuccess={onDocumentLoadSuccess} loading={<div className="flex items-center justify-center p-20 text-slate-500 bg-white">Loading PDF...</div>}>
-                  <Page pageNumber={pageNumber} scale={scale} rotate={rotation} renderTextLayer={false} renderAnnotationLayer={false} onLoadSuccess={onPageLoadSuccess} />
+                  <Page pageNumber={pageNumber} scale={scale} rotate={rotation} renderTextLayer={false} renderAnnotationLayer={false} onLoadSuccess={onPageLoadSuccess}/>
                 </Document>
-                <canvas ref={canvasRef} className="absolute top-0 left-0" style={{ cursor, touchAction:"none" }}
-                  width={canvasSize.width} height={canvasSize.height}
+
+                {/* Canvas: buffer = natural size, CSS = display size — this is the key to drift-free annotations */}
+                <canvas
+                  ref={canvasRef}
+                  width={naturalSize.w}
+                  height={naturalSize.h}
+                  style={{
+                    position:"absolute", top:0, left:0,
+                    width: displaySize.w + "px",
+                    height: displaySize.h + "px",
+                    cursor, touchAction:"none"
+                  }}
                   onPointerDown={handlePointerDown}
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
                   onPointerLeave={e=>{ if(!["measure","calibrate","pointer"].includes(tool)) handlePointerUp(e); }}
                 />
+
+                {/* Text input (positioned in CSS px) */}
                 {textInput && (
-                  <input autoFocus type="text" value={textValue} onChange={e=>setTextValue(e.target.value)}
-                    onBlur={commitText} onKeyDown={e=>{if(e.key==="Enter")commitText();if(e.key==="Escape"){setTextInput(null);setTextValue("");}}}
-                    style={{ position:"absolute", left:textInput.x, top:textInput.y-20, color, background:"rgba(255,255,255,0.95)", border:`2px solid ${color}`, borderRadius:4, padding:"2px 6px", fontSize:13, fontWeight:"bold", minWidth:100, outline:"none", zIndex:20 }}
-                    placeholder="Type note & Enter"
+                  <input autoFocus type="text" value={textValue}
+                    onChange={e=>setTextValue(e.target.value)}
+                    onBlur={commitText}
+                    onKeyDown={e=>{if(e.key==="Enter")commitText();if(e.key==="Escape"){setTextInput(null);setTextValue("");}}}
+                    style={{position:"absolute", left:textInput.css.x, top:textInput.css.y-20, color, background:"rgba(255,255,255,0.95)", border:`2px solid ${color}`, borderRadius:4, padding:"2px 6px", fontSize:13, fontWeight:"bold", minWidth:100, outline:"none", zIndex:20}}
+                    placeholder="Type & Enter"
                   />
                 )}
-                {/* Delete popup */}
-                {showDeletePopup && (
-                  <div style={{ position:"absolute", left: showDeletePopup.x + 8, top: Math.max(4, showDeletePopup.y - 38), zIndex:30 }}
+
+                {/* Delete popup (positioned in CSS px) */}
+                {deletePopup && (
+                  <div style={{position:"absolute", left:deletePopup.cssX+8, top:Math.max(4,deletePopup.cssY-38), zIndex:30}}
                     className="flex items-center gap-1 bg-white border border-slate-300 shadow-xl rounded-lg px-2 py-1.5">
                     <span className="text-xs text-slate-600 font-medium">Delete?</span>
-                    <button
-                      onClick={() => {
-                        if (showDeletePopup.kind === "ann") setAnnList(p => p.filter((_,i) => i !== showDeletePopup.idx));
-                        else setMeasurements(p => p.filter((_,i) => i !== showDeletePopup.idx));
-                        setShowDeletePopup(null); setSelectedAnn(null);
-                      }}
-                      className="text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded px-2 py-0.5 flex items-center gap-1">
+                    <button onClick={()=>{
+                      if(deletePopup.kind==="ann") setAnnList(p=>p.filter((_,i)=>i!==deletePopup.idx));
+                      else setMeasurements(p=>p.filter((_,i)=>i!==deletePopup.idx));
+                      setDeletePopup(null); setSelectedAnn(null);
+                    }} className="text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded px-2 py-0.5 flex items-center gap-1">
                       <Trash2 className="w-3 h-3"/> Yes
                     </button>
-                    <button onClick={()=>{setShowDeletePopup(null);}} className="text-xs text-slate-400 hover:text-slate-700 px-1">✕</button>
+                    <button onClick={()=>setDeletePopup(null)} className="text-xs text-slate-400 hover:text-slate-700 px-1">✕</button>
                   </div>
                 )}
               </div>
@@ -700,69 +711,63 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
           </div>
 
           {/* Sidebar */}
-          {(measurements.length > 0 || annList.some(a => a.type === "text")) && (
+          {(measurements.length>0 || annList.some(a=>a.type==="text")) && (
             <div className="w-56 border-l bg-white flex flex-col overflow-hidden flex-shrink-0">
-              {measurements.length > 0 && (
-                <>
-                  <div className="px-3 py-2 border-b bg-slate-50 flex items-center justify-between flex-shrink-0">
-                    <h3 className="text-xs font-bold text-slate-700 flex items-center gap-1.5"><Ruler className="w-3.5 h-3.5 text-red-500"/>Measurements ({measurements.length})</h3>
-                  </div>
-                  <div className="overflow-y-auto p-2 space-y-2 max-h-64">
-                    {measurements.map((m, idx) => (
-                      <div key={m.id||idx} className={`p-2 rounded-lg border ${selectedAnn?.kind==="measurement" && selectedAnn.idx===idx ? "border-blue-400 bg-blue-50" : "border-red-200 bg-red-50"}`}>
-                        <div className="flex items-start justify-between gap-1 mb-1">
-                          <input type="number" step="0.1" value={m.realFeet != null ? m.realFeet : ""}
-                            onChange={e => setMeasurements(p => p.map((x,i) => i===idx ? {...x, realFeet: parseFloat(e.target.value)||null} : x))}
-                            className="w-20 text-sm font-bold text-red-700 border border-red-200 rounded px-1 focus:outline-none focus:ring-1 focus:ring-red-300 bg-white" placeholder="LF" />
-                          <span className="text-xs text-red-500 font-semibold mt-1">LF</span>
-                          <button onClick={()=>setMeasurements(p=>p.filter((_,i)=>i!==idx))} className="text-slate-300 hover:text-red-500 flex-shrink-0 mt-0.5"><X className="w-3 h-3"/></button>
-                        </div>
-                        <input value={m.label}
-                          onChange={e => setMeasurements(p => p.map((x,i) => i===idx ? {...x, label: e.target.value} : x))}
-                          className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 text-slate-600 focus:outline-none focus:ring-1 focus:ring-red-300 bg-white mb-1.5" placeholder="Label" />
-                        {rooms.length > 0 && m.realFeet != null && (
-                          <button onClick={()=>{ setSendingM(m); setSendRoomId(rooms[0]?.id||""); setSendCategory("base"); }}
-                            className="w-full flex items-center justify-center gap-1 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded px-2 py-1 transition-colors font-medium">
-                            <Send className="w-3 h-3"/> Send to Bid
-                          </button>
-                        )}
+              {measurements.length>0 && (<>
+                <div className="px-3 py-2 border-b bg-slate-50 flex-shrink-0">
+                  <h3 className="text-xs font-bold text-slate-700 flex items-center gap-1.5"><Ruler className="w-3.5 h-3.5 text-red-500"/>Measurements ({measurements.length})</h3>
+                </div>
+                <div className="overflow-y-auto p-2 space-y-2 max-h-64">
+                  {measurements.map((m,idx)=>(
+                    <div key={m.id||idx} className={`p-2 rounded-lg border ${selectedAnn?.kind==="measurement"&&selectedAnn.idx===idx?"border-blue-400 bg-blue-50":"border-red-200 bg-red-50"}`}>
+                      <div className="flex items-start justify-between gap-1 mb-1">
+                        <input type="number" step="0.1" value={m.realFeet!=null?m.realFeet:""}
+                          onChange={e=>setMeasurements(p=>p.map((x,i)=>i===idx?{...x,realFeet:parseFloat(e.target.value)||null}:x))}
+                          className="w-20 text-sm font-bold text-red-700 border border-red-200 rounded px-1 focus:outline-none bg-white" placeholder="LF"/>
+                        <span className="text-xs text-red-500 font-semibold mt-1">LF</span>
+                        <button onClick={()=>setMeasurements(p=>p.filter((_,i)=>i!==idx))} className="text-slate-300 hover:text-red-500 mt-0.5"><X className="w-3 h-3"/></button>
                       </div>
-                    ))}
-                  </div>
-                </>
-              )}
-              {annList.some(a => a.type === "text") && (
-                <>
-                  <div className="px-3 py-2 border-b bg-slate-50 flex items-center justify-between flex-shrink-0">
-                    <h3 className="text-xs font-bold text-slate-700 flex items-center gap-1.5"><Type className="w-3.5 h-3.5 text-purple-500"/>Notes ({annList.filter(a=>a.type==="text" && a.page===pageNumber).length})</h3>
-                  </div>
-                  <div className="overflow-y-auto p-2 space-y-2 flex-1">
-                    {annList.filter(a => a.type === "text" && a.page === pageNumber).map((ann) => {
-                      const globalIdx = annList.indexOf(ann);
-                      return (
-                        <div key={globalIdx} className={`p-2 rounded-lg border ${selectedAnn?.kind==="ann" && selectedAnn.idx===globalIdx ? "border-blue-400 bg-blue-50" : "border-purple-200 bg-purple-50"}`}>
-                          <div className="flex items-start gap-1">
-                            <input value={ann.text}
-                              onChange={e => setAnnList(p => p.map((x,i) => i===globalIdx ? {...x, text: e.target.value} : x))}
-                              className="flex-1 text-xs border border-slate-200 rounded px-1.5 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-purple-300 bg-white font-medium" />
-                            <button onClick={()=>setAnnList(p=>p.filter((_,i)=>i!==globalIdx))} className="text-slate-300 hover:text-red-500 flex-shrink-0 mt-1"><X className="w-3 h-3"/></button>
-                          </div>
-                          <div className="flex items-center gap-1 mt-1.5">
-                            <input type="color" value={ann.color} onChange={e => setAnnList(p => p.map((x,i) => i===globalIdx ? {...x, color: e.target.value} : x))} className="w-5 h-5 rounded cursor-pointer border-0 p-0" />
-                            <span className="text-xs text-slate-400">p.{ann.page}</span>
-                          </div>
+                      <input value={m.label} onChange={e=>setMeasurements(p=>p.map((x,i)=>i===idx?{...x,label:e.target.value}:x))}
+                        className="w-full text-xs border border-slate-200 rounded px-1.5 py-1 text-slate-600 focus:outline-none bg-white mb-1.5" placeholder="Label"/>
+                      {rooms.length>0 && m.realFeet!=null && (
+                        <button onClick={()=>{setSendingM(m);setSendRoomId(rooms[0]?.id||"");setSendCategory("base");}}
+                          className="w-full flex items-center justify-center gap-1 text-xs text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded px-2 py-1 font-medium">
+                          <Send className="w-3 h-3"/> Send to Bid
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>)}
+              {annList.some(a=>a.type==="text") && (<>
+                <div className="px-3 py-2 border-b bg-slate-50 flex-shrink-0">
+                  <h3 className="text-xs font-bold text-slate-700 flex items-center gap-1.5"><Type className="w-3.5 h-3.5 text-purple-500"/>Notes ({annList.filter(a=>a.type==="text"&&a.page===pageNumber).length})</h3>
+                </div>
+                <div className="overflow-y-auto p-2 space-y-2 flex-1">
+                  {annList.filter(a=>a.type==="text"&&a.page===pageNumber).map(ann=>{
+                    const gi=annList.indexOf(ann);
+                    return (
+                      <div key={gi} className={`p-2 rounded-lg border ${selectedAnn?.kind==="ann"&&selectedAnn.idx===gi?"border-blue-400 bg-blue-50":"border-purple-200 bg-purple-50"}`}>
+                        <div className="flex items-start gap-1">
+                          <input value={ann.text} onChange={e=>setAnnList(p=>p.map((x,i)=>i===gi?{...x,text:e.target.value}:x))}
+                            className="flex-1 text-xs border border-slate-200 rounded px-1.5 py-1 text-slate-700 focus:outline-none bg-white font-medium"/>
+                          <button onClick={()=>setAnnList(p=>p.filter((_,i)=>i!==gi))} className="text-slate-300 hover:text-red-500 mt-1"><X className="w-3 h-3"/></button>
                         </div>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
+                        <div className="flex items-center gap-1 mt-1.5">
+                          <input type="color" value={ann.color} onChange={e=>setAnnList(p=>p.map((x,i)=>i===gi?{...x,color:e.target.value}:x))} className="w-5 h-5 rounded cursor-pointer border-0 p-0"/>
+                          <span className="text-xs text-slate-400">p.{ann.page}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>)}
             </div>
           )}
         </div>
 
         {/* Page nav */}
-        {numPages && numPages > 1 && (
+        {numPages && numPages>1 && (
           <div className="flex items-center justify-center gap-4 py-3 border-t bg-white flex-shrink-0">
             <Button variant="outline" size="sm" onClick={()=>setPageNumber(p=>Math.max(1,p-1))} disabled={pageNumber<=1}>Previous</Button>
             <span className="text-sm text-slate-600">Page {pageNumber} of {numPages}</span>
@@ -776,9 +781,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
           <div className="bg-white rounded-xl shadow-2xl p-5 w-80">
             <h3 className="font-bold text-slate-900 mb-1">Calibrate Scale</h3>
-            <p className="text-sm text-slate-500 mb-3">You drew a line of <span className="font-bold">{pendingCalib.pixelDist.toFixed(0)}px</span> at {Math.round(scale*100)}% zoom. What real-world distance does this line represent?</p>
+            <p className="text-sm text-slate-500 mb-3">Drew a line of <span className="font-bold">{pendingCalib.pixelDistNat.toFixed(0)} natural-px</span>. What real distance is this?</p>
             <div className="flex items-center gap-2 mb-3">
-              <Input value={calibKnownFeet} onChange={e=>setCalibKnownFeet(e.target.value)} placeholder="e.g. 1" type="number" step="0.1" autoFocus onKeyDown={e=>e.key==="Enter"&&applyCalibration()} />
+              <Input value={calibKnownFeet} onChange={e=>setCalibKnownFeet(e.target.value)} placeholder="e.g. 1" type="number" step="0.1" autoFocus onKeyDown={e=>e.key==="Enter"&&applyCalibration()}/>
               <span className="text-sm text-slate-600 whitespace-nowrap">linear feet</span>
             </div>
             <div className="flex gap-2">
@@ -817,7 +822,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
               </div>
             </div>
             <div className="flex gap-2">
-              <Button onClick={()=>{ onAddToRoom&&onAddToRoom(sendRoomId,sendCategory,sendingM.realFeet,sendingM.label); setSendingM(null); }} disabled={!sendRoomId} className="flex-1 bg-amber-600 hover:bg-amber-700">Add to Bid</Button>
+              <Button onClick={()=>{onAddToRoom&&onAddToRoom(sendRoomId,sendCategory,sendingM.realFeet,sendingM.label);setSendingM(null);}} disabled={!sendRoomId} className="flex-1 bg-amber-600 hover:bg-amber-700">Add to Bid</Button>
               <Button variant="outline" onClick={()=>setSendingM(null)}>Cancel</Button>
             </div>
           </div>
