@@ -293,14 +293,15 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       }
     });
 
-    // Draw saved measurements
+    // Draw saved measurements (red)
     measurements.filter(m => m.page === pageNumber).forEach(m => {
-      ctx.strokeStyle="#10b981"; ctx.fillStyle="#10b981"; ctx.lineWidth=2.5; ctx.setLineDash([7,4]);
-      ctx.beginPath(); ctx.moveTo(m.start.x,m.start.y); ctx.lineTo(m.end.x,m.end.y); ctx.stroke(); ctx.setLineDash([]);
+      ctx.strokeStyle="#ef4444"; ctx.fillStyle="#ef4444"; ctx.lineWidth=2.5; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(m.start.x,m.start.y); ctx.lineTo(m.end.x,m.end.y); ctx.stroke();
       [m.start,m.end].forEach(pt => { ctx.beginPath(); ctx.arc(pt.x,pt.y,4,0,Math.PI*2); ctx.fill(); });
-      const mx=(m.start.x+m.end.x)/2, my=(m.start.y+m.end.y)/2, lbl=m.realFeet!=null?`${m.realFeet.toFixed(1)} LF`:"?";
+      const mx=(m.start.x+m.end.x)/2, my=(m.start.y+m.end.y)/2;
+      const lbl=m.realFeet!=null?`${m.realFeet.toFixed(1)} LF`:"?";
       ctx.font="bold 11px sans-serif"; const tm=ctx.measureText(lbl);
-      ctx.fillStyle="rgba(16,185,129,0.92)"; ctx.beginPath(); ctx.roundRect?ctx.roundRect(mx-tm.width/2-5,my-15,tm.width+10,19,4):ctx.rect(mx-tm.width/2-5,my-15,tm.width+10,19); ctx.fill();
+      ctx.fillStyle="rgba(239,68,68,0.92)"; ctx.beginPath(); ctx.roundRect?ctx.roundRect(mx-tm.width/2-5,my-15,tm.width+10,19,4):ctx.rect(mx-tm.width/2-5,my-15,tm.width+10,19); ctx.fill();
       ctx.fillStyle="white"; ctx.fillText(lbl,mx-tm.width/2,my);
     });
 
