@@ -94,13 +94,23 @@ export default function TimeSheet() {
       const user = await base44.auth.me();
       setCurrentUser(user);
       
-      // Auto-select current user if they're a regular user
-      if (user?.role === "user") {
-        const emp = employees.find(e => e.user_email === user.email);
-        if (emp) setSelectedEmployee(emp);
+      const emp = employees.find(e => e.user_email === user?.email || e.email === user?.email);
+      if (emp) {
+        setSelectedEmployee(emp);
+        // Check for open time entry today
+        const todayStr = format(new Date(), "yyyy-MM-dd");
+        const todayEntries = await base44.entities.TimeEntry.filter({ employee_id: emp.id });
+        const openEntry = todayEntries.find(e => e.date === todayStr && e.clock_in && !e.clock_out);
+        if (openEntry) {
+          setOpenTimeEntryId(openEntry.id);
+          const [h, m] = openEntry.clock_in.split(":").map(Number);
+          const reconstructed = new Date();
+          reconstructed.setHours(h, m, 0, 0);
+          setClockInTime(reconstructed);
+        }
       }
     };
-    fetchCurrentUser();
+    if (employees.length > 0) fetchCurrentUser();
   }, [employees]);
 
   useEffect(() => {
