@@ -525,6 +525,7 @@ export default function ChatBoard() {
                     onReply={setReplyTo}
                     replySource={msg.reply_to_id ? messageMap[msg.reply_to_id] : null}
                     accentColor={accentColor}
+                    onImageClick={handleImageClick}
                   />
                 ))
               )}
