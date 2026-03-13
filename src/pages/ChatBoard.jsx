@@ -73,116 +73,53 @@ function Avatar({ name, color, size = 'md' }) {
   );
 }
 
-function PdfHoverPreview({ url, anchorEl }) {
-  if (!url || !anchorEl) return null;
-  const rect = anchorEl.getBoundingClientRect();
-  const left = Math.max(8, rect.left - 160 + rect.width / 2);
-  const top = rect.bottom + 8;
-  return createPortal(
-    <div
-      className="fixed z-[9999] shadow-2xl border border-slate-200 rounded-lg bg-white overflow-hidden"
-      style={{ top, left, width: 320, pointerEvents: "none" }}
-    >
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border-b border-slate-200">
-        <FileText className="w-3 h-3 text-red-500" />
-        <span className="text-xs text-slate-600 truncate font-medium">PDF Preview</span>
-      </div>
-      <object
-        data={`${url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-        type="application/pdf"
-        className="w-full"
-        style={{ height: 420, border: "none", display: "block" }}
-      >
-        <div className="flex items-center justify-center h-full text-xs text-slate-400 p-4">Preview unavailable</div>
-      </object>
-    </div>,
-    document.body
-  );
-}
-
-function FileEmbed({ att }) {
-  const [expanded, setExpanded] = useState(false);
-  const [hoveredAnchorEl, setHoveredAnchorEl] = useState(null);
+function FileEmbed({ att, onImageClick }) {
   const url = att.url;
   const name = att.name || 'file';
   const ext = name.split('.').pop().toLowerCase();
-  const isPdf = ext === 'pdf';
-  const isImage = att.type === 'photo' || ['jpg','jpeg','png','gif','webp','svg'].includes(ext);
+  const isImage = att.type === 'photo' || ['jpg','jpeg','png','gif','webp'].includes(ext);
 
   if (isImage) {
     return (
-      <div className="mt-1 relative inline-block">
+      <div className="mt-1">
         <img
           src={url}
           alt={name}
           className="max-h-48 max-w-xs rounded-xl object-cover cursor-pointer border border-slate-200 hover:opacity-90 transition-opacity"
-          onMouseEnter={(e) => setHoveredAnchorEl(e.currentTarget)}
-          onMouseLeave={() => setHoveredAnchorEl(null)}
-          onClick={() => setExpanded(true)}
+          onClick={() => onImageClick && onImageClick(url)}
         />
-        {/* Hover large preview */}
-        {hoveredAnchorEl && createPortal(
-          <div className="fixed z-[9998] pointer-events-none"
-            style={{
-              top: hoveredAnchorEl.getBoundingClientRect().bottom + 8,
-              left: Math.max(8, hoveredAnchorEl.getBoundingClientRect().left),
-            }}>
-            <img src={url} alt={name} className="max-h-72 max-w-sm rounded-xl object-contain border border-slate-300 shadow-2xl bg-black/5" />
-          </div>,
-          document.body
-        )}
-        {/* Click fullscreen */}
-        {expanded && createPortal(
-          <div className="fixed inset-0 z-[9999] bg-black/85 flex items-center justify-center p-4" onClick={() => setExpanded(false)}>
-            <div className="relative max-w-5xl max-h-full" onClick={e => e.stopPropagation()}>
-              <img src={url} alt={name} className="max-h-[90vh] max-w-full rounded-xl object-contain" />
-              <button className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1.5" onClick={() => setExpanded(false)}>
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>,
-          document.body
-        )}
       </div>
     );
   }
 
-  if (isPdf) {
-    return (
-      <>
-        <div
-          className="mt-1 rounded-xl overflow-hidden border border-slate-200 cursor-pointer hover:border-blue-400 transition-colors"
-          onMouseEnter={(e) => setHoveredAnchorEl(e.currentTarget)}
-          onMouseLeave={() => setHoveredAnchorEl(null)}
-          onClick={() => setExpanded(true)}
-        >
-          <div className="flex items-center justify-between px-3 py-2 bg-slate-100 text-xs text-slate-600">
-            <div className="flex items-center gap-2"><FileText className="w-3.5 h-3.5 text-red-500" /><span className="truncate max-w-[200px]">{name}</span></div>
-            <span className="text-blue-500 text-xs">Click to view</span>
-          </div>
-        </div>
-        <PdfHoverPreview url={hoveredAnchorEl ? url : null} anchorEl={hoveredAnchorEl} />
-        {expanded && createPortal(
-          <div className="fixed inset-0 z-[9999] bg-black/85 flex items-center justify-center p-4" onClick={() => setExpanded(false)}>
-            <div className="relative w-full max-w-4xl h-[90vh]" onClick={e => e.stopPropagation()}>
-              <iframe src={`${url}#toolbar=1`} className="w-full h-full rounded-xl border-0" title={name} />
-              <button className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1.5" onClick={() => setExpanded(false)}>
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </div>,
-          document.body
-        )}
-      </>
-    );
-  }
-
-  // Generic file
+  // PDFs and all other files: open in new tab
   return (
-    <div className="mt-1 flex items-center gap-2 px-3 py-2 bg-slate-100 rounded-xl text-xs text-slate-600">
-      <Paperclip className="w-3.5 h-3.5 flex-shrink-0" />
-      <span className="truncate">{name}</span>
-      <span className="text-slate-400 uppercase">{ext}</span>
+    <a href={url} target="_blank" rel="noopener noreferrer"
+      className="mt-1 flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-xs text-slate-600 transition-colors">
+      <FileText className="w-3.5 h-3.5 flex-shrink-0 text-red-500" />
+      <span className="truncate flex-1">{name}</span>
+      <ExternalLink className="w-3 h-3 text-slate-400 flex-shrink-0" />
+    </a>
+  );
+}
+
+function ChatImageLightbox({ images, index, onClose }) {
+  if (index === null || !images[index]) return null;
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="relative max-w-5xl max-h-full" onClick={e => e.stopPropagation()}>
+        <img src={images[index].url} alt={images[index].name} className="max-h-[90vh] max-w-full rounded-xl object-contain" />
+        <button className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1.5" onClick={onClose}>
+          <X className="w-4 h-4" />
+        </button>
+        {index > 0 && (
+          <button className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full px-3 py-2 text-2xl leading-none" onClick={e => { e.stopPropagation(); onClose(index - 1); }}>‹</button>
+        )}
+        {index < images.length - 1 && (
+          <button className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full px-3 py-2 text-2xl leading-none" onClick={e => { e.stopPropagation(); onClose(index + 1); }}>›</button>
+        )}
+        <p className="absolute bottom-2 left-1/2 -translate-x-1/2 text-white/60 text-xs">{index + 1} / {images.length}</p>
+      </div>
     </div>
   );
 }
