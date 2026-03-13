@@ -610,7 +610,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
       <BidPricingSettings open={showPricingSettings} onClose={() => setShowPricingSettings(false)} onPricingUpdated={loadPricing} />
       <BidCatalogEditor open={showCatalogEditor} onClose={() => setShowCatalogEditor(false)} onSaved={() => { loadCatalog(); loadCategories(); }} />
       <BidClientView open={showClientView} onClose={() => setShowClientView(false)} bid={{ project_name: projectName, client_name: clientName, address, rooms, notes, ...specs }} bidType={pricingConfigs.find(c => c.style_key === bidType)?.style_label || BID_STYLES.find(s => s.key === bidType)?.label} />
-      <PDFAnnotator
+      <BidPlanViewer
         open={showPlanViewer}
         onOpenChange={setShowPlanViewer}
         pdfUrl={planFileUrl}
@@ -621,7 +621,22 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
         }}
         showNotesField={true}
         initialNotes={aiNotes}
-        hideDownload={false}
+        rooms={rooms}
+        onAddToRoom={(roomId, category, lf, label) => {
+          setRooms(prev => prev.map(room => {
+            if (room.id !== roomId) return room;
+            const newItem = {
+              id: `item_${Date.now()}`,
+              name: label || `${category} run`,
+              cabinet_category: category,
+              measure_type: "lf",
+              quantity: Math.round(lf * 10) / 10,
+              unit_price: getPriceForCategory(category),
+              notes: "From plan measurement"
+            };
+            return { ...room, items: [...(room.items || []), newItem] };
+          }));
+        }}
       />
       </div>
       );
