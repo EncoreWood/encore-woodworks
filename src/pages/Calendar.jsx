@@ -522,53 +522,7 @@ export default function CalendarPage() {
 
           {/* Calendar */}
            <div className="flex-1 overflow-auto p-3">
-
-             <style>{`
-                .rdp { width: 100%; }
-                .rdp-months { width: 100%; }
-                .rdp-month { width: 100%; }
-                .rdp-caption { display: none; }
-                .rdp-head_cell { text-align: center; font-weight: 600; font-size: 0.7rem; padding: 0.4rem 0; border: 1px solid #cbd5e1; }
-                .rdp-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-                .rdp-tbody { display: table-row-group; }
-                .rdp-row { display: table-row; }
-                .rdp-cell { display: table-cell; padding: 0; border: 1px solid #cbd5e1; background: #f8fafc; vertical-align: top; }
-                .rdp-day { width: 100%; display: block; min-height: 120px; }
-                .rdp-day_button { width: 100%; min-height: 120px; padding: 0; text-align: left; border: none; background: white; cursor: pointer; display: block; }
-                .rdp-day:hover .rdp-day_button { background: #fef3c7; }
-                .rdp-day_selected .rdp-day_button { background: #fcd34d80; }
-                .rdp-day_today .rdp-day_button { background: #dbeafe; outline: 2px solid #60a5fa; outline-offset: -2px; }
-                .rdp-day_outside .rdp-day_button { opacity: 0.3; background: #f8fafc; }
-              `}</style>
-
-             <CalendarComponent
-               mode="single"
-               selected={selectedDate}
-               onSelect={(date) => { if (date) setSelectedDate(date); }}
-               month={currentMonth}
-               onMonthChange={setCurrentMonth}
-               numberOfMonths={viewType === "3months" ? 3 : viewType === "6months" ? 6 : viewType === "year" ? 12 : 1}
-               disabled={viewType === "week" ? (date) => {
-                 const ws = startOfWeek(currentMonth); const we = endOfWeek(currentMonth);
-                 return date < ws || date > we;
-               } : undefined}
-               className="w-full"
-               classNames={{
-                 months: "w-full",
-                 month: "w-full",
-                 table: "w-full border-collapse",
-                 head_cell: "text-slate-600 font-semibold text-xs py-2 border border-slate-200",
-                 cell: "p-0 border border-slate-200 bg-slate-50 align-top",
-                 day: "w-full block font-normal hover:bg-amber-50 transition-colors bg-white",
-                 day_selected: "bg-amber-100 text-amber-900",
-                 day_today: "bg-blue-50 font-bold",
-                 day_outside: "opacity-30 bg-slate-50"
-               }}
-               components={{
-                 DayContent: ({ date }) => renderDayContent(date)
-               }}
-             />
-
+             {renderMonthGrid()}
           <div className="mt-3 px-1 py-2 border-t border-slate-200 flex flex-wrap gap-3 text-xs bg-slate-50">
             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-red-600" /><span className="text-slate-600 text-[11px]">Overdue</span></div>
             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-amber-500" /><span className="text-slate-600 text-[11px]">Project</span></div>
