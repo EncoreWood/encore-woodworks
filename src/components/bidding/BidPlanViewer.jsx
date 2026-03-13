@@ -15,10 +15,14 @@ import "react-pdf/dist/esm/Page/TextLayer.css";
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 const HIGHLIGHT_COLORS = [
-  { label: "Base",  color: "#d97706", hex: "rgba(251,191,36,0.25)" },
-  { label: "Upper", color: "#3b82f6", hex: "rgba(147,197,253,0.3)" },
-  { label: "Tall",  color: "#ef4444", hex: "rgba(252,165,165,0.3)" },
-  { label: "Misc",  color: "#6b7280", hex: "rgba(209,213,219,0.45)" },
+  { label: "Base",     color: "#d97706", hex: "rgba(217,119,6,0.28)" },
+  { label: "Upper",    color: "#3b82f6", hex: "rgba(59,130,246,0.28)" },
+  { label: "Tall",     color: "#ef4444", hex: "rgba(239,68,68,0.28)" },
+  { label: "Misc",     color: "#6b7280", hex: "rgba(107,114,128,0.35)" },
+  { label: "Green",    color: "#16a34a", hex: "rgba(22,163,74,0.28)" },
+  { label: "Purple",   color: "#9333ea", hex: "rgba(147,51,234,0.28)" },
+  { label: "Pink",     color: "#db2777", hex: "rgba(219,39,119,0.28)" },
+  { label: "Teal",     color: "#0891b2", hex: "rgba(8,145,178,0.28)" },
 ];
 
 function drawArrow(ctx, from, to, withHead) {
