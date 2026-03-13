@@ -436,7 +436,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         <div className="flex items-center gap-1 px-3 py-2 border-b bg-white flex-wrap flex-shrink-0">
           {toolConfig.map(({ key, label, icon: Icon, cls }) => (
             <Button key={key} variant={tool===key?"default":"outline"} size="sm"
-              onClick={() => { setTool(key); setTextInput(null); setMeasureStart(null); setCalibStart(null); }}
+              onClick={() => { setTool(key); setTextInput(null); setMeasureStart(null); setCalibStart(null); setDeletePopup(null); }}
               className={`h-8 text-xs ${tool===key ? cls : ""}`}>
               <Icon className="w-3.5 h-3.5 mr-1" />{label}
             </Button>
