@@ -137,30 +137,39 @@ export default function TimeSheet() {
     return ((outMinutes - inMinutes) / 60).toFixed(2);
   };
 
-  const handleClockIn = () => {
-    setClockInTime(new Date());
-  };
-
-  const handleClockOut = () => {
-    if (!clockInTime || !selectedEmployee) return;
+  const handleClockIn = async () => {
+    if (!selectedEmployee) return;
     const now = new Date();
-    const clockInStr = format(clockInTime, "HH:mm");
-    const clockOutStr = format(now, "HH:mm");
-    const hours = calculateHours(clockInStr, clockOutStr);
-
-    createEntryMutation.mutate({
+    const clockInStr = format(now, "HH:mm");
+    const entry = await base44.entities.TimeEntry.create({
       employee_id: selectedEmployee.id,
       employee_name: selectedEmployee.full_name,
-      date: format(selectedDate, "yyyy-MM-dd"),
+      date: format(now, "yyyy-MM-dd"),
       clock_in: clockInStr,
-      clock_out: clockOutStr,
-      hours_worked: parseFloat(hours),
       entry_type: "work",
       notes: ""
+    });
+    setOpenTimeEntryId(entry.id);
+    setClockInTime(now);
+    queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
+  };
+
+  const handleClockOut = async () => {
+    if (!clockInTime || !openTimeEntryId) return;
+    const now = new Date();
+    const clockOutStr = format(now, "HH:mm");
+    const clockInStr = format(clockInTime, "HH:mm");
+    const hours = calculateHours(clockInStr, clockOutStr);
+
+    await base44.entities.TimeEntry.update(openTimeEntryId, {
+      clock_out: clockOutStr,
+      hours_worked: parseFloat(hours)
     });
 
     setClockInTime(null);
     setElapsedTime("00:00:00");
+    setOpenTimeEntryId(null);
+    queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
   };
 
   const handleAddEntry = () => {
