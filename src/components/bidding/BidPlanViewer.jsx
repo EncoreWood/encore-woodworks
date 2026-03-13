@@ -246,12 +246,6 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     setTextInput(null); setTextValue("");
   };
 
-  const saveMeasurement = () => {
-    if (!pendingMeasure) return;
-    setMeasurements(p => [...p, { ...pendingMeasure, type: "measurement", label: pendingLabel || `Measurement ${measurements.length + 1}`, id: `m_${Date.now()}` }]);
-    setPendingMeasure(null); setPendingLabel("");
-  };
-
   const applyCalibration = () => {
     if (!pendingCalib || !calibKnownFeet) return;
     const ft = parseFloat(calibKnownFeet);
