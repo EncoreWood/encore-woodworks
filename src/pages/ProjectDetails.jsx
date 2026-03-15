@@ -32,6 +32,7 @@ import PaymentLog from "../components/projects/PaymentLog";
 import NextActionBanner from "../components/projects/NextActionBanner";
 import PageSlideWrapper from "@/components/PageSlideWrapper";
 import CadDrawingsSection from "../components/cad/CadDrawingsSection";
+import ClientPortalTab from "../components/projects/ClientPortalTab";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
