@@ -638,6 +638,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const scaleLabel = detectedScale ? (detectedScale.scale_text || `${detectedScale.inches_per_foot}" = 1'`) : null;
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[96vw] w-[1400px] h-[95vh] max-h-[95vh] overflow-hidden flex flex-col p-0 gap-0">
         {/* Header */}
