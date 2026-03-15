@@ -630,7 +630,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     { key:"eraser",    label:"Eraser",    icon:Eraser,        cls:"bg-slate-500 hover:bg-slate-600 text-white" },
     { key:"measure",   label:"Measure",   icon:Ruler,         cls:"bg-orange-500 hover:bg-orange-600 text-white" },
     { key:"calibrate", label:"Calibrate", icon:Target,        cls:"bg-violet-600 hover:bg-violet-700 text-white" },
-    { key:"trace",     label:"Trace Room",icon:Pentagon,       cls:"bg-emerald-600 hover:bg-emerald-700 text-white" },
+    { key:"trace",     label:"Trace Room",icon:Hexagon,        cls:"bg-emerald-600 hover:bg-emerald-700 text-white" },
   ];
 
   const cursor = tool==="pointer" ? (dragRef.current ? "grabbing" : "grab") : ["measure","calibrate","trace"].includes(tool) ? "crosshair" : tool==="text" ? "text" : tool==="highlight" ? "cell" : "crosshair";
