@@ -623,9 +623,9 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
             await base44.entities.Bid.update(bidId, { plan_annotations: savedAnnotations, ai_notes: notes });
           }
         }}
+        projectName={projectName}
         showNotesField={true}
         initialNotes={aiNotes}
-        projectName={projectName}
         rooms={rooms}
         onAddToRoom={(roomId, category, lf, label) => {
           setRooms(prev => prev.map(room => {
