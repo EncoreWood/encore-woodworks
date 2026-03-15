@@ -270,6 +270,21 @@ export default function ProjectDetails() {
 
         <NextActionBanner project={project} onSave={(data) => updateMutation.mutate(data)} />
 
+        {/* Tabs */}
+        {currentUser?.role === "admin" && (
+          <div className="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-slate-100 p-1 w-fit">
+            {[{ key: "project", label: "Project" }, { key: "client_portal", label: "Client Portal" }].map(t => (
+              <button key={t.key} onClick={() => setActiveTab(t.key)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === t.key ? "bg-amber-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-800"}`}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {activeTab === "client_portal" && currentUser?.role === "admin" ? (
+          <ClientPortalTab project={project} />
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
