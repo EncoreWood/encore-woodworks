@@ -625,6 +625,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
         }}
         showNotesField={true}
         initialNotes={aiNotes}
+        projectName={projectName}
         rooms={rooms}
         onAddToRoom={(roomId, category, lf, label) => {
           setRooms(prev => prev.map(room => {
