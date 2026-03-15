@@ -778,7 +778,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
               {/* Traced Rooms */}
               {tracedRooms.length > 0 && (<>
                 <div className="px-3 py-2 border-b bg-emerald-50 flex-shrink-0">
-                  <h3 className="text-xs font-bold text-emerald-700 flex items-center gap-1.5"><Pentagon className="w-3.5 h-3.5"/>Rooms ({tracedRooms.length})</h3>
+                  <h3 className="text-xs font-bold text-emerald-700 flex items-center gap-1.5"><Hexagon className="w-3.5 h-3.5"/>Rooms ({tracedRooms.length})</h3>
                 </div>
                 <div className="overflow-y-auto p-2 space-y-1.5 max-h-56">
                   {tracedRooms.map((r, ri) => (
