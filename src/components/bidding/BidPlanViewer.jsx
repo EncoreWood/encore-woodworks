@@ -736,7 +736,8 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                     position:"absolute", top:0, left:0,
                     width: displaySize.w + "px",
                     height: displaySize.h + "px",
-                    cursor, touchAction:"none"
+                    cursor, touchAction:"none",
+                    pointerEvents: (pendingRoom || editingRoom) ? "none" : "auto"
                   }}
                   onPointerDown={handlePointerDown}
                   onPointerMove={handlePointerMove}
