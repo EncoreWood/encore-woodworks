@@ -423,7 +423,6 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       return;
     }
 
-    if (tool === "trace" && tracePoints.length > 0) { setTracePreview(pos); return; }
     if (tool === "measure" && measureStart) { setMeasurePreview(pos); return; }
     if (tool === "calibrate" && calibStart) { setCalibPreview(pos); return; }
     if (!isPointerDown) return;
@@ -563,6 +562,38 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
           ctx.fillStyle="white"; ctx.fillText(ltxt,mx2-m2.width/2,my2);
         }
       }
+    }
+
+    // Draw traced rooms
+    tracedRooms.filter(r => r.page === pageNumber).forEach((room, ri) => {
+      const pts = room.points;
+      if (pts.length < 2) return;
+      ctx.strokeStyle = "#10b981"; ctx.fillStyle = "rgba(16,185,129,0.15)"; ctx.lineWidth = 2.5; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      pts.forEach(pt => { ctx.fillStyle="#10b981"; ctx.beginPath(); ctx.arc(pt.x,pt.y,4,0,Math.PI*2); ctx.fill(); });
+      const cx2 = pts.reduce((s,p)=>s+p.x,0)/pts.length;
+      const cy2 = pts.reduce((s,p)=>s+p.y,0)/pts.length;
+      const lbl = room.name || `Room ${ri+1}`;
+      ctx.font = "bold 12px sans-serif"; const tm2 = ctx.measureText(lbl);
+      ctx.fillStyle = "rgba(16,185,129,0.9)"; ctx.beginPath(); if(ctx.roundRect)ctx.roundRect(cx2-tm2.width/2-5,cy2-10,tm2.width+10,18,3);else ctx.rect(cx2-tm2.width/2-5,cy2-10,tm2.width+10,18); ctx.fill();
+      ctx.fillStyle = "white"; ctx.fillText(lbl, cx2-tm2.width/2, cy2+4);
+    });
+
+    // Active trace preview
+    if (tool === "trace" && tracePoints.length > 0) {
+      ctx.strokeStyle = "#10b981"; ctx.fillStyle = "rgba(16,185,129,0.1)"; ctx.lineWidth = 2; ctx.setLineDash([6,3]);
+      ctx.beginPath(); ctx.moveTo(tracePoints[0].x, tracePoints[0].y);
+      for (let i = 1; i < tracePoints.length; i++) ctx.lineTo(tracePoints[i].x, tracePoints[i].y);
+      if (tracePreview) ctx.lineTo(tracePreview.x, tracePreview.y);
+      ctx.stroke(); ctx.setLineDash([]);
+      tracePoints.forEach((pt, i) => {
+        const isFirst = i === 0;
+        ctx.fillStyle = isFirst ? "#059669" : "#10b981";
+        ctx.strokeStyle = "white"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(pt.x,pt.y,isFirst?7:4,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      });
     }
 
     // Active calibrate preview
