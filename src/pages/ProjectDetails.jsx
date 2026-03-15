@@ -90,6 +90,7 @@ export default function ProjectDetails() {
   const urlParams = new URLSearchParams(window.location.search);
   const projectId = urlParams.get("id");
 
+  const [currentUser, setCurrentUser] = useState(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showProposalForm, setShowProposalForm] = useState(false);
