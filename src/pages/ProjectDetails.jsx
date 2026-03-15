@@ -415,12 +415,14 @@ export default function ProjectDetails() {
             )}
 
             {/* Project Files */}
-            {project.files && project.files.length > 0 && (
+            {project.files && project.files.filter(f => f.tag !== "cad_dxf").length > 0 && (
               <Card className="p-6 bg-white border-0 shadow-sm">
-                <h2 className="text-lg font-semibold text-slate-900 mb-4">Project Files ({project.files.length})</h2>
-                <div className="space-y-4">
-                  {project.files.map((file, idx) => <FileViewer key={idx} file={file} />)}
-                </div>
+                {(() => { const nonCadFiles = project.files.filter(f => f.tag !== "cad_dxf"); return (<>
+                  <h2 className="text-lg font-semibold text-slate-900 mb-4">Project Files ({nonCadFiles.length})</h2>
+                  <div className="space-y-4">
+                    {nonCadFiles.map((file, idx) => <FileViewer key={idx} file={file} />)}
+                  </div>
+                </>); })()}
               </Card>
             )}
 
