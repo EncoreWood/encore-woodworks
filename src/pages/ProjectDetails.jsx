@@ -282,9 +282,10 @@ export default function ProjectDetails() {
           </div>
         )}
 
-        {activeTab === "client_portal" && currentUser?.role === "admin" ? (
+        {activeTab === "client_portal" && currentUser?.role === "admin" && (
           <ClientPortalTab project={project} />
-        ) : (
+        )}
+        {(activeTab !== "client_portal" || currentUser?.role !== "admin") && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
@@ -697,7 +698,7 @@ export default function ProjectDetails() {
           </div>
         </div>
 
-        )} {/* end activeTab === project / client_portal */}
+        )}
 
         {/* Edit Form */}
         <ProjectForm open={showEditForm} onOpenChange={setShowEditForm} onSubmit={(data) => updateMutation.mutate(data)} initialData={project} isLoading={updateMutation.isPending} />
