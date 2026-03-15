@@ -697,7 +697,7 @@ export default function ProjectDetails() {
           </div>
         </div>
 
-        )} {/* end activeTab === project */}
+        )} {/* end activeTab === project / client_portal */}
 
         {/* Edit Form */}
         <ProjectForm open={showEditForm} onOpenChange={setShowEditForm} onSubmit={(data) => updateMutation.mutate(data)} initialData={project} isLoading={updateMutation.isPending} />
