@@ -28,7 +28,10 @@ export default function CadDrawingsSection({ project, currentUser, onSave }) {
           uploaded_date: new Date().toISOString(),
         });
       }
-      onSave({ files: newFiles });
+      await onSave({ files: newFiles });
+    } catch (err) {
+      console.error("DXF upload failed:", err);
+      alert("Upload failed: " + (err?.message || "Unknown error"));
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
