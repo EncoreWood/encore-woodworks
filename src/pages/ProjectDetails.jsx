@@ -406,6 +406,9 @@ export default function ProjectDetails() {
               </Card>
             )}
 
+            {/* CAD Drawings */}
+            <CadDrawingsSection project={project} currentUser={currentUser} onSave={(data) => updateMutation.mutate(data)} />
+
             {/* Rooms */}
             <Card className="p-6 bg-white border-0 shadow-sm">
               <div className="flex items-center justify-between mb-4">
