@@ -88,7 +88,7 @@ function measToNatural(m, nw, nh) {
   return { ...m, start: toNatPt(m.start, nw, nh), end: toNatPt(m.end, nw, nh), _natural: true };
 }
 
-export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", rooms = [], onAddToRoom }) {
+export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", rooms = [], onAddToRoom, projectName = "" }) {
   if (!pdfUrl) return null;
 
   // PDF / view state
@@ -423,7 +423,6 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       return;
     }
 
-    if (tool === "trace" && tracePoints.length > 0) { setTracePreview(pos); return; }
     if (tool === "measure" && measureStart) { setMeasurePreview(pos); return; }
     if (tool === "calibrate" && calibStart) { setCalibPreview(pos); return; }
     if (!isPointerDown) return;
@@ -497,6 +496,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
 
   const handleSave = () => { onSave([...annList, ...measurements], aiNotes); onOpenChange(false); };
 
+  // ── Open room panel when pendingRoom is set ────────────────────────────────
+  // (done via JSX conditional below)
+
   // ── Canvas render ──────────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -566,37 +568,35 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     }
 
     // Draw traced rooms
-    tracedRooms.filter(r => r.page === pageNumber).forEach(r => {
-      ctx.strokeStyle = "#10b981"; ctx.fillStyle = "rgba(16,185,129,0.12)"; ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      r.points.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
+    tracedRooms.filter(r => r.page === pageNumber).forEach((room, ri) => {
+      const pts = room.points;
+      if (pts.length < 2) return;
+      ctx.strokeStyle = "#10b981"; ctx.fillStyle = "rgba(16,185,129,0.15)"; ctx.lineWidth = 2.5; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
       ctx.closePath(); ctx.fill(); ctx.stroke();
-      const cx = r.points.reduce((s, p) => s + p.x, 0) / r.points.length;
-      const cy = r.points.reduce((s, p) => s + p.y, 0) / r.points.length;
-      ctx.font = "bold 12px sans-serif"; ctx.fillStyle = "#065f46";
-      const lbl = r.name || "Room";
-      const tm = ctx.measureText(lbl);
-      ctx.fillStyle = "rgba(255,255,255,0.85)"; ctx.fillRect(cx - tm.width/2 - 4, cy - 14, tm.width + 8, 17);
-      ctx.fillStyle = "#065f46"; ctx.fillText(lbl, cx - tm.width/2, cy);
+      pts.forEach(pt => { ctx.fillStyle="#10b981"; ctx.beginPath(); ctx.arc(pt.x,pt.y,4,0,Math.PI*2); ctx.fill(); });
+      const cx2 = pts.reduce((s,p)=>s+p.x,0)/pts.length;
+      const cy2 = pts.reduce((s,p)=>s+p.y,0)/pts.length;
+      const lbl = room.name || `Room ${ri+1}`;
+      ctx.font = "bold 12px sans-serif"; const tm2 = ctx.measureText(lbl);
+      ctx.fillStyle = "rgba(16,185,129,0.9)"; ctx.beginPath(); if(ctx.roundRect)ctx.roundRect(cx2-tm2.width/2-5,cy2-10,tm2.width+10,18,3);else ctx.rect(cx2-tm2.width/2-5,cy2-10,tm2.width+10,18); ctx.fill();
+      ctx.fillStyle = "white"; ctx.fillText(lbl, cx2-tm2.width/2, cy2+4);
     });
 
-    // Active trace
+    // Active trace preview
     if (tool === "trace" && tracePoints.length > 0) {
-      ctx.strokeStyle = "#10b981"; ctx.lineWidth = 2; ctx.setLineDash([6, 3]);
-      ctx.beginPath();
-      tracePoints.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
+      ctx.strokeStyle = "#10b981"; ctx.fillStyle = "rgba(16,185,129,0.1)"; ctx.lineWidth = 2; ctx.setLineDash([6,3]);
+      ctx.beginPath(); ctx.moveTo(tracePoints[0].x, tracePoints[0].y);
+      for (let i = 1; i < tracePoints.length; i++) ctx.lineTo(tracePoints[i].x, tracePoints[i].y);
       if (tracePreview) ctx.lineTo(tracePreview.x, tracePreview.y);
       ctx.stroke(); ctx.setLineDash([]);
-      // Draw corner dots
       tracePoints.forEach((pt, i) => {
-        ctx.fillStyle = i === 0 ? "#ef4444" : "#10b981";
-        ctx.beginPath(); ctx.arc(pt.x, pt.y, i === 0 ? 7 : 4, 0, Math.PI * 2); ctx.fill();
+        const isFirst = i === 0;
+        ctx.fillStyle = isFirst ? "#059669" : "#10b981";
+        ctx.strokeStyle = "white"; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(pt.x,pt.y,isFirst?7:4,0,Math.PI*2); ctx.fill(); ctx.stroke();
       });
-      if (tracePoints.length >= 3) {
-        const first = tracePoints[0];
-        ctx.strokeStyle = "#ef4444"; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(first.x, first.y, 10, 0, Math.PI * 2); ctx.stroke();
-      }
     }
 
     // Active calibrate preview
@@ -617,23 +617,23 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       ctx.fillStyle=`rgba(${r2},${g2},${b2},0.35)`; ctx.strokeStyle=`rgba(${r2},${g2},${b2},0.8)`; ctx.lineWidth=1.5;
       ctx.fillRect(x,y,w,h); ctx.strokeRect(x,y,w,h);
     }
-  }, [annList, measurements, currentPath, currentLine, pageNumber, color, highlightColor, naturalSize, tool, measureStart, measurePreview, calibStart, calibPreview, selectedAnn, tracePoints, tracePreview, tracedRooms]);
+  }, [annList, measurements, currentPath, currentLine, pageNumber, color, highlightColor, naturalSize, tool, measureStart, measurePreview, calibStart, calibPreview, selectedAnn, tracedRooms, tracePoints, tracePreview]);
 
   // ── Toolbar config ─────────────────────────────────────────────────────────
   const toolConfig = [
-    { key:"pointer",   label:"Select",    icon:MousePointer2, cls:"bg-slate-700 hover:bg-slate-800 text-white" },
-    { key:"pen",       label:"Draw",      icon:Pencil,        cls:"bg-amber-600 hover:bg-amber-700 text-white" },
-    { key:"highlight", label:"Highlight", icon:Highlighter,   cls:"bg-yellow-500 hover:bg-yellow-600 text-white" },
-    { key:"arrow",     label:"Arrow",     icon:ArrowRight,    cls:"bg-blue-600 hover:bg-blue-700 text-white" },
-    { key:"line",      label:"Line",      icon:Minus,         cls:"bg-green-600 hover:bg-green-700 text-white" },
-    { key:"text",      label:"Text",      icon:Type,          cls:"bg-purple-600 hover:bg-purple-700 text-white" },
-    { key:"eraser",    label:"Eraser",    icon:Eraser,        cls:"bg-slate-500 hover:bg-slate-600 text-white" },
-    { key:"measure",   label:"Measure",   icon:Ruler,         cls:"bg-orange-500 hover:bg-orange-600 text-white" },
-    { key:"calibrate", label:"Calibrate", icon:Target,        cls:"bg-violet-600 hover:bg-violet-700 text-white" },
-    { key:"trace",     label:"Trace Room",icon:Pentagon,       cls:"bg-emerald-600 hover:bg-emerald-700 text-white" },
+    { key:"pointer",   label:"Select",     icon:MousePointer2, cls:"bg-slate-700 hover:bg-slate-800 text-white" },
+    { key:"pen",       label:"Draw",       icon:Pencil,        cls:"bg-amber-600 hover:bg-amber-700 text-white" },
+    { key:"highlight", label:"Highlight",  icon:Highlighter,   cls:"bg-yellow-500 hover:bg-yellow-600 text-white" },
+    { key:"arrow",     label:"Arrow",      icon:ArrowRight,    cls:"bg-blue-600 hover:bg-blue-700 text-white" },
+    { key:"line",      label:"Line",       icon:Minus,         cls:"bg-green-600 hover:bg-green-700 text-white" },
+    { key:"text",      label:"Text",       icon:Type,          cls:"bg-purple-600 hover:bg-purple-700 text-white" },
+    { key:"eraser",    label:"Eraser",     icon:Eraser,        cls:"bg-slate-500 hover:bg-slate-600 text-white" },
+    { key:"measure",   label:"Measure",    icon:Ruler,         cls:"bg-orange-500 hover:bg-orange-600 text-white" },
+    { key:"calibrate", label:"Calibrate",  icon:Target,        cls:"bg-violet-600 hover:bg-violet-700 text-white" },
+    { key:"trace",     label:"Trace Room", icon:Pentagon,      cls:"bg-emerald-600 hover:bg-emerald-700 text-white" },
   ];
 
-  const cursor = tool==="pointer" ? (dragRef.current ? "grabbing" : "grab") : ["measure","calibrate","trace"].includes(tool) ? "crosshair" : tool==="text" ? "text" : tool==="highlight" ? "cell" : "crosshair";
+  const cursor = tool==="pointer" ? (dragRef.current ? "grabbing" : "grab") : tool==="text" ? "text" : tool==="highlight" ? "cell" : "crosshair";
   const scaleLabel = detectedScale ? (detectedScale.scale_text || `${detectedScale.inches_per_foot}" = 1'`) : null;
 
   return (
@@ -708,7 +708,11 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         {tool==="pointer"   && <div className="px-4 py-1.5 bg-slate-50 border-b text-xs text-slate-600 font-medium flex-shrink-0">Click to select • Drag to move • Click selected to delete</div>}
         {tool==="measure"   && <div className="px-4 py-1.5 bg-orange-50 border-b text-xs text-orange-700 font-medium flex-shrink-0">{!measureStart?"Click first point":"Click second point"}</div>}
         {tool==="calibrate" && <div className="px-4 py-1.5 bg-violet-50 border-b text-xs text-violet-700 font-medium flex-shrink-0">{!calibStart?"Click first point on scale bar":"Click second point"}</div>}
-        {tool==="trace"     && <div className="px-4 py-1.5 bg-emerald-50 border-b text-xs text-emerald-700 font-medium flex-shrink-0">{tracePoints.length===0?"Click corners of room perimeter":tracePoints.length<3?`${tracePoints.length} point(s) placed — keep clicking corners`:`${tracePoints.length} points — click near first point (red circle) to close`}</div>}
+        {tool==="trace"     && <div className="px-4 py-1.5 bg-emerald-50 border-b text-xs text-emerald-700 font-medium flex-shrink-0 flex items-center gap-3">
+          <span>{tracePoints.length===0?"Click corners of the room perimeter":tracePoints.length<3?`${tracePoints.length} points — keep clicking corners`:`${tracePoints.length} points — click near first point (●) to close`}</span>
+          {tracePoints.length>=3&&<button onClick={()=>{setPendingRoom({points:tracePoints,page:pageNumber});setTracePoints([]);setTracePreview(null);}} className="text-emerald-700 font-bold underline">Close Shape</button>}
+          {tracePoints.length>0&&<button onClick={()=>{setTracePoints([]);setTracePreview(null);}} className="text-red-500 font-medium">Cancel</button>}
+        </div>}
 
         {/* Main */}
         <div className="flex flex-1 overflow-hidden">
@@ -772,33 +776,43 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
             </div>
           </div>
 
-          {/* Sidebar */}
-          {(measurements.length>0 || annList.some(a=>a.type==="text") || tracedRooms.length>0) && (
-            <div className="w-56 border-l bg-white flex flex-col overflow-hidden flex-shrink-0">
-              {/* Traced Rooms */}
-              {tracedRooms.length > 0 && (<>
-                <div className="px-3 py-2 border-b bg-emerald-50 flex-shrink-0">
-                  <h3 className="text-xs font-bold text-emerald-700 flex items-center gap-1.5"><Pentagon className="w-3.5 h-3.5"/>Rooms ({tracedRooms.length})</h3>
-                </div>
-                <div className="overflow-y-auto p-2 space-y-1.5 max-h-56">
-                  {tracedRooms.map((r, ri) => (
+          {/* Mozaik Rooms Sidebar */}
+          {tracedRooms.length > 0 && (
+            <div className="w-52 border-l bg-white flex flex-col overflow-hidden flex-shrink-0">
+              <div className="px-3 py-2 border-b bg-emerald-50 flex-shrink-0">
+                <h3 className="text-xs font-bold text-emerald-800 flex items-center gap-1.5">
+                  <Download className="w-3.5 h-3.5"/>Mozaik Rooms ({tracedRooms.length})
+                </h3>
+              </div>
+              <div className="overflow-y-auto flex-1 p-2 space-y-2">
+                {tracedRooms.map((room, ri) => {
+                  const totalFt = (room.walls||[]).reduce((s,w)=>s+(w.lengthIn||0)/12,0);
+                  return (
                     <div key={ri} className="p-2 rounded-lg border border-emerald-200 bg-emerald-50">
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs font-semibold text-emerald-800 flex-1 truncate">{r.name || "Unnamed Room"}</span>
-                        <button onClick={() => setEditingRoom(r)} className="text-xs text-amber-600 hover:text-amber-800 font-medium px-1">Edit</button>
-                        <button onClick={() => setTracedRooms(p => p.filter((_, i) => i !== ri))} className="text-red-400 hover:text-red-600"><X className="w-3 h-3"/></button>
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-emerald-800 truncate">{room.name||`Room ${ri+1}`}</p>
+                          <p className="text-xs text-emerald-600">{totalFt.toFixed(1)} LF perimeter</p>
+                          <p className="text-xs text-emerald-500">{room.points.length} walls</p>
+                        </div>
+                        <button onClick={()=>setTracedRooms(p=>p.filter((_,i)=>i!==ri))} className="flex-shrink-0 text-slate-300 hover:text-red-500 mt-0.5"><X className="w-3 h-3"/></button>
                       </div>
-                      {r.walls && <p className="text-xs text-emerald-600 mt-0.5">{(r.walls.reduce((s,w)=>s+w.lengthIn,0)/12).toFixed(1)} LF perimeter</p>}
-                      <button onClick={() => {
-                        const { MozaikRoomPanel: _ } = {}; // trigger download inline
-                        setEditingRoom(r);
-                      }} className="mt-1 w-full flex items-center justify-center gap-1 text-xs text-emerald-700 bg-white border border-emerald-300 hover:bg-emerald-100 rounded px-2 py-0.5 font-medium">
-                        <Download className="w-3 h-3"/>Export DXF
-                      </button>
+                      <div className="flex gap-1 mt-2">
+                        <button onClick={()=>setEditingRoom(room)} className="flex-1 text-xs bg-emerald-600 text-white rounded px-2 py-1 hover:bg-emerald-700 flex items-center justify-center gap-1">
+                          <Download className="w-3 h-3"/>Export
+                        </button>
+                        <button onClick={()=>setEditingRoom(room)} className="text-xs border border-emerald-300 text-emerald-700 rounded px-2 py-1 hover:bg-emerald-100">Edit</button>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </>)}
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Sidebar */}
+          {(measurements.length>0 || annList.some(a=>a.type==="text")) && (
+            <div className="w-56 border-l bg-white flex flex-col overflow-hidden flex-shrink-0">
               {measurements.length>0 && (<>
                 <div className="px-3 py-2 border-b bg-slate-50 flex-shrink-0">
                   <h3 className="text-xs font-bold text-slate-700 flex items-center gap-1.5"><Ruler className="w-3.5 h-3.5 text-red-500"/>Measurements ({measurements.length})</h3>
@@ -825,7 +839,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                   ))}
                 </div>
               </>)}
-              {annList.some(a=>a.type==="text"&&a.page===pageNumber) && (<>
+              {annList.some(a=>a.type==="text") && (<>
                 <div className="px-3 py-2 border-b bg-slate-50 flex-shrink-0">
                   <h3 className="text-xs font-bold text-slate-700 flex items-center gap-1.5"><Type className="w-3.5 h-3.5 text-purple-500"/>Notes ({annList.filter(a=>a.type==="text"&&a.page===pageNumber).length})</h3>
                 </div>
@@ -880,28 +894,25 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         </div>
       )}
 
-      {/* Pending room (just traced) — open panel */}
+      {/* Mozaik Room Panel — new trace */}
       {pendingRoom && (
         <MozaikRoomPanel
           room={pendingRoom}
           pxPerFtNat={pxPerFtNat}
-          projectName={null}
-          onSave={(saved) => {
-            setTracedRooms(prev => [...prev, saved]);
-            setPendingRoom(null);
-          }}
+          projectName={typeof onSave === "function" ? "" : ""}
+          onSave={(saved) => { setTracedRooms(p => [...p, saved]); setPendingRoom(null); }}
           onClose={() => setPendingRoom(null)}
         />
       )}
 
-      {/* Edit existing room */}
+      {/* Mozaik Room Panel — edit existing */}
       {editingRoom && (
         <MozaikRoomPanel
           room={editingRoom}
           pxPerFtNat={pxPerFtNat}
-          projectName={null}
+          projectName=""
           onSave={(saved) => {
-            setTracedRooms(prev => prev.map(r => r === editingRoom ? saved : r));
+            setTracedRooms(p => p.map(r => r === editingRoom ? saved : r));
             setEditingRoom(null);
           }}
           onClose={() => setEditingRoom(null)}
