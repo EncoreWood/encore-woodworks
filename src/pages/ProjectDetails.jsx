@@ -104,6 +104,8 @@ export default function ProjectDetails() {
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
   const [showPhotos, setShowPhotos] = useState(false);
 
+  useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
+
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", projectId],
     queryFn: () => base44.entities.Project.filter({ id: projectId }).then((res) => res[0]),
