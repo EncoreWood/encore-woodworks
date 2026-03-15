@@ -343,6 +343,22 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     canvasRef.current?.setPointerCapture(e.pointerId);
     const pos = getPos(e);
 
+    if (tool === "trace") {
+      // Check if clicking near first point to close shape
+      if (tracePoints.length >= 3) {
+        const first = tracePoints[0];
+        const T = 18 * naturalRef.current.w / displaySize.w;
+        if (Math.hypot(pos.x - first.x, pos.y - first.y) < T) {
+          setPendingRoom({ points: tracePoints, page: pageNumber });
+          setTracePoints([]);
+          setTracePreview(null);
+          return;
+        }
+      }
+      setTracePoints(prev => [...prev, pos]);
+      return;
+    }
+
     if (tool === "pointer") {
       const hit = hitTest(pos);
       if (hit) {
