@@ -881,37 +881,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         </div>
       )}
 
-      {/* Pending room (just traced) — open panel */}
-      {pendingRoom && (
-        <MozaikRoomPanel
-          room={pendingRoom}
-          pxPerFtNat={pxPerFtNat}
-          projectName={projectName}
-          onSave={(saved) => {
-            setTracedRooms(prev => [...prev, saved]);
-            setPendingRoom(null);
-          }}
-          onClose={() => setPendingRoom(null)}
-        />
-      )}
-
-      {/* Edit existing room */}
-      {editingRoom && (
-        <MozaikRoomPanel
-          room={editingRoom}
-          pxPerFtNat={pxPerFtNat}
-          projectName={projectName}
-          onSave={(saved) => {
-            setTracedRooms(prev => prev.map(r => r === editingRoom ? saved : r));
-            setEditingRoom(null);
-          }}
-          onClose={() => setEditingRoom(null)}
-        />
-      )}
-
     </Dialog>
 
-      {/* Pending room (just traced) — open panel */}
+      {/* Pending room (just traced) — open panel, rendered outside Dialog to avoid focus trap */}
       {pendingRoom && (
         <MozaikRoomPanel
           room={pendingRoom}
@@ -939,7 +911,6 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         />
       )}
 
-    <div style={{display:"none"}}>
       {/* Send to bid dialog */}
       {sendingM && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
@@ -974,6 +945,5 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
           </div>
         </div>
       )}
-    </Dialog>
   );
 }
