@@ -144,6 +144,13 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const [sendRoomId, setSendRoomId] = useState("");
   const [sendCategory, setSendCategory] = useState("base");
 
+  // Trace Room / Mozaik export
+  const [tracePoints, setTracePoints]       = useState([]);
+  const [tracePreview, setTracePreview]     = useState(null);
+  const [tracedRooms, setTracedRooms]       = useState([]);
+  const [editingRoom, setEditingRoom]       = useState(null); // room obj to open panel for
+  const [pendingRoom, setPendingRoom]       = useState(null); // newly closed trace awaiting panel
+
   const canvasRef        = useRef(null);
   const pageContainerRef = useRef(null);
   const scrollRef        = useRef(null);
