@@ -423,6 +423,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       return;
     }
 
+    if (tool === "trace" && tracePoints.length > 0) { setTracePreview(pos); return; }
     if (tool === "measure" && measureStart) { setMeasurePreview(pos); return; }
     if (tool === "calibrate" && calibStart) { setCalibPreview(pos); return; }
     if (!isPointerDown) return;
