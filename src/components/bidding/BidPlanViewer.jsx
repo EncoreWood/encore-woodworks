@@ -352,6 +352,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
           setPendingRoom({ points: tracePoints, page: pageNumber });
           setTracePoints([]);
           setTracePreview(null);
+          setTool("pointer");
           return;
         }
       }
