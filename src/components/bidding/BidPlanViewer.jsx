@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   ZoomIn, ZoomOut, Maximize2, Ruler, Sparkles, X, Pencil, Eraser,
   ArrowRight, Minus, Type, Highlighter, Undo2, Trash2, Target, Send, MousePointer2,
-  Pentagon, CheckCheck, Download
+  Hexagon, Download
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import MozaikRoomPanel from "./MozaikRoomPanel";
