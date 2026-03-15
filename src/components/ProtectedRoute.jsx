@@ -19,13 +19,17 @@ async function getPermissions() {
   if (_cache) return _cache;
   const user = await base44.auth.me();
   if (user?.role === "admin") {
-    _cache = { isAdmin: true, allowedPages: null };
+    _cache = { isAdmin: true, isClient: false, allowedPages: null };
+    return _cache;
+  }
+  if (user?.role === "client") {
+    _cache = { isAdmin: false, isClient: true, allowedPages: new Set() };
     return _cache;
   }
   const emps = await base44.entities.Employee.list();
   const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
   const allowedPages = emp ? new Set(emp.allowed_pages || []) : DEFAULT_ALLOWED;
-  _cache = { isAdmin: false, allowedPages };
+  _cache = { isAdmin: false, isClient: false, allowedPages };
   return _cache;
 }
 
@@ -42,9 +46,10 @@ export default function ProtectedRoute({ children, pageName }) {
       setStatus(true);
       return;
     }
-    getPermissions().then(({ isAdmin, allowedPages }) => {
+    getPermissions().then(({ isAdmin, isClient, allowedPages }) => {
       if (cancelled) return;
       if (isAdmin) { setStatus(true); return; }
+      if (isClient) { setStatus("/ClientPortal"); return; }
       if (allowedPages.has(pageName)) {
         setStatus(true);
       } else {
