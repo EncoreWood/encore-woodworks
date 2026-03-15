@@ -427,7 +427,7 @@ export default function ProjectDetails() {
             )}
 
             {/* CAD Drawings */}
-            <CadDrawingsSection project={project} currentUser={currentUser} onSave={(data) => updateMutation.mutate(data)} />
+            <CadDrawingsSection project={project} currentUser={currentUser} onSave={(data) => updateMutation.mutateAsync(data)} />
 
             {/* Rooms */}
             <Card className="p-6 bg-white border-0 shadow-sm">
