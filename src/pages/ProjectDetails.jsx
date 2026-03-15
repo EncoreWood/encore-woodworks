@@ -31,6 +31,7 @@ import RoomManager from "../components/projects/RoomManager";
 import PaymentLog from "../components/projects/PaymentLog";
 import NextActionBanner from "../components/projects/NextActionBanner";
 import PageSlideWrapper from "@/components/PageSlideWrapper";
+import CadDrawingsSection from "../components/cad/CadDrawingsSection";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
