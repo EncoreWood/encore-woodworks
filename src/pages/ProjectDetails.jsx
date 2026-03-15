@@ -92,6 +92,7 @@ export default function ProjectDetails() {
   const projectId = urlParams.get("id");
 
   const [currentUser, setCurrentUser] = useState(null);
+  const [activeTab, setActiveTab] = useState("project");
   const [showEditForm, setShowEditForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showProposalForm, setShowProposalForm] = useState(false);
