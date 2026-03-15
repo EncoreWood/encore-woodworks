@@ -881,71 +881,64 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
           </div>
         </div>
       )}
-
     </Dialog>
 
-      {/* Pending room (just traced) — open panel, rendered outside Dialog to avoid focus trap */}
-      {pendingRoom && (
-        <MozaikRoomPanel
-          room={pendingRoom}
-          pxPerFtNat={pxPerFtNat}
-          projectName={projectName}
-          onSave={(saved) => {
-            setTracedRooms(prev => [...prev, saved]);
-            setPendingRoom(null);
-          }}
-          onClose={() => setPendingRoom(null)}
-        />
-      )}
+    {/* Pending room — rendered outside Dialog to avoid focus trap */}
+    {pendingRoom && (
+      <MozaikRoomPanel
+        room={pendingRoom}
+        pxPerFtNat={pxPerFtNat}
+        projectName={projectName}
+        onSave={(saved) => { setTracedRooms(prev => [...prev, saved]); setPendingRoom(null); }}
+        onClose={() => setPendingRoom(null)}
+      />
+    )}
 
-      {/* Edit existing room */}
-      {editingRoom && (
-        <MozaikRoomPanel
-          room={editingRoom}
-          pxPerFtNat={pxPerFtNat}
-          projectName={projectName}
-          onSave={(saved) => {
-            setTracedRooms(prev => prev.map(r => r === editingRoom ? saved : r));
-            setEditingRoom(null);
-          }}
-          onClose={() => setEditingRoom(null)}
-        />
-      )}
+    {/* Edit existing room */}
+    {editingRoom && (
+      <MozaikRoomPanel
+        room={editingRoom}
+        pxPerFtNat={pxPerFtNat}
+        projectName={projectName}
+        onSave={(saved) => { setTracedRooms(prev => prev.map(r => r === editingRoom ? saved : r)); setEditingRoom(null); }}
+        onClose={() => setEditingRoom(null)}
+      />
+    )}
 
-      {/* Send to bid dialog */}
-      {sendingM && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
-          <div className="bg-white rounded-xl shadow-2xl p-5 w-80">
-            <h3 className="font-bold text-slate-900 mb-1">Send to Bid</h3>
-            <p className="text-sm text-slate-600 mb-3">{sendingM.label} — <span className="font-bold text-emerald-700">{sendingM.realFeet?.toFixed(2)} LF</span></p>
-            <div className="space-y-3 mb-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">Room</label>
-                <Select value={sendRoomId} onValueChange={setSendRoomId}>
-                  <SelectTrigger><SelectValue placeholder="Select room"/></SelectTrigger>
-                  <SelectContent>{rooms.map(r=><SelectItem key={r.id} value={r.id}>{r.room_name||"Unnamed Room"}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">Cabinet Category</label>
-                <Select value={sendCategory} onValueChange={setSendCategory}>
-                  <SelectTrigger><SelectValue/></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="base">Base Cabinets</SelectItem>
-                    <SelectItem value="upper">Upper / Wall Cabinets</SelectItem>
-                    <SelectItem value="tall">Tall Cabinets</SelectItem>
-                    <SelectItem value="misc">Misc</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+    {/* Send to bid dialog */}
+    {sendingM && (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
+        <div className="bg-white rounded-xl shadow-2xl p-5 w-80">
+          <h3 className="font-bold text-slate-900 mb-1">Send to Bid</h3>
+          <p className="text-sm text-slate-600 mb-3">{sendingM.label} — <span className="font-bold text-emerald-700">{sendingM.realFeet?.toFixed(2)} LF</span></p>
+          <div className="space-y-3 mb-4">
+            <div>
+              <label className="text-xs font-semibold text-slate-500 mb-1 block">Room</label>
+              <Select value={sendRoomId} onValueChange={setSendRoomId}>
+                <SelectTrigger><SelectValue placeholder="Select room"/></SelectTrigger>
+                <SelectContent>{rooms.map(r=><SelectItem key={r.id} value={r.id}>{r.room_name||"Unnamed Room"}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
-            <div className="flex gap-2">
-              <Button onClick={()=>{onAddToRoom&&onAddToRoom(sendRoomId,sendCategory,sendingM.realFeet,sendingM.label);setSendingM(null);}} disabled={!sendRoomId} className="flex-1 bg-amber-600 hover:bg-amber-700">Add to Bid</Button>
-              <Button variant="outline" onClick={()=>setSendingM(null)}>Cancel</Button>
+            <div>
+              <label className="text-xs font-semibold text-slate-500 mb-1 block">Cabinet Category</label>
+              <Select value={sendCategory} onValueChange={setSendCategory}>
+                <SelectTrigger><SelectValue/></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="base">Base Cabinets</SelectItem>
+                  <SelectItem value="upper">Upper / Wall Cabinets</SelectItem>
+                  <SelectItem value="tall">Tall Cabinets</SelectItem>
+                  <SelectItem value="misc">Misc</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
+          <div className="flex gap-2">
+            <Button onClick={()=>{onAddToRoom&&onAddToRoom(sendRoomId,sendCategory,sendingM.realFeet,sendingM.label);setSendingM(null);}} disabled={!sendRoomId} className="flex-1 bg-amber-600 hover:bg-amber-700">Add to Bid</Button>
+            <Button variant="outline" onClick={()=>setSendingM(null)}>Cancel</Button>
+          </div>
         </div>
-      )}
+      </div>
+    )}
     </>
   );
 }
