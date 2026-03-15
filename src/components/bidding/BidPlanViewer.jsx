@@ -946,5 +946,6 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
           </div>
         </div>
       )}
+    </>
   );
 }
