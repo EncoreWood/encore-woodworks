@@ -6,9 +6,11 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ZoomIn, ZoomOut, Maximize2, Ruler, Sparkles, X, Pencil, Eraser,
-  ArrowRight, Minus, Type, Highlighter, Undo2, Trash2, Target, Send, MousePointer2
+  ArrowRight, Minus, Type, Highlighter, Undo2, Trash2, Target, Send, MousePointer2,
+  Pentagon, CheckCheck, Download
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import MozaikRoomPanel from "./MozaikRoomPanel";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 
