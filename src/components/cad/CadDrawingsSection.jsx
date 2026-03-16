@@ -118,18 +118,43 @@ export default function CadDrawingsSection({ project, currentUser, onSave }) {
         ) : (
           <div className="space-y-2">
             {cadFiles.map((file, idx) => (
-              <div key={idx} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:border-cyan-200 hover:bg-cyan-50/30 transition-all group">
+              <div key={idx} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 bg-white hover:border-cyan-200 transition-all">
                 {getFileIcon(file.name)}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-800 truncate">{file.name}</p>
-                  {file.uploaded_date && (
-                    <p className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
-                      <Calendar className="w-3 h-3" />
-                      {format(new Date(file.uploaded_date), "MMM d, yyyy")}
-                    </p>
-                  )}
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    {file.uploaded_date && (
+                      <p className="text-xs text-slate-400 flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
+                        {format(new Date(file.uploaded_date), "MMM d, yyyy")}
+                      </p>
+                    )}
+                    {file.room_name && (
+                      <span className="text-xs bg-cyan-100 text-cyan-700 px-2 py-0.5 rounded-full font-medium">
+                        📐 {file.room_name}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Room tag selector */}
+                  {rooms.length > 0 && (
+                    taggingIdx === idx ? (
+                      <Select onValueChange={(v) => handleTagRoom(idx, v)} defaultValue={file.room_name || "none"}>
+                        <SelectTrigger className="h-8 w-36 text-xs">
+                          <SelectValue placeholder="Tag room" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No room</SelectItem>
+                          {rooms.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-cyan-600" onClick={() => setTaggingIdx(idx)} title="Tag to room">
+                        <Tag className="w-3.5 h-3.5" />
+                      </Button>
+                    )
+                  )}
                   {isViewable(file.name) && (
                     <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => setViewingFile(file)}>
                       <Eye className="w-3.5 h-3.5" /> View
@@ -141,11 +166,6 @@ export default function CadDrawingsSection({ project, currentUser, onSave }) {
                     </Button>
                   )}
                 </div>
-                {isViewable(file.name) && (
-                  <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs group-hover:hidden sm:hidden" onClick={() => setViewingFile(file)}>
-                    <Eye className="w-3.5 h-3.5" /> View
-                  </Button>
-                )}
               </div>
             ))}
           </div>
