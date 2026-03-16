@@ -62,6 +62,7 @@ const AuthenticatedApp = () => {
           }
         />
       ))}
+      <Route path="/Admin" element={<LayoutWrapper currentPageName="Admin"><Admin /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
