@@ -20,7 +20,7 @@ import {
 import {
   ArrowLeft, Edit, Trash2, User, Mail, Phone, MapPin, Calendar,
   DollarSign, Palette, Wrench, FileText, Loader2, DoorOpen,
-  ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X, Calculator
+  ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X, Calculator, Box, Upload
 } from "lucide-react";
 import { format } from "date-fns";
 import ProjectForm from "../components/projects/ProjectForm";
@@ -33,6 +33,7 @@ import NextActionBanner from "../components/projects/NextActionBanner";
 import PageSlideWrapper from "@/components/PageSlideWrapper";
 import CadDrawingsSection from "../components/cad/CadDrawingsSection";
 import ClientPortalTab from "../components/projects/ClientPortalTab";
+import GlbViewer from "../components/cad/GlbViewer";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -105,6 +106,8 @@ export default function ProjectDetails() {
   const [sectionDraft, setSectionDraft] = useState({});
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
   const [showPhotos, setShowPhotos] = useState(false);
+  const [viewingRoomGlb, setViewingRoomGlb] = useState(null); // { url, name }
+  const [uploadingRoomGlbIdx, setUploadingRoomGlbIdx] = useState(null);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
 
@@ -174,6 +177,18 @@ export default function ProjectDetails() {
     setShowRoomManager(false);
     setEditingRoom(null);
     setEditingRoomIndex(null);
+  };
+
+  const handleRoomGlbUpload = async (e, roomIdx) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingRoomGlbIdx(roomIdx);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const updatedRooms = [...(project.rooms || [])];
+    updatedRooms[roomIdx] = { ...updatedRooms[roomIdx], glb_url: file_url, glb_name: file.name };
+    updateMutation.mutate({ rooms: updatedRooms });
+    setUploadingRoomGlbIdx(null);
+    e.target.value = "";
   };
 
   const handleDeleteRoom = (index) => {
@@ -472,6 +487,24 @@ export default function ProjectDetails() {
                             <h3 className={cn("font-medium", room.completed ? "text-emerald-700" : "text-slate-900")}>{room.room_name || `Room ${idx + 1}`}</h3>
                             <div className="flex items-center gap-2">
                               {room.cabinet_count && <Badge variant="outline" className="text-xs">{room.cabinet_count} cabinets</Badge>}
+                              {room.glb_url ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={(e) => { e.stopPropagation(); setViewingRoomGlb({ url: room.glb_url, name: room.glb_name || room.room_name }); }}
+                                  className="h-7 text-xs text-violet-600 border-violet-200 hover:bg-violet-50 gap-1"
+                                >
+                                  <Box className="w-3 h-3" /> 3D View
+                                </Button>
+                              ) : (
+                                <label onClick={(e) => e.stopPropagation()} className="cursor-pointer">
+                                  <input type="file" accept=".glb,.gltf" className="hidden" onChange={(e) => handleRoomGlbUpload(e, idx)} />
+                                  <span className={`inline-flex items-center gap-1 h-7 px-2 rounded-md border text-xs font-medium transition-colors ${uploadingRoomGlbIdx === idx ? "text-slate-400 border-slate-200" : "text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-violet-600 hover:border-violet-200"}`}>
+                                    {uploadingRoomGlbIdx === idx ? <Loader2 className="w-3 h-3 animate-spin" /> : <Box className="w-3 h-3" />}
+                                    {uploadingRoomGlbIdx === idx ? "…" : "3D"}
+                                  </span>
+                                </label>
+                              )}
                               <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDeleteRoom(idx); }} className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50">
                                 <Trash2 className="w-3 h-3" />
                               </Button>
@@ -723,6 +756,11 @@ export default function ProjectDetails() {
 
         {/* Room Manager */}
         <RoomManager open={showRoomManager} onOpenChange={setShowRoomManager} room={editingRoom} roomIndex={editingRoomIndex} project={project} onSave={handleSaveRoom} />
+
+        {/* Room GLB Viewer */}
+        {viewingRoomGlb && (
+          <GlbViewer file={viewingRoomGlb} onClose={() => setViewingRoomGlb(null)} />
+        )}
 
         {/* Photo Lightbox */}
         {lightboxPhoto && (
