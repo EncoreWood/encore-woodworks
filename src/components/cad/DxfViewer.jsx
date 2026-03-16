@@ -217,40 +217,49 @@ function renderDxf(canvas, dxf, visibleLayers, transform) {
   });
 }
 
-function collectPoints(entity, offsetX = 0, offsetY = 0, sx = 1, sy = 1) {
-  const pts = [];
-  if (entity.vertices) pts.push(...entity.vertices.map(v => ({ x: v.x * sx + offsetX, y: v.y * sy + offsetY })));
-  if (entity.startPoint) pts.push({ x: entity.startPoint.x * sx + offsetX, y: entity.startPoint.y * sy + offsetY });
-  if (entity.endPoint) pts.push({ x: entity.endPoint.x * sx + offsetX, y: entity.endPoint.y * sy + offsetY });
-  if (entity.center) {
-    const r = entity.radius || 0;
-    pts.push({ x: entity.center.x * sx + offsetX - r, y: entity.center.y * sy + offsetY - r });
-    pts.push({ x: entity.center.x * sx + offsetX + r, y: entity.center.y * sy + offsetY + r });
-  }
-  if (entity.position && !entity.vertices) pts.push({ x: entity.position.x * sx + offsetX, y: entity.position.y * sy + offsetY });
-  return pts;
+function getRaw3DPoints(entity) {
+  const raw = [];
+  if (entity.vertices) entity.vertices.forEach(v => raw.push({ x: v.x, y: v.y, z: v.z || 0 }));
+  if (entity.startPoint) raw.push({ x: entity.startPoint.x, y: entity.startPoint.y, z: entity.startPoint.z || 0 });
+  if (entity.endPoint) raw.push({ x: entity.endPoint.x, y: entity.endPoint.y, z: entity.endPoint.z || 0 });
+  if (entity.center) raw.push({ x: entity.center.x, y: entity.center.y, z: entity.center.z || 0 });
+  if (entity.position && !entity.vertices) raw.push({ x: entity.position.x, y: entity.position.y, z: entity.position.z || 0 });
+  return raw;
 }
 
 function computeBounds(dxf) {
+  const is3D = (dxf?.entities || []).some(e =>
+    e.type === "3DFACE" ||
+    (e.vertices && e.vertices.some(v => v.z && Math.abs(v.z) > 0.001)) ||
+    (e.startPoint && Math.abs(e.startPoint.z || 0) > 0.001)
+  );
+
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  const addPt = (p) => {
-    if (p?.x != null && isFinite(p.x) && isFinite(p.y)) {
-      minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
-      maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
-    }
+
+  const addRaw = (rx, ry, rz = 0) => {
+    if (!isFinite(rx) || !isFinite(ry)) return;
+    let px, py;
+    if (is3D) {
+      const proj = project3D(rx, ry, rz);
+      px = proj.px; py = proj.py;
+    } else { px = rx; py = ry; }
+    minX = Math.min(minX, px); minY = Math.min(minY, py);
+    maxX = Math.max(maxX, px); maxY = Math.max(maxY, py);
   };
+
   (dxf?.entities || []).forEach(e => {
     if (e.type === "INSERT" && e.position) {
       const block = dxf.blocks?.[e.name];
       const isx = e.xScale ?? 1, isy = e.yScale ?? 1;
       (block?.entities || []).forEach(be => {
-        collectPoints(be, e.position.x, e.position.y, isx, isy).forEach(addPt);
+        getRaw3DPoints(be).forEach(p => addRaw(p.x * isx + e.position.x, p.y * isy + e.position.y, p.z));
       });
-      if (!block?.entities?.length) addPt(e.position);
+      if (!block?.entities?.length) addRaw(e.position.x, e.position.y, e.position.z || 0);
     } else {
-      collectPoints(e).forEach(addPt);
+      getRaw3DPoints(e).forEach(p => addRaw(p.x, p.y, p.z));
     }
   });
+
   if (!isFinite(minX)) return null;
   return { minX, minY, maxX, maxY };
 }
