@@ -55,6 +55,24 @@ export default function FileViewer({ file, className = "" }) {
     );
   }
 
+  if (fileType === 'glb') {
+    return (
+      <div className={className}>
+        {viewingGlb && <GlbViewer file={file} onClose={() => setViewingGlb(false)} />}
+        <button
+          onClick={() => setViewingGlb(true)}
+          className="w-full flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100 hover:border-purple-300 hover:bg-purple-50 transition-all group"
+        >
+          <FileIcon className="w-5 h-5 text-purple-500" />
+          <span className="flex-1 text-sm text-slate-700 group-hover:text-purple-700 truncate text-left">
+            {file.name}
+          </span>
+          <span className="text-xs text-purple-600 font-medium">View 3D</span>
+        </button>
+      </div>
+    );
+  }
+
   if (fileType === 'pdf') {
     return (
       <div className={className}>
