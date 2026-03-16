@@ -1,15 +1,18 @@
 import { useState } from "react";
 import { FileIcon, ExternalLink } from "lucide-react";
 import DxfViewer from "@/components/cad/DxfViewer";
+import GlbViewer from "@/components/cad/GlbViewer";
 
 export default function FileViewer({ file, className = "" }) {
   const [viewingDxf, setViewingDxf] = useState(false);
+  const [viewingGlb, setViewingGlb] = useState(false);
 
   const getFileType = (url, name) => {
     const ext = (name || url).toLowerCase().split('.').pop();
     if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) return 'image';
     if (ext === 'pdf') return 'pdf';
     if (ext === 'dxf') return 'dxf';
+    if (ext === 'glb' || ext === 'gltf') return 'glb';
     return 'other';
   };
 
