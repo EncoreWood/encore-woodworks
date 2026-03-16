@@ -58,6 +58,11 @@ export default function TimeSheet() {
     queryFn: () => base44.entities.Employee.list()
   });
 
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => base44.entities.Project.list()
+  });
+
   const { data: timeEntries = [] } = useQuery({
     queryKey: ["timeEntries"],
     queryFn: () => base44.entities.TimeEntry.list(),
