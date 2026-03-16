@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, FolderOpen, Folder, ChevronRight, ArrowRight, Package } from "lucide-react";
+import { Plus, FolderOpen, Folder, ChevronRight, ArrowRight, Package, Search, X } from "lucide-react";
 import ProductionCard from "./ProductionCard";
 
 // A single room folder within a project
