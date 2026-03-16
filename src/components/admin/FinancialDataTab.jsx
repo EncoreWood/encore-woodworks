@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { Plus, Trash2 } from "lucide-react";
 import { format, startOfYear, endOfYear } from "date-fns";
@@ -19,6 +20,7 @@ export default function FinancialDataTab() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [newEntry, setNewEntry] = useState({ date: format(new Date(), "yyyy-MM-dd"), category: "Expenses", amount: "", notes: "" });
   const [showNewEntry, setShowNewEntry] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -87,6 +89,14 @@ export default function FinancialDataTab() {
 
   return (
     <div className="space-y-6">
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="profits">Profits</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
       {/* Filters */}
       <div className="flex gap-4 flex-wrap">
         <div className="flex gap-2">
@@ -262,10 +272,24 @@ export default function FinancialDataTab() {
               ))}
             </div>
           ) : (
-            <p className="text-slate-500">No manual entries yet</p>
+           <p className="text-slate-500">No manual entries yet</p>
           )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
+          </CardContent>
+          </Card>
+          </TabsContent>
+
+          <TabsContent value="profits" className="space-y-6">
+          <Card>
+           <CardHeader>
+             <CardTitle>Profit Analysis</CardTitle>
+           </CardHeader>
+           <CardContent className="text-center py-12">
+             <p className="text-slate-600 text-lg">Profit tracking coming soon</p>
+             <p className="text-slate-500 mt-2">This section will display profit margins and financial performance once data sources are configured.</p>
+           </CardContent>
+          </Card>
+          </TabsContent>
+          </Tabs>
+          </div>
+          );
+          }
