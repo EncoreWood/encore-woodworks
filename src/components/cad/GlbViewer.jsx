@@ -121,18 +121,6 @@ export default function GlbViewer({ file, onClose }) {
 
   const modeBtn = (m, icon, label) => (
     <button
-      onClick={() => setMode(m)}
-      className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-        mode === m ? "bg-white text-slate-900" : "bg-white/10 text-white/70 hover:bg-white/20"
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-
-  const modeBtn = (m, icon, label) => (
-    <button
       onPointerDown={() => setMode(m)}
       className={`flex flex-col items-center gap-1 px-4 py-3 rounded-xl text-sm font-medium transition-all select-none touch-manipulation ${
         mode === m
