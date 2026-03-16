@@ -43,6 +43,12 @@ export default function Layout({ children, currentPageName }) {
         { name: "Production Dashboard", icon: Users, iconName: "Users", page: "EmployeeDashboard" },
       ]
     },
+    admin: {
+      name: "Admin",
+      items: [
+        { name: "Admin Dashboard", icon: BarChart3, iconName: "BarChart3", page: "Admin" },
+      ]
+    },
     projects: {
       name: "Projects",
       items: [
