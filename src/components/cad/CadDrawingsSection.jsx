@@ -53,6 +53,17 @@ export default function CadDrawingsSection({ project, currentUser, onSave }) {
     onSave({ files: updated });
   };
 
+  const handleTagRoom = (fileIdx, roomName) => {
+    // fileIdx is index within cadFiles, need to find in full files array
+    const cadFilesList = (project.files || []).filter(isCadFile);
+    const targetFile = cadFilesList[fileIdx];
+    const updated = (project.files || []).map(f =>
+      f === targetFile ? { ...f, room_name: roomName === "none" ? null : roomName } : f
+    );
+    onSave({ files: updated });
+    setTaggingIdx(null);
+  };
+
   const getFileIcon = (name) => {
     const ext = (name || "").toLowerCase().split('.').pop();
     if (ext === "glb" || ext === "gltf") return <Box className="w-8 h-8 text-purple-500 flex-shrink-0" />;
