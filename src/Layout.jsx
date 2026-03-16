@@ -1,4 +1,4 @@
-import { Link, useNavigate, Navigate, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square, Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon } from "lucide-react";
 import MobileTabBar from "@/components/MobileTabBar";
@@ -29,6 +29,9 @@ export default function Layout({ children, currentPageName }) {
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
   const [openTimeEntryId, setOpenTimeEntryId] = useState(null);
   const [employees, setEmployees] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [showClockInModal, setShowClockInModal] = useState(false);
+  const [currentProjectName, setCurrentProjectName] = useState(null);
 
   const defaultNavGroups = {
     dashboard: {
