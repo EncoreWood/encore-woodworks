@@ -12,7 +12,11 @@ export default function CadDrawingsSection({ project, currentUser, onSave }) {
   const [viewingFile, setViewingFile] = useState(null);
   const fileInputRef = useRef(null);
 
-  const cadFiles = (project.files || []).filter(f => f.tag === "cad_dxf" || f.tag === "cad_file");
+  const isCadFile = (f) => {
+    const ext = (f.name || "").toLowerCase().split('.').pop();
+    return f.tag === "cad_dxf" || f.tag === "cad_file" || ext === "dxf" || ext === "glb" || ext === "gltf";
+  };
+  const cadFiles = (project.files || []).filter(isCadFile);
 
   const handleUpload = async (e) => {
     const files = Array.from(e.target.files || []);
