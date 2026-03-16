@@ -765,6 +765,56 @@ export default function ProjectDetails() {
           <GlbViewer file={viewingRoomGlb} onClose={() => setViewingRoomGlb(null)} />
         )}
 
+        {/* Room 3D Picker */}
+        {roomGlbPickerIdx !== null && (() => {
+          const cadGlbs = (project.files || []).filter(f => {
+            const ext = (f.name || "").toLowerCase().split('.').pop();
+            return ext === "glb" || ext === "gltf";
+          });
+          return (
+            <Dialog open onOpenChange={() => setRoomGlbPickerIdx(null)}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Attach 3D Model to {project.rooms?.[roomGlbPickerIdx]?.room_name || "Room"}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3">
+                  {cadGlbs.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">From CAD Drawings</p>
+                      <div className="space-y-2">
+                        {cadGlbs.map((f, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              const updatedRooms = [...(project.rooms || [])];
+                              updatedRooms[roomGlbPickerIdx] = { ...updatedRooms[roomGlbPickerIdx], glb_url: f.url, glb_name: f.name };
+                              updateMutation.mutate({ rooms: updatedRooms });
+                              setRoomGlbPickerIdx(null);
+                            }}
+                            className="w-full flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-violet-300 hover:bg-violet-50 transition-all text-left"
+                          >
+                            <Box className="w-5 h-5 text-violet-500 flex-shrink-0" />
+                            <span className="text-sm font-medium text-slate-800 truncate">{f.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className={cadGlbs.length > 0 ? "border-t pt-3" : ""}>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Upload New</p>
+                    <label className="cursor-pointer">
+                      <input type="file" accept=".glb,.gltf" className="hidden" onChange={(e) => { handleRoomGlbUpload(e, roomGlbPickerIdx); setRoomGlbPickerIdx(null); }} />
+                      <span className="flex items-center justify-center gap-2 w-full h-10 rounded-lg border-2 border-dashed border-slate-300 hover:border-violet-400 hover:bg-violet-50 text-sm text-slate-500 hover:text-violet-600 transition-colors">
+                        <Upload className="w-4 h-4" /> Upload .glb / .gltf
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          );
+        })()}
+
         {/* Photo Lightbox */}
         {lightboxPhoto && (
           <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4" onClick={() => setLightboxPhoto(null)}>
