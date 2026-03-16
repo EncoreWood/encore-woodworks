@@ -411,6 +411,27 @@ export default function Layout({ children, currentPageName }) {
 
   const handleClockIn = () => setShowClockInModal(true);
 
+  const handleSwitch = async ({ project_id, project_name, category }) => {
+    // Clock out of current job first
+    if (clockInTime && openTimeEntryId) {
+      const now = new Date();
+      const clockOutStr = format(now, "HH:mm");
+      const clockInStr = format(clockInTime, "HH:mm");
+      const [inH, inM] = clockInStr.split(":").map(Number);
+      const [outH, outM] = clockOutStr.split(":").map(Number);
+      const hours = ((outH * 60 + outM - inH * 60 - inM) / 60).toFixed(2);
+      await base44.entities.TimeEntry.update(openTimeEntryId, {
+        clock_out: clockOutStr,
+        hours_worked: parseFloat(hours)
+      });
+      setClockInTime(null);
+      setElapsedTime("00:00:00");
+      setOpenTimeEntryId(null);
+    }
+    // Clock into new job
+    await doClockIn({ project_id, project_name });
+  };
+
   const handleClockOut = async () => {
     if (!clockInTime || !openTimeEntryId) return;
 
