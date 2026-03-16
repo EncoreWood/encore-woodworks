@@ -2,15 +2,19 @@ import { useState, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Upload, FileCode2, Trash2, Eye, Loader2, Calendar, Box } from "lucide-react";
+import { Upload, FileCode2, Trash2, Eye, Loader2, Calendar, Box, Tag } from "lucide-react";
 import { format } from "date-fns";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DxfViewer from "./DxfViewer";
 import GlbViewer from "./GlbViewer";
 
 export default function CadDrawingsSection({ project, currentUser, onSave }) {
   const [uploading, setUploading] = useState(false);
   const [viewingFile, setViewingFile] = useState(null);
+  const [taggingIdx, setTaggingIdx] = useState(null);
   const fileInputRef = useRef(null);
+
+  const rooms = (project.rooms || []).map(r => r.room_name).filter(Boolean);
 
   const isCadFile = (f) => {
     const ext = (f.name || "").toLowerCase().split('.').pop();
