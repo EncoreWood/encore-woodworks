@@ -173,8 +173,9 @@ export default function DxfViewer({ file, onClose }) {
   // Load & parse DXF
   useEffect(() => {
     setLoading(true); setError(null); setDxf(null);
-    fetch(file.url)
-      .then(r => r.text())
+    fetch(file.url, { headers: { 'Accept': 'text/plain, */*' } })
+      .then(r => r.blob())
+      .then(blob => blob.text())
       .then(text => {
         const parser = new DxfParser();
         const parsed = parser.parseSync(text);
