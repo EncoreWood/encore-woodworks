@@ -135,16 +135,16 @@ export default function GlbViewer({ file, onClose }) {
   );
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col bg-slate-50">
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 shadow-sm">
+    <div className="fixed inset-0 z-[9999] flex flex-col bg-slate-50 overflow-hidden">
+      <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 bg-white border-b border-slate-200 shadow-sm">
         <span className="text-slate-900 font-semibold text-sm truncate max-w-xs">{file.name}</span>
         <span className="text-slate-400 text-xs hidden sm:block">1-finger rotate · 2-finger zoom/pan</span>
         <Button size="sm" variant="ghost" className="text-slate-500 hover:text-slate-900 h-9 w-9 p-0" onClick={onClose}>
           <X className="w-5 h-5" />
         </Button>
       </div>
-      <div className="relative flex-1">
-        <div ref={mountRef} className="w-full h-full" />
+      <div className="relative flex-1 overflow-hidden">
+        <div ref={mountRef} className="absolute inset-0" />
         {/* Floating controls — large touch targets for iPad */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white/90 backdrop-blur-md rounded-2xl px-4 py-3 border border-slate-200 shadow-xl">
           {modeBtn("orbit", <RotateCcw className="w-5 h-5" />, "Orbit")}
