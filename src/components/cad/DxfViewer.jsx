@@ -174,24 +174,39 @@ function renderDxf(canvas, dxf, visibleLayers, transform) {
   });
 }
 
+function collectPoints(entity, offsetX = 0, offsetY = 0, sx = 1, sy = 1) {
+  const pts = [];
+  if (entity.vertices) pts.push(...entity.vertices.map(v => ({ x: v.x * sx + offsetX, y: v.y * sy + offsetY })));
+  if (entity.startPoint) pts.push({ x: entity.startPoint.x * sx + offsetX, y: entity.startPoint.y * sy + offsetY });
+  if (entity.endPoint) pts.push({ x: entity.endPoint.x * sx + offsetX, y: entity.endPoint.y * sy + offsetY });
+  if (entity.center) {
+    const r = entity.radius || 0;
+    pts.push({ x: entity.center.x * sx + offsetX - r, y: entity.center.y * sy + offsetY - r });
+    pts.push({ x: entity.center.x * sx + offsetX + r, y: entity.center.y * sy + offsetY + r });
+  }
+  if (entity.position && !entity.vertices) pts.push({ x: entity.position.x * sx + offsetX, y: entity.position.y * sy + offsetY });
+  return pts;
+}
+
 function computeBounds(dxf) {
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  (dxf?.entities || []).forEach(e => {
-    const pts = [];
-    if (e.vertices) pts.push(...e.vertices);
-    if (e.startPoint) pts.push(e.startPoint);
-    if (e.endPoint) pts.push(e.endPoint);
-    if (e.center) {
-      pts.push({ x: e.center.x - e.radius, y: e.center.y - e.radius });
-      pts.push({ x: e.center.x + e.radius, y: e.center.y + e.radius });
+  const addPt = (p) => {
+    if (p?.x != null && isFinite(p.x) && isFinite(p.y)) {
+      minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
     }
-    if (e.position) pts.push(e.position);
-    pts.forEach(p => {
-      if (p?.x != null && isFinite(p.x) && isFinite(p.y)) {
-        minX = Math.min(minX, p.x); minY = Math.min(minY, p.y);
-        maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y);
-      }
-    });
+  };
+  (dxf?.entities || []).forEach(e => {
+    if (e.type === "INSERT" && e.position) {
+      const block = dxf.blocks?.[e.name];
+      const isx = e.xScale ?? 1, isy = e.yScale ?? 1;
+      (block?.entities || []).forEach(be => {
+        collectPoints(be, e.position.x, e.position.y, isx, isy).forEach(addPt);
+      });
+      if (!block?.entities?.length) addPt(e.position);
+    } else {
+      collectPoints(e).forEach(addPt);
+    }
   });
   if (!isFinite(minX)) return null;
   return { minX, minY, maxX, maxY };
