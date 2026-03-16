@@ -547,12 +547,15 @@ export default function Layout({ children, currentPageName }) {
         });
         return (
           <div className="sm:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-2 px-4 h-12 border-b border-slate-400 shadow-sm" style={{ backgroundColor: "#9ca3af", paddingTop: "env(safe-area-inset-top)" }}>
-            {!isRoot && (
+            {!isRoot ? (
               <button onClick={() => window.history.back()} className="flex items-center text-slate-800 font-medium text-sm">
                 <ChevronLeft className="w-5 h-5" />Back
               </button>
-            )}
-            <span className={`font-semibold text-slate-900 text-base ${!isRoot ? "ml-2" : ""}`}>{displayName}</span>
+            ) : null}
+            <span className={`font-semibold text-slate-900 text-base flex-1 ${!isRoot ? "ml-2" : ""}`}>{displayName}</span>
+            <button onClick={() => setMobileNavOpen(true)} className="p-1 text-slate-800">
+              <Menu className="w-5 h-5" />
+            </button>
           </div>
         );
       })()}
