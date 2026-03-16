@@ -638,6 +638,17 @@ export default function Layout({ children, currentPageName }) {
         </div>
       )}
 
+      {/* Clock In Modal */}
+      <ClockInModal
+        open={showClockInModal}
+        onOpenChange={setShowClockInModal}
+        projects={projects}
+        onConfirm={doClockIn}
+        title="Clock In"
+        confirmLabel="Clock In"
+        confirmClass="bg-green-600 hover:bg-green-700"
+      />
+
       {/* Settings Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
