@@ -805,7 +805,7 @@ export default function ProjectDetails() {
                   <div className={cadGlbs.length > 0 ? "border-t pt-3" : ""}>
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Upload New</p>
                     <label className="cursor-pointer">
-                      <input type="file" accept=".glb,.gltf" className="hidden" onChange={(e) => { handleRoomGlbUpload(e, roomGlbPickerIdx); setRoomGlbPickerIdx(null); }} />
+                      <input type="file" accept=".glb,.gltf" className="hidden" onChange={(e) => { const idx = roomGlbPickerIdx; setRoomGlbPickerIdx(null); handleRoomGlbUpload(e, idx); }} />
                       <span className="flex items-center justify-center gap-2 w-full h-10 rounded-lg border-2 border-dashed border-slate-300 hover:border-violet-400 hover:bg-violet-50 text-sm text-slate-500 hover:text-violet-600 transition-colors">
                         <Upload className="w-4 h-4" /> Upload .glb / .gltf
                       </span>
