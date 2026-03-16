@@ -786,10 +786,12 @@ export default function ProjectDetails() {
                           <button
                             key={i}
                             onClick={() => {
-                              const updatedRooms = [...(project.rooms || [])];
-                              updatedRooms[roomGlbPickerIdx] = { ...updatedRooms[roomGlbPickerIdx], glb_url: f.url, glb_name: f.name };
-                              updateMutation.mutate({ rooms: updatedRooms });
+                              const idx = roomGlbPickerIdx;
                               setRoomGlbPickerIdx(null);
+                              const fresh = queryClient.getQueryData(["project", projectId]);
+                              const updatedRooms = [...((fresh || project).rooms || [])];
+                              updatedRooms[idx] = { ...updatedRooms[idx], glb_url: f.url, glb_name: f.name };
+                              updateMutation.mutate({ rooms: updatedRooms });
                             }}
                             className="w-full flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-violet-300 hover:bg-violet-50 transition-all text-left"
                           >
