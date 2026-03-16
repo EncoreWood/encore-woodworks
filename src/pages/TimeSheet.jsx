@@ -155,7 +155,7 @@ export default function TimeSheet() {
     return ((outMinutes - inMinutes) / 60).toFixed(2);
   };
 
-  const handleClockIn = async () => {
+  const doClockIn = async ({ project_id, project_name }) => {
     if (!selectedEmployee) return;
     const now = new Date();
     const clockInStr = format(now, "HH:mm");
@@ -165,10 +165,32 @@ export default function TimeSheet() {
       date: format(now, "yyyy-MM-dd"),
       clock_in: clockInStr,
       entry_type: "work",
+      project_id: project_id || null,
+      project_name: project_name || null,
       notes: ""
     });
     setOpenTimeEntryId(entry.id);
     setClockInTime(now);
+    setCurrentProjectName(project_name || null);
+    queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
+  };
+
+  const handleClockIn = () => setShowClockInModal(true);
+
+  const handleSwitchProject = async ({ project_id, project_name }) => {
+    // Clock out current entry
+    if (clockInTime && openTimeEntryId) {
+      const now = new Date();
+      const clockOutStr = format(now, "HH:mm");
+      const clockInStr = format(clockInTime, "HH:mm");
+      const hours = calculateHours(clockInStr, clockOutStr);
+      await base44.entities.TimeEntry.update(openTimeEntryId, {
+        clock_out: clockOutStr,
+        hours_worked: parseFloat(hours)
+      });
+    }
+    // Clock into new project
+    await doClockIn({ project_id, project_name });
     queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
   };
 
