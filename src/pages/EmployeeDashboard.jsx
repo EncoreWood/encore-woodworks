@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import usePullToRefresh from "@/components/usePullToRefresh";
@@ -10,12 +10,13 @@ import ProductionStatsPanel from "../components/dashboard/ProductionStatsPanel";
 import WeatherWidget from "../components/dashboard/WeatherWidget";
 import TodayPanel from "../components/dashboard/TodayPanel";
 import ProjectOrdersPanel from "@/components/dashboard/ProjectOrdersPanel";
-import PtsOverviewSection from "@/components/dashboard/PtsOverviewSection";
+import PtsOverviewCard from "@/components/dashboard/PtsOverviewCard";
 import { format, startOfWeek, startOfMonth } from "date-fns";
 
 export default function EmployeeDashboard() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   const MST_TZ = "America/Denver";
   const nowUtc = new Date();
@@ -31,10 +32,19 @@ export default function EmployeeDashboard() {
     queryFn: () => base44.entities.ProductionItem.list("-updated_date", 200)
   });
 
+  const { data: dashboardSettings = [] } = useQuery({
+    queryKey: ["dashboardSettings"],
+    queryFn: () => base44.entities.DashboardSettings.list()
+  });
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Project.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["projects"] }); setShowForm(false); }
   });
+
+  useEffect(() => {
+    base44.auth.me().then(setCurrentUser);
+  }, []);
 
   const handleRefresh = useCallback(async () => {
     await Promise.all([
@@ -88,7 +98,16 @@ export default function EmployeeDashboard() {
         {/* Top Row: Today Panel + PTS Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
           <TodayPanel inProductionProjects={inProductionProjects} />
-          <PtsOverviewSection dayPts={dayPts} weekPts={weekPts} monthPts={monthPts} />
+
+          <PtsOverviewCard
+            dayPts={dayPts}
+            weekPts={weekPts}
+            monthPts={monthPts}
+            productionItems={productionItems}
+            dashboardSettings={dashboardSettings}
+            currentUser={currentUser}
+            onSettingsUpdated={() => queryClient.invalidateQueries({ queryKey: ["dashboardSettings"] })}
+          />
         </div>
 
         {/* Production Stage Breakdown */}

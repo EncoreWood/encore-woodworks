@@ -15,9 +15,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import ProjectForm from "../components/projects/ProjectForm";
 import ProductionStatsPanel from "../components/dashboard/ProductionStatsPanel";
+import PtsOverviewCard from "../components/dashboard/PtsOverviewCard";
 import TodayPanel from "../components/dashboard/TodayPanel";
 import WeatherWidget from "../components/dashboard/WeatherWidget";
-import PtsOverviewSection from "../components/dashboard/PtsOverviewSection";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format, startOfWeek, startOfMonth } from "date-fns";
@@ -200,8 +200,18 @@ export default function Dashboard() {
 
         {/* Top Row: Current Projects + PTS Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+          {/* Today Panel */}
           <TodayPanel inProductionProjects={inProductionProjects} />
-          <PtsOverviewSection dayPts={dayPts} weekPts={weekPts} monthPts={monthPts} />
+
+          <PtsOverviewCard
+            dayPts={dayPts}
+            weekPts={weekPts}
+            monthPts={monthPts}
+            productionItems={productionItems}
+            dashboardSettings={dashboardSettings}
+            currentUser={currentUser}
+            onSettingsUpdated={() => queryClient.invalidateQueries({ queryKey: ["dashboardSettings"] })}
+          />
         </div>
 
         {getSectionVisibility("stats") && (
