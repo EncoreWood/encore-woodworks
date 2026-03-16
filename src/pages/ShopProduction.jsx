@@ -394,17 +394,9 @@ export default function ShopProduction() {
                                                    onEdit={(item) => { setEditingItem(item); setShowForm(true); }}
                                                    onDelete={(id) => deleteMutation.mutate(id)}
                                                    onSendToJobInfo={undefined}
-                                                   onReturnToFolder={(() => {
-                                                     const proj = projects.find(p => p.id === item.project_id);
-                                                     const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
-                                                     return hasRoom ? returnToFolderFromJobInfo : undefined;
-                                                   })()}
+                                                   onReturnToFolder={matchedRoom ? returnToFolderFromJobInfo : undefined}
                                                    roomFolderLabel={item.room_name}
-                                                   onOpenRoomFolder={(() => {
-                                                     const proj = projects.find(p => p.id === item.project_id);
-                                                     const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
-                                                     return hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined;
-                                                   })()}
+                                                   onOpenRoomFolder={matchedRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
                                                  />
                                                  {/* Link row */}
                                                  <div className="mt-1 flex items-center justify-between gap-2">
