@@ -509,20 +509,20 @@ export default function TimeSheet() {
                   <h2 className="text-2xl font-bold text-slate-900">
                     {selectedEmployee.full_name}'s Time Card
                   </h2>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     {clockInTime ? (
-                      <Button
-                        onClick={handleClockOut}
-                        className="bg-red-600 hover:bg-red-700"
-                      >
-                        <Square className="w-4 h-4 mr-2" />
-                        Clock Out ({elapsedTime})
-                      </Button>
+                      <>
+                        <Button onClick={handleClockOut} className="bg-red-600 hover:bg-red-700">
+                          <Square className="w-4 h-4 mr-2" />
+                          Clock Out ({elapsedTime})
+                        </Button>
+                        <Button onClick={() => setShowSwitchModal(true)} variant="outline" className="border-amber-400 text-amber-700 hover:bg-amber-50">
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Switch Project{currentProjectName ? ` · ${currentProjectName}` : ""}
+                        </Button>
+                      </>
                     ) : (
-                      <Button
-                        onClick={handleClockIn}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
+                      <Button onClick={handleClockIn} className="bg-green-600 hover:bg-green-700">
                         <Play className="w-4 h-4 mr-2" />
                         Clock In
                       </Button>
