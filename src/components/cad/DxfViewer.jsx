@@ -111,13 +111,64 @@ function renderDxf(canvas, dxf, visibleLayers, transform) {
         ctx.fillText(entity.text || entity.string || "", p.sx, p.sy);
 
       } else if (entity.type === "INSERT") {
-        // Block inserts — draw a small marker
         const pos = entity.position;
         if (!pos) return;
-        const p = toScreen(pos.x, pos.y);
-        ctx.beginPath();
-        ctx.arc(p.sx, p.sy, 2, 0, Math.PI * 2);
-        ctx.fill();
+        const blockName = entity.name;
+        const block = dxf.blocks?.[blockName];
+        if (block?.entities?.length) {
+          // Draw each entity in the block, offset by insert position
+          const sx = entity.xScale ?? 1;
+          const sy = entity.yScale ?? 1;
+          block.entities.forEach(be => {
+            try {
+              const bColor = getEntityColor(be, layers) || color;
+              ctx.strokeStyle = bColor;
+              ctx.fillStyle = bColor;
+              const tx = (x) => x * sx + pos.x;
+              const ty = (y) => y * sy + pos.y;
+              if (be.type === "LINE") {
+                const s = toScreen(tx(be.vertices[0].x), ty(be.vertices[0].y));
+                const e = toScreen(tx(be.vertices[1].x), ty(be.vertices[1].y));
+                ctx.beginPath(); ctx.moveTo(s.sx, s.sy); ctx.lineTo(e.sx, e.sy); ctx.stroke();
+              } else if (be.type === "LWPOLYLINE" || be.type === "POLYLINE") {
+                const verts = be.vertices;
+                if (!verts?.length) return;
+                ctx.beginPath();
+                const s0 = toScreen(tx(verts[0].x), ty(verts[0].y));
+                ctx.moveTo(s0.sx, s0.sy);
+                for (let i = 1; i < verts.length; i++) {
+                  const sv = toScreen(tx(verts[i].x), ty(verts[i].y));
+                  ctx.lineTo(sv.sx, sv.sy);
+                }
+                if (be.shape) ctx.closePath();
+                ctx.stroke();
+              } else if (be.type === "CIRCLE") {
+                const c = toScreen(tx(be.center.x), ty(be.center.y));
+                ctx.beginPath();
+                ctx.arc(c.sx, c.sy, be.radius * scale * sx, 0, Math.PI * 2);
+                ctx.stroke();
+              } else if (be.type === "ARC") {
+                const c = toScreen(tx(be.center.x), ty(be.center.y));
+                ctx.beginPath();
+                ctx.arc(c.sx, c.sy, be.radius * scale * sx, -be.endAngle * Math.PI / 180, -be.startAngle * Math.PI / 180);
+                ctx.stroke();
+              } else if (be.type === "TEXT" || be.type === "MTEXT") {
+                const bpos = be.startPoint || be.position || be.insertionPoint;
+                if (!bpos) return;
+                const p2 = toScreen(tx(bpos.x), ty(bpos.y));
+                const fontSize = Math.max(8, (be.textHeight || 2.5) * scale);
+                ctx.font = `${fontSize}px sans-serif`;
+                ctx.fillText(be.text || be.string || "", p2.sx, p2.sy);
+              }
+            } catch (_) {}
+          });
+        } else {
+          // fallback dot
+          const p = toScreen(pos.x, pos.y);
+          ctx.beginPath();
+          ctx.arc(p.sx, p.sy, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     } catch (_) {}
   });
