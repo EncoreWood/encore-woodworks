@@ -23,6 +23,19 @@ function getEntityColor(entity, layers) {
   return aciToHex(color);
 }
 
+// Simple isometric projection for 3D DXF files
+// Projects (x,y,z) -> (px, py) using a top-down isometric view
+const ISO_ANGLE = 30 * Math.PI / 180;
+const COS_ISO = Math.cos(ISO_ANGLE);
+const SIN_ISO = Math.sin(ISO_ANGLE);
+
+function project3D(x, y, z) {
+  // Standard isometric: x goes right-down, y goes left-down, z goes up
+  const px = (x - y) * COS_ISO;
+  const py = (x + y) * SIN_ISO - z;
+  return { px, py };
+}
+
 function renderDxf(canvas, dxf, visibleLayers, transform) {
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -34,10 +47,20 @@ function renderDxf(canvas, dxf, visibleLayers, transform) {
   const { offsetX, offsetY, scale } = transform;
   const layers = dxf.tables?.layer?.layers || {};
 
-  const toScreen = (x, y) => ({
-    sx: x * scale + offsetX,
-    sy: canvas.height - (y * scale + offsetY),
-  });
+  // Check if this is a 3D file by sampling entities
+  const is3D = (dxf.entities || []).some(e =>
+    e.type === "3DFACE" ||
+    (e.vertices && e.vertices.some(v => v.z && Math.abs(v.z) > 0.001)) ||
+    (e.startPoint && Math.abs(e.startPoint.z || 0) > 0.001)
+  );
+
+  const toScreen = (x, y, z = 0) => {
+    if (is3D) {
+      const { px, py } = project3D(x, y, z);
+      return { sx: px * scale + offsetX, sy: py * scale + offsetY };
+    }
+    return { sx: x * scale + offsetX, sy: canvas.height - (y * scale + offsetY) };
+  };
 
   ctx.lineWidth = Math.max(1, 1.5 / scale);
 
