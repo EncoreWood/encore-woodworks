@@ -40,7 +40,7 @@ export default function Layout({ children, currentPageName }) {
       name: "Dashboard",
       items: [
         { name: "Dashboard", icon: LayoutDashboard, iconName: "LayoutDashboard", page: "Dashboard" },
-        { name: "Employee Dashboard", icon: Users, iconName: "Users", page: "EmployeeDashboard" },
+        { name: "Production Dashboard", icon: Users, iconName: "Users", page: "EmployeeDashboard" },
       ]
     },
     projects: {
