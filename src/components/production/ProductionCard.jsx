@@ -136,6 +136,15 @@ export default function ProductionCard({
                   <Link2 className="w-3 h-3" />
                 </button>
               )}
+              {roomGlbUrl && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowGlb(true); }}
+                  className="flex items-center gap-0.5 text-indigo-600 hover:text-indigo-800 flex-shrink-0"
+                  title="View 3D model"
+                >
+                  <Box className="w-3 h-3" />
+                </button>
+              )}
               {item.project_id && onPickup && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onPickup(item); }}
