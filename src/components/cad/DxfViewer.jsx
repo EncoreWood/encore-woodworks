@@ -170,9 +170,24 @@ function renderDxf(canvas, dxf, visibleLayers, transform) {
               const tx = (x) => x * sx + pos.x;
               const ty = (y) => y * sy + pos.y;
               if (be.type === "LINE") {
-                const s = toScreen(tx(be.vertices[0].x), ty(be.vertices[0].y));
-                const e = toScreen(tx(be.vertices[1].x), ty(be.vertices[1].y));
+                const bv0 = be.vertices?.[0] || be.startPoint;
+                const bv1 = be.vertices?.[1] || be.endPoint;
+                if (!bv0 || !bv1) return;
+                const s = toScreen(tx(bv0.x), ty(bv0.y), bv0.z || 0);
+                const e = toScreen(tx(bv1.x), ty(bv1.y), bv1.z || 0);
                 ctx.beginPath(); ctx.moveTo(s.sx, s.sy); ctx.lineTo(e.sx, e.sy); ctx.stroke();
+              } else if (be.type === "3DFACE") {
+                const bv = be.vertices;
+                if (!bv?.length) return;
+                ctx.beginPath();
+                const bp0 = toScreen(tx(bv[0].x), ty(bv[0].y), bv[0].z || 0);
+                ctx.moveTo(bp0.sx, bp0.sy);
+                for (let i = 1; i < bv.length; i++) {
+                  const bp = toScreen(tx(bv[i].x), ty(bv[i].y), bv[i].z || 0);
+                  ctx.lineTo(bp.sx, bp.sy);
+                }
+                ctx.closePath();
+                ctx.globalAlpha = 0.15; ctx.fill(); ctx.globalAlpha = 1.0; ctx.stroke();
               } else if (be.type === "LWPOLYLINE" || be.type === "POLYLINE") {
                 const verts = be.vertices;
                 if (!verts?.length) return;
