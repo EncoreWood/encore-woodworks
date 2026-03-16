@@ -9,38 +9,49 @@ import { Loader2, Upload, X, User, FileText, Trash2 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { base44 } from "@/api/base44Client";
 
-const PAGE_PERMISSIONS = [
-  { group: "Dashboard", pages: [
-    { key: "Dashboard", label: "Dashboard" },
-  ]},
-  { group: "Projects", pages: [
-    { key: "Kanban", label: "Projects Board" },
-    { key: "Invoicing", label: "Invoicing" },
-    { key: "ContactsBoard", label: "Contacts Board" },
-    { key: "Presentations", label: "Presentations" },
-    { key: "OrdersBoard", label: "Project Orders" },
-    { key: "PickupList", label: "Pick Up List" },
-    { key: "PlanBidding", label: "Project Estimates" },
-  ]},
-  { group: "Operations", pages: [
-    { key: "Calendar", label: "Calendar" },
-    { key: "ShopProduction", label: "Production" },
-    { key: "Tools", label: "Tools" },
-    { key: "Inventory", label: "Inventory" },
-    { key: "PurchaseOrders", label: "Purchase Orders" },
-    { key: "Suppliers", label: "Suppliers" },
-    { key: "EncoreDocs", label: "Encore Docs" },
-    { key: "SOPBoard", label: "SOPs" },
-    { key: "Notepad", label: "Notepad" },
-  ]},
-  { group: "Team", pages: [
-    { key: "MorningMeeting", label: "Morning Meeting" },
-    { key: "Team", label: "Team" },
-    { key: "TimeSheet", label: "Time Sheet" },
-    { key: "ChatBoard", label: "Chat" },
-    { key: "Forms", label: "Forms" },
-  ]},
-];
+function getPagePermissionsFromNav() {
+  try {
+    const saved = localStorage.getItem('navGroups');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return Object.entries(parsed).map(([, group]) => ({
+        group: group.name,
+        pages: (group.items || []).map(item => ({ key: item.page, label: item.name }))
+      })).filter(g => g.pages.length > 0);
+    }
+  } catch (e) {}
+  // fallback
+  return [
+    { group: "Dashboard", pages: [{ key: "Dashboard", label: "Dashboard" }] },
+    { group: "Projects", pages: [
+      { key: "Kanban", label: "Projects Board" },
+      { key: "Invoicing", label: "Invoicing" },
+      { key: "ContactsBoard", label: "Contacts Board" },
+      { key: "Presentations", label: "Presentations" },
+      { key: "OrdersBoard", label: "Project Orders" },
+      { key: "PickupList", label: "Pick Up List" },
+      { key: "PlanBidding", label: "Project Estimates" },
+    ]},
+    { group: "Operations", pages: [
+      { key: "Calendar", label: "Calendar" },
+      { key: "ShopProduction", label: "Production" },
+      { key: "Tools", label: "Tools" },
+      { key: "Inventory", label: "Inventory" },
+      { key: "PurchaseOrders", label: "Purchase Orders" },
+      { key: "Suppliers", label: "Suppliers" },
+      { key: "EncoreDocs", label: "Encore Docs" },
+      { key: "SOPBoard", label: "SOPs" },
+      { key: "Notepad", label: "Notepad" },
+    ]},
+    { group: "Team", pages: [
+      { key: "MorningMeeting", label: "Morning Meeting" },
+      { key: "Team", label: "Team" },
+      { key: "TimeSheet", label: "Time Sheet" },
+      { key: "ChatBoard", label: "Chat" },
+      { key: "Forms", label: "Forms" },
+    ]},
+  ];
+}
 
 export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading }) {
   const [formData, setFormData] = useState({
