@@ -342,6 +342,8 @@ export default function Layout({ children, currentPageName }) {
       setCurrentUser(user);
       const emps = await base44.entities.Employee.list();
       setEmployees(emps);
+      const projs = await base44.entities.Project.list();
+      setProjects(projs);
 
       // If non-admin, find employee record and load their allowed_pages strictly
       if (user?.role !== "admin") {
