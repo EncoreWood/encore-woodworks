@@ -46,6 +46,7 @@ export default function GlbViewer({ file, onClose }) {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
+    controlsRef.current = controls;
 
     // Load GLB
     const loader = new GLTFLoader();
