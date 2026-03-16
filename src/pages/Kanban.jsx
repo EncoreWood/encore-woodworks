@@ -98,7 +98,10 @@ export default function Kanban() {
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
-    queryFn: () => base44.entities.Project.list("-created_date")
+    queryFn: async () => {
+      const response = await base44.functions.invoke('getAllProjects', {});
+      return response.data.projects;
+    }
   });
 
   const { data: chatRooms = [] } = useQuery({
