@@ -18,7 +18,7 @@ function getEntityColor(entity, layers) {
     const layer = layers[entity.layer];
     color = layer?.color;
   }
-  if (!color || color === 256) return "#00d4ff";
+  if (!color || color === 256) return "#e0e0e0";
   if (typeof color === "string" && color.startsWith("#")) return color;
   return aciToHex(color);
 }
