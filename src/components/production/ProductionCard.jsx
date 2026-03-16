@@ -54,9 +54,12 @@ export default function ProductionCard({
   onReturnToJobInfo,     // called to move a production card back → Job Info (is_job_info=true)
   roomFolderLabel,       // label for the room folder link on a production card
   onOpenRoomFolder,      // called to open the matching room folder in Job Packets tab
+  roomGlbUrl,            // GLB url from the matched room on the project
+  roomGlbName,           // GLB file name
 }) {
   const [hoveredPdfUrl, setHoveredPdfUrl] = useState(null);
   const [hoveredAnchorEl, setHoveredAnchorEl] = useState(null);
+  const [showGlb, setShowGlb] = useState(false);
 
   const color = getProjectColor ? getProjectColor(item.project_id) : null;
   const cardStyle = color
