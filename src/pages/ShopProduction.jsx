@@ -17,6 +17,7 @@ import ProductionCard from "../components/production/ProductionCard";
 import JobPacketsTab from "../components/production/JobPacketsTab";
 
 const productionColumns = [
+  { id: "cut", label: "Cut", color: "bg-orange-50" },
   { id: "face_frame", label: "Face Frame", color: "bg-blue-50" },
   { id: "spray", label: "Spray", color: "bg-purple-50" },
   { id: "build", label: "Build", color: "bg-amber-50" },
