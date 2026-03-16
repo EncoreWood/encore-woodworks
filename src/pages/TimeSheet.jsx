@@ -7,9 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, Plus, Trash2, CheckCircle2, Play, Square, Settings, Circle, Calendar } from "lucide-react";
+import { Clock, Plus, Trash2, CheckCircle2, Play, Square, Settings, Circle, Calendar, RefreshCw } from "lucide-react";
 import { format, addDays, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import VacationRequestForm from "../components/team/VacationRequestForm";
+import ClockInModal from "../components/timesheet/ClockInModal";
+import TimeDataTab from "../components/timesheet/TimeDataTab";
 
 export default function TimeSheet() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -26,6 +28,9 @@ export default function TimeSheet() {
   const [clockInTime, setClockInTime] = useState(null);
   const [elapsedTime, setElapsedTime] = useState("00:00:00");
   const [openTimeEntryId, setOpenTimeEntryId] = useState(null);
+  const [showClockInModal, setShowClockInModal] = useState(false);
+  const [showSwitchModal, setShowSwitchModal] = useState(false);
+  const [currentProjectName, setCurrentProjectName] = useState(null);
   const [settingsData, setSettingsData] = useState({
     hours_per_year: 160,
     accrual_rate: 0.0192,
