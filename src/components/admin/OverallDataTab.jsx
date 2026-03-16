@@ -29,6 +29,11 @@ export default function OverallDataTab() {
     queryFn: () => base44.entities.EmployeeReview.list(),
   });
 
+  const { data: questions = [] } = useQuery({
+    queryKey: ["reviewQuestions"],
+    queryFn: () => base44.entities.ReviewQuestion.list().then(qs => qs.filter(q => q.is_active)),
+  });
+
   const selectedEmployeeObj = employees.find(e => e.id === selectedEmployee);
   if (!selectedEmployeeObj && selectedEmployee) return null;
 
@@ -174,48 +179,67 @@ export default function OverallDataTab() {
         </CardContent>
       </Card>
 
-      {/* Review scores */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Review Comparison */}
+      {selfReviews.length > 0 || managerReviews.length > 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Self-Reviews</CardTitle>
+            <CardTitle>Review Comparison</CardTitle>
           </CardHeader>
-          <CardContent>
-            {selfReviews.length > 0 ? (
-              <div className="space-y-3">
-                {selfReviews.map(r => (
-                  <div key={r.id} className="p-3 border border-slate-200 rounded-lg">
-                    <p className="text-sm text-slate-600">{r.review_period} {r.year}</p>
-                    <p className="font-medium text-slate-900">{r.is_submitted ? "✓ Submitted" : "Draft"}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-slate-500">No self-reviews yet</p>
-            )}
-          </CardContent>
-        </Card>
+          <CardContent className="space-y-6">
+            {selfReviews.map(selfReview => {
+              const correspondingManager = managerReviews.find(
+                m => m.review_period === selfReview.review_period && m.year === selfReview.year
+              );
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Manager Reviews</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {managerReviews.length > 0 ? (
-              <div className="space-y-3">
-                {managerReviews.map(r => (
-                  <div key={r.id} className="p-3 border border-slate-200 rounded-lg">
-                    <p className="text-sm text-slate-600">{r.review_period} {r.year}</p>
-                    <p className="font-medium text-slate-900">{r.is_submitted ? "✓ Submitted" : "Draft"}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-slate-500">No manager reviews yet</p>
-            )}
+              return (
+                <div key={selfReview.id} className="border-t border-slate-200 pt-6 first:border-t-0 first:pt-0">
+                  <p className="font-medium text-slate-900 mb-4">{selfReview.review_period} {selfReview.year}</p>
+                  
+                  {questions.length > 0 ? (
+                    <div className="space-y-3">
+                      {questions.map(q => {
+                        const selfAnswer = selfReview.answers?.[q.id];
+                        const managerAnswer = correspondingManager?.answers?.[q.id];
+                        const isNumeric = ["Rating 1-5", "Rating 1-10"].includes(q.question_type);
+                        const hasGap = isNumeric && selfAnswer && managerAnswer && Math.abs(Number(selfAnswer) - Number(managerAnswer)) > 2;
+
+                        if (!selfAnswer && !managerAnswer) return null;
+
+                        return (
+                          <div key={q.id} className={`p-3 border rounded-lg ${hasGap ? "bg-amber-50 border-amber-200" : "bg-slate-50 border-slate-200"}`}>
+                            <p className="text-sm font-medium text-slate-900 mb-2">{q.question_text}</p>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-xs text-slate-600 mb-1">Employee</p>
+                                <p className="font-semibold text-slate-900">{selfAnswer || "—"}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-600 mb-1">Manager</p>
+                                <p className="font-semibold text-slate-900">{managerAnswer || "—"}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-slate-500 text-sm">No questions available</p>
+                  )}
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
-      </div>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Review Comparison</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-slate-500">No reviews yet</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Projects list */}
       <Card>
