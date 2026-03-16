@@ -74,9 +74,29 @@ function renderDxf(canvas, dxf, visibleLayers, transform) {
 
     try {
       if (entity.type === "LINE") {
-        const s = toScreen(entity.vertices[0].x, entity.vertices[0].y);
-        const e = toScreen(entity.vertices[1].x, entity.vertices[1].y);
+        const v0 = entity.vertices?.[0] || entity.startPoint;
+        const v1 = entity.vertices?.[1] || entity.endPoint;
+        if (!v0 || !v1) return;
+        const s = toScreen(v0.x, v0.y, v0.z || 0);
+        const e = toScreen(v1.x, v1.y, v1.z || 0);
         ctx.beginPath(); ctx.moveTo(s.sx, s.sy); ctx.lineTo(e.sx, e.sy); ctx.stroke();
+
+      } else if (entity.type === "3DFACE") {
+        // SketchUp triangulated faces
+        const verts = entity.vertices;
+        if (!verts?.length) return;
+        ctx.beginPath();
+        const p0 = toScreen(verts[0].x, verts[0].y, verts[0].z || 0);
+        ctx.moveTo(p0.sx, p0.sy);
+        for (let i = 1; i < verts.length; i++) {
+          const p = toScreen(verts[i].x, verts[i].y, verts[i].z || 0);
+          ctx.lineTo(p.sx, p.sy);
+        }
+        ctx.closePath();
+        ctx.globalAlpha = 0.15;
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+        ctx.stroke();
 
       } else if (entity.type === "LWPOLYLINE" || entity.type === "POLYLINE") {
         const verts = entity.vertices;
