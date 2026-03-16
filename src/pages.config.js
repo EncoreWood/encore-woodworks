@@ -104,6 +104,7 @@ export const PAGES = {
     "TimeSheet": TimeSheet,
     "Tools": Tools,
     "Presentations": Presentations,
+    "EmployeeDashboard": EmployeeDashboard,
 }
 
 export const pagesConfig = {
