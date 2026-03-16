@@ -357,6 +357,7 @@ export default function Layout({ children, currentPageName }) {
           const openEntry = entries.find(e => e.date === todayStr && e.clock_in && !e.clock_out);
           if (openEntry) {
             setOpenTimeEntryId(openEntry.id);
+            setCurrentProjectName(openEntry.project_name || null);
             // Reconstruct clockInTime from stored clock_in string
             const [h, m] = openEntry.clock_in.split(":").map(Number);
             const reconstructed = new Date();
