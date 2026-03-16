@@ -1,12 +1,14 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { X, Maximize2 } from "lucide-react";
+import { X, RotateCcw, Move, ZoomIn } from "lucide-react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
 export default function GlbViewer({ file, onClose }) {
   const mountRef = useRef(null);
+  const controlsRef = useRef(null);
+  const [mode, setMode] = useState("orbit"); // orbit | pan | zoom
 
   useEffect(() => {
     const container = mountRef.current;
