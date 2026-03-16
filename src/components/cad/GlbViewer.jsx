@@ -100,18 +100,59 @@ export default function GlbViewer({ file, onClose }) {
     };
   }, [file.url]);
 
+  // Apply mode to controls
+  useEffect(() => {
+    const c = controlsRef.current;
+    if (!c) return;
+    if (mode === "orbit") {
+      c.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+      c.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+    } else if (mode === "pan") {
+      c.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+      c.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN };
+    } else if (mode === "zoom") {
+      c.mouseButtons = { LEFT: THREE.MOUSE.DOLLY, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+      c.touches = { ONE: THREE.TOUCH.DOLLY_PAN, TWO: THREE.TOUCH.DOLLY_PAN };
+    }
+  }, [mode]);
+
+  const modeBtn = (m, icon, label) => (
+    <button
+      onClick={() => setMode(m)}
+      className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+        mode === m ? "bg-white text-slate-900" : "bg-white/10 text-white/70 hover:bg-white/20"
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col bg-[#1a1a2e]">
       <div className="flex items-center justify-between px-4 py-2.5 bg-[#0f0f1a]/90 backdrop-blur border-b border-white/10">
         <span className="text-white font-semibold text-sm truncate max-w-xs">{file.name}</span>
-        <div className="flex items-center gap-2">
-          <span className="text-white/40 text-xs">Drag to rotate · Scroll to zoom · Right-click to pan</span>
-          <Button size="sm" variant="ghost" className="text-white/70 hover:text-white h-8 w-8 p-0" onClick={onClose}>
+        <Button size="sm" variant="ghost" className="text-white/70 hover:text-white h-8 w-8 p-0" onClick={onClose}>
+          <X className="w-4 h-4" />
+        </Button>
+      </div>
+      <div className="relative flex-1">
+        <div ref={mountRef} className="w-full h-full" />
+        {/* Floating controls */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-md rounded-xl px-3 py-2 border border-white/10 shadow-xl">
+          {modeBtn("orbit", <RotateCcw className="w-4 h-4" />, "Orbit")}
+          {modeBtn("pan", <Move className="w-4 h-4" />, "Pan")}
+          {modeBtn("zoom", <ZoomIn className="w-4 h-4" />, "Zoom")}
+          <div className="w-px h-10 bg-white/20 mx-1" />
+          <button
+            onClick={onClose}
+            className="flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium bg-red-500/20 text-red-300 hover:bg-red-500/40 transition-all"
+          >
             <X className="w-4 h-4" />
-          </Button>
+            Exit
+          </button>
         </div>
       </div>
-      <div ref={mountRef} className="flex-1" />
     </div>
   );
 }
