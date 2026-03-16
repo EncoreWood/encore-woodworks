@@ -73,6 +73,7 @@ import Team from './pages/Team';
 import TimeSheet from './pages/TimeSheet';
 import Tools from './pages/Tools';
 import Presentations from './pages/Presentations';
+import EmployeeDashboard from './pages/EmployeeDashboard';
 import __Layout from './Layout.jsx';
 
 
