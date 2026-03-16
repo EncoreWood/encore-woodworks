@@ -185,7 +185,8 @@ export default function ProjectDetails() {
     if (!file) return;
     setUploadingRoomGlbIdx(roomIdx);
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    const updatedRooms = [...(project.rooms || [])];
+    const fresh = queryClient.getQueryData(["project", projectId]);
+    const updatedRooms = [...((fresh || project).rooms || [])];
     updatedRooms[roomIdx] = { ...updatedRooms[roomIdx], glb_url: file_url, glb_name: file.name };
     updateMutation.mutate({ rooms: updatedRooms });
     setUploadingRoomGlbIdx(null);
