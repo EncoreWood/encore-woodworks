@@ -33,12 +33,19 @@ export default function ManagerReviewSubTab() {
       if (!selectedEmployee) return null;
       const emp = employees.find(e => e.id === selectedEmployee);
       if (!emp) return null;
-      const reviews = await base44.entities.EmployeeReview.filter({
-        employee_email: emp.email,
-        review_type: "manager",
-      });
-      const year = new Date().getFullYear();
-      return reviews.find(r => r.review_period === reviewPeriod && r.year === year);
+      try {
+        const reviews = await base44.entities.EmployeeReview.list();
+        const year = new Date().getFullYear();
+        return reviews.find(r => 
+          r.employee_email === emp.email && 
+          r.review_type === "manager" && 
+          r.review_period === reviewPeriod && 
+          r.year === year
+        );
+      } catch (e) {
+        console.error("Error fetching manager review:", e);
+        return null;
+      }
     },
     enabled: !!selectedEmployee,
   });
@@ -49,12 +56,19 @@ export default function ManagerReviewSubTab() {
       if (!selectedEmployee) return null;
       const emp = employees.find(e => e.id === selectedEmployee);
       if (!emp) return null;
-      const reviews = await base44.entities.EmployeeReview.filter({
-        employee_email: emp.email,
-        review_type: "self",
-      });
-      const year = new Date().getFullYear();
-      return reviews.find(r => r.review_period === reviewPeriod && r.year === year);
+      try {
+        const reviews = await base44.entities.EmployeeReview.list();
+        const year = new Date().getFullYear();
+        return reviews.find(r => 
+          r.employee_email === emp.email && 
+          r.review_type === "self" && 
+          r.review_period === reviewPeriod && 
+          r.year === year
+        );
+      } catch (e) {
+        console.error("Error fetching self review:", e);
+        return null;
+      }
     },
     enabled: !!selectedEmployee,
   });

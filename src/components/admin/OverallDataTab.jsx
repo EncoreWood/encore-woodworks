@@ -81,8 +81,8 @@ export default function OverallDataTab() {
     return managers.includes(selectedEmployee);
   });
 
-  // Reviews
-  const empReviews = reviews.filter(r => r.employee_id === selectedEmployee);
+  // Reviews - match by email
+  const empReviews = reviews.filter(r => r.employee_email === selectedEmployeeObj?.email);
   const selfReviews = empReviews.filter(r => r.review_type === "self");
   const managerReviews = empReviews.filter(r => r.review_type === "manager");
 
