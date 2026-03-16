@@ -490,14 +490,29 @@ export default function ProjectDetails() {
                             <div className="flex items-center gap-2">
                               {room.cabinet_count && <Badge variant="outline" className="text-xs">{room.cabinet_count} cabinets</Badge>}
                               {room.glb_url ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={(e) => { e.stopPropagation(); setViewingRoomGlb({ url: room.glb_url, name: room.glb_name || room.room_name }); }}
-                                  className="h-7 text-xs text-violet-600 border-violet-200 hover:bg-violet-50 gap-1"
-                                >
-                                  <Box className="w-3 h-3" /> 3D View
-                                </Button>
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(e) => { e.stopPropagation(); setViewingRoomGlb({ url: room.glb_url, name: room.glb_name || room.room_name }); }}
+                                    className="h-7 text-xs text-violet-600 border-violet-200 hover:bg-violet-50 gap-1"
+                                  >
+                                    <Box className="w-3 h-3" /> 3D View
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const updatedRooms = [...project.rooms];
+                                      updatedRooms[idx] = { ...room, glb_url: "", glb_name: "" };
+                                      updateMutation.mutate({ rooms: updatedRooms });
+                                    }}
+                                    className="h-7 text-xs text-red-600 border-red-200 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </>
                               ) : (
                                 <Button
                                   size="sm"
