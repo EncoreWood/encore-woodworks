@@ -498,13 +498,15 @@ export default function ProjectDetails() {
                                   <Box className="w-3 h-3" /> 3D View
                                 </Button>
                               ) : (
-                                <label onClick={(e) => e.stopPropagation()} className="cursor-pointer">
-                                  <input type="file" accept=".glb,.gltf" className="hidden" onChange={(e) => handleRoomGlbUpload(e, idx)} />
-                                  <span className={`inline-flex items-center gap-1 h-7 px-2 rounded-md border text-xs font-medium transition-colors ${uploadingRoomGlbIdx === idx ? "text-slate-400 border-slate-200" : "text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-violet-600 hover:border-violet-200"}`}>
-                                    {uploadingRoomGlbIdx === idx ? <Loader2 className="w-3 h-3 animate-spin" /> : <Box className="w-3 h-3" />}
-                                    {uploadingRoomGlbIdx === idx ? "…" : "3D"}
-                                  </span>
-                                </label>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={(e) => { e.stopPropagation(); setRoomGlbPickerIdx(idx); }}
+                                  className="h-7 text-xs text-slate-500 border-slate-200 hover:text-violet-600 hover:border-violet-200 gap-1"
+                                >
+                                  {uploadingRoomGlbIdx === idx ? <Loader2 className="w-3 h-3 animate-spin" /> : <Box className="w-3 h-3" />}
+                                  3D
+                                </Button>
                               )}
                               <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDeleteRoom(idx); }} className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50">
                                 <Trash2 className="w-3 h-3" />
