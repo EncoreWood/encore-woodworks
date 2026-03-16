@@ -108,6 +108,7 @@ export default function ProjectDetails() {
   const [showPhotos, setShowPhotos] = useState(false);
   const [viewingRoomGlb, setViewingRoomGlb] = useState(null); // { url, name }
   const [uploadingRoomGlbIdx, setUploadingRoomGlbIdx] = useState(null);
+  const [roomGlbPickerIdx, setRoomGlbPickerIdx] = useState(null);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
 
