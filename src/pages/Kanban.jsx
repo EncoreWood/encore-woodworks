@@ -96,19 +96,16 @@ export default function Kanban() {
 
   const projectRefs = useRef({});
 
-  const { data: projects = [], isLoading, refetch } = useQuery({
+  const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
-      const response = await base44.functions.invoke('getAllProjects', {});
-      return response.data.projects;
+      const response = await fetch('/api/getAllProjects');
+      if (!response.ok) throw new Error('Failed to fetch projects');
+      return response.json();
     },
     staleTime: 0,
     gcTime: 0
   });
-
-  useEffect(() => {
-    refetch();
-  }, [refetch]);
 
   const { data: chatRooms = [] } = useQuery({
     queryKey: ["chatRooms"],
