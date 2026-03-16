@@ -577,6 +577,53 @@ export default function Layout({ children, currentPageName }) {
       {/* Mobile Tab Bar */}
       <MobileTabBar currentPageName={currentPageName} />
 
+      {/* Mobile Nav Drawer */}
+      {mobileNavOpen && (
+        <div className="sm:hidden fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileNavOpen(false)} />
+          <div className="relative ml-auto w-72 h-full flex flex-col shadow-2xl overflow-y-auto" style={{ backgroundColor: "#9ca3af" }}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-400">
+              <span className="font-bold text-slate-900 text-base">Menu</span>
+              <button onClick={() => setMobileNavOpen(false)} className="p-1 text-slate-800"><XIcon className="w-5 h-5" /></button>
+            </div>
+            <nav className="p-4 space-y-4 flex-1">
+              {Object.entries(navGroups).map(([groupKey, group]) => {
+                const visibleItems = currentUser?.role === "admin"
+                  ? group.items
+                  : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page));
+                if (visibleItems.length === 0) return null;
+                return (
+                  <div key={groupKey}>
+                    <p className="text-xs font-bold text-slate-600 uppercase px-2 mb-1">{group.name}</p>
+                    <div className="space-y-1">
+                      {visibleItems.map((item) => (
+                        <Link
+                          key={item.page}
+                          to={createPageUrl(item.page)}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                            currentPageName === item.page ? "text-white shadow-md" : "text-slate-800"
+                          )}
+                          style={currentPageName === item.page ? { backgroundColor: "#8a7560" } : undefined}
+                        >
+                          <item.icon className="w-4 h-4 flex-shrink-0" />
+                          <span>{item.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </nav>
+            <div className="p-4 border-t border-slate-400 space-y-2">
+              <Link to={createPageUrl("AccountSettings")} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-800 text-sm font-medium">
+                <UserCircle className="w-4 h-4" /> Account
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Settings Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
