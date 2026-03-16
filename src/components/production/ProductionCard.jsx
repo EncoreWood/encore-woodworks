@@ -111,7 +111,7 @@ export default function ProductionCard({
                 </button>
               )}
               {/* Send to Job Info */}
-              {onSendToJobInfo && !item.is_job_info && (
+              {onSendToJobInfo && !item.is_job_info && item.type === "misc" && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onSendToJobInfo(item); }}
                   className="flex items-center gap-0.5 text-purple-500 hover:text-purple-700 flex-shrink-0"
