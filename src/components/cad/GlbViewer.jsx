@@ -214,7 +214,7 @@ function GlbViewerInner({ file, onClose }) {
         <div
           style={{
             position: "absolute",
-            bottom: 32,
+            bottom: isIPad ? 280 : 32,
             left: "50%",
             transform: "translateX(-50%)",
             display: "flex",
@@ -241,6 +241,9 @@ function GlbViewerInner({ file, onClose }) {
             Exit
           </button>
         </div>
+
+        {/* Visibility Panel */}
+        {sceneRef.current && <VisibilityPanel scene={sceneRef.current} isIPad={isIPad} />}
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
