@@ -11,24 +11,21 @@ export function detectGeometryType(mesh) {
   const dimensions = [width, height, depth].sort((a, b) => a - b);
   const [smallest, medium, largest] = dimensions;
   
-  // Threshold for "flat" geometry
-  const flatThreshold = 0.1;
+  // Very conservative detection - only very clear geometry
+  const flatThreshold = 0.05; // Even flatter
   const flatRatio = smallest / largest;
   
-  // Check if it's a very flat plane
+  // Check if it's an extremely flat plane
   if (flatRatio < flatThreshold) {
-    // Determine orientation
-    if (Math.abs(height - smallest) < 0.01) {
-      // Very flat in Y direction
-      if (height < medium * 0.5) {
-        // At bottom
-        return "Floor";
-      } else {
-        // At top
-        return "Ceiling";
-      }
-    } else if (Math.abs(width - smallest) < 0.01 || Math.abs(depth - smallest) < 0.01) {
-      // Thin in X or Z direction
+    // Determine orientation - must be very obvious
+    if (Math.abs(height - smallest) < 0.001 && height < 0.5 && largest > 5) {
+      // Very flat in Y direction at bottom, large area
+      return "Floor";
+    } else if (Math.abs(height - smallest) < 0.001 && height > 2 && largest > 5) {
+      // Very flat in Y direction at top, large area
+      return "Ceiling";
+    } else if ((Math.abs(width - smallest) < 0.001 || Math.abs(depth - smallest) < 0.001) && height > 2 && largest > 5) {
+      // Very thin wall-like, tall, large area
       return "Wall";
     }
   }
@@ -36,7 +33,7 @@ export function detectGeometryType(mesh) {
   // Check for cabinet proportions (taller than wide, reasonable depth)
   const heightToWidth = height / width;
   const depthToWidth = depth / width;
-  if (heightToWidth > 1.5 && heightToWidth < 4 && depthToWidth > 0.4 && depthToWidth < 1.5) {
+  if (heightToWidth > 1.8 && heightToWidth < 3.5 && depthToWidth > 0.5 && depthToWidth < 1.2 && width > 0.3 && height > 1.5) {
     return "Cabinet";
   }
   
