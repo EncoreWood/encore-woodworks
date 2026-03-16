@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
+// GlbViewer v2
 export default function GlbViewer({ file, onClose }) {
   const mountRef = useRef(null);
   const controlsRef = useRef(null);
