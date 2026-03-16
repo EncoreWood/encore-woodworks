@@ -39,7 +39,7 @@ function renderDxf(canvas, dxf, visibleLayers, transform) {
     sy: canvas.height - (y * scale + offsetY),
   });
 
-  ctx.lineWidth = Math.max(0.5, 1 / scale);
+  ctx.lineWidth = Math.max(1, 1.5 / scale);
 
   dxf.entities.forEach((entity) => {
     const layerName = entity.layer || "0";
