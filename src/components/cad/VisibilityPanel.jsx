@@ -138,6 +138,32 @@ export default function VisibilityPanel({ scene, isIPad, fileUrl }) {
     setVisibility(newVis);
   };
 
+  // Handle label update
+  const handleLabelSave = (uuid) => {
+    if (editValue.trim()) {
+      const newLabels = { ...labels, [uuid]: editValue.trim() };
+      setLabels(newLabels);
+      saveLabelsToStorage(fileUrl, newLabels);
+      
+      // Rebuild groups
+      const grp = {};
+      objects.forEach((m) => {
+        const label = newLabels[m.uuid];
+        const cat = label || categorizeObject(m.name);
+        if (!grp[cat]) grp[cat] = [];
+        grp[cat].push(m);
+      });
+      setGrouped(grp);
+    }
+    setEditingUUID(null);
+    setEditValue("");
+  };
+
+  // Get display name (label or original name)
+  const getDisplayName = (mesh) => {
+    return labels[mesh.uuid] || mesh.name;
+  };
+
   if (objects.length === 0) return null;
 
   // Container styles for iPad drawer vs desktop sidebar
