@@ -265,7 +265,7 @@ function GlbViewerInner({ file, onClose }) {
         </div>
 
         {/* Visibility Panel */}
-        {sceneRef.current && <VisibilityPanel scene={sceneRef.current} isIPad={isIPad} fileUrl={file.url} />}
+        {sceneRef.current && showVisibility && <VisibilityPanel scene={sceneRef.current} isIPad={isIPad} fileUrl={file.url} />}
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
