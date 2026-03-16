@@ -54,6 +54,7 @@ function getPagePermissionsFromNav() {
 }
 
 export default function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading }) {
+  const PAGE_PERMISSIONS = getPagePermissionsFromNav();
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
