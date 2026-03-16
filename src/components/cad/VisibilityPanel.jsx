@@ -314,45 +314,120 @@ export default function VisibilityPanel({ scene, isIPad, fileUrl }) {
             {expandedGroups[groupName] && (
               <div style={{ paddingLeft: 24 }}>
                 {meshes.map((mesh) => (
-                  <button
-                    key={mesh.uuid}
-                    onClick={() => toggleObject(mesh.uuid)}
-                    style={{
-                      width: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "6px 12px",
-                      background: "transparent",
-                      border: "none",
-                      cursor: "pointer",
-                      color: "#475569",
-                      fontSize: 12,
-                      textAlign: "left",
-                    }}
-                  >
+                  <div key={mesh.uuid}>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleObject(mesh.uuid);
+                      onClick={() => {
+                        setSelectedUUID(selectedUUID === mesh.uuid ? null : mesh.uuid);
+                        if (mesh.userData.outline) mesh.userData.outline.visible = selectedUUID !== mesh.uuid;
                       }}
                       style={{
-                        padding: 2,
-                        background: "transparent",
-                        border: "none",
-                        cursor: "pointer",
-                        color: visibility[mesh.uuid] ? "#3b82f6" : "#cbd5e1",
+                        width: "100%",
                         display: "flex",
                         alignItems: "center",
-                        flexShrink: 0,
+                        gap: 8,
+                        padding: "6px 12px",
+                        background: selectedUUID === mesh.uuid ? "#eff6ff" : "transparent",
+                        border: selectedUUID === mesh.uuid ? "1px solid #bfdbfe" : "none",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                        color: "#475569",
+                        fontSize: 12,
+                        textAlign: "left",
                       }}
                     >
-                      {visibility[mesh.uuid] ? <Eye size={14} /> : <EyeOff size={14} />}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleObject(mesh.uuid);
+                        }}
+                        style={{
+                          padding: 2,
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          color: visibility[mesh.uuid] ? "#3b82f6" : "#cbd5e1",
+                          display: "flex",
+                          alignItems: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {visibility[mesh.uuid] ? <Eye size={14} /> : <EyeOff size={14} />}
+                      </button>
+                      <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {getDisplayName(mesh)}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingUUID(mesh.uuid);
+                          setEditValue(getDisplayName(mesh));
+                        }}
+                        style={{
+                          padding: 2,
+                          background: "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                          color: "#94a3b8",
+                          display: "flex",
+                          alignItems: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Tag size={12} />
+                      </button>
                     </button>
-                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {mesh.name}
-                    </span>
-                  </button>
+                    
+                    {/* Inline label editor */}
+                    {editingUUID === mesh.uuid && (
+                      <div style={{ padding: "6px 12px", display: "flex", gap: 4, alignItems: "center" }}>
+                        <input
+                          autoFocus
+                          type="text"
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleLabelSave(mesh.uuid);
+                            if (e.key === "Escape") { setEditingUUID(null); setEditValue(""); }
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: "4px 6px",
+                            fontSize: 11,
+                            border: "1px solid #cbd5e1",
+                            borderRadius: 4,
+                          }}
+                        />
+                        <button
+                          onClick={() => handleLabelSave(mesh.uuid)}
+                          style={{
+                            padding: "2px 6px",
+                            fontSize: 11,
+                            background: "#3b82f6",
+                            color: "white",
+                            border: "none",
+                            borderRadius: 3,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => { setEditingUUID(null); setEditValue(""); }}
+                          style={{
+                            padding: "2px 4px",
+                            background: "transparent",
+                            border: "none",
+                            cursor: "pointer",
+                            color: "#cbd5e1",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
