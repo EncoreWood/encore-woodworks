@@ -708,6 +708,13 @@ export default function TimeSheet() {
               )}
             </TabsContent>
 
+          {/* DATA TAB - ADMIN ONLY */}
+          {currentUser?.role === "admin" && (
+            <TabsContent value="data">
+              <TimeDataTab timeEntries={timeEntries} employees={employees} projects={projects} />
+            </TabsContent>
+          )}
+
           {/* SETTINGS TAB - ADMIN ONLY */}
           {currentUser?.role === "admin" && (
             <TabsContent value="settings" className="space-y-6">
