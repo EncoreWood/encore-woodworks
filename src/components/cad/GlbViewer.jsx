@@ -22,12 +22,12 @@ export default function GlbViewer({ file, onClose }) {
     scene.background = new THREE.Color(0xf8f9fa);
 
     // Lighting
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambient = new THREE.AmbientLight(0xffffff, 1.0);
     scene.add(ambient);
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
     dirLight.position.set(5, 10, 7);
     scene.add(dirLight);
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.6);
     fillLight.position.set(-5, -2, -5);
     scene.add(fillLight);
 
