@@ -5,6 +5,14 @@ import { pagesConfig } from './pages.config'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { Navigate } from 'react-router-dom';
+
+function RoleBasedHome() {
+  const { user } = useAuth();
+  if (!user) return null;
+  if (user.role === 'admin') return <Navigate to="/Calendar" replace />;
+  return <Navigate to="/EmployeeDashboard" replace />;
+}
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 const { Pages, Layout, mainPage } = pagesConfig;
