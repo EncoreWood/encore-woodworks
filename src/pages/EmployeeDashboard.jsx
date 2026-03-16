@@ -9,6 +9,7 @@ import ProjectForm from "../components/projects/ProjectForm";
 import ProductionStatsPanel from "../components/dashboard/ProductionStatsPanel";
 import WeatherWidget from "../components/dashboard/WeatherWidget";
 import TodayPanel from "../components/dashboard/TodayPanel";
+import ProjectOrdersPanel from "../components/dashboard/ProjectOrdersPanel";
 import { format, startOfWeek, startOfMonth } from "date-fns";
 
 export default function EmployeeDashboard() {
@@ -65,7 +66,7 @@ export default function EmployeeDashboard() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Employee Dashboard</h1>
+            <h1 className="text-2xl font-bold text-slate-800">Production Dashboard</h1>
             <p className="text-slate-400 text-sm">Daily overview</p>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -109,6 +110,9 @@ export default function EmployeeDashboard() {
 
         {/* Production Stage Breakdown */}
         <ProductionStatsPanel items={productionItems} />
+
+        {/* Project Orders Status */}
+        <ProjectOrdersPanel inProductionProjects={inProductionProjects} />
 
       </div>
 
