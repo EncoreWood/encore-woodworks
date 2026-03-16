@@ -3,13 +3,13 @@ import DxfParser from "dxf-parser";
 import { Button } from "@/components/ui/button";
 import { X, Maximize2, Eye, EyeOff, ZoomIn, ZoomOut } from "lucide-react";
 
-// Colors from AutoCAD color index (ACI) - basic set
+// Colors from AutoCAD color index (ACI) - adjusted for dark background
 const ACI_COLORS = {
-  1: "#ff0000", 2: "#ffff00", 3: "#00ff00", 4: "#00ffff",
-  5: "#0000ff", 6: "#ff00ff", 7: "#ffffff",
-  8: "#808080", 9: "#c0c0c0",
+  1: "#ff4444", 2: "#ffff44", 3: "#44ff44", 4: "#44ffff",
+  5: "#6699ff", 6: "#ff44ff", 7: "#e0e0e0", // 7 = white -> light gray (visible on dark)
+  8: "#aaaaaa", 9: "#cccccc",
 };
-function aciToHex(aci) { return ACI_COLORS[aci] || "#00d4ff"; }
+function aciToHex(aci) { return ACI_COLORS[aci] || "#e0e0e0"; }
 
 function getEntityColor(entity, layers) {
   let color = entity.color;
