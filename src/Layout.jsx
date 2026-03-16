@@ -32,6 +32,7 @@ export default function Layout({ children, currentPageName }) {
   const [employees, setEmployees] = useState([]);
   const [projects, setProjects] = useState([]);
   const [showClockInModal, setShowClockInModal] = useState(false);
+  const [showSwitchModal, setShowSwitchModal] = useState(false);
   const [currentProjectName, setCurrentProjectName] = useState(null);
 
   const defaultNavGroups = {
