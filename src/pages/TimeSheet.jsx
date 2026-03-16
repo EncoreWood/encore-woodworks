@@ -120,12 +120,13 @@ export default function TimeSheet() {
         const todayEntries = await base44.entities.TimeEntry.filter({ employee_id: emp.id });
         const openEntry = todayEntries.find(e => e.date === todayStr && e.clock_in && !e.clock_out);
         if (openEntry) {
-          setOpenTimeEntryId(openEntry.id);
-          const [h, m] = openEntry.clock_in.split(":").map(Number);
-          const reconstructed = new Date();
-          reconstructed.setHours(h, m, 0, 0);
-          setClockInTime(reconstructed);
-        }
+            setOpenTimeEntryId(openEntry.id);
+            setCurrentProjectName(openEntry.project_name || null);
+            const [h, m] = openEntry.clock_in.split(":").map(Number);
+            const reconstructed = new Date();
+            reconstructed.setHours(h, m, 0, 0);
+            setClockInTime(reconstructed);
+          }
       }
     };
     if (employees.length > 0) fetchCurrentUser();
