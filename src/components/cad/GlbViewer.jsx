@@ -235,6 +235,27 @@ function GlbViewerInner({ file, onClose }) {
           {modeBtn("zoom", <ZoomIn size={20} />, "Zoom")}
           <div style={{ width: 1, height: 48, background: "#e2e8f0", margin: "0 4px" }} />
           <button
+            onPointerDown={() => setShowVisibility(!showVisibility)}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 4,
+              padding: "12px 16px",
+              borderRadius: 12,
+              border: `1px solid ${showVisibility ? "#bfdbfe" : "#cbd5e1"}`,
+              background: showVisibility ? "#eff6ff" : "#f8fafc",
+              color: showVisibility ? "#3b82f6" : "#64748b",
+              fontSize: 14,
+              fontWeight: 500,
+              cursor: "pointer",
+              touchAction: "manipulation",
+            }}
+          >
+            <Filter size={20} />
+            Filter
+          </button>
+          <button
             onPointerDown={onClose}
             style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "12px 16px", borderRadius: 12, border: "1px solid #fecaca", background: "#fff1f2", color: "#ef4444", fontSize: 14, fontWeight: 500, cursor: "pointer", touchAction: "manipulation" }}
           >
