@@ -470,16 +470,25 @@ export default function Layout({ children, currentPageName }) {
           {currentUser?.role === "user" && (
             <div className="px-4 py-3 border-t border-slate-400">
               {clockInTime ? (
-                <button
-                  onClick={handleClockOut}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-red-700 hover:bg-red-800 text-white text-sm font-semibold transition-all shadow-lg"
-                >
-                  <Square className="w-4 h-4" />
-                  <span>Clock Out</span>
-                  <span className="text-xs font-mono bg-red-700/50 px-2 py-1 rounded">
-                    {elapsedTime}
-                  </span>
-                </button>
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={handleClockOut}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-red-700 hover:bg-red-800 text-white text-sm font-semibold transition-all shadow-lg"
+                  >
+                    <Square className="w-4 h-4" />
+                    <span>Out</span>
+                    <span className="text-xs font-mono bg-red-700/50 px-1.5 py-0.5 rounded">
+                      {elapsedTime}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => setShowSwitchModal(true)}
+                    title="Switch Job"
+                    className="flex items-center justify-center px-3 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold transition-all shadow-lg"
+                  >
+                    <ArrowLeftRight className="w-4 h-4" />
+                  </button>
+                </div>
               ) : (
                 <button
                   onClick={handleClockIn}
