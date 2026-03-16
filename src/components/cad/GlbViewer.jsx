@@ -14,6 +14,12 @@ function GlbViewerInner({ file, onClose }) {
   const [loading, setLoading] = useState(true);
   const [isIPad, setIsIPad] = useState(false);
 
+  // Detect iPad on mount
+  useEffect(() => {
+    const ua = navigator.userAgent;
+    setIsIPad(/iPad|Mac OS/.test(ua) && navigator.maxTouchPoints > 2);
+  }, []);
+
   useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
@@ -23,6 +29,7 @@ function GlbViewerInner({ file, onClose }) {
 
     // Scene
     const scene = new THREE.Scene();
+    sceneRef.current = scene;
     scene.background = new THREE.Color(0xf0f0f0);
 
     // Lighting
