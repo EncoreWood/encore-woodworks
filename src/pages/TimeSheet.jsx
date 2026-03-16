@@ -884,6 +884,28 @@ export default function TimeSheet() {
             )}
         </Tabs>
 
+        {/* Clock In Modal */}
+        <ClockInModal
+          open={showClockInModal}
+          onOpenChange={setShowClockInModal}
+          projects={projects}
+          onConfirm={doClockIn}
+          title="Clock In"
+          confirmLabel="Clock In"
+          confirmClass="bg-green-600 hover:bg-green-700"
+        />
+
+        {/* Switch Project Modal */}
+        <ClockInModal
+          open={showSwitchModal}
+          onOpenChange={setShowSwitchModal}
+          projects={projects}
+          onConfirm={handleSwitchProject}
+          title="Switch Project"
+          confirmLabel="Switch"
+          confirmClass="bg-amber-600 hover:bg-amber-700"
+        />
+
         {/* Add Entry Dialog */}
         <Dialog open={showAddEntry} onOpenChange={setShowAddEntry} className="z-50">
           <DialogContent>
