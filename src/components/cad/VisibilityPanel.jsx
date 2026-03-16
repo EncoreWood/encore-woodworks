@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { ChevronDown, Eye, EyeOff } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, Tag, X } from "lucide-react";
+import { detectAllGeometries, loadLabelsFromStorage, saveLabelsToStorage } from "./geometryDetection";
 
 const groupPatterns = {
   Walls: ["wall"],
@@ -19,11 +20,15 @@ function categorizeObject(name) {
   return "Other";
 }
 
-export default function VisibilityPanel({ scene, isIPad }) {
+export default function VisibilityPanel({ scene, isIPad, fileUrl }) {
   const [objects, setObjects] = useState([]);
   const [grouped, setGrouped] = useState({});
   const [expandedGroups, setExpandedGroups] = useState({});
   const [visibility, setVisibility] = useState({});
+  const [labels, setLabels] = useState({});
+  const [selectedUUID, setSelectedUUID] = useState(null);
+  const [editingUUID, setEditingUUID] = useState(null);
+  const [editValue, setEditValue] = useState("");
 
   // Parse the scene to extract all meshes
   useEffect(() => {
