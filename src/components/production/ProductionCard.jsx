@@ -75,6 +75,9 @@ export default function ProductionCard({
 
   return (
     <>
+      {showGlb && roomGlbUrl && (
+        <GlbViewer url={roomGlbUrl} fileName={roomGlbName || "3D Model"} onClose={() => setShowGlb(false)} />
+      )}
       <Card
         className={`p-4 bg-white border-0 shadow-sm transition-shadow overflow-hidden ${isDragging ? "shadow-lg" : ""}`}
         style={cardStyle}
