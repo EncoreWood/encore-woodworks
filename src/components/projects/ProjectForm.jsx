@@ -432,8 +432,11 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Project Files</h3>
             <FileUploader
-              files={formData.files || []}
-              onChange={(files) => handleChange("files", files)}
+              files={(formData.files || []).filter(f => f.tag !== "cad_dxf" && f.tag !== "cad_file")}
+              onChange={(nonCadFiles) => {
+                const cadFiles = (formData.files || []).filter(f => f.tag === "cad_dxf" || f.tag === "cad_file");
+                handleChange("files", [...cadFiles, ...nonCadFiles]);
+              }}
               label="Contracts, Designs, etc."
             />
           </div>
