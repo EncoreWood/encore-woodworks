@@ -85,13 +85,14 @@ export default function VisibilityPanel({ scene, isIPad, fileUrl }) {
 
   // Toggle visibility of a single object
   const toggleObject = (uuid) => {
-    setVisibility((prev) => {
-      const newVis = { ...prev, [uuid]: !prev[uuid] };
-      // Update Three.js visibility
-      const mesh = objects.find((m) => m.uuid === uuid);
-      if (mesh) mesh.visible = newVis[uuid];
-      return newVis;
-    });
+    const mesh = objects.find((m) => m.uuid === uuid);
+    if (!mesh) return;
+    const newState = !visibility[uuid];
+    mesh.visible = newState;
+    setVisibility((prev) => ({
+      ...prev,
+      [uuid]: newState,
+    }));
   };
 
   // Toggle visibility of all objects in a group
