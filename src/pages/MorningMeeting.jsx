@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   User, Calendar, AlertCircle, Coffee, Sun, Target, CheckCircle2,
   ChevronLeft, ChevronRight, Edit, Plus, Trash2, ChevronDown,
-  Megaphone, BookOpen, ClipboardList, Briefcase, Zap, Crosshair, Link2, Upload, X
+  Megaphone, BookOpen, ClipboardList, Briefcase, Zap, Crosshair, Link2, Upload, X, TrendingUp
 } from "lucide-react";
 import { format, addDays, subDays } from "date-fns";
 
@@ -260,6 +260,25 @@ export default function MorningMeeting() {
           <Link to={createPageUrl("StretchingRoutine")}>
             <Button className="bg-blue-600 hover:bg-blue-700">✨ Quick Stretch Before Meeting</Button>
           </Link>
+        </div>
+
+        {/* Project Pipeline Stats */}
+        <div className="mb-6 grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {[
+            { label: "Inquiry", status: "inquiry" },
+            { label: "Quoted", status: "quoted" },
+            { label: "Approved", status: "approved" },
+            { label: "In Production", status: "in_production" },
+            { label: "Completed", status: "completed" }
+          ].map(({ label, status }) => {
+            const count = projects.filter(p => p.status === status).length;
+            return (
+              <Card key={status} className="p-4 text-center border-l-4 border-l-amber-500 hover:shadow-md transition-all">
+                <div className="text-2xl font-bold text-amber-600">{count}</div>
+                <p className="text-xs text-slate-600 font-medium mt-1">{label}</p>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Agenda Sections */}

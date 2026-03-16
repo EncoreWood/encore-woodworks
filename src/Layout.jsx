@@ -85,6 +85,13 @@ export default function Layout({ children, currentPageName }) {
         { name: "Forms", icon: FileText, iconName: "FileText", page: "Forms" },
         { name: "Privacy Policy", icon: FileText, iconName: "FileText", page: "PrivacyPolicy" }
       ]
+    },
+    lean: {
+      name: "Lean",
+      items: [
+        { name: "Group Lean", icon: Users, iconName: "Users", page: "GroupLean" },
+        { name: "Individual Lean", icon: Users, iconName: "Users", page: "IndividualLean" }
+      ]
     }
   };
 
