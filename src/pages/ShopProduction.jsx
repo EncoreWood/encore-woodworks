@@ -376,11 +376,15 @@ export default function ShopProduction() {
                                              const linkedProd = item.linked_production_item_id
                                                ? items.find(i => i.id === item.linked_production_item_id)
                                                : null;
+                                             const proj = projects.find(p => p.id === item.project_id);
+                                             const matchedRoom = proj?.rooms?.find(r => r.room_name === item.room_name);
                                              return (
                                                <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
                                                  <ProductionCard
                                                    item={item}
                                                    isDragging={false}
+                                                   roomGlbUrl={matchedRoom?.glb_url}
+                                                   roomGlbName={matchedRoom?.glb_name}
                                                    editingPts={editingPts}
                                                    setEditingPts={setEditingPts}
                                                    onInlinePtsChange={handleInlinePtsChange}
