@@ -14,6 +14,7 @@ function RoleBasedHome() {
   return <Navigate to="/EmployeeDashboard" replace />;
 }
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import Admin from './pages/Admin';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
