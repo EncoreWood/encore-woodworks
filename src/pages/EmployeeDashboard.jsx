@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import usePullToRefresh from "@/components/usePullToRefresh";
@@ -10,6 +10,7 @@ import ProductionStatsPanel from "../components/dashboard/ProductionStatsPanel";
 import WeatherWidget from "../components/dashboard/WeatherWidget";
 import TodayPanel from "../components/dashboard/TodayPanel";
 import ProjectOrdersPanel from "@/components/dashboard/ProjectOrdersPanel";
+import PtsOverviewSection from "@/components/dashboard/PtsOverviewSection";
 import { format, startOfWeek, startOfMonth } from "date-fns";
 
 export default function EmployeeDashboard() {
@@ -86,26 +87,8 @@ export default function EmployeeDashboard() {
 
         {/* Top Row: Today Panel + PTS Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
-          <div className="lg:col-span-1">
-            <TodayPanel inProductionProjects={inProductionProjects} />
-          </div>
-
-          {/* PTS Overview */}
-          <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">PTS Overview</h3>
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: "Day", value: dayPts },
-                { label: "Week", value: weekPts },
-                { label: "Month", value: monthPts },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex flex-col items-center justify-center bg-slate-50 rounded-xl py-6">
-                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">{label}</p>
-                  <p className="text-5xl font-bold text-slate-800">{value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+          <TodayPanel inProductionProjects={inProductionProjects} />
+          <PtsOverviewSection dayPts={dayPts} weekPts={weekPts} monthPts={monthPts} />
         </div>
 
         {/* Production Stage Breakdown */}
