@@ -4,12 +4,15 @@ import { X, RotateCcw, Move, ZoomIn } from "lucide-react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+import VisibilityPanel from "./VisibilityPanel";
 
 function GlbViewerInner({ file, onClose }) {
   const mountRef = useRef(null);
   const controlsRef = useRef(null);
+  const sceneRef = useRef(null);
   const [mode, setMode] = useState("orbit");
   const [loading, setLoading] = useState(true);
+  const [isIPad, setIsIPad] = useState(false);
 
   useEffect(() => {
     const container = mountRef.current;
