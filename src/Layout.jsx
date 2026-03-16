@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square, Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon } from "lucide-react";
 import MobileTabBar from "@/components/MobileTabBar";
+import ClockInModal from "@/components/timesheet/ClockInModal";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
@@ -465,6 +466,9 @@ export default function Layout({ children, currentPageName }) {
                   <Play className="w-4 h-4" />
                   Clock In
                 </button>
+              )}
+              {clockInTime && currentProjectName && (
+                <p className="text-xs text-center text-slate-700 mt-1 truncate px-1">📋 {currentProjectName}</p>
               )}
             </div>
           )}
