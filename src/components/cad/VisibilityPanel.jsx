@@ -30,7 +30,7 @@ export default function VisibilityPanel({ scene, isIPad, fileUrl }) {
   const [editingUUID, setEditingUUID] = useState(null);
   const [editValue, setEditValue] = useState("");
 
-  // Parse the scene to extract all meshes
+  // Parse the scene, detect geometries, load labels
   useEffect(() => {
     if (!scene) return;
 
@@ -43,6 +43,21 @@ export default function VisibilityPanel({ scene, isIPad, fileUrl }) {
 
     setObjects(meshes);
 
+    // Load persisted labels
+    const storedLabels = loadLabelsFromStorage(fileUrl);
+    setLabels(storedLabels);
+
+    // Detect geometries for unlabeled objects
+    const detected = detectAllGeometries(scene);
+    const newLabels = { ...storedLabels };
+    meshes.forEach((m) => {
+      if (!newLabels[m.uuid] && detected[m.uuid]) {
+        newLabels[m.uuid] = detected[m.uuid];
+      }
+    });
+    setLabels(newLabels);
+    saveLabelsToStorage(fileUrl, newLabels);
+
     // Initialize visibility (all visible)
     const vis = {};
     meshes.forEach((m) => {
@@ -50,10 +65,11 @@ export default function VisibilityPanel({ scene, isIPad, fileUrl }) {
     });
     setVisibility(vis);
 
-    // Build groups
+    // Build groups based on labels
     const grp = {};
     meshes.forEach((m) => {
-      const cat = categorizeObject(m.name);
+      const label = newLabels[m.uuid];
+      const cat = label || categorizeObject(m.name);
       if (!grp[cat]) grp[cat] = [];
       grp[cat].push(m);
     });
@@ -65,7 +81,7 @@ export default function VisibilityPanel({ scene, isIPad, fileUrl }) {
       expanded[g] = true;
     });
     setExpandedGroups(expanded);
-  }, [scene]);
+  }, [scene, fileUrl]);
 
   // Toggle visibility of a single object
   const toggleObject = (uuid) => {
