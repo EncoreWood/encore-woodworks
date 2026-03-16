@@ -9,7 +9,7 @@ import ProjectForm from "../components/projects/ProjectForm";
 import ProductionStatsPanel from "../components/dashboard/ProductionStatsPanel";
 import WeatherWidget from "../components/dashboard/WeatherWidget";
 import TodayPanel from "../components/dashboard/TodayPanel";
-import ProjectOrdersPanel from "../components/dashboard/ProjectOrdersPanel";
+import ProjectOrdersPanel from "@/components/dashboard/ProjectOrdersPanel";
 import { format, startOfWeek, startOfMonth } from "date-fns";
 
 export default function EmployeeDashboard() {

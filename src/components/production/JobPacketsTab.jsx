@@ -294,7 +294,7 @@ export default function JobPacketsTab({ projects, items, openFolderContext, onFo
           </div>
         );
       })}
-    </div>
+      </div>
       )}
     </div>
   );
