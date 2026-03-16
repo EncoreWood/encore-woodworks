@@ -386,11 +386,10 @@ export default function Layout({ children, currentPageName }) {
     return () => clearInterval(interval);
   }, [clockInTime]);
 
-  const handleClockIn = async () => {
+  const doClockIn = async ({ project_id, project_name }) => {
     if (!currentUser) return;
     const employee = employees.find(e => e.user_email === currentUser.email || e.email === currentUser.email);
     if (!employee) return;
-
     const now = new Date();
     const clockInStr = format(now, "HH:mm");
     const entry = await base44.entities.TimeEntry.create({
@@ -399,11 +398,16 @@ export default function Layout({ children, currentPageName }) {
       date: format(now, "yyyy-MM-dd"),
       clock_in: clockInStr,
       entry_type: "work",
+      project_id: project_id || null,
+      project_name: project_name || null,
       notes: ""
     });
     setOpenTimeEntryId(entry.id);
     setClockInTime(now);
+    setCurrentProjectName(project_name || null);
   };
+
+  const handleClockIn = () => setShowClockInModal(true);
 
   const handleClockOut = async () => {
     if (!clockInTime || !openTimeEntryId) return;
