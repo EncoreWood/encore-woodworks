@@ -680,6 +680,17 @@ export default function Layout({ children, currentPageName }) {
         confirmClass="bg-green-600 hover:bg-green-700"
       />
 
+      {/* Switch Job Modal */}
+      <ClockInModal
+        open={showSwitchModal}
+        onOpenChange={setShowSwitchModal}
+        projects={projects}
+        onConfirm={handleSwitch}
+        title="Switch Job"
+        confirmLabel="Switch"
+        confirmClass="bg-amber-600 hover:bg-amber-700"
+      />
+
       {/* Settings Dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
