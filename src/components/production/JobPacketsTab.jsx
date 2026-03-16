@@ -169,6 +169,8 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
 
 // Main tab component
 export default function JobPacketsTab({ projects, items, openFolderContext, onFolderOpened, onAddCard, onSendToProduction, sharedCardProps }) {
+  const [search, setSearch] = useState("");
+
   if (projects.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-400">
@@ -178,8 +180,64 @@ export default function JobPacketsTab({ projects, items, openFolderContext, onFo
     );
   }
 
+  const q = search.trim().toLowerCase();
+
+  // When searching, flatten to matching items across all projects
+  const searchResults = q
+    ? items.filter(i => {
+        if (i.is_job_info || i.stage) return false;
+        const proj = projects.find(p => p.id === i.project_id);
+        if (!proj) return false;
+        const contractor = proj.contractor?.name || "";
+        return (
+          (i.name || "").toLowerCase().includes(q) ||
+          (i.project_name || "").toLowerCase().includes(q) ||
+          (i.room_name || "").toLowerCase().includes(q) ||
+          contractor.toLowerCase().includes(q)
+        );
+      })
+    : null;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+        <Input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by job name, room, contractor, cabinet…"
+          className="pl-9 pr-9 bg-white"
+        />
+        {search && (
+          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Search results */}
+      {searchResults !== null ? (
+        searchResults.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <Search className="w-8 h-8 mb-2 opacity-30" />
+            <p className="text-sm">No cards match "{search}"</p>
+          </div>
+        ) : (
+          <div>
+            <p className="text-xs text-slate-400 mb-3">{searchResults.length} result{searchResults.length !== 1 ? "s" : ""}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {searchResults.map(item => (
+                <div key={item.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-1">
+                  <div className="text-xs text-slate-400 px-2 pt-1 pb-0.5 font-medium">{item.project_name} / {item.room_name}</div>
+                  <ProductionCard item={item} isDragging={false} {...sharedCardProps} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      ) : (
+      <div className="space-y-8">
       {projects.map(project => {
         const rooms = project.rooms?.map(r => r.room_name).filter(Boolean) || [];
         const projectItems = items.filter(i => i.project_id === project.id && !i.is_job_info && !i.stage);
