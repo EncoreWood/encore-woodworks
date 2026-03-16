@@ -514,6 +514,9 @@ export default function Layout({ children, currentPageName }) {
         {/* Nav Groups */}
         <nav className="p-4 space-y-4 flex-1">
           {Object.entries(navGroups).map(([groupKey, group]) => {
+            // Admin section only visible to admins
+            if (groupKey === "admin" && currentUser?.role !== "admin") return null;
+            
             const visibleItems = currentUser?.role === "admin"
               ? group.items
               : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page));
