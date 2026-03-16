@@ -12,6 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Layout({ children, currentPageName }) {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const location = useLocation();
+
+  // Close mobile nav on route change
+  useEffect(() => { setMobileNavOpen(false); }, [location.pathname]);
+
   const [expandedGroups, setExpandedGroups] = useState({
     dashboard: true,
     projects: true,
