@@ -98,13 +98,7 @@ export default function Kanban() {
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ["projects"],
-    queryFn: async () => {
-      const response = await fetch('https://vivica-d92c9f97.base44.app/functions/getAllProjects', {
-        method: 'POST'
-      });
-      if (!response.ok) throw new Error('Failed to fetch projects');
-      return response.json();
-    },
+    queryFn: () => base44.entities.Project.list(),
     staleTime: 0,
     gcTime: 0
   });
