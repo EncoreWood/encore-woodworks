@@ -229,6 +229,7 @@ export default function Kanban() {
 
   const getProjectsByStatus = (status, tabKey) => {
     const tab = tabKey || activeTab;
+    if (!Array.isArray(projects)) return [];
     const filtered = projects.filter((p) => p.status === status);
     if (tab === "side-projects") {
       return filtered.filter((p) => p.project_type === "custom");
