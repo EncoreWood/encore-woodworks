@@ -461,7 +461,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
               <canvas
                 ref={canvasRef}
                 className="absolute top-0 left-0"
-                style={{ cursor: cursorStyle, touchAction: "none" }}
+                style={{ cursor: cursorStyle, touchAction: "none", pointerEvents: tool === "pan" ? "none" : "auto" }}
                 width={canvasSize.width}
                 height={canvasSize.height}
                 onPointerDown={handlePointerDown}
