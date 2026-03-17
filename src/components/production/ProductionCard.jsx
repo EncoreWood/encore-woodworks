@@ -229,6 +229,25 @@ export default function ProductionCard({
             )}
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
+            {/* 3D model view/upload in title row */}
+            {cardGlbUrl && (
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-violet-600 hover:text-violet-800"
+                title="View card 3D model"
+                onClick={(e) => { e.stopPropagation(); setShowCardGlb(true); }}>
+                <Box className="w-3 h-3" />
+              </Button>
+            )}
+            {onUpdate && (
+              <>
+                <input ref={glbInputRef} type="file" accept=".glb,.gltf" className="hidden" onChange={handleGlbUpload} />
+                <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600"
+                  title={cardGlbUrl ? "Replace 3D model" : "Upload 3D model"}
+                  disabled={uploadingGlb}
+                  onClick={(e) => { e.stopPropagation(); glbInputRef.current?.click(); }}>
+                  {uploadingGlb ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                </Button>
+              </>
+            )}
             {onEdit && (
               <Button variant="ghost" size="icon" className="h-6 w-6"
                 onClick={(e) => { e.stopPropagation(); onEdit(item); }}>
