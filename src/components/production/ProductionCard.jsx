@@ -236,6 +236,16 @@ export default function ProductionCard({
 
         {item.notes && <p className="text-sm text-slate-600 mb-3">{item.notes}</p>}
 
+        {/* Sketch thumbnail */}
+        {item.sketch_url && (
+          <div className="mb-2">
+            <button onClick={(e) => { e.stopPropagation(); setShowSketch(true); }} className="w-full">
+              <img src={item.sketch_url} alt="Sketch" className="w-full rounded-md border border-slate-200 max-h-36 object-contain bg-white hover:opacity-90 transition-opacity" />
+            </button>
+            <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1"><PenLine className="w-3 h-3" /> Sketch (click to view/edit)</p>
+          </div>
+        )}
+
         {/* Files */}
         {item.files && item.files.length > 0 && (
           <div className="space-y-2 pt-2 border-t border-slate-100">
