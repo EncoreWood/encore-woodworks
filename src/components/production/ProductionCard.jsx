@@ -95,7 +95,10 @@ export default function ProductionCard({
   return (
     <>
       {showGlb && roomGlbUrl && (
-        <GlbViewer url={roomGlbUrl} fileName={roomGlbName || "3D Model"} onClose={() => setShowGlb(false)} />
+        <GlbViewer file={{ url: roomGlbUrl, name: roomGlbName || "3D Model" }} onClose={() => setShowGlb(false)} />
+      )}
+      {showCardGlb && cardGlbUrl && (
+        <GlbViewer file={{ url: cardGlbUrl, name: cardGlbName }} onClose={() => setShowCardGlb(false)} />
       )}
       <Card
         className={`p-4 bg-white border-0 shadow-sm transition-shadow overflow-hidden ${isDragging ? "shadow-lg" : ""}`}
