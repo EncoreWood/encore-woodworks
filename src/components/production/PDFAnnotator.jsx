@@ -315,6 +315,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   ];
 
   const toolConfig = [
+    { key: "pan", label: "Pan / Zoom", icon: Hand, activeClass: "bg-sky-600 hover:bg-sky-700" },
     { key: "pen", label: "Draw", icon: Pencil, activeClass: "bg-amber-600 hover:bg-amber-700" },
     { key: "highlight", label: "Highlight", icon: Highlighter, activeClass: "bg-yellow-500 hover:bg-yellow-600" },
     { key: "arrow", label: "Arrow", icon: ArrowRight, activeClass: "bg-blue-600 hover:bg-blue-700" },
@@ -323,7 +324,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     { key: "eraser", label: "Eraser", icon: Eraser, activeClass: "bg-slate-600 hover:bg-slate-700" },
   ];
 
-  const cursorStyle = tool === "text" ? "text" : tool === "highlight" ? "cell" : "crosshair";
+  const cursorStyle = tool === "pan" ? (panStartRef.current ? "grabbing" : "grab") : tool === "text" ? "text" : tool === "highlight" ? "cell" : "crosshair";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
