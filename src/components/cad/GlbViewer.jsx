@@ -49,6 +49,7 @@ function GlbViewerInner({ file, onClose }) {
     // Camera
     const camera = new THREE.PerspectiveCamera(45, w / h, 0.01, 100000);
     camera.position.set(5, 4, 6);
+    cameraRef.current = camera;
 
     // Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true });
