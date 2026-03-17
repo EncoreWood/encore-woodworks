@@ -294,18 +294,27 @@ export default function ProductionCard({
                 <div key={idx} className="rounded-md border border-slate-200 overflow-hidden bg-slate-50">
                   <div className="flex items-center gap-2 p-2">
                     <span
-                      ref={(el) => { if (el) { /* anchor handled inline */ } }}
                       onMouseEnter={(e) => { setHoveredPdfUrl(file.url); setHoveredAnchorEl(e.currentTarget); }}
                       onMouseLeave={() => { setHoveredPdfUrl(null); setHoveredAnchorEl(null); }}
                       className="flex items-center gap-1 flex-1 min-w-0"
                     >
                       <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
-                      <button
-                        className="text-amber-600 hover:text-amber-700 underline text-left text-xs truncate"
-                        onClick={(e) => { e.stopPropagation(); window.open(file.url, "_blank", "noopener,noreferrer"); }}
-                      >
-                        {file.name}
-                      </button>
+                      {onAnnotate ? (
+                        <button
+                          className="text-amber-600 hover:text-amber-800 underline text-left text-xs truncate font-medium"
+                          onClick={(e) => { e.stopPropagation(); onAnnotate(item, idx); }}
+                          title="Annotate PDF"
+                        >
+                          {file.name}
+                        </button>
+                      ) : (
+                        <button
+                          className="text-amber-600 hover:text-amber-700 underline text-left text-xs truncate"
+                          onClick={(e) => { e.stopPropagation(); window.open(file.url, "_blank", "noopener,noreferrer"); }}
+                        >
+                          {file.name}
+                        </button>
+                      )}
                     </span>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <span className="text-xs font-semibold text-slate-500">PTS</span>
@@ -324,15 +333,6 @@ export default function ProductionCard({
                     </div>
                     {file.annotations && file.annotations.length > 0 && (
                       <Badge className="bg-emerald-600 text-xs">{file.annotations.length} notes</Badge>
-                    )}
-                    {onAnnotate && (
-                      <button
-                        className="text-xs text-amber-600 hover:text-amber-800 underline"
-                        onClick={(e) => { e.stopPropagation(); onAnnotate(item, idx); }}
-                        title="Annotate PDF"
-                      >
-                        {file.name}
-                      </button>
                     )}
                   </div>
                 </div>
