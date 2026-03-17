@@ -225,6 +225,7 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
           {SIZES.map(s => (
             <button
               key={s}
+              type="button"
               onClick={() => setSize(s)}
               className={`rounded-full transition-all border ${size === s ? "border-amber-500 bg-amber-100" : "border-gray-300 bg-white"}`}
               style={{ width: s + 14, height: s + 14 }}
