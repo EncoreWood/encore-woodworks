@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Loader2, Upload, Box, X } from "lucide-react";
 import FileUploader from "../projects/FileUploader";
 import GlbViewer from "@/components/cad/GlbViewer";
+import SketchPad from "@/components/production/SketchPad";
 import { base44 } from "@/api/base44Client";
 
 const initialFormState = {
