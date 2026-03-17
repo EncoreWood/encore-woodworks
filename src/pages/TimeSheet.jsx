@@ -608,6 +608,7 @@ export default function TimeSheet() {
                                 <p className="text-sm text-slate-600 mt-1">{entry.notes}</p>
                               )}
                             </div>
+                            {currentUser?.role === "admin" && (
                             <div className="flex gap-2">
                               {!entry.approved && (
                                 <Button
@@ -633,6 +634,7 @@ export default function TimeSheet() {
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </div>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
