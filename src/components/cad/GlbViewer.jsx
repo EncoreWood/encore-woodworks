@@ -276,6 +276,7 @@ function GlbViewerInner({ file, onClose }) {
           {modeBtn("orbit", <RotateCcw size={20} />, "Orbit")}
           {modeBtn("pan", <Move size={20} />, "Pan")}
           {modeBtn("zoom", <ZoomIn size={20} />, "Zoom")}
+          {modeBtn("pick", <MousePointer2 size={20} />, "Pick")}
           <div style={{ width: 1, height: 48, background: "#e2e8f0", margin: "0 4px" }} />
           <button
             onPointerDown={() => setShowVisibility(!showVisibility)}
