@@ -482,6 +482,9 @@ export default function Layout({ children, currentPageName }) {
           {/* Clock In/Out - Users Only */}
           {currentUser?.role === "user" && (
             <div className="px-4 py-3 border-t border-slate-400">
+              {currentUser?.full_name && (
+                <p className="text-xs font-semibold text-slate-700 text-center mb-2 truncate">👤 {currentUser.full_name}</p>
+              )}
               {clockInTime ? (
                 <div className="flex gap-1.5">
                   <button
