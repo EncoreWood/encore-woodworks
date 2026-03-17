@@ -219,6 +219,10 @@ export default function ShopProduction() {
 
   const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh);
 
+  const handleGlbUpdate = (id, fields) => {
+    queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === id ? { ...i, ...fields } : i));
+  };
+
   const sharedCardProps = {
     editingPts,
     setEditingPts,
@@ -228,6 +232,7 @@ export default function ShopProduction() {
     onPickup: (item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id }),
     onEdit: (item) => { setEditingItem(item); setShowForm(true); },
     onDelete: (id) => deleteMutation.mutate(id),
+    onUpdate: handleGlbUpdate,
   };
 
   return (
