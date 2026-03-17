@@ -2,12 +2,29 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   MousePointer2, PenLine, Type, Square, Circle, Minus,
   ImageIcon, Undo2, Trash2, X, Check, Save, FolderOpen, Loader2
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+
+// Simple modal that doesn't conflict with Radix parent dialogs
+function SimpleModal({ open, onClose, title, children }) {
+  if (!open) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-xl shadow-2xl p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto z-10">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+        </div>
+        {children}
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 const FABRIC_CDN = "https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js";
 
