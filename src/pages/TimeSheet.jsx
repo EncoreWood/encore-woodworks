@@ -530,13 +530,15 @@ export default function TimeSheet() {
                         Clock In
                       </Button>
                     )}
-                    <Button
-                      onClick={() => setShowAddEntry(true)}
-                      variant="outline"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Entry
-                    </Button>
+                    {currentUser?.role === "admin" && (
+                     <Button
+                       onClick={() => setShowAddEntry(true)}
+                       variant="outline"
+                     >
+                       <Plus className="w-4 h-4 mr-2" />
+                       Add Entry
+                     </Button>
+                    )}
                   </div>
                 </div>
 
