@@ -49,6 +49,7 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
   useEffect(() => {
     if (open) {
       setFormData(initialData || initialFormState);
+      setShowSketch(false);
     }
   }, [open, initialData]);
 
