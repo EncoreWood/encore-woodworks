@@ -50,7 +50,18 @@ export default function FinancialDataTab() {
   const totalRevenue = projects.reduce((sum, p) => sum + (p.estimated_budget || 0), 0);
   const totalDeposits = projects.reduce((sum, p) => sum + (p.deposit_paid || 0), 0);
   const completedValue = projects.filter(p => p.status === "completed").reduce((sum, p) => sum + (p.actual_cost || 0), 0);
-  const totalReceivable = totalRevenue - totalDeposits;
+
+  // Receivables: only projects with invoices sent but NOT yet received (pending collection)
+  const SENT_STATUSES = ["deposit_invoice_sent", "ninety_percent_sent", "final_sent"];
+  const totalReceivable = projects
+    .filter(p => SENT_STATUSES.includes(p.invoice_status || "deposit_invoice_sent"))
+    .reduce((sum, p) => {
+      const status = p.invoice_status || "deposit_invoice_sent";
+      if (status === "deposit_invoice_sent") return sum + (p.deposit_invoice_amount || 0);
+      if (status === "ninety_percent_sent") return sum + (p.ninety_percent_invoice_amount || 0);
+      if (status === "final_sent") return sum + (p.final_invoice_amount || 0);
+      return sum;
+    }, 0);
 
   // Monthly revenue data
   const monthlyData = Array.from({ length: 12 }, (_, i) => {
