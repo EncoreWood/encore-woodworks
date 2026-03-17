@@ -429,7 +429,18 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         )}
 
         {/* PDF + Canvas */}
-        <div className="flex-1 overflow-auto bg-slate-100 rounded-lg">
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-auto bg-slate-100 rounded-lg select-none"
+          onPointerDown={tool === "pan" ? handlePanPointerDown : undefined}
+          onPointerMove={tool === "pan" ? handlePanPointerMove : undefined}
+          onPointerUp={tool === "pan" ? handlePanPointerUp : undefined}
+          onPointerLeave={tool === "pan" ? handlePanPointerUp : undefined}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          style={{ cursor: tool === "pan" ? (panStartRef.current ? "grabbing" : "grab") : undefined, touchAction: tool === "pan" ? "none" : "auto" }}
+        >
           <div className="flex items-center justify-center min-h-full p-4">
             <div className="relative inline-block" ref={pageContainerRef}>
               <Document
