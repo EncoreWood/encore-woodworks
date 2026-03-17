@@ -56,7 +56,56 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
+  // Pan handlers (mouse & single-touch drag)
+  const handlePanPointerDown = (e) => {
+    if (tool !== "pan") return;
+    e.preventDefault();
+    panStartRef.current = { x: e.clientX, y: e.clientY, scrollLeft: scrollContainerRef.current?.scrollLeft || 0, scrollTop: scrollContainerRef.current?.scrollTop || 0 };
+  };
+  const handlePanPointerMove = (e) => {
+    if (tool !== "pan" || !panStartRef.current) return;
+    e.preventDefault();
+    const dx = e.clientX - panStartRef.current.x;
+    const dy = e.clientY - panStartRef.current.y;
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
+      scrollContainerRef.current.scrollTop = panStartRef.current.scrollTop - dy;
+    }
+  };
+  const handlePanPointerUp = () => { panStartRef.current = null; };
+
+  // Pinch-to-zoom touch handlers on the scroll container
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      lastTouchDistRef.current = dist;
+    } else if (tool === "pan" && e.touches.length === 1) {
+      panStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, scrollLeft: scrollContainerRef.current?.scrollLeft || 0, scrollTop: scrollContainerRef.current?.scrollTop || 0 };
+    }
+  };
+  const handleTouchMove = (e) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      if (lastTouchDistRef.current) {
+        const ratio = dist / lastTouchDistRef.current;
+        setScale(s => Math.max(0.3, Math.min(3, s * ratio)));
+      }
+      lastTouchDistRef.current = dist;
+    } else if (tool === "pan" && e.touches.length === 1 && panStartRef.current) {
+      e.preventDefault();
+      const dx = e.touches[0].clientX - panStartRef.current.x;
+      const dy = e.touches[0].clientY - panStartRef.current.y;
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
+        scrollContainerRef.current.scrollTop = panStartRef.current.scrollTop - dy;
+      }
+    }
+  };
+  const handleTouchEnd = () => { lastTouchDistRef.current = null; panStartRef.current = null; };
+
   const handlePointerDown = (e) => {
+    if (tool === "pan") return; // handled by container
     e.preventDefault();
     canvasRef.current?.setPointerCapture(e.pointerId);
     const pos = getPos(e);
@@ -76,7 +125,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   };
 
   const handlePointerMove = (e) => {
-    if (!isPointerDown) return;
+    if (tool === "pan" || !isPointerDown) return;
     e.preventDefault();
     const pos = getPos(e);
     if (tool === "pen") {
@@ -89,6 +138,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   };
 
   const handlePointerUp = (e) => {
+    if (tool === "pan") return;
     e.preventDefault();
     const pos = getPos(e);
     if (tool === "pen" && currentPath.length > 1) {
