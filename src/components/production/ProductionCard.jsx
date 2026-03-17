@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, ArrowRight, Box, Upload, Loader2, PenLine } from "lucide-react";
 import GlbViewer from "@/components/cad/GlbViewer";
 import { base44 } from "@/api/base44Client";
+import SketchPad from "@/components/production/SketchPad";
 
 function PdfPreviewTooltip({ url, anchorEl }) {
   if (!url || !anchorEl) return null;
