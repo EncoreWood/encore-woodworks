@@ -311,7 +311,12 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
     const fc = fabricCanvasRef.current;
     const fab = fabricLib;
     if (!fc || !fab) return;
-    fc.loadFromJSON(sketch.canvas_json, () => { fc.renderAll(); });
+    // canvas_json may be a string or already parsed object
+    const json = typeof sketch.canvas_json === "string" ? sketch.canvas_json : JSON.stringify(sketch.canvas_json);
+    fc.loadFromJSON(json, () => {
+      fc.getObjects().forEach(o => o.set({ selectable: true, evented: true }));
+      fc.renderAll();
+    });
     setShowLoadTemplate(false);
   };
 
