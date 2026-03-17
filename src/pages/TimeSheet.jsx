@@ -439,8 +439,8 @@ export default function TimeSheet() {
 
             {/* EMPLOYEE DETAILS TAB */}
             <TabsContent value="employee">
-              {currentUser?.role === "user" && (
-                <p className="text-sm text-slate-600 mb-4">You can only view and manage your own time entries.</p>
+              {currentUser?.role === "user" && selectedEmployee && (
+                <p className="text-sm font-semibold text-slate-700 mb-4">👤 {selectedEmployee.full_name}'s Time Card</p>
               )}
               {/* Date Navigation */}
               <div className="flex items-center gap-4 mb-8">
