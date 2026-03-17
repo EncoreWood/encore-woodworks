@@ -39,6 +39,12 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
 
   const removeGlb = () => setFormData(prev => ({ ...prev, glb_url: null, glb_name: null }));
 
+  const [showSketch, setShowSketch] = useState(false);
+  const handleSketchSave = (url) => {
+    setFormData(prev => ({ ...prev, sketch_url: url }));
+    setShowSketch(false);
+  };
+
   useEffect(() => {
     if (open) {
       setFormData(initialData || initialFormState);
