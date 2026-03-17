@@ -275,7 +275,10 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
     const fc = fabricCanvasRef.current;
     if (!fc || !templateName.trim()) return;
     setSavingTemplate(true);
-    const canvasJson = JSON.stringify(fc.toJSON());
+    // Deselect all objects before saving so no active selection is captured
+    fc.discardActiveObject();
+    fc.renderAll();
+    const canvasJson = JSON.stringify(fc.toJSON(["selectable", "evented"]));
     const dataUrl = fc.toDataURL({ format: "png", multiplier: 0.5 });
     const res = await fetch(dataUrl);
     const blob = await res.blob();
