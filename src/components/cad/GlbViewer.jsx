@@ -137,16 +137,55 @@ function GlbViewerInner({ file, onClose }) {
   useEffect(() => {
     const c = controlsRef.current;
     if (!c) return;
-    if (mode === "orbit") {
-      c.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
-      c.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
-    } else if (mode === "pan") {
-      c.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
-      c.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN };
-    } else if (mode === "zoom") {
-      c.mouseButtons = { LEFT: THREE.MOUSE.DOLLY, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
-      c.touches = { ONE: THREE.TOUCH.DOLLY_PAN, TWO: THREE.TOUCH.DOLLY_PAN };
+    if (mode === "pick") {
+      c.enabled = false;
+    } else {
+      c.enabled = true;
+      if (mode === "orbit") {
+        c.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+        c.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+      } else if (mode === "pan") {
+        c.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+        c.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_PAN };
+      } else if (mode === "zoom") {
+        c.mouseButtons = { LEFT: THREE.MOUSE.DOLLY, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+        c.touches = { ONE: THREE.TOUCH.DOLLY_PAN, TWO: THREE.TOUCH.DOLLY_PAN };
+      }
     }
+  }, [mode]);
+
+  // Raycasting click handler for pick mode
+  useEffect(() => {
+    const container = mountRef.current;
+    if (!container) return;
+
+    const handleClick = (e) => {
+      if (mode !== "pick") return;
+      const scene = sceneRef.current;
+      const camera = cameraRef.current;
+      if (!scene || !camera) return;
+
+      const rect = container.getBoundingClientRect();
+      const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
+      const meshes = [];
+      scene.traverse(obj => { if (obj.isMesh && obj.visible) meshes.push(obj); });
+      const hits = raycaster.intersectObjects(meshes, false);
+
+      if (hits.length > 0) {
+        const mesh = hits[0].object;
+        const name = mesh.name || mesh.parent?.name || "Object";
+        setPickedObject({ mesh, name, screenX: e.clientX, screenY: e.clientY });
+      } else {
+        setPickedObject(null);
+      }
+    };
+
+    container.addEventListener("click", handleClick);
+    return () => container.removeEventListener("click", handleClick);
   }, [mode]);
 
   const modeBtn = (m, icon, label) => (
