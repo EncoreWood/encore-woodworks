@@ -57,10 +57,28 @@ export default function ProductionCard({
   onOpenRoomFolder,      // called to open the matching room folder in Job Packets tab
   roomGlbUrl,            // GLB url from the matched room on the project
   roomGlbName,           // GLB file name
+  onUpdate,              // called with updated item data after GLB upload/remove
 }) {
   const [hoveredPdfUrl, setHoveredPdfUrl] = useState(null);
   const [hoveredAnchorEl, setHoveredAnchorEl] = useState(null);
   const [showGlb, setShowGlb] = useState(false);
+  const [showCardGlb, setShowCardGlb] = useState(false);
+  const [uploadingGlb, setUploadingGlb] = useState(false);
+  const glbInputRef = useRef(null);
+
+  const cardGlbUrl = item.glb_url;
+  const cardGlbName = item.glb_name || item.name;
+
+  const handleGlbUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingGlb(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    await base44.entities.ProductionItem.update(item.id, { glb_url: file_url, glb_name: file.name });
+    if (onUpdate) onUpdate(item.id, { glb_url: file_url, glb_name: file.name });
+    setUploadingGlb(false);
+    e.target.value = "";
+  };
 
   const color = getProjectColor ? getProjectColor(item.project_id) : null;
   const cardStyle = color
