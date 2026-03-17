@@ -63,6 +63,14 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
   };
 
   return (
+    <>
+    {showSketch && (
+      <SketchPad
+        existingImageUrl={formData.sketch_url}
+        onClose={() => setShowSketch(false)}
+        onSave={handleSketchSave}
+      />
+    )}
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
