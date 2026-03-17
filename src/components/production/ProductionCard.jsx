@@ -183,28 +183,7 @@ export default function ProductionCard({
                   <Box className="w-3 h-3" />
                 </button>
               )}
-              {cardGlbUrl && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowCardGlb(true); }}
-                  className="flex items-center gap-0.5 text-violet-600 hover:text-violet-800 flex-shrink-0"
-                  title="View card 3D model"
-                >
-                  <Box className="w-3 h-3" />
-                </button>
-              )}
-              {onUpdate && (
-                <>
-                  <input ref={glbInputRef} type="file" accept=".glb,.gltf" className="hidden" onChange={handleGlbUpload} />
-                  <button
-                    onClick={(e) => { e.stopPropagation(); glbInputRef.current?.click(); }}
-                    className="flex items-center gap-0.5 text-slate-500 hover:text-slate-700 flex-shrink-0"
-                    title={cardGlbUrl ? "Replace 3D model" : "Upload 3D model"}
-                    disabled={uploadingGlb}
-                  >
-                    {uploadingGlb ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-                  </button>
-                </>
-              )}
+
               {item.project_id && onPickup && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onPickup(item); }}
