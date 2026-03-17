@@ -241,6 +241,7 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
           {COLORS.map(c => (
             <button
               key={c}
+              type="button"
               onClick={() => setColor(c)}
               style={{ background: c, border: color === c ? "2px solid #f59e0b" : "1px solid #9ca3af" }}
               className="w-6 h-6 rounded transition-all"
