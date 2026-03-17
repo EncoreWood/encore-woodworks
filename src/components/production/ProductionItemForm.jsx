@@ -180,6 +180,38 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
             <GlbViewer file={{ url: formData.glb_url, name: formData.glb_name || "3D Model" }} onClose={() => setShowGlb(false)} />
           )}
 
+          {/* Sketch */}
+          <div className="space-y-2">
+            <Label>Sketch / Drawing</Label>
+            {formData.sketch_url ? (
+              <div className="space-y-2">
+                <img src={formData.sketch_url} alt="Sketch" className="w-full rounded-lg border border-slate-200 max-h-48 object-contain bg-white" />
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="outline" className="gap-1 text-xs" onClick={() => setShowSketch(true)}>
+                    <PenLine className="w-3 h-3" /> Edit Sketch
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" className="gap-1 text-xs text-red-600 border-red-200"
+                    onClick={() => setFormData(prev => ({ ...prev, sketch_url: null }))}>
+                    <X className="w-3 h-3" /> Remove
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button type="button" variant="outline" className="w-full gap-2 border-dashed"
+                onClick={() => setShowSketch(true)}>
+                <PenLine className="w-4 h-4" /> Open Sketch Pad
+              </Button>
+            )}
+          </div>
+
+          {showSketch && (
+            <SketchPad
+              existingImageUrl={formData.sketch_url}
+              onClose={() => setShowSketch(false)}
+              onSave={handleSketchSave}
+            />
+          )}
+
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
