@@ -13,8 +13,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
 
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
-  const [scale, setScale] = useState(1.0);
-  const [rotation, setRotation] = useState(0);
+  const [scale, setScale] = useState(0.5);
+  const [rotation, setRotation] = useState(90);
   const [tool, setTool] = useState("pen");
   const [isPointerDown, setIsPointerDown] = useState(false);
   const [annList, setAnnList] = useState(annotations);
