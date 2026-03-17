@@ -71,7 +71,7 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
           onSave={handleSketchSave}
         />
       )}
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open && !showSketch} onOpenChange={(v) => { if (!showSketch) onOpenChange(v); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold text-slate-900">
