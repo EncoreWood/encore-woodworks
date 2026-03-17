@@ -33,6 +33,7 @@ export default function Invoicing() {
   const [addingPayment, setAddingPayment] = useState(null);
   const [paymentForm, setPaymentForm] = useState({ amount: "", date: "", notes: "" });
   const [viewingPayments, setViewingPayments] = useState(null);
+  const [invoiceFields, setInvoiceFields] = useState({});
 
   const queryClient = useQueryClient();
 
