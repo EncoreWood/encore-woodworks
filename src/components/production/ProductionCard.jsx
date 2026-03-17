@@ -102,6 +102,17 @@ export default function ProductionCard({
       {showCardGlb && cardGlbUrl && (
         <GlbViewer file={{ url: cardGlbUrl, name: cardGlbName }} onClose={() => setShowCardGlb(false)} />
       )}
+      {showSketch && (
+        <SketchPad
+          existingImageUrl={item.sketch_url}
+          onClose={() => setShowSketch(false)}
+          onSave={async (url) => {
+            await base44.entities.ProductionItem.update(item.id, { sketch_url: url });
+            if (onUpdate) onUpdate(item.id, { sketch_url: url });
+            setShowSketch(false);
+          }}
+        />
+      )}
       <Card
         className={`p-4 bg-white border-0 shadow-sm transition-shadow overflow-hidden ${isDragging ? "shadow-lg" : ""}`}
         style={cardStyle}
