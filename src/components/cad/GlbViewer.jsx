@@ -310,6 +310,70 @@ function GlbViewerInner({ file, onClose }) {
 
         {/* Visibility Panel */}
         {sceneRef.current && showVisibility && <VisibilityPanel scene={sceneRef.current} isIPad={isIPad} fileUrl={file.url} />}
+
+        {/* Pick mode cursor hint */}
+        {mode === "pick" && (
+          <div style={{ position: "absolute", top: 12, left: "50%", transform: "translateX(-50%)", background: "rgba(30,41,59,0.85)", color: "white", borderRadius: 8, padding: "6px 16px", fontSize: 13, pointerEvents: "none", zIndex: 20 }}>
+            Click an object to select it
+          </div>
+        )}
+
+        {/* Picked object popup */}
+        {pickedObject && (
+          <div style={{
+            position: "absolute",
+            left: Math.min(pickedObject.screenX - mountRef.current?.getBoundingClientRect().left || 0, (mountRef.current?.clientWidth || 400) - 180),
+            top: Math.max((pickedObject.screenY - mountRef.current?.getBoundingClientRect().top || 0) - 80, 8),
+            background: "white",
+            border: "1px solid #e2e8f0",
+            borderRadius: 12,
+            boxShadow: "0 8px 24px rgba(0,0,0,0.18)",
+            padding: "12px 16px",
+            zIndex: 30,
+            minWidth: 160,
+          }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: "#1e293b", marginBottom: 10, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pickedObject.name}</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => {
+                  pickedObject.mesh.visible = false;
+                  setHiddenObjects(prev => [...prev, { mesh: pickedObject.mesh, name: pickedObject.name }]);
+                  setPickedObject(null);
+                }}
+                style={{ flex: 1, padding: "6px 10px", borderRadius: 8, border: "none", background: "#ef4444", color: "white", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+              >
+                Hide
+              </button>
+              <button
+                onClick={() => setPickedObject(null)}
+                style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid #e2e8f0", background: "white", color: "#64748b", fontSize: 12, cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Hidden objects restore list */}
+        {hiddenObjects.length > 0 && (
+          <div style={{ position: "absolute", top: 12, right: 12, background: "white", border: "1px solid #e2e8f0", borderRadius: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", padding: "10px 12px", zIndex: 20, minWidth: 160 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "#64748b", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>Hidden</p>
+            {hiddenObjects.map((obj, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 12, color: "#1e293b", maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{obj.name}</span>
+                <button
+                  onClick={() => {
+                    obj.mesh.visible = true;
+                    setHiddenObjects(prev => prev.filter((_, idx) => idx !== i));
+                  }}
+                  style={{ fontSize: 11, padding: "2px 8px", borderRadius: 6, border: "1px solid #22c55e", background: "#f0fdf4", color: "#16a34a", cursor: "pointer", whiteSpace: "nowrap" }}
+                >
+                  Show
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
