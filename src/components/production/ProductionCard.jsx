@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, ArrowRight, Box, Upload, Loader2 } from "lucide-react";
+import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, ArrowRight, Box, Upload, Loader2, PenLine } from "lucide-react";
 import GlbViewer from "@/components/cad/GlbViewer";
 import { base44 } from "@/api/base44Client";
 
