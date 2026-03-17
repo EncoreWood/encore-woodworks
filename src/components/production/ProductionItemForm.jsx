@@ -206,14 +206,6 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
             )}
           </div>
 
-          {showSketch && (
-            <SketchPad
-              existingImageUrl={formData.sketch_url}
-              onClose={() => setShowSketch(false)}
-              onSave={handleSketchSave}
-            />
-          )}
-
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
