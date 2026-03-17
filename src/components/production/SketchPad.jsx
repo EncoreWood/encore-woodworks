@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
-import { Pencil, Eraser, Minus, Square, Circle, Type, Undo2, Trash2, X, Check, Download } from "lucide-react";
+import { Pencil, Eraser, Minus, Square, Circle, Type, Undo2, Trash2, X, Check } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
 const COLORS = [
@@ -18,29 +18,41 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
   const [color, setColor] = useState("#000000");
   const [bgColor, setBgColor] = useState("#ffffff");
   const [size, setSize] = useState(4);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [startPos, setStartPos] = useState(null);
-  const [history, setHistory] = useState([]);
   const [saving, setSaving] = useState(false);
-  const snapshotRef = useRef(null);
 
-  const getCanvas = () => canvasRef.current;
-  const getCtx = () => canvasRef.current?.getContext("2d");
+  // Use refs for drawing state to avoid re-renders during drawing
+  const isDrawingRef = useRef(false);
+  const startPosRef = useRef(null);
+  // Offscreen canvas used as snapshot for shape preview (no toDataURL needed)
+  const snapshotCanvasRef = useRef(null);
+  // History as array of ImageData
+  const historyRef = useRef([]);
+  const [historyLen, setHistoryLen] = useState(0); // just for undo button enable/disable
 
-  // Fill background
-  const fillBackground = useCallback((ctx, canvas) => {
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }, [bgColor]);
+  const toolRef = useRef(tool);
+  const colorRef = useRef(color);
+  const bgColorRef = useRef(bgColor);
+  const sizeRef = useRef(size);
+
+  useEffect(() => { toolRef.current = tool; }, [tool]);
+  useEffect(() => { colorRef.current = color; }, [color]);
+  useEffect(() => { bgColorRef.current = bgColor; }, [bgColor]);
+  useEffect(() => { sizeRef.current = size; }, [size]);
 
   useEffect(() => {
-    const canvas = getCanvas();
-    const ctx = getCtx();
-    if (!canvas || !ctx) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
     canvas.width = 800;
     canvas.height = 540;
+    const ctx = canvas.getContext("2d");
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Init offscreen snapshot canvas
+    const snap = document.createElement("canvas");
+    snap.width = 800;
+    snap.height = 540;
+    snapshotCanvasRef.current = snap;
 
     if (existingImageUrl) {
       const img = new Image();
@@ -50,15 +62,35 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
     }
   }, []);
 
-  const saveSnapshot = () => {
-    const canvas = getCanvas();
+  const saveToHistory = useCallback(() => {
+    const canvas = canvasRef.current;
     if (!canvas) return;
-    const snapshot = canvas.toDataURL();
-    setHistory(prev => [...prev.slice(-30), snapshot]);
-  };
+    const ctx = canvas.getContext("2d");
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const hist = historyRef.current;
+    if (hist.length >= 30) hist.shift();
+    hist.push(imageData);
+    setHistoryLen(hist.length);
+  }, []);
 
-  const getPos = (e) => {
-    const canvas = getCanvas();
+  // Copy current canvas to offscreen snapshot canvas (for shape preview)
+  const takeSnapshot = useCallback(() => {
+    const canvas = canvasRef.current;
+    const snap = snapshotCanvasRef.current;
+    if (!canvas || !snap) return;
+    snap.getContext("2d").drawImage(canvas, 0, 0);
+  }, []);
+
+  // Restore offscreen snapshot canvas onto main canvas (for shape preview)
+  const restoreSnapshot = useCallback(() => {
+    const canvas = canvasRef.current;
+    const snap = snapshotCanvasRef.current;
+    if (!canvas || !snap) return;
+    canvas.getContext("2d").drawImage(snap, 0, 0);
+  }, []);
+
+  const getPos = useCallback((e) => {
+    const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -72,117 +104,111 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
       x: (e.clientX - rect.left) * scaleX,
       y: (e.clientY - rect.top) * scaleY,
     };
-  };
+  }, []);
 
-  const startDraw = (e) => {
+  const startDraw = useCallback((e) => {
     e.preventDefault();
-    const ctx = getCtx();
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
     if (!ctx) return;
     const pos = getPos(e);
-    saveSnapshot();
-    setIsDrawing(true);
-    setStartPos(pos);
-    snapshotRef.current = getCanvas().toDataURL();
+    const currentTool = toolRef.current;
 
-    if (tool === "pen" || tool === "eraser") {
-      ctx.beginPath();
-      ctx.moveTo(pos.x, pos.y);
-    } else if (tool === "fill") {
-      floodFill(ctx, Math.round(pos.x), Math.round(pos.y), color);
-      setIsDrawing(false);
-    } else if (tool === "text") {
+    if (currentTool === "text") {
       const text = prompt("Enter text:");
       if (text) {
-        ctx.font = `${size * 4}px sans-serif`;
-        ctx.fillStyle = color;
+        saveToHistory();
+        ctx.font = `${sizeRef.current * 4}px sans-serif`;
+        ctx.fillStyle = colorRef.current;
         ctx.fillText(text, pos.x, pos.y);
       }
-      setIsDrawing(false);
+      return;
     }
-  };
 
-  const draw = (e) => {
-    if (!isDrawing) return;
+    saveToHistory();
+    takeSnapshot();
+    isDrawingRef.current = true;
+    startPosRef.current = pos;
+
+    if (currentTool === "pen" || currentTool === "eraser") {
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    }
+  }, [getPos, saveToHistory, takeSnapshot]);
+
+  const draw = useCallback((e) => {
+    if (!isDrawingRef.current) return;
     e.preventDefault();
-    const ctx = getCtx();
-    const canvas = getCanvas();
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!ctx) return;
     const pos = getPos(e);
+    const currentTool = toolRef.current;
+    const startPos = startPosRef.current;
 
-    ctx.lineWidth = size;
+    ctx.lineWidth = sizeRef.current;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-
-    if (tool === "pen") {
-      ctx.strokeStyle = color;
-      ctx.globalCompositeOperation = "source-over";
-      ctx.lineTo(pos.x, pos.y);
-      ctx.stroke();
-    } else if (tool === "eraser") {
-      ctx.strokeStyle = bgColor;
-      ctx.globalCompositeOperation = "source-over";
-      ctx.lineTo(pos.x, pos.y);
-      ctx.stroke();
-    } else if (tool === "line" || tool === "rect" || tool === "circle") {
-      // Restore snapshot to avoid ghosting
-      const img = new Image();
-      img.src = snapshotRef.current;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = size;
-        ctx.lineCap = "round";
-        ctx.globalCompositeOperation = "source-over";
-        if (tool === "line") {
-          ctx.beginPath();
-          ctx.moveTo(startPos.x, startPos.y);
-          ctx.lineTo(pos.x, pos.y);
-          ctx.stroke();
-        } else if (tool === "rect") {
-          ctx.strokeRect(startPos.x, startPos.y, pos.x - startPos.x, pos.y - startPos.y);
-        } else if (tool === "circle") {
-          const rx = Math.abs(pos.x - startPos.x) / 2;
-          const ry = Math.abs(pos.y - startPos.y) / 2;
-          const cx = Math.min(startPos.x, pos.x) + rx;
-          const cy = Math.min(startPos.y, pos.y) + ry;
-          ctx.beginPath();
-          ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      };
-    }
-  };
-
-  const endDraw = (e) => {
-    if (!isDrawing) return;
-    e.preventDefault();
-    setIsDrawing(false);
-    const ctx = getCtx();
     ctx.globalCompositeOperation = "source-over";
-  };
 
-  const undo = () => {
-    if (!history.length) return;
-    const prev = history[history.length - 1];
-    setHistory(h => h.slice(0, -1));
-    const canvas = getCanvas();
-    const ctx = getCtx();
-    const img = new Image();
-    img.src = prev;
-    img.onload = () => ctx.drawImage(img, 0, 0);
-  };
+    if (currentTool === "pen") {
+      ctx.strokeStyle = colorRef.current;
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    } else if (currentTool === "eraser") {
+      ctx.strokeStyle = bgColorRef.current;
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    } else if (currentTool === "line" || currentTool === "rect" || currentTool === "circle") {
+      // Restore snapshot synchronously (no async Image needed)
+      restoreSnapshot();
+      ctx.strokeStyle = colorRef.current;
+      if (currentTool === "line") {
+        ctx.beginPath();
+        ctx.moveTo(startPos.x, startPos.y);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+      } else if (currentTool === "rect") {
+        ctx.strokeRect(startPos.x, startPos.y, pos.x - startPos.x, pos.y - startPos.y);
+      } else if (currentTool === "circle") {
+        const rx = Math.abs(pos.x - startPos.x) / 2;
+        const ry = Math.abs(pos.y - startPos.y) / 2;
+        const cx = Math.min(startPos.x, pos.x) + rx;
+        const cy = Math.min(startPos.y, pos.y) + ry;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }, [getPos, restoreSnapshot]);
 
-  const clearCanvas = () => {
-    const canvas = getCanvas();
-    const ctx = getCtx();
-    saveSnapshot();
-    ctx.fillStyle = bgColor;
+  const endDraw = useCallback((e) => {
+    if (!isDrawingRef.current) return;
+    e?.preventDefault();
+    isDrawingRef.current = false;
+  }, []);
+
+  const undo = useCallback(() => {
+    const hist = historyRef.current;
+    if (!hist.length) return;
+    const imageData = hist.pop();
+    setHistoryLen(hist.length);
+    const canvas = canvasRef.current;
+    if (canvas) canvas.getContext("2d").putImageData(imageData, 0, 0);
+  }, []);
+
+  const clearCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!ctx) return;
+    saveToHistory();
+    ctx.fillStyle = bgColorRef.current;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-  };
+  }, [saveToHistory]);
 
   const handleSave = async () => {
     setSaving(true);
-    const canvas = getCanvas();
+    const canvas = canvasRef.current;
     const blob = await new Promise(res => canvas.toBlob(res, "image/png"));
     const file = new File([blob], "sketch.png", { type: "image/png" });
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
@@ -261,7 +287,8 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
 
         {/* Actions */}
         <div className="flex items-center gap-1">
-          <button type="button" onClick={undo} title="Undo" className="p-1.5 rounded bg-white hover:bg-gray-100 text-slate-700 border border-gray-300">
+          <button type="button" onClick={undo} title="Undo" disabled={historyLen === 0}
+            className="p-1.5 rounded bg-white hover:bg-gray-100 text-slate-700 border border-gray-300 disabled:opacity-40">
             <Undo2 className="w-4 h-4" />
           </button>
           <button type="button" onClick={clearCanvas} title="Clear" className="p-1.5 rounded bg-white hover:bg-gray-100 text-red-600 border border-gray-300">
@@ -270,10 +297,10 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <Button onClick={onClose} variant="outline" size="sm" className="bg-white">
+          <Button type="button" onClick={onClose} variant="outline" size="sm" className="bg-white">
             <X className="w-4 h-4 mr-1" /> Cancel
           </Button>
-          <Button onClick={handleSave} size="sm" className="bg-amber-600 hover:bg-amber-700" disabled={saving}>
+          <Button type="button" onClick={handleSave} size="sm" className="bg-amber-600 hover:bg-amber-700" disabled={saving}>
             {saving ? "Saving..." : <><Check className="w-4 h-4 mr-1" /> Save Sketch</>}
           </Button>
         </div>
