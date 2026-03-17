@@ -142,6 +142,37 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
             />
           </div>
 
+          {/* 3D Model */}
+          <div className="space-y-2">
+            <Label>3D Model (GLB)</Label>
+            {formData.glb_url ? (
+              <div className="flex items-center gap-2 p-2 border border-indigo-200 bg-indigo-50 rounded-lg">
+                <Box className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                <span className="text-sm text-indigo-700 flex-1 truncate">{formData.glb_name || "3D Model"}</span>
+                <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs text-indigo-600 border-indigo-300"
+                  onClick={() => setShowGlb(true)}>
+                  View
+                </Button>
+                <button type="button" onClick={removeGlb} className="text-slate-400 hover:text-red-500">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <input ref={glbInputRef} type="file" accept=".glb,.gltf" className="hidden" onChange={handleGlbUpload} />
+                <Button type="button" variant="outline" className="w-full gap-2 border-dashed"
+                  onClick={() => glbInputRef.current?.click()} disabled={uploadingGlb}>
+                  {uploadingGlb ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {uploadingGlb ? "Uploading..." : "Upload 3D Model"}
+                </Button>
+              </>
+            )}
+          </div>
+
+          {showGlb && formData.glb_url && (
+            <GlbViewer file={{ url: formData.glb_url, name: formData.glb_name || "3D Model" }} onClose={() => setShowGlb(false)} />
+          )}
+
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
