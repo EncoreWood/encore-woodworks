@@ -17,7 +17,8 @@ const initialFormState = {
   stage: "face_frame",
   files: [],
   notes: "",
-  is_job_info: false
+  is_job_info: false,
+  sketch_url: null
 };
 
 // jobInfoProjects: if provided, form is in "Job Info" mode — shows project dropdown instead of type, hides stage
