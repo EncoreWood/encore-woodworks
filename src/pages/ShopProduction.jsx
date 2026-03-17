@@ -199,7 +199,25 @@ export default function ShopProduction() {
   };
 
   const sendToJobInfo = async (item) => {
-    await base44.entities.ProductionItem.update(item.id, { ...item, is_job_info: true });
+    // Create a linked Job Info copy — keeps item in Production AND creates a mirrored Job Info card
+    const files = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
+    const newJobInfoItem = await base44.entities.ProductionItem.create({
+      name: item.name,
+      type: item.type,
+      stage: item.stage,
+      project_id: item.project_id,
+      project_name: item.project_name,
+      room_name: item.room_name,
+      notes: item.notes,
+      files,
+      sketch_url: item.sketch_url,
+      glb_url: item.glb_url,
+      glb_name: item.glb_name,
+      is_job_info: true,
+      linked_production_item_id: item.id,
+    });
+    // Update the production item to reference the new job info card
+    await base44.entities.ProductionItem.update(item.id, { ...item, files, linked_production_item_id: newJobInfoItem.id });
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
     setActiveTab("job_info");
   };
