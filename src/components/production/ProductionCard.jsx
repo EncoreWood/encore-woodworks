@@ -146,7 +146,7 @@ export default function ProductionCard({
                 </button>
               )}
               {/* Send to Job Info */}
-              {onSendToJobInfo && !item.is_job_info && item.type === "misc" && (
+              {onSendToJobInfo && !item.is_job_info && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onSendToJobInfo(item); }}
                   className="flex items-center gap-0.5 text-purple-500 hover:text-purple-700 flex-shrink-0"
@@ -200,7 +200,13 @@ export default function ProductionCard({
         {/* Title + actions */}
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-slate-900">{item.name}</h3>
+            <button
+              className="font-medium text-slate-900 hover:text-amber-700 hover:underline text-left w-full"
+              onClick={(e) => { e.stopPropagation(); if (onAnnotate && item.files?.length > 0) { const pdfIdx = item.files.findIndex(f => f.url?.match(/\.pdf$/i)); if (pdfIdx >= 0) onAnnotate(item, pdfIdx); } }}
+              title="Click to annotate first PDF"
+            >
+              {item.name}
+            </button>
             {item.files && item.files.some(f => f.pts) && (
               <span className="text-xs font-bold text-amber-600">
                 {item.files.reduce((s, f) => s + (parseFloat(f.pts) || 0), 0)} PTS total
@@ -320,10 +326,13 @@ export default function ProductionCard({
                       <Badge className="bg-emerald-600 text-xs">{file.annotations.length} notes</Badge>
                     )}
                     {onAnnotate && (
-                      <Button size="sm" variant="outline" className="h-6 px-2 text-xs"
-                        onClick={(e) => { e.stopPropagation(); onAnnotate(item, idx); }}>
-                        Annotate
-                      </Button>
+                      <button
+                        className="text-xs text-amber-600 hover:text-amber-800 underline"
+                        onClick={(e) => { e.stopPropagation(); onAnnotate(item, idx); }}
+                        title="Annotate PDF"
+                      >
+                        {file.name}
+                      </button>
                     )}
                   </div>
                 </div>

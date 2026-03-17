@@ -17,11 +17,11 @@ import ProductionCard from "../components/production/ProductionCard";
 import JobPacketsTab from "../components/production/JobPacketsTab";
 
 const productionColumns = [
-  { id: "face_frame", label: "Face Frame", color: "bg-blue-50" },
-  { id: "cut", label: "Cut", color: "bg-orange-50" },
-  { id: "spray", label: "Spray", color: "bg-purple-50" },
-  { id: "build", label: "Build", color: "bg-amber-50" },
-  { id: "complete", label: "Complete", color: "bg-green-50" },
+  { id: "cut", label: "1. Cut", color: "bg-orange-50" },
+  { id: "face_frame", label: "2. Face Frame", color: "bg-blue-50" },
+  { id: "spray", label: "3. Spray", color: "bg-purple-50" },
+  { id: "build", label: "4. Build", color: "bg-amber-50" },
+  { id: "complete", label: "5. Complete", color: "bg-green-50" },
   { id: "on_hold", label: "On Hold", color: "bg-red-100" }
 ];
 
