@@ -225,7 +225,7 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
           </div>
         </form>
       </DialogContent>
-    </Dialog>
+      </Dialog>
     </>
   );
 }
