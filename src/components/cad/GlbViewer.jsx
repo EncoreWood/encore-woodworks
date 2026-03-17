@@ -10,10 +10,13 @@ function GlbViewerInner({ file, onClose }) {
   const mountRef = useRef(null);
   const controlsRef = useRef(null);
   const sceneRef = useRef(null);
+  const cameraRef = useRef(null);
   const [mode, setMode] = useState("orbit");
   const [loading, setLoading] = useState(true);
   const [isIPad, setIsIPad] = useState(false);
   const [showVisibility, setShowVisibility] = useState(false);
+  const [pickedObject, setPickedObject] = useState(null); // { mesh, name, screenX, screenY }
+  const [hiddenObjects, setHiddenObjects] = useState([]);  // array of { mesh, name }
 
   // Detect iPad on mount
   useEffect(() => {
