@@ -440,68 +440,62 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
           style={{ boxShadow: "0 2px 16px rgba(0,0,0,0.18)", border: "1px solid #d1d5db", maxWidth: "100%" }} />
       </div>
 
-      {/* Save Template Dialog */}
-      <Dialog open={showSaveTemplate} onOpenChange={setShowSaveTemplate}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Save as Template</DialogTitle></DialogHeader>
-          <div className="space-y-4 mt-2">
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1 block">Template Name</label>
-              <Input value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="e.g., Base Cabinet Layout" autoFocus />
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-slate-700">Visibility:</label>
-              <div className="flex gap-2">
-                <button type="button" onClick={() => setTemplateShared(false)}
-                  className={`px-3 py-1.5 rounded text-sm border transition-all ${!templateShared ? "bg-amber-500 text-white border-amber-500" : "bg-white text-slate-700 border-gray-300"}`}>
-                  Private
-                </button>
-                <button type="button" onClick={() => setTemplateShared(true)}
-                  className={`px-3 py-1.5 rounded text-sm border transition-all ${templateShared ? "bg-amber-500 text-white border-amber-500" : "bg-white text-slate-700 border-gray-300"}`}>
-                  Shared
-                </button>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" size="sm" onClick={() => setShowSaveTemplate(false)}>Cancel</Button>
-              <Button size="sm" className="bg-amber-600 hover:bg-amber-700"
-                onClick={handleSaveTemplate} disabled={savingTemplate || !templateName.trim()}>
-                {savingTemplate ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
-                Save
-              </Button>
+      {/* Save Template Modal */}
+      <SimpleModal open={showSaveTemplate} onClose={() => setShowSaveTemplate(false)} title="Save as Template">
+        <div className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-slate-700 mb-1 block">Template Name</label>
+            <Input value={templateName} onChange={e => setTemplateName(e.target.value)} placeholder="e.g., Base Cabinet Layout" autoFocus />
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-slate-700">Visibility:</label>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setTemplateShared(false)}
+                className={`px-3 py-1.5 rounded text-sm border transition-all ${!templateShared ? "bg-amber-500 text-white border-amber-500" : "bg-white text-slate-700 border-gray-300"}`}>
+                Private
+              </button>
+              <button type="button" onClick={() => setTemplateShared(true)}
+                className={`px-3 py-1.5 rounded text-sm border transition-all ${templateShared ? "bg-amber-500 text-white border-amber-500" : "bg-white text-slate-700 border-gray-300"}`}>
+                Shared
+              </button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setShowSaveTemplate(false)}>Cancel</Button>
+            <Button size="sm" className="bg-amber-600 hover:bg-amber-700"
+              onClick={handleSaveTemplate} disabled={savingTemplate || !templateName.trim()}>
+              {savingTemplate ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+              Save
+            </Button>
+          </div>
+        </div>
+      </SimpleModal>
 
-      {/* Load Template Dialog */}
-      <Dialog open={showLoadTemplate} onOpenChange={setShowLoadTemplate}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Load Template</DialogTitle></DialogHeader>
-          {loadingTemplates ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
-          ) : templates.length === 0 ? (
-            <p className="text-center text-slate-500 py-8">No saved templates found.</p>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
-              {templates.map(sketch => (
-                <button key={sketch.id} type="button" onClick={() => loadTemplate(sketch)}
-                  className="border border-gray-200 rounded-lg overflow-hidden hover:border-amber-400 hover:shadow-md transition-all text-left">
-                  {sketch.thumbnail_url ? (
-                    <img src={sketch.thumbnail_url} alt={sketch.name} className="w-full h-28 object-contain bg-white" />
-                  ) : (
-                    <div className="w-full h-28 bg-gray-100 flex items-center justify-center text-slate-400 text-xs">No preview</div>
-                  )}
-                  <div className="px-2 py-1.5 bg-white">
-                    <p className="text-xs font-medium text-slate-800 truncate">{sketch.name}</p>
-                    <p className="text-xs text-slate-400">{sketch.is_shared ? "Shared" : "Private"}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Load Template Modal */}
+      <SimpleModal open={showLoadTemplate} onClose={() => setShowLoadTemplate(false)} title="Load Template">
+        {loadingTemplates ? (
+          <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>
+        ) : templates.length === 0 ? (
+          <p className="text-center text-slate-500 py-8">No saved templates found.</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+            {templates.map(sketch => (
+              <button key={sketch.id} type="button" onClick={() => loadTemplate(sketch)}
+                className="border border-gray-200 rounded-lg overflow-hidden hover:border-amber-400 hover:shadow-md transition-all text-left">
+                {sketch.thumbnail_url ? (
+                  <img src={sketch.thumbnail_url} alt={sketch.name} className="w-full h-28 object-contain bg-white" />
+                ) : (
+                  <div className="w-full h-28 bg-gray-100 flex items-center justify-center text-slate-400 text-xs">No preview</div>
+                )}
+                <div className="px-2 py-1.5 bg-white">
+                  <p className="text-xs font-medium text-slate-800 truncate">{sketch.name}</p>
+                  <p className="text-xs text-slate-400">{sketch.is_shared ? "Shared" : "Private"}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </SimpleModal>
     </div>,
     document.body
   );
