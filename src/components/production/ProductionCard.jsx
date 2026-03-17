@@ -63,6 +63,7 @@ export default function ProductionCard({
   const [hoveredAnchorEl, setHoveredAnchorEl] = useState(null);
   const [showGlb, setShowGlb] = useState(false);
   const [showCardGlb, setShowCardGlb] = useState(false);
+  const [showSketch, setShowSketch] = useState(false);
   const [uploadingGlb, setUploadingGlb] = useState(false);
   const glbInputRef = useRef(null);
 
