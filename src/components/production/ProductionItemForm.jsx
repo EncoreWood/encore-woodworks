@@ -22,6 +22,21 @@ const initialFormState = {
 // jobInfoProjects: if provided, form is in "Job Info" mode — shows project dropdown instead of type, hides stage
 export default function ProductionItemForm({ open, onOpenChange, onSubmit, initialData, isLoading, jobInfoProjects }) {
   const [formData, setFormData] = useState(initialFormState);
+  const [uploadingGlb, setUploadingGlb] = useState(false);
+  const [showGlb, setShowGlb] = useState(false);
+  const glbInputRef = useRef(null);
+
+  const handleGlbUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingGlb(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setFormData(prev => ({ ...prev, glb_url: file_url, glb_name: file.name }));
+    setUploadingGlb(false);
+    e.target.value = "";
+  };
+
+  const removeGlb = () => setFormData(prev => ({ ...prev, glb_url: null, glb_name: null }));
 
   useEffect(() => {
     if (open) {
