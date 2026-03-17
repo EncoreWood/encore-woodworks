@@ -210,6 +210,7 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
           {toolList.map(({ key, icon: Icon, label }) => (
             <button
               key={key}
+              type="button"
               title={label}
               onClick={() => setTool(key)}
               className={`p-1.5 rounded text-sm transition-all ${tool === key ? "bg-amber-500 text-white shadow" : "bg-white hover:bg-gray-100 text-slate-700"}`}
