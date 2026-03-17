@@ -264,7 +264,7 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
           <button type="button" onClick={undo} title="Undo" className="p-1.5 rounded bg-white hover:bg-gray-100 text-slate-700 border border-gray-300">
             <Undo2 className="w-4 h-4" />
           </button>
-          <button onClick={clearCanvas} title="Clear" className="p-1.5 rounded bg-white hover:bg-gray-100 text-red-600 border border-gray-300">
+          <button type="button" onClick={clearCanvas} title="Clear" className="p-1.5 rounded bg-white hover:bg-gray-100 text-red-600 border border-gray-300">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
