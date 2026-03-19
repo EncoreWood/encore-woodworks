@@ -86,8 +86,23 @@ export default function Dashboard() {
 
   const { data: productionItems = [] } = useQuery({
     queryKey: ["productionItems"],
-    queryFn: () => base44.entities.ProductionItem.list("-updated_date", 200)
+    queryFn: () => base44.entities.ProductionItem.list("-updated_date", 200),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
   });
+
+  // Real-time sync: keep production items current without polling
+  useEffect(() => {
+    const unsub = base44.entities.ProductionItem.subscribe((event) => {
+      queryClient.setQueryData(["productionItems"], (old = []) => {
+        if (event.type === "create") return [...old, event.data];
+        if (event.type === "update") return old.map(i => i.id === event.id ? event.data : i);
+        if (event.type === "delete") return old.filter(i => i.id !== event.id);
+        return old;
+      });
+    });
+    return unsub;
+  }, [queryClient]);
 
   const updateSettingMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.DashboardSettings.update(id, data),
