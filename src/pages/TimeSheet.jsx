@@ -31,6 +31,8 @@ export default function TimeSheet() {
   const [showClockInModal, setShowClockInModal] = useState(false);
   const [showSwitchModal, setShowSwitchModal] = useState(false);
   const [currentProjectName, setCurrentProjectName] = useState(null);
+  const [editingEntry, setEditingEntry] = useState(null);
+  const [editForm, setEditForm] = useState({ clock_in: "", clock_out: "", notes: "" });
   const [settingsData, setSettingsData] = useState({
     hours_per_year: 160,
     accrual_rate: 0.0192,
