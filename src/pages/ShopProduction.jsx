@@ -105,11 +105,20 @@ export default function ShopProduction() {
     if (!item) return;
 
     const safeFiles = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts !== undefined ? Number(f.pts) : undefined, annotations: f.annotations }));
+
+    // Set completed_date when moving INTO complete, clear it when moving OUT of complete
+    let completedDate = item.completed_date;
+    if (newStage === "complete" && item.stage !== "complete") {
+      completedDate = format(new Date(), "yyyy-MM-dd");
+    } else if (newStage !== "complete" && item.stage === "complete") {
+      completedDate = null; // deduct PTS — card moved back out of complete
+    }
+
     const updatePayload = {
       name: item.name, type: item.type, stage: newStage,
       project_id: item.project_id, project_name: item.project_name, room_name: item.room_name,
       notes: item.notes, files: safeFiles,
-      completed_date: newStage === "complete" && item.stage !== "complete" ? format(new Date(), "yyyy-MM-dd") : item.completed_date
+      completed_date: completedDate
     };
 
     queryClient.setQueryData(["productionItems"], (old = []) =>
