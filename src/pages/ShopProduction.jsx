@@ -45,8 +45,7 @@ export default function ShopProduction() {
   const { data: items = [] } = useQuery({
     queryKey: ["productionItems"],
     queryFn: () => base44.entities.ProductionItem.list(),
-    initialData: [],
-    staleTime: 30_000,       // treat data as fresh for 30s — avoids refetch on tab focus
+    staleTime: 30_000,
     refetchOnWindowFocus: false,
   });
 
