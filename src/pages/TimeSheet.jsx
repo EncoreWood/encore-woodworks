@@ -936,6 +936,56 @@ export default function TimeSheet() {
           confirmClass="bg-amber-600 hover:bg-amber-700"
         />
 
+        {/* Edit Entry Dialog */}
+        <Dialog open={!!editingEntry} onOpenChange={(open) => { if (!open) setEditingEntry(null); }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Time Entry</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {editingEntry && (
+                <p className="text-sm text-slate-500">{editingEntry.employee_name} · {editingEntry.date}</p>
+              )}
+              <div>
+                <label className="text-sm font-medium text-slate-700">Clock In</label>
+                <Input
+                  type="time"
+                  value={editForm.clock_in}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, clock_in: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Clock Out</label>
+                <Input
+                  type="time"
+                  value={editForm.clock_out}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, clock_out: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              {editForm.clock_in && editForm.clock_out && (
+                <p className="text-sm text-slate-500">Hours: {calculateHours(editForm.clock_in, editForm.clock_out)}</p>
+              )}
+              <div>
+                <label className="text-sm font-medium text-slate-700">Notes</label>
+                <Input
+                  value={editForm.notes}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Notes..."
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setEditingEntry(null)}>Cancel</Button>
+                <Button onClick={handleSaveEdit} className="bg-amber-600 hover:bg-amber-700" disabled={updateEntryMutation.isPending}>
+                  {updateEntryMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Add Entry Dialog */}
         <Dialog open={showAddEntry} onOpenChange={setShowAddEntry} className="z-50">
           <DialogContent>
