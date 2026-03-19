@@ -95,6 +95,22 @@ export default function TimeSheet() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["timeEntries"] })
   });
 
+  const updateEntryMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.TimeEntry.update(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["timeEntries"] }); setEditingEntry(null); }
+  });
+
+  const handleOpenEdit = (entry) => {
+    setEditingEntry(entry);
+    setEditForm({ clock_in: entry.clock_in || "", clock_out: entry.clock_out || "", notes: entry.notes || "" });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingEntry) return;
+    const hoursWorked = editForm.clock_in && editForm.clock_out ? parseFloat(calculateHours(editForm.clock_in, editForm.clock_out)) : editingEntry.hours_worked;
+    updateEntryMutation.mutate({ id: editingEntry.id, data: { clock_in: editForm.clock_in || null, clock_out: editForm.clock_out || null, notes: editForm.notes, hours_worked: hoursWorked } });
+  };
+
   const updateSettingsMutation = useMutation({
     mutationFn: (data) => {
       if (settings[0]) {
