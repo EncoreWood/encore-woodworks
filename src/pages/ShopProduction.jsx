@@ -173,13 +173,14 @@ export default function ShopProduction() {
     setAnnotatingPdf(null); setCurrentPdfUrl(null); setCurrentAnnotations([]);
   };
 
-  // PTS stats
+  // PTS stats — sum f.pts from ALL cards (any stage), using completed_date for day/week/month
   const now = new Date();
   const todayStr = format(now, "yyyy-MM-dd");
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
   const monthStart = startOfMonth(now);
-  const completedItems = items.filter(i => i.stage === "complete");
+  const boardItems = items.filter(i => !i.is_job_info);
   const getPts = (filtered) => filtered.reduce((sum, item) => sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0), 0);
+  const completedItems = boardItems.filter(i => i.stage === "complete");
   const dayPts = getPts(completedItems.filter(i => i.completed_date === todayStr));
   const weekPts = getPts(completedItems.filter(i => i.completed_date && new Date(i.completed_date) >= weekStart));
   const monthPts = getPts(completedItems.filter(i => i.completed_date && new Date(i.completed_date) >= monthStart));
