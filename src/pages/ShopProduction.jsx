@@ -305,8 +305,8 @@ export default function ShopProduction() {
                       <div className="mb-3 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <h2 className="font-semibold text-slate-700">{column.label}</h2>
-                          {todayColPts > 0 && (
-                            <span className="text-xs font-bold text-green-700 bg-green-100 border border-green-200 rounded-full px-2 py-0.5">{todayColPts} PTS</span>
+                          {colPts > 0 && (
+                            <span className="text-xs font-bold text-green-700 bg-green-100 border border-green-200 rounded-full px-2 py-0.5">{colPts} PTS</span>
                           )}
                         </div>
                         <Badge variant="outline" className="text-xs">{columnItems.length}</Badge>
