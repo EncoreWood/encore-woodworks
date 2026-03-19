@@ -45,13 +45,30 @@ export default function ShopProduction() {
   const { data: items = [] } = useQuery({
     queryKey: ["productionItems"],
     queryFn: () => base44.entities.ProductionItem.list(),
-    initialData: []
+    initialData: [],
+    staleTime: 30_000,       // treat data as fresh for 30s — avoids refetch on tab focus
+    refetchOnWindowFocus: false,
   });
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
-    queryFn: () => base44.entities.Project.list()
+    queryFn: () => base44.entities.Project.list(),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
+
+  // Real-time subscription: update local cache instantly when any production item changes
+  useEffect(() => {
+    const unsub = base44.entities.ProductionItem.subscribe((event) => {
+      queryClient.setQueryData(["productionItems"], (old = []) => {
+        if (event.type === "create") return [...old, event.data];
+        if (event.type === "update") return old.map(i => i.id === event.id ? event.data : i);
+        if (event.type === "delete") return old.filter(i => i.id !== event.id);
+        return old;
+      });
+    });
+    return unsub;
+  }, [queryClient]);
 
   const activeProjects = projects.filter(p => ACTIVE_PROJECT_STATUSES.includes(p.status));
 
