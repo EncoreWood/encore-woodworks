@@ -135,7 +135,8 @@ export default function ShopProduction() {
 
     if (item?.project_id) {
       try {
-        const project = await base44.entities.Project.filter({ id: item.project_id }).then(res => res[0]);
+        // Use locally-cached project data — avoids extra network round-trip
+        const project = projects.find(p => p.id === item.project_id);
         if (project?.rooms) {
           const updatedRooms = project.rooms.map(room => {
             if (room.room_name === item.room_name && room.files) {
