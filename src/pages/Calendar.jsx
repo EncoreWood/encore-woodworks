@@ -134,6 +134,11 @@ export default function CalendarPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cleaningSchedules"] })
   });
 
+  const updateCleaningScheduleMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.CleaningSchedule.update(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["cleaningSchedules"] }); setEditingSchedule(null); }
+  });
+
   const handleGenerateRotatingSchedule = () => {
     if (!cleaningWeekStart || cleaningAssignees.length === 0) return;
     const startDate = new Date(cleaningWeekStart + "T00:00:00");
