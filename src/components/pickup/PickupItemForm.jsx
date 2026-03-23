@@ -52,6 +52,7 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
         priority: initialData.priority || "medium",
         room_name: initialData.room_name || "",
         notes: initialData.notes || "",
+        pts: initialData.pts ?? "",
         files: initialData.files || [],
         sketch_url: initialData.sketch_url || null,
         linkToProduction: false,
