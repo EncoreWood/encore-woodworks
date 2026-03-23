@@ -88,13 +88,18 @@ export default function CalendarPage() {
   const { data: vacations = [] } = useQuery({ queryKey: ["vacations"], queryFn: () => base44.entities.Vacation.list() });
   const { data: cleaningSchedules = [] } = useQuery({ queryKey: ["cleaningSchedules"], queryFn: () => base44.entities.CleaningSchedule.list() });
 
-  const [showCleaningDialog, setShowCleaningDialog] = useState(false);
   const [showCleaningManager, setShowCleaningManager] = useState(false);
-  const [cleaningWeekStart, setCleaningWeekStart] = useState("");
-  const [cleaningAssignees, setCleaningAssignees] = useState([]);
-  const [cleaningNotes, setCleaningNotes] = useState("");
-  const [autoRotateCount, setAutoRotateCount] = useState(4);
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
+
+  // Generate dialog state
+  const [genWeekStart, setGenWeekStart] = useState("");
+  const [genWeekCount, setGenWeekCount] = useState(4);
+  const [genPair, setGenPair] = useState([]);           // permanent pair (2 people)
+  const [genRotators, setGenRotators] = useState([]);   // rotation pool for day 2
+  const [genDay1, setGenDay1] = useState("Monday");
+  const [genDay2, setGenDay2] = useState("Friday");
+  const [genNotes, setGenNotes] = useState("");
 
   const createPresenterMutation = useMutation({
     mutationFn: async (data) => {
