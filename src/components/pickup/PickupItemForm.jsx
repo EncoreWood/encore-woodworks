@@ -67,6 +67,7 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
     const { linkToProduction, productionStage, ...itemData } = form;
     onSubmit({
       ...itemData,
+      pts: form.pts !== "" ? Number(form.pts) : undefined,
       files: (form.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations })),
       project_id: selectedProjectId || projectId,
       project_name: proj?.project_name || projectName || "",
