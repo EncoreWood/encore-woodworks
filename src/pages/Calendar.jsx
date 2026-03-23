@@ -395,6 +395,7 @@ export default function CalendarPage() {
     const meetingCount = getDesignMeetingsForDate(date).length;
     const taskCount = getTasksForDate(date).length;
     const cleaningCount = getBathroomCleaningsForDate(date).length + getCleaningScheduleForDate(date).length;
+    const cleaningEntries = getCleaningScheduleForDate(date);
 
     return (
       <div className="w-full flex flex-col gap-0.5 p-1.5" style={{ minHeight: "140px" }}>
