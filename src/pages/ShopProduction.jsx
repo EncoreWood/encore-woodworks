@@ -122,18 +122,33 @@ export default function ShopProduction() {
 
     const safeFiles = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts !== undefined ? Number(f.pts) : undefined, annotations: f.annotations }));
 
-    // Set completed_date when moving INTO complete, clear it when moving OUT of complete
+    // Set completed_date when moving INTO complete
+    // pts_logged / pts_logged_date are written ONCE on first completion and never cleared
     let completedDate = item.completed_date;
     if (newStage === "complete" && item.stage !== "complete") {
       completedDate = format(new Date(), "yyyy-MM-dd");
-    } else if (newStage !== "complete" && item.stage === "complete") {
-      completedDate = null; // deduct PTS — card moved back out of complete
     }
+
+    // Calculate total pts for this item (file pts + card-level pts)
+    const filePts = safeFiles.reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
+    const cardPts = parseFloat(item.pts) || 0;
+    const totalPts = filePts + cardPts;
+
+    // Log pts permanently when first moved to complete (never overwrite once set)
+    const ptsLogged = newStage === "complete" && item.stage !== "complete" && !item.pts_logged
+      ? totalPts
+      : item.pts_logged;
+    const ptsLoggedDate = newStage === "complete" && item.stage !== "complete" && !item.pts_logged_date
+      ? format(new Date(), "yyyy-MM-dd")
+      : item.pts_logged_date;
 
     const updatePayload = {
       name: item.name, type: item.type, stage: newStage,
       project_id: item.project_id, project_name: item.project_name, room_name: item.room_name,
       notes: item.notes, files: safeFiles,
+      pts: item.pts,
+      pts_logged: ptsLogged,
+      pts_logged_date: ptsLoggedDate,
       completed_date: completedDate
     };
 
