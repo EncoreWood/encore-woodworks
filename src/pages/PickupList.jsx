@@ -315,7 +315,11 @@ export default function PickupList() {
                                   </div>
                                   <div className="flex items-center gap-2 flex-shrink-0">
                                     <Badge className={cn("text-xs border-0", typeConfig[item.type]?.color)}>{typeConfig[item.type]?.label}</Badge>
-                                    <Badge className={cn("text-xs border-0", priorityConfig[item.priority])}>{item.priority}</Badge>
+                                    <Badge className={cn("text-xs font-semibold", 
+                                      item.priority === "high" ? "bg-red-200 text-red-800 border border-red-400" : priorityConfig[item.priority] + " border-0"
+                                    )}>
+                                      {item.priority === "high" ? "🔴 High" : item.priority}
+                                    </Badge>
                                     <Badge className={cn("text-xs border-0", statusConfig[item.status]?.color)}>
                                       {statusConfig[item.status]?.label}
                                     </Badge>
