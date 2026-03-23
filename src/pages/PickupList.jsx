@@ -291,62 +291,97 @@ export default function PickupList() {
                         <div className="divide-y divide-slate-50">
                           {roomItems.map(item => {
                             const TypeIcon = typeConfig[item.type]?.icon || AlertCircle;
+                            const hasAttachments = (item.files && item.files.length > 0) || item.sketch_url;
+                            const isExpanded = expandedItems.has(item.id);
                             return (
-                              <div
-                                key={item.id}
-                                className={cn("px-5 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors", item.status === "resolved" && "opacity-50")}
-                              >
-                                <button onClick={() => handleStatusCycle(item)} title="Click to advance status">
-                                  <TypeIcon className={cn("w-5 h-5 flex-shrink-0", item.status === "resolved" ? "text-emerald-500" : "text-slate-400")} />
-                                </button>
-                                <div className="flex-1 min-w-0">
-                                  <p className={cn("text-sm font-medium text-slate-900", item.status === "resolved" && "line-through")}>{item.title}</p>
-                                  {item.notes && <p className="text-xs text-slate-500 mt-0.5 truncate">{item.notes}</p>}
-                                </div>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                  <Badge className={cn("text-xs border-0", typeConfig[item.type]?.color)}>{typeConfig[item.type]?.label}</Badge>
-                                  <Badge className={cn("text-xs border-0", priorityConfig[item.priority])}>{item.priority}</Badge>
-                                  <Badge className={cn("text-xs border-0", statusConfig[item.status]?.color)}>
-                                    {statusConfig[item.status]?.label}
-                                  </Badge>
-                                  {item.production_item_id && (() => {
-                                    const stageInfo = productionStageColors[item.production_stage] || productionStageColors.face_frame;
-                                    return (
-                                      <Link
-                                        to={createPageUrl("ShopProduction")}
-                                        title="View in Production"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        <Badge variant="outline" className={`text-xs gap-1 cursor-pointer hover:opacity-80 ${stageInfo.color}`}>
-                                          <Factory className="w-2.5 h-2.5" />
-                                          {stageInfo.label}
-                                        </Badge>
-                                      </Link>
-                                    );
-                                  })()}
-                                  {item.source && item.source !== "manual" && !item.production_item_id && (
-                                    <Badge variant="outline" className="text-xs text-slate-400">{item.source}</Badge>
-                                  )}
-                                  {!item.archived && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                                      title="Complete & Archive"
-                                      onClick={(e) => { e.stopPropagation(); archiveMutation.mutate(item); }}
-                                    >
-                                      <Archive className="w-3 h-3" />
+                              <div key={item.id} className={cn("border-b border-slate-50 last:border-0", item.status === "resolved" && "opacity-50")}>
+                                <div className="px-5 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors">
+                                  <button onClick={() => handleStatusCycle(item)} title="Click to advance status">
+                                    <TypeIcon className={cn("w-5 h-5 flex-shrink-0", item.status === "resolved" ? "text-emerald-500" : "text-slate-400")} />
+                                  </button>
+                                  <div className="flex-1 min-w-0">
+                                    <p className={cn("text-sm font-medium text-slate-900", item.status === "resolved" && "line-through")}>{item.title}</p>
+                                    {item.notes && <p className="text-xs text-slate-500 mt-0.5 truncate">{item.notes}</p>}
+                                    {hasAttachments && (
+                                      <div className="flex items-center gap-2 mt-1">
+                                        {item.files?.length > 0 && <span className="text-xs text-slate-400 flex items-center gap-1"><FileText className="w-3 h-3" />{item.files.length} file{item.files.length !== 1 ? "s" : ""}</span>}
+                                        {item.sketch_url && <span className="text-xs text-slate-400 flex items-center gap-1"><PenLine className="w-3 h-3" />Sketch</span>}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    <Badge className={cn("text-xs border-0", typeConfig[item.type]?.color)}>{typeConfig[item.type]?.label}</Badge>
+                                    <Badge className={cn("text-xs border-0", priorityConfig[item.priority])}>{item.priority}</Badge>
+                                    <Badge className={cn("text-xs border-0", statusConfig[item.status]?.color)}>
+                                      {statusConfig[item.status]?.label}
+                                    </Badge>
+                                    {item.production_item_id && (() => {
+                                      const stageInfo = productionStageColors[item.production_stage] || productionStageColors.face_frame;
+                                      return (
+                                        <Link to={createPageUrl("ShopProduction")} title="View in Production" onClick={(e) => e.stopPropagation()}>
+                                          <Badge variant="outline" className={`text-xs gap-1 cursor-pointer hover:opacity-80 ${stageInfo.color}`}>
+                                            <Factory className="w-2.5 h-2.5" />
+                                            {stageInfo.label}
+                                          </Badge>
+                                        </Link>
+                                      );
+                                    })()}
+                                    {item.source && item.source !== "manual" && !item.production_item_id && (
+                                      <Badge variant="outline" className="text-xs text-slate-400">{item.source}</Badge>
+                                    )}
+                                    {hasAttachments && (
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400" onClick={() => toggleExpanded(item.id)}>
+                                        {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                      </Button>
+                                    )}
+                                    {!item.archived && (
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" title="Complete & Archive"
+                                        onClick={(e) => { e.stopPropagation(); archiveMutation.mutate(item); }}>
+                                        <Archive className="w-3 h-3" />
+                                      </Button>
+                                    )}
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingItem(item); setShowForm(true); }}>
+                                      <Pencil className="w-3 h-3" />
                                     </Button>
-                                  )}
-                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingItem(item); setShowForm(true); }}>
-                                    <Pencil className="w-3 h-3" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => {
-                                    if (confirm("Delete this item?")) deleteMutation.mutate(item.id);
-                                  }}>
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => {
+                                      if (confirm("Delete this item?")) deleteMutation.mutate(item.id);
+                                    }}>
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
                                 </div>
+                                {/* Expanded attachments */}
+                                {isExpanded && hasAttachments && (
+                                  <div className="px-5 pb-4 space-y-3 bg-slate-50 border-t border-slate-100">
+                                    {item.sketch_url && (
+                                      <div className="pt-3">
+                                        <p className="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1"><PenLine className="w-3 h-3" /> Sketch</p>
+                                        <img src={item.sketch_url} alt="Sketch" className="w-full max-w-xs rounded-lg border border-slate-200 max-h-48 object-contain bg-white" />
+                                      </div>
+                                    )}
+                                    {item.files && item.files.length > 0 && (
+                                      <div className="pt-3 space-y-2">
+                                        <p className="text-xs font-semibold text-slate-500 flex items-center gap-1"><FileText className="w-3 h-3" /> Files</p>
+                                        {item.files.map((file, idx) => {
+                                          if (!file.url) return null;
+                                          const isImg = file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                                          const isPdf = file.url.match(/\.pdf$/i);
+                                          if (isImg) return (
+                                            <img key={idx} src={file.url} alt={file.name} className="w-full rounded-md border border-slate-200 max-h-48 object-contain bg-white" />
+                                          );
+                                          return (
+                                            <button key={idx}
+                                              onClick={() => window.open(file.url, "_blank", "noopener,noreferrer")}
+                                              className="flex items-center gap-2 text-xs text-amber-600 hover:text-amber-800 underline">
+                                              <FileText className="w-3 h-3 text-red-500 flex-shrink-0" />
+                                              {file.name}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
