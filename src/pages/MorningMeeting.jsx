@@ -12,9 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  User, Calendar, AlertCircle, Coffee, Sun, Target, CheckCircle2,
+  User, AlertCircle, Coffee, Target, CheckCircle2,
   ChevronLeft, ChevronRight, Edit, Plus, Trash2, ChevronDown,
-  Megaphone, BookOpen, ClipboardList, Briefcase, Zap, Crosshair, Link2, Upload, X, TrendingUp
+  Megaphone, BookOpen, ClipboardList, Zap, Crosshair, Link2, Upload, X
 } from "lucide-react";
 import { format, addDays, subDays } from "date-fns";
 
@@ -74,21 +74,17 @@ export default function MorningMeeting() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showPresenterDialog, setShowPresenterDialog] = useState(false);
   const [presenterName, setPresenterName] = useState("");
-  // Announcements
   const [newAnnouncement, setNewAnnouncement] = useState("");
-  const [announcements, setAnnouncements] = useState([]);
-  // Teach Something New
-  const [teachItems, setTeachItems] = useState([]);
   const [newTeachLabel, setNewTeachLabel] = useState("");
   const [newTeachUrl, setNewTeachUrl] = useState("");
   const [teachUploading, setTeachUploading] = useState(false);
-  // Tasks
   const [newTask, setNewTask] = useState("");
   const [newAssignee, setNewAssignee] = useState("");
 
   const dateString = format(selectedDate, "yyyy-MM-dd");
   const queryClient = useQueryClient();
 
+  // --- Queries ---
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: () => base44.entities.Project.list("-created_date")
@@ -97,14 +93,25 @@ export default function MorningMeeting() {
   const { data: presenterData } = useQuery({
     queryKey: ["presenter", dateString],
     queryFn: async () => {
-      const presenters = await base44.entities.MeetingPresenter.filter({ date: dateString });
-      return presenters[0];
+      const list = await base44.entities.MeetingPresenter.filter({ date: dateString });
+      return list[0];
     }
   });
 
-  const { data: tasks = [] } = useQuery({
-    queryKey: ["tasks", dateString],
+  // MeetingTasks for selected date (created in meeting)
+  const { data: meetingTasks = [] } = useQuery({
+    queryKey: ["meetingTasks", dateString],
     queryFn: () => base44.entities.MeetingTask.filter({ date: dateString })
+  });
+
+  // All global tasks (from Task entity, not date-bound) that are not completed
+  const { data: allTasks = [] } = useQuery({
+    queryKey: ["allTasks"],
+    queryFn: () => base44.entities.Task.filter({ status: "todo" })
+  });
+  const { data: inProgressTasks = [] } = useQuery({
+    queryKey: ["inProgressTasks"],
+    queryFn: () => base44.entities.Task.filter({ status: "in_progress" })
   });
 
   const { data: teamMembers = [] } = useQuery({
@@ -113,15 +120,25 @@ export default function MorningMeeting() {
   });
 
   const { data: pickupItems = [] } = useQuery({
-    queryKey: ["pickupItems"],
-    queryFn: () => base44.entities.PickupItem.list("-created_date", 20)
+    queryKey: ["pickupItemsAll"],
+    queryFn: () => base44.entities.PickupItem.list("-created_date", 100)
   });
 
   const { data: productionItems = [] } = useQuery({
-    queryKey: ["productionItems"],
-    queryFn: () => base44.entities.ProductionItem.list("-updated_date", 50)
+    queryKey: ["productionItemsAll"],
+    queryFn: () => base44.entities.ProductionItem.list("-updated_date", 100)
   });
 
+  // Persistent announcements and teach items from DailyNote
+  const { data: dailyNotes = [] } = useQuery({
+    queryKey: ["dailyNotes", dateString],
+    queryFn: () => base44.entities.DailyNote.filter({ date: dateString })
+  });
+
+  const announcements = dailyNotes.filter(n => n.type === "announcement");
+  const teachItems = dailyNotes.filter(n => n.type === "teach_item");
+
+  // --- Mutations ---
   const savePresenterMutation = useMutation({
     mutationFn: async (name) => {
       if (presenterData?.id) {
@@ -136,60 +153,80 @@ export default function MorningMeeting() {
     }
   });
 
+  const addNoteMutation = useMutation({
+    mutationFn: (data) => base44.entities.DailyNote.create(data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dailyNotes", dateString] })
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: (id) => base44.entities.DailyNote.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dailyNotes", dateString] })
+  });
+
   const createTaskMutation = useMutation({
     mutationFn: (data) => base44.entities.MeetingTask.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks", dateString] });
+      queryClient.invalidateQueries({ queryKey: ["meetingTasks", dateString] });
       setNewTask("");
       setNewAssignee("");
     }
   });
 
-  const updateTaskMutation = useMutation({
+  const updateMeetingTaskMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.MeetingTask.update(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks", dateString] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["meetingTasks", dateString] })
   });
 
-  const deleteTaskMutation = useMutation({
+  const deleteMeetingTaskMutation = useMutation({
     mutationFn: (id) => base44.entities.MeetingTask.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks", dateString] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["meetingTasks", dateString] })
   });
 
+  const updateGlobalTaskMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Task.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allTasks"] });
+      queryClient.invalidateQueries({ queryKey: ["inProgressTasks"] });
+    }
+  });
+
+  // --- Helpers ---
   const getDailyQuote = () => {
     const start = new Date(selectedDate.getFullYear(), 0, 0);
     const dayOfYear = Math.floor((selectedDate - start) / 86400000);
     return motivationalQuotes[dayOfYear % motivationalQuotes.length];
   };
 
-  const getPresenter = () => {
-    if (presenterData?.presenter_name) return presenterData.presenter_name;
-    return "Not Set";
-  };
+  const getPresenter = () => presenterData?.presenter_name || "Not Set";
 
-  const urgentProjects = projects.filter(p => p.priority === "urgent" && p.status !== "completed");
-  const inProductionProjects = projects.filter(p => p.status === "in_production");
-  const todaysFocusProjects = projects.filter(p => ["ready_for_install", "installing"].includes(p.status));
-  const recentPickups = pickupItems.filter(p => p.status === "open").slice(0, 5);
-
-  // Estimated pts from production items updated recently (last day)
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const recentProductionUpdates = productionItems.filter(item => {
-    if (!item.updated_date) return false;
-    const updated = new Date(item.updated_date);
-    return updated >= yesterday;
+  // Urgent items: high-priority pickup items (not resolved/archived) + high-priority production items (not complete)
+  const urgentPickups = pickupItems.filter(p => p.priority === "high" && p.status !== "resolved" && !p.archived);
+  const urgentProduction = productionItems.filter(p => {
+    // Check notes or name for high priority marker — ProductionItem doesn't have a priority field directly
+    // but PickupItem does. Use linked pickup item priority or check if type === "pickup" with high priority pickup
+    return false; // placeholder — see below
   });
+  // Actually productionItems linked to high-priority pickup items
+  const highPriorityPickupIds = new Set(urgentPickups.map(p => p.production_item_id).filter(Boolean));
+  const urgentProductionCards = productionItems.filter(p =>
+    highPriorityPickupIds.has(p.id) && p.stage !== "complete"
+  );
+
+  const todaysFocusProjects = projects.filter(p => ["ready_for_install", "installing"].includes(p.status));
+
+  // Combined tasks: meeting tasks for this date + all global tasks not completed
+  const globalActiveTasks = [...allTasks, ...inProgressTasks];
 
   const handleAddAnnouncement = () => {
     if (newAnnouncement.trim()) {
-      setAnnouncements(prev => [...prev, newAnnouncement.trim()]);
+      addNoteMutation.mutate({ date: dateString, type: "announcement", content: newAnnouncement.trim() });
       setNewAnnouncement("");
     }
   };
 
   const handleAddTeachUrl = () => {
     if (newTeachLabel.trim() || newTeachUrl.trim()) {
-      setTeachItems(prev => [...prev, { label: newTeachLabel.trim() || newTeachUrl, url: newTeachUrl.trim(), type: "link" }]);
+      addNoteMutation.mutate({ date: dateString, type: "teach_item", label: newTeachLabel.trim() || newTeachUrl, url: newTeachUrl.trim(), item_type: "link" });
       setNewTeachLabel("");
       setNewTeachUrl("");
     }
@@ -200,13 +237,20 @@ export default function MorningMeeting() {
     if (!file) return;
     setTeachUploading(true);
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setTeachItems(prev => [...prev, { label: file.name, url: file_url, type: "file" }]);
+    addNoteMutation.mutate({ date: dateString, type: "teach_item", label: file.name, url: file_url, item_type: "file" });
     setTeachUploading(false);
   };
 
   const handleAddTask = () => {
     if (newTask.trim()) {
-      createTaskMutation.mutate({ task: newTask.trim(), date: dateString, assignee: newAssignee.trim() || undefined, completed: false });
+      createTaskMutation.mutate({
+        task: newTask.trim(),
+        date: dateString,
+        assignee: newAssignee.trim() || undefined,
+        completed: false,
+        source: "meeting",
+        show_in_meeting: true
+      });
     }
   };
 
@@ -246,7 +290,8 @@ export default function MorningMeeting() {
               <User className="w-5 h-5" />
               <span className="font-semibold">Presenter:</span>
               <span className="font-bold text-lg">{getPresenter()}</span>
-              <Button size="icon" variant="ghost" className="h-7 w-7 ml-2 text-white hover:bg-blue-700" onClick={() => { setPresenterName(presenterData?.presenter_name || ""); setShowPresenterDialog(true); }}>
+              <Button size="icon" variant="ghost" className="h-7 w-7 ml-2 text-white hover:bg-blue-700"
+                onClick={() => { setPresenterName(presenterData?.presenter_name || ""); setShowPresenterDialog(true); }}>
                 <Edit className="w-4 h-4" />
               </Button>
             </div>
@@ -262,37 +307,18 @@ export default function MorningMeeting() {
           </Link>
         </div>
 
-        {/* Project Pipeline Stats */}
-        <div className="mb-6 grid grid-cols-2 sm:grid-cols-5 gap-3">
-          {[
-            { label: "Inquiry", status: "inquiry" },
-            { label: "Quoted", status: "quoted" },
-            { label: "Approved", status: "approved" },
-            { label: "In Production", status: "in_production" },
-            { label: "Completed", status: "completed" }
-          ].map(({ label, status }) => {
-            const count = projects.filter(p => p.status === status).length;
-            return (
-              <Card key={status} className="p-4 text-center border-l-4 border-l-amber-500 hover:shadow-md transition-all">
-                <div className="text-2xl font-bold text-amber-600">{count}</div>
-                <p className="text-xs text-slate-600 font-medium mt-1">{label}</p>
-              </Card>
-            );
-          })}
-        </div>
-
         {/* Agenda Sections */}
         <div className="space-y-4">
 
-          {/* 1. Announcements */}
+          {/* 1. Announcements — persisted per date, carry forward if viewing same date */}
           <SectionCard title="Announcements" icon={Megaphone} color="amber" count={announcements.length} defaultOpen={true}>
             <div className="space-y-2 mb-3">
               {announcements.length === 0 && <p className="text-slate-400 text-sm text-center py-2">No announcements yet.</p>}
-              {announcements.map((a, i) => (
-                <div key={i} className="flex items-start gap-2 bg-amber-50 rounded-lg px-3 py-2">
+              {announcements.map((a) => (
+                <div key={a.id} className="flex items-start gap-2 bg-amber-50 rounded-lg px-3 py-2">
                   <span className="mt-1 w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
-                  <p className="flex-1 text-slate-700 text-sm">{a}</p>
-                  <button onClick={() => setAnnouncements(prev => prev.filter((_, idx) => idx !== i))} className="text-slate-400 hover:text-red-500">
+                  <p className="flex-1 text-slate-700 text-sm">{a.content}</p>
+                  <button onClick={() => deleteNoteMutation.mutate(a.id)} className="text-slate-400 hover:text-red-500">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
@@ -312,15 +338,15 @@ export default function MorningMeeting() {
             </div>
           </SectionCard>
 
-          {/* 2. 5-Minute Teach Something New */}
+          {/* 2. 5-Minute Teach Something New — persisted per date */}
           <SectionCard title="5-Minute Teach Something New" icon={BookOpen} color="green" count={teachItems.length}>
             <div className="space-y-2 mb-3">
               {teachItems.length === 0 && <p className="text-slate-400 text-sm text-center py-2">Add a file or URL to present.</p>}
-              {teachItems.map((item, i) => (
-                <div key={i} className="flex items-center gap-2 bg-green-50 rounded-lg px-3 py-2">
-                  {item.type === "link" ? <Link2 className="w-4 h-4 text-green-600 flex-shrink-0" /> : <Upload className="w-4 h-4 text-green-600 flex-shrink-0" />}
+              {teachItems.map((item) => (
+                <div key={item.id} className="flex items-center gap-2 bg-green-50 rounded-lg px-3 py-2">
+                  {item.item_type === "link" ? <Link2 className="w-4 h-4 text-green-600 flex-shrink-0" /> : <Upload className="w-4 h-4 text-green-600 flex-shrink-0" />}
                   <a href={item.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-blue-600 hover:underline truncate">{item.label}</a>
-                  <button onClick={() => setTeachItems(prev => prev.filter((_, idx) => idx !== i))} className="text-slate-400 hover:text-red-500">
+                  <button onClick={() => deleteNoteMutation.mutate(item.id)} className="text-slate-400 hover:text-red-500">
                     <X className="w-3 h-3" />
                   </button>
                 </div>
@@ -345,34 +371,56 @@ export default function MorningMeeting() {
             </div>
           </SectionCard>
 
-          {/* 3. Previous Day Review */}
-          <SectionCard title="Previous Day Review" icon={ClipboardList} color="blue" count={recentProductionUpdates.length + recentPickups.length}>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">Recently Updated Production Items</p>
-                {recentProductionUpdates.length === 0 ? (
-                  <p className="text-slate-400 text-sm">No production updates from yesterday.</p>
-                ) : (
-                  <div className="space-y-1">
-                    {recentProductionUpdates.slice(0, 8).map(item => {
-                      const pts = (item.files || []).reduce((sum, f) => sum + (parseFloat(f.pts) || 0), 0);
-                      return (
-                        <div key={item.id} className="flex items-center justify-between bg-blue-50 rounded px-3 py-1.5 text-sm">
-                          <span className="text-slate-700">{item.name} <span className="text-slate-400 text-xs">({item.project_name})</span></span>
-                          {pts > 0 && <span className="font-bold text-blue-700 text-xs">{pts} PTS</span>}
+          {/* 3. Urgent Items — high priority pickup items + linked production cards */}
+          <SectionCard title="Urgent Items" icon={Zap} color="red" count={urgentPickups.length + urgentProductionCards.length} defaultOpen={urgentPickups.length > 0 || urgentProductionCards.length > 0}>
+            {urgentPickups.length === 0 && urgentProductionCards.length === 0 ? (
+              <div className="flex items-center justify-center gap-2 py-4 text-slate-400">
+                <CheckCircle2 className="w-4 h-4" /> <span className="text-sm">No urgent items!</span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {urgentPickups.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2">High Priority Pickup Items</p>
+                    {urgentPickups.map(item => (
+                      <div key={item.id} className="flex items-center justify-between bg-red-50 rounded-lg px-3 py-2.5 border border-red-200 mb-1.5">
+                        <div>
+                          <p className="font-semibold text-red-800 text-sm">{item.title}</p>
+                          <p className="text-xs text-red-600">{item.project_name} · {item.room_name || item.type}</p>
                         </div>
-                      );
-                    })}
+                        <Badge className="bg-red-200 text-red-800 text-xs">HIGH</Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {urgentProductionCards.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-2">High Priority Production Cards</p>
+                    {urgentProductionCards.map(item => (
+                      <div key={item.id} className="flex items-center justify-between bg-orange-50 rounded-lg px-3 py-2.5 border border-orange-200 mb-1.5">
+                        <div>
+                          <p className="font-semibold text-orange-800 text-sm">{item.name}</p>
+                          <p className="text-xs text-orange-600">{item.project_name} · {item.stage?.replace(/_/g, " ")}</p>
+                        </div>
+                        <Badge className="bg-orange-200 text-orange-800 text-xs">HIGH</Badge>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
+            )}
+          </SectionCard>
+
+          {/* 4. Previous Day Review */}
+          <SectionCard title="Previous Day Review" icon={ClipboardList} color="blue">
+            <div className="space-y-3">
               <div>
-                <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-2">New Open Pickup Items</p>
-                {recentPickups.length === 0 ? (
+                <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-2">Open Pickup Items</p>
+                {pickupItems.filter(p => p.status === "open").slice(0, 5).length === 0 ? (
                   <p className="text-slate-400 text-sm">No open pickup items.</p>
                 ) : (
                   <div className="space-y-1">
-                    {recentPickups.map(item => (
+                    {pickupItems.filter(p => p.status === "open").slice(0, 5).map(item => (
                       <div key={item.id} className="flex items-center gap-2 bg-orange-50 rounded px-3 py-1.5 text-sm">
                         <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" />
                         <span className="text-slate-700">{item.title} <span className="text-slate-400 text-xs">– {item.project_name}</span></span>
@@ -384,56 +432,7 @@ export default function MorningMeeting() {
             </div>
           </SectionCard>
 
-          {/* 4. Upcoming Work */}
-          <SectionCard title="Upcoming Work" icon={Briefcase} color="slate" count={inProductionProjects.length}>
-            {inProductionProjects.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-2">No projects currently in production.</p>
-            ) : (
-              <div className="space-y-2">
-                {inProductionProjects.map(project => (
-                  <Link key={project.id} to={createPageUrl("ProjectDetails") + "?id=" + project.id}>
-                    <div className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2.5 hover:bg-slate-100 transition-all">
-                      <div>
-                        <p className="font-semibold text-slate-800 text-sm">{project.project_name}</p>
-                        <p className="text-xs text-slate-500">{project.client_name}</p>
-                      </div>
-                      {project.estimated_completion && (
-                        <span className="text-xs text-slate-500 flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
-                          {format(new Date(project.estimated_completion), "MMM d")}
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </SectionCard>
-
-          {/* 5. Urgent Items */}
-          <SectionCard title="Urgent Items" icon={Zap} color="red" count={urgentProjects.length}>
-            {urgentProjects.length === 0 ? (
-              <div className="flex items-center justify-center gap-2 py-4 text-slate-400">
-                <CheckCircle2 className="w-4 h-4" /> <span className="text-sm">No urgent items!</span>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {urgentProjects.map(project => (
-                  <Link key={project.id} to={createPageUrl("ProjectDetails") + "?id=" + project.id}>
-                    <div className="flex items-center justify-between bg-red-50 rounded-lg px-3 py-2.5 border border-red-200 hover:bg-red-100 transition-all">
-                      <div>
-                        <p className="font-semibold text-red-800 text-sm">{project.project_name}</p>
-                        <p className="text-xs text-red-600">{project.client_name} · {project.status?.replace(/_/g, " ")}</p>
-                      </div>
-                      <Badge className="bg-red-200 text-red-800 text-xs">URGENT</Badge>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </SectionCard>
-
-          {/* 6. Today's Focus */}
+          {/* 5. Today's Focus */}
           <SectionCard title="Today's Focus" icon={Crosshair} color="orange" count={todaysFocusProjects.length}>
             {todaysFocusProjects.length === 0 ? (
               <p className="text-slate-400 text-sm text-center py-2">No installs or ready-for-install projects today.</p>
@@ -454,35 +453,78 @@ export default function MorningMeeting() {
             )}
           </SectionCard>
 
-          {/* 7. Tasks, Action Items */}
-          <SectionCard title="Tasks, Action Items" icon={CheckCircle2} color="purple" count={tasks.filter(t => !t.completed).length} defaultOpen={true}>
-            <div className="mb-3 flex gap-2">
+          {/* 6. Tasks, Action Items — meeting tasks + global tasks */}
+          <SectionCard title="Tasks, Action Items" icon={CheckCircle2} color="purple"
+            count={meetingTasks.filter(t => !t.completed).length + globalActiveTasks.length}
+            defaultOpen={true}>
+            {/* Add task form */}
+            <div className="mb-4 flex gap-2">
               <Input placeholder="Add a task..." value={newTask} onChange={e => setNewTask(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddTask()} className="flex-1 text-sm" />
-              <Input placeholder="Assignee (optional)" value={newAssignee} onChange={e => setNewAssignee(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddTask()} className="w-40 text-sm" />
+              <Select value={newAssignee} onValueChange={setNewAssignee}>
+                <SelectTrigger className="w-40 text-sm"><SelectValue placeholder="Assign to..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={null}>No one</SelectItem>
+                  {teamMembers.map(m => <SelectItem key={m.id} value={m.full_name}>{m.full_name}</SelectItem>)}
+                </SelectContent>
+              </Select>
               <Button size="sm" onClick={handleAddTask} disabled={!newTask.trim() || createTaskMutation.isPending} className="bg-purple-600 hover:bg-purple-700">
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
+
             <div className="space-y-2">
-              {tasks.length === 0 ? (
-                <p className="text-center py-4 text-slate-400 text-sm">No tasks yet. Add one above!</p>
-              ) : (
-                tasks.map(task => (
-                  <div key={task.id} className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${task.completed ? "bg-slate-50 border-slate-200" : "bg-white border-slate-200 hover:border-purple-300"}`}>
-                    <Checkbox
-                      checked={task.completed}
-                      onCheckedChange={() => updateTaskMutation.mutate({ id: task.id, data: { completed: !task.completed } })}
-                      className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
-                    />
-                    <div className="flex-1">
-                      <p className={`text-sm font-medium ${task.completed ? "text-slate-400 line-through" : "text-slate-700"}`}>{task.task}</p>
-                      {task.assignee && <p className="text-xs text-slate-500">→ {task.assignee}</p>}
+              {/* Meeting tasks for this date */}
+              {meetingTasks.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-purple-600 uppercase tracking-wide mb-2">Meeting Tasks — {format(selectedDate, "MMM d")}</p>
+                  {meetingTasks.map(task => (
+                    <div key={task.id} className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all mb-1.5 ${task.completed ? "bg-slate-50 border-slate-200" : "bg-white border-slate-200 hover:border-purple-300"}`}>
+                      <Checkbox
+                        checked={task.completed}
+                        onCheckedChange={() => updateMeetingTaskMutation.mutate({ id: task.id, data: { completed: !task.completed } })}
+                        className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                      />
+                      <div className="flex-1">
+                        <p className={`text-sm font-medium ${task.completed ? "text-slate-400 line-through" : "text-slate-700"}`}>{task.task}</p>
+                        {task.assignee && <p className="text-xs text-slate-500">→ {task.assignee}</p>}
+                      </div>
+                      <Button size="icon" variant="ghost" onClick={() => deleteMeetingTaskMutation.mutate(task.id)} className="h-7 w-7 text-slate-400 hover:text-red-500">
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
                     </div>
-                    <Button size="icon" variant="ghost" onClick={() => deleteTaskMutation.mutate(task.id)} className="h-7 w-7 text-slate-400 hover:text-red-500">
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                ))
+                  ))}
+                </div>
+              )}
+
+              {/* Global tasks from Task board */}
+              {globalActiveTasks.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">Assigned Tasks (All Active)</p>
+                  {globalActiveTasks.map(task => (
+                    <div key={task.id} className="flex items-center gap-3 p-2.5 rounded-lg border border-blue-100 bg-blue-50 mb-1.5">
+                      <Checkbox
+                        checked={task.status === "completed"}
+                        onCheckedChange={() => updateGlobalTaskMutation.mutate({ id: task.id, data: { status: task.status === "completed" ? "todo" : "completed" } })}
+                        className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-slate-700">{task.title}</p>
+                        <div className="flex gap-2 mt-0.5">
+                          {task.assigned_to && <p className="text-xs text-slate-500">→ {task.assigned_to}</p>}
+                          {task.project_name && <p className="text-xs text-blue-600">{task.project_name}</p>}
+                          {task.due_date && <p className="text-xs text-amber-600">Due: {task.due_date}</p>}
+                        </div>
+                      </div>
+                      <Badge className={`text-xs ${task.status === "in_progress" ? "bg-blue-200 text-blue-800" : "bg-slate-200 text-slate-700"}`}>
+                        {task.status?.replace(/_/g, " ")}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {meetingTasks.length === 0 && globalActiveTasks.length === 0 && (
+                <p className="text-center py-4 text-slate-400 text-sm">No tasks yet. Add one above!</p>
               )}
             </div>
           </SectionCard>
@@ -510,7 +552,8 @@ export default function MorningMeeting() {
             </div>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setShowPresenterDialog(false)}>Cancel</Button>
-              <Button onClick={() => { if (presenterName.trim()) savePresenterMutation.mutate(presenterName.trim()); }} disabled={!presenterName.trim() || savePresenterMutation.isPending}>
+              <Button onClick={() => { if (presenterName.trim()) savePresenterMutation.mutate(presenterName.trim()); }}
+                disabled={!presenterName.trim() || savePresenterMutation.isPending}>
                 {savePresenterMutation.isPending ? "Saving..." : "Save"}
               </Button>
             </div>
