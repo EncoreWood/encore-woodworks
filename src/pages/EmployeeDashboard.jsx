@@ -114,6 +114,7 @@ export default function EmployeeDashboard() {
             dayPts={dayPts}
             weekPts={weekPts}
             monthPts={monthPts}
+            quarterlyPts={quarterlyPts}
             productionItems={productionItems}
             dashboardSettings={dashboardSettings}
             currentUser={currentUser}
