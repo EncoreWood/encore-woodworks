@@ -168,17 +168,28 @@ export default function CalendarPage() {
     });
   };
 
+  const DAY_NAME_TO_OFFSET = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5 };
+
+  // Returns cleaning entries for a specific date, with which "slot" (day1/day2) it is
   const getCleaningScheduleForDate = (date) => {
-    const dateStr = format(date, "yyyy-MM-dd");
-    // Find schedule where this date falls within Monday-Sunday of the week_start
-    return cleaningSchedules.filter(cs => {
-      if (!cs.week_start) return false;
-      const ws = new Date(cs.week_start + "T00:00:00");
-      const we = new Date(ws);
-      we.setDate(ws.getDate() + 6);
-      const d = new Date(dateStr + "T00:00:00");
-      return d >= ws && d <= we;
-    });
+    const results = [];
+    for (const cs of cleaningSchedules) {
+      if (!cs.week_start) continue;
+      const weekMon = new Date(cs.week_start + "T00:00:00");
+      // Check day1
+      if (cs.day1_of_week) {
+        const d1 = new Date(weekMon);
+        d1.setDate(weekMon.getDate() + (DAY_NAME_TO_OFFSET[cs.day1_of_week] - 1));
+        if (isSameDay(date, d1)) results.push({ cs, slot: "day1" });
+      }
+      // Check day2
+      if (cs.day2_of_week) {
+        const d2 = new Date(weekMon);
+        d2.setDate(weekMon.getDate() + (DAY_NAME_TO_OFFSET[cs.day2_of_week] - 1));
+        if (isSameDay(date, d2)) results.push({ cs, slot: "day2" });
+      }
+    }
+    return results;
   };
 
   const createProjectMutation = useMutation({
