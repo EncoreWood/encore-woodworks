@@ -629,7 +629,7 @@ export default function CalendarPage() {
                             >{completed ? "✓" : "○"}</button>
                             <button
                               title="Sub someone out"
-                              onClick={() => setEditingSchedule({ ...cs, _subSlot: slot })}
+                              onClick={() => { setEditingSchedule({ ...cs, _subSlot: slot }); setShowCleaningManager(true); }}
                               className="text-[10px] text-slate-300 hover:text-amber-500 px-1"
                             >⇄</button>
                           </div>
