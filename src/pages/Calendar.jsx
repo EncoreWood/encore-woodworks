@@ -601,16 +601,47 @@ export default function CalendarPage() {
                       <p className="text-[10px] text-cyan-700">{c.assigned_to.join(", ")}</p>
                     </div>
                   ))}
-                  {(activeFilter === "all" || activeFilter === "cleaning") && weeklyCleanings.map((cs) => (
-                    <div key={cs.id} className="p-2.5 bg-teal-50 rounded-lg text-sm">
-                      <div className="flex items-center justify-between gap-1.5 mb-0.5">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-teal-900"><Sparkles className="w-3 h-3" />Weekly Cleaning</div>
-                        <button onClick={() => deleteCleaningScheduleMutation.mutate(cs.id)} className="text-slate-300 hover:text-red-400 text-[10px]">✕</button>
+                  {(activeFilter === "all" || activeFilter === "cleaning") && weeklyCleanings.map(({ cs, slot }) => {
+                    const isDay1 = slot === "day1";
+                    const people = isDay1
+                      ? (cs.day1_sub
+                          ? [...(cs.permanent_pair || []).filter(n => n !== cs.day1_sub_for), cs.day1_sub]
+                          : (cs.permanent_pair || []))
+                      : (cs.day2_sub
+                          ? [...(cs.permanent_pair || []), cs.day2_sub]
+                          : [...(cs.permanent_pair || []), cs.rotating_person].filter(Boolean));
+                    const completed = isDay1 ? cs.completed_day1 : cs.completed_day2;
+                    const hasSub = isDay1 ? !!cs.day1_sub : !!cs.day2_sub;
+                    return (
+                      <div key={cs.id + slot} className={`p-2.5 rounded-lg text-sm border ${completed ? "bg-slate-50 border-slate-200 opacity-60" : "bg-teal-50 border-teal-200"}`}>
+                        <div className="flex items-center justify-between gap-1.5 mb-1">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-teal-900">
+                            <Sparkles className="w-3 h-3" />
+                            Cleaning — {isDay1 ? cs.day1_of_week : cs.day2_of_week}
+                            {!isDay1 && <span className="text-[10px] text-teal-600 font-normal">(rotating)</span>}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              title="Mark complete"
+                              onClick={() => updateCleaningScheduleMutation.mutate({ id: cs.id, data: isDay1 ? { completed_day1: !completed } : { completed_day2: !completed } })}
+                              className={`text-[11px] px-1.5 py-0.5 rounded border transition-all ${completed ? "bg-green-100 text-green-700 border-green-300" : "bg-white text-slate-400 border-slate-200 hover:border-green-400 hover:text-green-600"}`}
+                            >{completed ? "✓" : "○"}</button>
+                            <button
+                              title="Sub someone out"
+                              onClick={() => setEditingSchedule({ ...cs, _subSlot: slot })}
+                              className="text-[10px] text-slate-300 hover:text-amber-500 px-1"
+                            >⇄</button>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {people.map(p => (
+                            <span key={p} className={`text-[10px] px-1.5 py-0.5 rounded-full ${hasSub && isDay1 && p === cs.day1_sub ? "bg-amber-100 text-amber-800" : hasSub && !isDay1 && p === cs.day2_sub ? "bg-amber-100 text-amber-800" : "bg-teal-100 text-teal-800"}`}>{p}</span>
+                          ))}
+                        </div>
+                        {cs.notes && <p className="text-[10px] text-slate-500 mt-0.5">{cs.notes}</p>}
                       </div>
-                      <p className="text-[10px] text-teal-700">{(cs.assigned_to || []).join(", ")}</p>
-                      {cs.notes && <p className="text-[10px] text-teal-600 mt-0.5">{cs.notes}</p>}
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {(activeFilter === "all" || activeFilter === "vacations") && vacs.map((v) => (
                     <div key={v.id} className="p-2.5 bg-pink-50 rounded-lg text-sm">
