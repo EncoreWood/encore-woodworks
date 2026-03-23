@@ -857,11 +857,34 @@ export default function CalendarPage() {
       <Dialog open={showCleaningManager} onOpenChange={(o) => { if (!o) setEditingSchedule(null); setShowCleaningManager(o); }}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <DialogTitle className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-teal-600" />Cleaning Schedule</DialogTitle>
-              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-xs" onClick={() => { setShowCleaningManager(false); setShowGenerateDialog(true); setGenWeekStart(format(new Date(), "yyyy-MM-dd")); }}>
-                + Generate Schedule
-              </Button>
+              <div className="flex items-center gap-2">
+                {confirmClearAll ? (
+                  <>
+                    <span className="text-xs text-red-600 font-medium">Delete all {cleaningSchedules.length} schedules?</span>
+                    <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50"
+                      onClick={async () => {
+                        await Promise.all(cleaningSchedules.map(cs => base44.entities.CleaningSchedule.delete(cs.id)));
+                        queryClient.invalidateQueries({ queryKey: ["cleaningSchedules"] });
+                        setConfirmClearAll(false);
+                      }}
+                    >Yes, delete all</Button>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setConfirmClearAll(false)}>Cancel</Button>
+                  </>
+                ) : (
+                  <>
+                    {cleaningSchedules.length > 0 && (
+                      <Button size="sm" variant="outline" className="h-7 text-xs border-red-200 text-red-500 hover:bg-red-50 hover:border-red-400" onClick={() => setConfirmClearAll(true)}>
+                        Clear All
+                      </Button>
+                    )}
+                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-xs" onClick={() => { setShowCleaningManager(false); setShowGenerateDialog(true); setGenWeekStart(format(new Date(), "yyyy-MM-dd")); }}>
+                      + Generate Schedule
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-2 pr-1">
