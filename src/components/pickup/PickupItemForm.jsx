@@ -195,6 +195,39 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
             />
           </div>
 
+          {/* File Attachments */}
+          <div>
+            <FileUploader
+              files={form.files || []}
+              onChange={(files) => setForm(f => ({ ...f, files }))}
+              label="Attach Files (PDFs, Images)"
+            />
+          </div>
+
+          {/* Sketch */}
+          <div>
+            <Label>Sketch / Drawing</Label>
+            {form.sketch_url ? (
+              <div className="space-y-2 mt-1">
+                <img src={form.sketch_url} alt="Sketch" className="w-full rounded-lg border border-slate-200 max-h-40 object-contain bg-white" />
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="outline" className="gap-1 text-xs" onClick={() => setShowSketch(true)}>
+                    <PenLine className="w-3 h-3" /> Edit Sketch
+                  </Button>
+                  <Button type="button" size="sm" variant="outline" className="gap-1 text-xs text-red-600 border-red-200"
+                    onClick={() => setForm(f => ({ ...f, sketch_url: null }))}>
+                    <X className="w-3 h-3" /> Remove
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button type="button" variant="outline" className="w-full gap-2 border-dashed mt-1"
+                onClick={() => setShowSketch(true)}>
+                <PenLine className="w-4 h-4" /> Open Sketch Pad
+              </Button>
+            )}
+          </div>
+
           {/* Link to Production toggle — only on new items */}
           {!isEditing && (
             <div className="border rounded-lg p-3 bg-slate-50 space-y-3">
