@@ -89,10 +89,12 @@ export default function CalendarPage() {
   const { data: cleaningSchedules = [] } = useQuery({ queryKey: ["cleaningSchedules"], queryFn: () => base44.entities.CleaningSchedule.list() });
 
   const [showCleaningDialog, setShowCleaningDialog] = useState(false);
+  const [showCleaningManager, setShowCleaningManager] = useState(false);
   const [cleaningWeekStart, setCleaningWeekStart] = useState("");
   const [cleaningAssignees, setCleaningAssignees] = useState([]);
   const [cleaningNotes, setCleaningNotes] = useState("");
   const [autoRotateCount, setAutoRotateCount] = useState(4);
+  const [editingSchedule, setEditingSchedule] = useState(null);
 
   const createPresenterMutation = useMutation({
     mutationFn: async (data) => {
