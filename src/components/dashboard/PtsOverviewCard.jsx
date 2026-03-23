@@ -62,7 +62,7 @@ function WeeklyBarChart({ weekDayPts, goals }) {
   );
 }
 
-export default function PtsOverviewCard({ dayPts, weekPts, monthPts, productionItems, dashboardSettings, currentUser, onSettingsUpdated }) {
+export default function PtsOverviewCard({ dayPts, weekPts, monthPts, quarterlyPts, productionItems, dashboardSettings, currentUser, onSettingsUpdated }) {
   const [showGoalSettings, setShowGoalSettings] = useState(false);
   const [saving, setSaving] = useState(false);
 
