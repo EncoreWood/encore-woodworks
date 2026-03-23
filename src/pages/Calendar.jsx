@@ -86,6 +86,13 @@ export default function CalendarPage() {
   const { data: contacts = [] } = useQuery({ queryKey: ["contacts"], queryFn: () => base44.entities.Contact.list() });
   const { data: bathroomCleanings = [] } = useQuery({ queryKey: ["bathroomCleanings"], queryFn: () => base44.entities.BathroomCleaning.list() });
   const { data: vacations = [] } = useQuery({ queryKey: ["vacations"], queryFn: () => base44.entities.Vacation.list() });
+  const { data: cleaningSchedules = [] } = useQuery({ queryKey: ["cleaningSchedules"], queryFn: () => base44.entities.CleaningSchedule.list() });
+
+  const [showCleaningDialog, setShowCleaningDialog] = useState(false);
+  const [cleaningWeekStart, setCleaningWeekStart] = useState("");
+  const [cleaningAssignees, setCleaningAssignees] = useState([]);
+  const [cleaningNotes, setCleaningNotes] = useState("");
+  const [autoRotateCount, setAutoRotateCount] = useState(4);
 
   const createPresenterMutation = useMutation({
     mutationFn: async (data) => {
