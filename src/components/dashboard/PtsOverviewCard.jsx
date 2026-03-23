@@ -93,14 +93,18 @@ export default function PtsOverviewCard({ dayPts, weekPts, monthPts, quarterlyPt
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
   const todayStr = format(now, "yyyy-MM-dd");
 
-  const completedItems = (productionItems || []).filter(i => i.stage === "complete");
+  const loggedItems = (productionItems || []).filter(i => i.pts_logged_date != null);
 
   const weekDayPts = Array.from({ length: 7 }, (_, i) => {
     const d = addDays(weekStart, i);
     const dateStr = format(d, "yyyy-MM-dd");
-    const pts = completedItems
-      .filter(item => item.completed_date === dateStr)
-      .reduce((sum, item) => sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0), 0);
+    const pts = loggedItems
+      .filter(item => item.pts_logged_date === dateStr)
+      .reduce((sum, item) => {
+        if (item.pts_logged != null) return sum + item.pts_logged;
+        if (item.pts != null) return sum + item.pts;
+        return sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
+      }, 0);
     return { day: format(d, "EEE"), pts, isToday: dateStr === todayStr };
   });
 
