@@ -122,6 +122,53 @@ export default function CalendarPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["vacations"] }); setShowAddDialog(false); setFormData({}); }
   });
 
+  const createCleaningScheduleMutation = useMutation({
+    mutationFn: (data) => base44.entities.CleaningSchedule.create(data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cleaningSchedules"] })
+  });
+
+  const deleteCleaningScheduleMutation = useMutation({
+    mutationFn: (id) => base44.entities.CleaningSchedule.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cleaningSchedules"] })
+  });
+
+  const handleGenerateRotatingSchedule = () => {
+    if (!cleaningWeekStart || cleaningAssignees.length === 0) return;
+    const startDate = new Date(cleaningWeekStart + "T00:00:00");
+    const promises = [];
+    for (let i = 0; i < autoRotateCount; i++) {
+      const weekDate = new Date(startDate);
+      weekDate.setDate(startDate.getDate() + i * 7);
+      const weekStr = format(weekDate, "yyyy-MM-dd");
+      // Rotate assignees: each week picks next person in list
+      const assigneeIndex = i % cleaningAssignees.length;
+      promises.push(createCleaningScheduleMutation.mutateAsync({
+        week_start: weekStr,
+        assigned_to: [cleaningAssignees[assigneeIndex]],
+        notes: cleaningNotes || undefined
+      }));
+    }
+    Promise.all(promises).then(() => {
+      setShowCleaningDialog(false);
+      setCleaningWeekStart("");
+      setCleaningAssignees([]);
+      setCleaningNotes("");
+    });
+  };
+
+  const getCleaningScheduleForDate = (date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    // Find schedule where this date falls within Monday-Sunday of the week_start
+    return cleaningSchedules.filter(cs => {
+      if (!cs.week_start) return false;
+      const ws = new Date(cs.week_start + "T00:00:00");
+      const we = new Date(ws);
+      we.setDate(ws.getDate() + 6);
+      const d = new Date(dateStr + "T00:00:00");
+      return d >= ws && d <= we;
+    });
+  };
+
   const createProjectMutation = useMutation({
     mutationFn: async (data) => {
       const r = await base44.entities.Project.create(data);
