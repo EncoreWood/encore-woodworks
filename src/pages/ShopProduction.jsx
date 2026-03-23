@@ -215,17 +215,29 @@ export default function ShopProduction() {
     setAnnotatingPdf(null); setCurrentPdfUrl(null); setCurrentAnnotations([]);
   };
 
-  // PTS stats — sum f.pts from ALL cards (any stage), using completed_date for day/week/month
+  // PTS stats — use pts_logged (permanently written when first completed) for accurate tallies
+  // Falls back to summing file pts for items completed before pts_logged was introduced
   const now = new Date();
   const todayStr = format(now, "yyyy-MM-dd");
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
   const monthStart = startOfMonth(now);
   const boardItems = items.filter(i => !i.is_job_info);
-  const getPts = (filtered) => filtered.reduce((sum, item) => sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0), 0);
-  const completedItems = boardItems.filter(i => i.stage === "complete");
-  const dayPts = getPts(completedItems.filter(i => i.completed_date === todayStr));
-  const weekPts = getPts(completedItems.filter(i => i.completed_date && new Date(i.completed_date) >= weekStart));
-  const monthPts = getPts(completedItems.filter(i => i.completed_date && new Date(i.completed_date) >= monthStart));
+
+  const getItemPts = (item) => {
+    // Prefer the permanently-logged value; fall back to live file pts + card pts
+    if (item.pts_logged != null) return parseFloat(item.pts_logged) || 0;
+    const filePts = (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
+    const cardPts = parseFloat(item.pts) || 0;
+    return filePts + cardPts;
+  };
+
+  // Items that have ever been completed (have pts_logged_date OR completed_date)
+  const loggedItems = boardItems.filter(i => i.pts_logged_date || i.completed_date);
+  const getDateStr = (i) => i.pts_logged_date || i.completed_date;
+
+  const dayPts = loggedItems.filter(i => getDateStr(i) === todayStr).reduce((s, i) => s + getItemPts(i), 0);
+  const weekPts = loggedItems.filter(i => getDateStr(i) && new Date(getDateStr(i)) >= weekStart).reduce((s, i) => s + getItemPts(i), 0);
+  const monthPts = loggedItems.filter(i => getDateStr(i) && new Date(getDateStr(i)) >= monthStart).reduce((s, i) => s + getItemPts(i), 0);
 
   const returnToFolder = async (item) => {
     const files = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
