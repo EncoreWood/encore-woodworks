@@ -91,6 +91,7 @@ export default function CalendarPage() {
   const [showCleaningManager, setShowCleaningManager] = useState(false);
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState(null);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
 
   // Generate dialog state
   const [genWeekStart, setGenWeekStart] = useState("");
