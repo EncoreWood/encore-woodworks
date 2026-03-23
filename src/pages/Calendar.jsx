@@ -1076,7 +1076,7 @@ export default function CalendarPage() {
             </div>
 
             <div>
-              <Label>Rotation Pool <span className="text-slate-400 font-normal">(who rotates in on Day 2, one per week)</span></Label>
+              <Label>Rotation Pool <span className="text-slate-400 font-normal">(pairs rotate on Day 2, two per week)</span></Label>
               <div className="flex flex-wrap gap-1.5 mt-2 border rounded-lg p-2 bg-slate-50">
                 {employees.filter(e => !genPair.includes(e.full_name)).map(emp => {
                   const sel = genRotators.includes(emp.full_name);
