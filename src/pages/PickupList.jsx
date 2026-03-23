@@ -75,7 +75,8 @@ export default function PickupList() {
           project_name: itemData.project_name,
           room_name: itemData.room_name || "",
           notes: itemData.notes || "",
-          files: [],
+          files: itemData.files || [],
+          sketch_url: itemData.sketch_url || null,
           pickup_item_id: created.id
         });
         // Link back: store production_item_id and initial stage on pickup item
