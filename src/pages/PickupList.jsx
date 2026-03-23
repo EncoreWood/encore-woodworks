@@ -42,6 +42,8 @@ export default function PickupList() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [expandedItems, setExpandedItems] = useState(new Set());
+  const toggleExpanded = (id) => setExpandedItems(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
   const [filterProjectId, setFilterProjectId] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
