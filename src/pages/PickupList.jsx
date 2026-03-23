@@ -423,7 +423,18 @@ export default function PickupList() {
         onOpenChange={(open) => { setShowForm(open); if (!open) setEditingItem(null); }}
         onSubmit={(data) => {
           if (editingItem?.id) {
-            updateMutation.mutate({ id: editingItem.id, data });
+            const { linkToProduction, productionStage, ...itemData } = data;
+            // Sync priority + files + notes to linked production item
+            if (editingItem.production_item_id) {
+              base44.entities.ProductionItem.update(editingItem.production_item_id, {
+                priority: itemData.priority,
+                notes: itemData.notes,
+                files: itemData.files,
+                sketch_url: itemData.sketch_url,
+                pts: itemData.pts,
+              });
+            }
+            updateMutation.mutate({ id: editingItem.id, data: itemData });
           } else {
             createMutation.mutate(data);
           }
