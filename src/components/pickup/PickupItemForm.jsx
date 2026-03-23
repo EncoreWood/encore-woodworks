@@ -187,14 +187,28 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
             </div>
           </div>
 
-          <div>
-            <Label>Notes</Label>
-            <Textarea
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              placeholder="Additional notes..."
-              className="mt-1 h-20"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-1">
+              <Label>Notes</Label>
+              <Textarea
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder="Additional notes..."
+                className="mt-1 h-20"
+              />
+            </div>
+            <div className="col-span-1">
+              <Label>Point Value (PTS)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={form.pts}
+                onChange={(e) => setForm({ ...form, pts: e.target.value })}
+                placeholder="0"
+                className="mt-1"
+              />
+              <p className="text-xs text-slate-400 mt-1">Trackable pts even without a file attachment</p>
+            </div>
           </div>
 
           {/* File Attachments */}
