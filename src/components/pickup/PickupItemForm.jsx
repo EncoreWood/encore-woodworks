@@ -19,6 +19,8 @@ const defaultForm = {
   priority: "medium",
   room_name: "",
   notes: "",
+  files: [],
+  sketch_url: null,
   linkToProduction: false,
   productionStage: "face_frame"
 };
