@@ -14,8 +14,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   User, AlertCircle, Coffee, Target, CheckCircle2,
   ChevronLeft, ChevronRight, Edit, Plus, Trash2, ChevronDown,
-  Megaphone, BookOpen, ClipboardList, Zap, Crosshair, Link2, Upload, X
+  Megaphone, BookOpen, ClipboardList, Zap, Crosshair, Link2, Upload, X, Sparkles
 } from "lucide-react";
+import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
 import { format, addDays, subDays } from "date-fns";
 
 const motivationalQuotes = [

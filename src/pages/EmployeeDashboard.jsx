@@ -11,6 +11,7 @@ import WeatherWidget from "../components/dashboard/WeatherWidget";
 import TodayPanel from "../components/dashboard/TodayPanel";
 import ProjectOrdersPanel from "@/components/dashboard/ProjectOrdersPanel";
 import PtsOverviewCard from "@/components/dashboard/PtsOverviewCard";
+import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
 import { format, startOfWeek, startOfMonth, subMonths } from "date-fns";
 
 export default function EmployeeDashboard() {

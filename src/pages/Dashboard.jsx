@@ -18,6 +18,7 @@ import ProductionStatsPanel from "../components/dashboard/ProductionStatsPanel";
 import PtsOverviewCard from "../components/dashboard/PtsOverviewCard";
 import TodayPanel from "../components/dashboard/TodayPanel";
 import WeatherWidget from "../components/dashboard/WeatherWidget";
+import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { format, startOfWeek, startOfMonth } from "date-fns";
