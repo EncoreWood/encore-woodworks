@@ -75,8 +75,16 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+    <>
+      {showSketch && (
+        <SketchPad
+          existingImageUrl={form.sketch_url}
+          onClose={() => setShowSketch(false)}
+          onSave={(url) => { setForm(f => ({ ...f, sketch_url: url })); setShowSketch(false); }}
+        />
+      )}
+    <Dialog open={open && !showSketch} onOpenChange={(v) => { if (!showSketch) onOpenChange(v); }}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{isEditing ? "Edit Pickup Item" : "Add Pickup Item"}</DialogTitle>
           {projectName && <p className="text-sm text-slate-500">{projectName}</p>}
