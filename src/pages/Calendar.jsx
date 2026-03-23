@@ -939,8 +939,8 @@ export default function CalendarPage() {
                           <span className="text-[11px] font-medium text-slate-600 w-20 flex-shrink-0">{cs.day2_of_week || "Day 2"}:</span>
                           <div className="flex flex-wrap gap-1 flex-1">
                             {day2People.map(p => (
-                              <span key={p} className={`text-[10px] px-1.5 py-0.5 rounded-full ${p === cs.day2_sub ? "bg-amber-100 text-amber-800 border border-amber-300" : p === cs.rotating_person && !cs.day2_sub ? "bg-purple-100 text-purple-800" : "bg-teal-100 text-teal-800"}`}>
-                                {p}{p === cs.day2_sub ? " (sub)" : p === cs.rotating_person && !cs.day2_sub ? " (rotating)" : ""}
+                              <span key={p} className={`text-[10px] px-1.5 py-0.5 rounded-full ${p === cs.day2_sub ? "bg-amber-100 text-amber-800 border border-amber-300" : !cs.day2_sub ? "bg-purple-100 text-purple-800" : "bg-teal-100 text-teal-800"}`}>
+                                {p}{p === cs.day2_sub ? " (sub)" : ""}
                               </span>
                             ))}
                           </div>
