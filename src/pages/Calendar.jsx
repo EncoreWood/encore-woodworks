@@ -568,6 +568,16 @@ export default function CalendarPage() {
                       <p className="text-[10px] text-cyan-700">{c.assigned_to.join(", ")}</p>
                     </div>
                   ))}
+                  {(activeFilter === "all" || activeFilter === "cleaning") && weeklyCleanings.map((cs) => (
+                    <div key={cs.id} className="p-2.5 bg-teal-50 rounded-lg text-sm">
+                      <div className="flex items-center justify-between gap-1.5 mb-0.5">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-teal-900"><Sparkles className="w-3 h-3" />Weekly Cleaning</div>
+                        <button onClick={() => deleteCleaningScheduleMutation.mutate(cs.id)} className="text-slate-300 hover:text-red-400 text-[10px]">✕</button>
+                      </div>
+                      <p className="text-[10px] text-teal-700">{(cs.assigned_to || []).join(", ")}</p>
+                      {cs.notes && <p className="text-[10px] text-teal-600 mt-0.5">{cs.notes}</p>}
+                    </div>
+                  ))}
 
                   {(activeFilter === "all" || activeFilter === "vacations") && vacs.map((v) => (
                     <div key={v.id} className="p-2.5 bg-pink-50 rounded-lg text-sm">
