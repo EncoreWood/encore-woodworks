@@ -1100,14 +1100,18 @@ export default function CalendarPage() {
               <Input value={genNotes} onChange={e => setGenNotes(e.target.value)} placeholder="e.g. Shop floor + bathroom" />
             </div>
 
-            {genPair.length === 2 && genRotators.length > 0 && genWeekStart && (
+            {genPair.length === 2 && genRotators.length >= 2 && genWeekStart && (
               <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 text-xs text-teal-800 space-y-1">
                 <p className="font-semibold">Preview:</p>
                 {Array.from({ length: Math.min(genWeekCount, 4) }, (_, i) => {
                   const d = new Date(genWeekStart + "T00:00:00");
                   d.setDate(d.getDate() + i * 7);
+                  const pairStart = (i * 2) % genRotators.length;
+                  const p1 = genRotators[pairStart % genRotators.length];
+                  const p2 = genRotators[(pairStart + 1) % genRotators.length];
+                  const rotPair = p1 === p2 ? p1 : `${p1} + ${p2}`;
                   return (
-                    <p key={i}>Week of {format(d, "MMM d")}: {genDay1} — {genPair.join(" + ")} · {genDay2} — {genPair.join(" + ")} + <span className="text-purple-700">{genRotators[i % genRotators.length]}</span></p>
+                    <p key={i}>Week of {format(d, "MMM d")}: {genDay1} — <span className="text-teal-700">{genPair.join(" + ")}</span> · {genDay2} — <span className="text-purple-700">{rotPair}</span></p>
                   );
                 })}
                 {genWeekCount > 4 && <p className="text-slate-500">...and {genWeekCount - 4} more weeks</p>}
