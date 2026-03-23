@@ -854,7 +854,7 @@ export default function CalendarPage() {
       />
 
       {/* Cleaning Schedule Manager */}
-      <Dialog open={showCleaningManager} onOpenChange={(o) => { if (!o) setEditingSchedule(null); setShowCleaningManager(o); }}>
+      <Dialog open={showCleaningManager} onOpenChange={(o) => { if (!o) { setEditingSchedule(null); setConfirmClearAll(false); } setShowCleaningManager(o); }}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <div className="flex items-center justify-between gap-2">
