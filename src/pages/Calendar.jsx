@@ -804,6 +804,87 @@ export default function CalendarPage() {
         isLoading={createProjectMutation.isPending || updateProjectMutation.isPending}
       />
 
+      {/* Cleaning Schedule Manager */}
+      <Dialog open={showCleaningManager} onOpenChange={setShowCleaningManager}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-teal-600" />Cleaning Schedule</DialogTitle>
+              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-xs" onClick={() => { setShowCleaningManager(false); setShowCleaningDialog(true); setCleaningWeekStart(format(new Date(), "yyyy-MM-dd")); }}>
+                + Generate Rotating
+              </Button>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            {cleaningSchedules.length === 0 && (
+              <p className="text-sm text-slate-400 text-center py-8 italic">No cleaning schedules yet. Click "Generate Rotating" to create one.</p>
+            )}
+            {[...cleaningSchedules]
+              .sort((a, b) => (a.week_start || "").localeCompare(b.week_start || ""))
+              .map(cs => {
+                const isPast = cs.week_start && new Date(cs.week_start + "T00:00:00") < startOfDay(new Date());
+                const isEditing = editingSchedule?.id === cs.id;
+                return (
+                  <div key={cs.id} className={`flex items-start gap-3 p-3 rounded-lg border ${isPast ? "bg-slate-50 border-slate-200 opacity-60" : "bg-teal-50 border-teal-200"}`}>
+                    <div className="flex-1 min-w-0">
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <div className="flex gap-2 flex-wrap">
+                            <div className="flex-1 min-w-[120px]">
+                              <Label className="text-xs">Week Start</Label>
+                              <Input type="date" className="h-7 text-xs" value={editingSchedule.week_start || ""} onChange={e => setEditingSchedule(p => ({ ...p, week_start: e.target.value }))} />
+                            </div>
+                            <div className="flex-1 min-w-[120px]">
+                              <Label className="text-xs">Notes</Label>
+                              <Input className="h-7 text-xs" value={editingSchedule.notes || ""} onChange={e => setEditingSchedule(p => ({ ...p, notes: e.target.value }))} placeholder="Notes..." />
+                            </div>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Assigned To</Label>
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {employees.map(emp => {
+                                const assigned = editingSchedule.assigned_to?.includes(emp.full_name);
+                                return (
+                                  <button key={emp.id}
+                                    onClick={() => setEditingSchedule(p => ({ ...p, assigned_to: assigned ? (p.assigned_to || []).filter(n => n !== emp.full_name) : [...(p.assigned_to || []), emp.full_name] }))}
+                                    className={`px-2 py-0.5 rounded-full text-xs border transition-all ${assigned ? "bg-teal-600 text-white border-teal-600" : "bg-white text-slate-600 border-slate-300"}`}
+                                  >{emp.full_name}</button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" className="h-7 text-xs bg-teal-600 hover:bg-teal-700" onClick={() => updateCleaningScheduleMutation.mutate({ id: cs.id, data: { week_start: editingSchedule.week_start, assigned_to: editingSchedule.assigned_to, notes: editingSchedule.notes } })}>Save</Button>
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingSchedule(null)}>Cancel</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm text-teal-900">
+                              Week of {cs.week_start ? format(new Date(cs.week_start + "T00:00:00"), "MMM d, yyyy") : "—"}
+                            </span>
+                            {isPast && <span className="text-[10px] text-slate-400 bg-slate-200 px-1.5 rounded">Past</span>}
+                            {cs.completed && <span className="text-[10px] text-green-700 bg-green-100 px-1.5 rounded">✓ Done</span>}
+                          </div>
+                          <p className="text-xs text-teal-700 mt-0.5">{(cs.assigned_to || []).join(", ") || <span className="text-slate-400 italic">Unassigned</span>}</p>
+                          {cs.notes && <p className="text-[11px] text-slate-500 mt-0.5">{cs.notes}</p>}
+                        </>
+                      )}
+                    </div>
+                    {!isEditing && (
+                      <div className="flex gap-1 flex-shrink-0">
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-teal-700" onClick={() => setEditingSchedule({ ...cs })}>✎</Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-300 hover:text-red-500" onClick={() => deleteCleaningScheduleMutation.mutate(cs.id)}>✕</Button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Rotating Cleaning Schedule Dialog */}
       <Dialog open={showCleaningDialog} onOpenChange={setShowCleaningDialog}>
         <DialogContent className="max-w-md">
