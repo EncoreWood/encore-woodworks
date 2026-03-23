@@ -67,12 +67,12 @@ export default function PtsOverviewCard({ dayPts, weekPts, monthPts, quarterlyPt
   const [saving, setSaving] = useState(false);
 
   const goalSetting = dashboardSettings?.find(s => s.section === "pts_goals");
-  let goals = { day: 0, week: 0, month: 0 };
+  let goals = { day: 0, week: 0, month: 0, quarterly: 0 };
   if (goalSetting?.value) {
     try { goals = { ...goals, ...JSON.parse(goalSetting.value) }; } catch (_) {}
   }
 
-  const [draftGoals, setDraftGoals] = useState({ day: goals.day, week: goals.week, month: goals.month });
+  const [draftGoals, setDraftGoals] = useState({ day: goals.day, week: goals.week, month: goals.month, quarterly: goals.quarterly });
 
   const handleSaveGoals = async () => {
     setSaving(true);
