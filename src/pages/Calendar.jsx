@@ -457,7 +457,16 @@ export default function CalendarPage() {
           <h1 className="text-2xl font-bold text-slate-900">Project Calendar</h1>
           <p className="text-xs text-slate-500 mt-0.5">Track active projects, installs, and deadlines</p>
         </div>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 items-center">
+          <Button
+            size="sm"
+            onClick={() => setShowCleaningManager(true)}
+            className="bg-teal-600 hover:bg-teal-700 text-white text-xs gap-1.5"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Cleaning Schedule
+          </Button>
+          <div className="border-l border-slate-200 mx-1" />
           <div className="flex gap-1.5">
             {filterOptions.map((filter) => (
              <Button key={filter.id} variant={activeFilter === filter.id ? "default" : "outline"} size="sm"
