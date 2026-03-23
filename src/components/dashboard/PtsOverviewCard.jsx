@@ -147,11 +147,12 @@ export default function PtsOverviewCard({ dayPts, weekPts, monthPts, quarterlyPt
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label: "Day", value: dayPts, goal: goals.day },
           { label: "Week", value: weekPts, goal: goals.week },
           { label: "Month", value: monthPts, goal: goals.month },
+          { label: "Quarterly", value: quarterlyPts ?? 0, goal: goals.quarterly },
         ].map(({ label, value, goal }) => (
           <div key={label} className="bg-slate-50 rounded-xl py-5 px-3">
             <ProgressBar label={label} value={value} goal={goal} />
