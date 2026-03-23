@@ -854,77 +854,143 @@ export default function CalendarPage() {
       />
 
       {/* Cleaning Schedule Manager */}
-      <Dialog open={showCleaningManager} onOpenChange={setShowCleaningManager}>
-        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+      <Dialog open={showCleaningManager} onOpenChange={(o) => { if (!o) setEditingSchedule(null); setShowCleaningManager(o); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-teal-600" />Cleaning Schedule</DialogTitle>
-              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-xs" onClick={() => { setShowCleaningManager(false); setShowCleaningDialog(true); setCleaningWeekStart(format(new Date(), "yyyy-MM-dd")); }}>
-                + Generate Rotating
+              <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-xs" onClick={() => { setShowCleaningManager(false); setShowGenerateDialog(true); setGenWeekStart(format(new Date(), "yyyy-MM-dd")); }}>
+                + Generate Schedule
               </Button>
             </div>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-2 pr-1">
             {cleaningSchedules.length === 0 && (
-              <p className="text-sm text-slate-400 text-center py-8 italic">No cleaning schedules yet. Click "Generate Rotating" to create one.</p>
+              <p className="text-sm text-slate-400 text-center py-8 italic">No cleaning schedules yet. Click "Generate Schedule" to create one.</p>
             )}
             {[...cleaningSchedules]
               .sort((a, b) => (a.week_start || "").localeCompare(b.week_start || ""))
               .map(cs => {
                 const isPast = cs.week_start && new Date(cs.week_start + "T00:00:00") < startOfDay(new Date());
-                const isEditing = editingSchedule?.id === cs.id;
+                const isSubbing = editingSchedule?.id === cs.id && editingSchedule?._subSlot;
+                const isEditingFull = editingSchedule?.id === cs.id && !editingSchedule?._subSlot;
+                const day1People = cs.day1_sub
+                  ? [...(cs.permanent_pair || []).filter(n => n !== cs.day1_sub_for), cs.day1_sub]
+                  : (cs.permanent_pair || []);
+                const day2People = cs.day2_sub
+                  ? [...(cs.permanent_pair || []), cs.day2_sub]
+                  : [...(cs.permanent_pair || []), cs.rotating_person].filter(Boolean);
+
                 return (
-                  <div key={cs.id} className={`flex items-start gap-3 p-3 rounded-lg border ${isPast ? "bg-slate-50 border-slate-200 opacity-60" : "bg-teal-50 border-teal-200"}`}>
-                    <div className="flex-1 min-w-0">
-                      {isEditing ? (
-                        <div className="space-y-2">
-                          <div className="flex gap-2 flex-wrap">
-                            <div className="flex-1 min-w-[120px]">
-                              <Label className="text-xs">Week Start</Label>
-                              <Input type="date" className="h-7 text-xs" value={editingSchedule.week_start || ""} onChange={e => setEditingSchedule(p => ({ ...p, week_start: e.target.value }))} />
-                            </div>
-                            <div className="flex-1 min-w-[120px]">
-                              <Label className="text-xs">Notes</Label>
-                              <Input className="h-7 text-xs" value={editingSchedule.notes || ""} onChange={e => setEditingSchedule(p => ({ ...p, notes: e.target.value }))} placeholder="Notes..." />
-                            </div>
-                          </div>
-                          <div>
-                            <Label className="text-xs">Assigned To</Label>
-                            <div className="flex flex-wrap gap-1.5 mt-1">
-                              {employees.map(emp => {
-                                const assigned = editingSchedule.assigned_to?.includes(emp.full_name);
-                                return (
-                                  <button key={emp.id}
-                                    onClick={() => setEditingSchedule(p => ({ ...p, assigned_to: assigned ? (p.assigned_to || []).filter(n => n !== emp.full_name) : [...(p.assigned_to || []), emp.full_name] }))}
-                                    className={`px-2 py-0.5 rounded-full text-xs border transition-all ${assigned ? "bg-teal-600 text-white border-teal-600" : "bg-white text-slate-600 border-slate-300"}`}
-                                  >{emp.full_name}</button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button size="sm" className="h-7 text-xs bg-teal-600 hover:bg-teal-700" onClick={() => updateCleaningScheduleMutation.mutate({ id: cs.id, data: { week_start: editingSchedule.week_start, assigned_to: editingSchedule.assigned_to, notes: editingSchedule.notes } })}>Save</Button>
-                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingSchedule(null)}>Cancel</Button>
-                          </div>
+                  <div key={cs.id} className={`p-3 rounded-lg border ${isPast ? "bg-slate-50 border-slate-200 opacity-60" : "bg-teal-50 border-teal-200"}`}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="font-semibold text-sm text-teal-900">
+                            Week of {cs.week_start ? format(new Date(cs.week_start + "T00:00:00"), "MMM d, yyyy") : "—"}
+                          </span>
+                          {isPast && <span className="text-[10px] text-slate-400 bg-slate-200 px-1.5 rounded">Past</span>}
                         </div>
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm text-teal-900">
-                              Week of {cs.week_start ? format(new Date(cs.week_start + "T00:00:00"), "MMM d, yyyy") : "—"}
-                            </span>
-                            {isPast && <span className="text-[10px] text-slate-400 bg-slate-200 px-1.5 rounded">Past</span>}
-                            {cs.completed && <span className="text-[10px] text-green-700 bg-green-100 px-1.5 rounded">✓ Done</span>}
+
+                        {/* Day 1 */}
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[11px] font-medium text-slate-600 w-20 flex-shrink-0">{cs.day1_of_week || "Day 1"}:</span>
+                          <div className="flex flex-wrap gap-1 flex-1">
+                            {day1People.map(p => (
+                              <span key={p} className={`text-[10px] px-1.5 py-0.5 rounded-full ${p === cs.day1_sub ? "bg-amber-100 text-amber-800 border border-amber-300" : "bg-teal-100 text-teal-800"}`}>
+                                {p}{p === cs.day1_sub ? " (sub)" : ""}
+                              </span>
+                            ))}
                           </div>
-                          <p className="text-xs text-teal-700 mt-0.5">{(cs.assigned_to || []).join(", ") || <span className="text-slate-400 italic">Unassigned</span>}</p>
-                          {cs.notes && <p className="text-[11px] text-slate-500 mt-0.5">{cs.notes}</p>}
-                        </>
+                          <span className={`text-[10px] ${cs.completed_day1 ? "text-green-600 font-semibold" : "text-slate-400"}`}>{cs.completed_day1 ? "✓" : ""}</span>
+                        </div>
+
+                        {/* Day 2 */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-medium text-slate-600 w-20 flex-shrink-0">{cs.day2_of_week || "Day 2"}:</span>
+                          <div className="flex flex-wrap gap-1 flex-1">
+                            {day2People.map(p => (
+                              <span key={p} className={`text-[10px] px-1.5 py-0.5 rounded-full ${p === cs.day2_sub ? "bg-amber-100 text-amber-800 border border-amber-300" : p === cs.rotating_person && !cs.day2_sub ? "bg-purple-100 text-purple-800" : "bg-teal-100 text-teal-800"}`}>
+                                {p}{p === cs.day2_sub ? " (sub)" : p === cs.rotating_person && !cs.day2_sub ? " (rotating)" : ""}
+                              </span>
+                            ))}
+                          </div>
+                          <span className={`text-[10px] ${cs.completed_day2 ? "text-green-600 font-semibold" : "text-slate-400"}`}>{cs.completed_day2 ? "✓" : ""}</span>
+                        </div>
+
+                        {cs.notes && <p className="text-[11px] text-slate-500 mt-1">{cs.notes}</p>}
+                      </div>
+
+                      {!isSubbing && !isEditingFull && (
+                        <div className="flex gap-1 flex-shrink-0">
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-amber-600 hover:bg-amber-50" onClick={() => setEditingSchedule({ ...cs, _subSlot: "day1" })}>Sub D1</Button>
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-amber-600 hover:bg-amber-50" onClick={() => setEditingSchedule({ ...cs, _subSlot: "day2" })}>Sub D2</Button>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-300 hover:text-red-500" onClick={() => deleteCleaningScheduleMutation.mutate(cs.id)}>✕</Button>
+                        </div>
                       )}
                     </div>
-                    {!isEditing && (
-                      <div className="flex gap-1 flex-shrink-0">
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-400 hover:text-teal-700" onClick={() => setEditingSchedule({ ...cs })}>✎</Button>
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-300 hover:text-red-500" onClick={() => deleteCleaningScheduleMutation.mutate(cs.id)}>✕</Button>
+
+                    {/* Sub editor */}
+                    {isSubbing && (
+                      <div className="mt-2 pt-2 border-t border-teal-200 space-y-2">
+                        <p className="text-xs font-semibold text-amber-700">
+                          Sub for {editingSchedule._subSlot === "day1" ? (cs.day1_of_week || "Day 1") : (cs.day2_of_week || "Day 2")}
+                        </p>
+                        {editingSchedule._subSlot === "day1" && (
+                          <div>
+                            <Label className="text-xs">Who is unavailable?</Label>
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {(cs.permanent_pair || []).map(p => (
+                                <button key={p}
+                                  onClick={() => setEditingSchedule(prev => ({ ...prev, day1_sub_for: prev.day1_sub_for === p ? "" : p }))}
+                                  className={`px-2 py-0.5 rounded-full text-xs border transition-all ${editingSchedule.day1_sub_for === p ? "bg-red-100 text-red-800 border-red-300" : "bg-white text-slate-600 border-slate-300"}`}
+                                >{p}</button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <div>
+                          <Label className="text-xs">Substitute</Label>
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {employees.filter(e => {
+                              const allPair = cs.permanent_pair || [];
+                              if (editingSchedule._subSlot === "day2") return !allPair.includes(e.full_name) && e.full_name !== cs.rotating_person;
+                              return !allPair.includes(e.full_name);
+                            }).map(emp => (
+                              <button key={emp.id}
+                                onClick={() => setEditingSchedule(prev => {
+                                  const key = prev._subSlot === "day1" ? "day1_sub" : "day2_sub";
+                                  return { ...prev, [key]: prev[key] === emp.full_name ? "" : emp.full_name };
+                                })}
+                                className={`px-2 py-0.5 rounded-full text-xs border transition-all ${
+                                  (editingSchedule._subSlot === "day1" ? editingSchedule.day1_sub : editingSchedule.day2_sub) === emp.full_name
+                                    ? "bg-amber-500 text-white border-amber-500"
+                                    : "bg-white text-slate-600 border-slate-300"
+                                }`}
+                              >{emp.full_name}</button>
+                            ))}
+                            <button
+                              onClick={() => setEditingSchedule(prev => {
+                                const key = prev._subSlot === "day1" ? "day1_sub" : "day2_sub";
+                                return { ...prev, [key]: "", day1_sub_for: "" };
+                              })}
+                              className="px-2 py-0.5 rounded-full text-xs border bg-white text-slate-400 border-slate-200 hover:border-red-300 hover:text-red-500"
+                            >Clear sub</button>
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" className="h-7 text-xs bg-teal-600 hover:bg-teal-700" onClick={() => {
+                            const saveData = {};
+                            if (editingSchedule._subSlot === "day1") {
+                              saveData.day1_sub = editingSchedule.day1_sub || null;
+                              saveData.day1_sub_for = editingSchedule.day1_sub_for || null;
+                            } else {
+                              saveData.day2_sub = editingSchedule.day2_sub || null;
+                            }
+                            updateCleaningScheduleMutation.mutate({ id: cs.id, data: saveData });
+                          }}>Save</Button>
+                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingSchedule(null)}>Cancel</Button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -934,60 +1000,101 @@ export default function CalendarPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Rotating Cleaning Schedule Dialog */}
-      <Dialog open={showCleaningDialog} onOpenChange={setShowCleaningDialog}>
-        <DialogContent className="max-w-md">
+      {/* Generate Schedule Dialog */}
+      <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Generate Rotating Cleaning Schedule</DialogTitle>
+            <DialogTitle>Generate Cleaning Schedule</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Starting Week (Monday)</Label>
-              <Input type="date" value={cleaningWeekStart} onChange={e => setCleaningWeekStart(e.target.value)} />
-            </div>
-            <div>
-              <Label>Number of Weeks to Schedule</Label>
-              <Select value={String(autoRotateCount)} onValueChange={v => setAutoRotateCount(parseInt(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[2,3,4,6,8,12,26,52].map(n => <SelectItem key={n} value={String(n)}>{n} weeks</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Employees to Rotate (select order)</Label>
-              <div className="space-y-2 mt-2 max-h-48 overflow-y-auto border rounded-lg p-2">
-                {employees.map(emp => (
-                  <div key={emp.id} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`cr-${emp.id}`}
-                      checked={cleaningAssignees.includes(emp.full_name)}
-                      onCheckedChange={(checked) => {
-                        setCleaningAssignees(prev =>
-                          checked ? [...prev, emp.full_name] : prev.filter(n => n !== emp.full_name)
-                        );
-                      }}
-                    />
-                    <Label htmlFor={`cr-${emp.id}`} className="cursor-pointer font-normal">{emp.full_name}</Label>
-                  </div>
-                ))}
+          <div className="space-y-4 text-sm">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Starting Week (Monday)</Label>
+                <Input type="date" value={genWeekStart} onChange={e => setGenWeekStart(e.target.value)} />
               </div>
-              {cleaningAssignees.length > 0 && (
-                <p className="text-xs text-slate-500 mt-1">Rotation order: {cleaningAssignees.join(" → ")}</p>
-              )}
+              <div>
+                <Label>Number of Weeks</Label>
+                <Select value={String(genWeekCount)} onValueChange={v => setGenWeekCount(parseInt(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{[2,3,4,6,8,12,26,52].map(n => <SelectItem key={n} value={String(n)}>{n} weeks</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Day 1 (permanent pair)</Label>
+                <Select value={genDay1} onValueChange={setGenDay1}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{["Monday","Tuesday","Wednesday","Thursday","Friday"].map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Day 2 (rotating)</Label>
+                <Select value={genDay2} onValueChange={setGenDay2}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>{["Monday","Tuesday","Wednesday","Thursday","Friday"].map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
             </div>
+
+            <div>
+              <Label>Permanent Pair <span className="text-slate-400 font-normal">(always clean together on Day 1 and Day 2)</span></Label>
+              <div className="flex flex-wrap gap-1.5 mt-2 border rounded-lg p-2 bg-slate-50">
+                {employees.map(emp => {
+                  const sel = genPair.includes(emp.full_name);
+                  return (
+                    <button key={emp.id}
+                      onClick={() => setGenPair(prev => sel ? prev.filter(n => n !== emp.full_name) : prev.length < 2 ? [...prev, emp.full_name] : prev)}
+                      className={`px-2.5 py-1 rounded-full text-xs border transition-all ${sel ? "bg-teal-600 text-white border-teal-600" : "bg-white text-slate-600 border-slate-300 hover:border-teal-400"}`}
+                    >{emp.full_name}</button>
+                  );
+                })}
+              </div>
+              {genPair.length > 0 && <p className="text-xs text-teal-700 mt-1">Pair: {genPair.join(" + ")}</p>}
+              {genPair.length === 2 && <p className="text-[11px] text-slate-400">Max 2 selected</p>}
+            </div>
+
+            <div>
+              <Label>Rotation Pool <span className="text-slate-400 font-normal">(who rotates in on Day 2, one per week)</span></Label>
+              <div className="flex flex-wrap gap-1.5 mt-2 border rounded-lg p-2 bg-slate-50">
+                {employees.filter(e => !genPair.includes(e.full_name)).map(emp => {
+                  const sel = genRotators.includes(emp.full_name);
+                  return (
+                    <button key={emp.id}
+                      onClick={() => setGenRotators(prev => sel ? prev.filter(n => n !== emp.full_name) : [...prev, emp.full_name])}
+                      className={`px-2.5 py-1 rounded-full text-xs border transition-all ${sel ? "bg-purple-600 text-white border-purple-600" : "bg-white text-slate-600 border-slate-300 hover:border-purple-400"}`}
+                    >{emp.full_name}</button>
+                  );
+                })}
+              </div>
+              {genRotators.length > 0 && <p className="text-xs text-purple-700 mt-1">Rotation: {genRotators.join(" → ")} (repeating)</p>}
+            </div>
+
             <div>
               <Label>Notes (optional)</Label>
-              <Input value={cleaningNotes} onChange={e => setCleaningNotes(e.target.value)} placeholder="e.g. Shop floor + bathroom" />
+              <Input value={genNotes} onChange={e => setGenNotes(e.target.value)} placeholder="e.g. Shop floor + bathroom" />
             </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setShowCleaningDialog(false)}>Cancel</Button>
+
+            {genPair.length === 2 && genRotators.length > 0 && genWeekStart && (
+              <div className="bg-teal-50 border border-teal-200 rounded-lg p-3 text-xs text-teal-800 space-y-1">
+                <p className="font-semibold">Preview:</p>
+                {Array.from({ length: Math.min(genWeekCount, 4) }, (_, i) => {
+                  const d = new Date(genWeekStart + "T00:00:00");
+                  d.setDate(d.getDate() + i * 7);
+                  return (
+                    <p key={i}>Week of {format(d, "MMM d")}: {genDay1} — {genPair.join(" + ")} · {genDay2} — {genPair.join(" + ")} + <span className="text-purple-700">{genRotators[i % genRotators.length]}</span></p>
+                  );
+                })}
+                {genWeekCount > 4 && <p className="text-slate-500">...and {genWeekCount - 4} more weeks</p>}
+              </div>
+            )}
+
+            <div className="flex gap-2 justify-end pt-1">
+              <Button variant="outline" onClick={() => setShowGenerateDialog(false)}>Cancel</Button>
               <Button
-                onClick={handleGenerateRotatingSchedule}
-                disabled={!cleaningWeekStart || cleaningAssignees.length === 0}
+                onClick={handleGenerateSchedule}
+                disabled={!genWeekStart || genPair.length < 2 || genRotators.length === 0}
                 className="bg-teal-600 hover:bg-teal-700"
               >
-                Generate {autoRotateCount} Weeks
+                Generate {genWeekCount} Weeks
               </Button>
             </div>
           </div>
