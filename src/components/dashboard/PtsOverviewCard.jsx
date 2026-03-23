@@ -123,8 +123,8 @@ export default function PtsOverviewCard({ dayPts, weekPts, monthPts, quarterlyPt
       {showGoalSettings && (
         <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
           <p className="text-xs font-bold text-slate-600">Set PTS Goals</p>
-          <div className="grid grid-cols-3 gap-2">
-            {["day", "week", "month"].map(period => (
+          <div className="grid grid-cols-4 gap-2">
+            {["day", "week", "month", "quarterly"].map(period => (
               <div key={period}>
                 <label className="text-xs text-slate-500 capitalize mb-1 block">{period}</label>
                 <Input
