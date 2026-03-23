@@ -3,7 +3,7 @@ import { Settings, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { base44 } from "@/api/base44Client";
-import { format, startOfWeek, addDays } from "date-fns";
+import { format, startOfWeek, addDays, subMonths } from "date-fns";
 
 function ProgressBar({ value, goal, label }) {
   const pct = goal > 0 ? Math.min((value / goal) * 100, 100) : 0;
