@@ -144,27 +144,27 @@ export default function CalendarPage() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["cleaningSchedules"] }); setEditingSchedule(null); }
   });
 
-  const handleGenerateRotatingSchedule = () => {
-    if (!cleaningWeekStart || cleaningAssignees.length === 0) return;
-    const startDate = new Date(cleaningWeekStart + "T00:00:00");
+  const handleGenerateSchedule = () => {
+    if (!genWeekStart || genPair.length < 2 || genRotators.length === 0) return;
+    const startDate = new Date(genWeekStart + "T00:00:00");
     const promises = [];
-    for (let i = 0; i < autoRotateCount; i++) {
+    for (let i = 0; i < genWeekCount; i++) {
       const weekDate = new Date(startDate);
       weekDate.setDate(startDate.getDate() + i * 7);
       const weekStr = format(weekDate, "yyyy-MM-dd");
-      // Rotate assignees: each week picks next person in list
-      const assigneeIndex = i % cleaningAssignees.length;
+      const rotatingPerson = genRotators[i % genRotators.length];
       promises.push(createCleaningScheduleMutation.mutateAsync({
         week_start: weekStr,
-        assigned_to: [cleaningAssignees[assigneeIndex]],
-        notes: cleaningNotes || undefined
+        permanent_pair: genPair,
+        rotating_person: rotatingPerson,
+        day1_of_week: genDay1,
+        day2_of_week: genDay2,
+        notes: genNotes || undefined
       }));
     }
     Promise.all(promises).then(() => {
-      setShowCleaningDialog(false);
-      setCleaningWeekStart("");
-      setCleaningAssignees([]);
-      setCleaningNotes("");
+      setShowGenerateDialog(false);
+      setGenWeekStart(""); setGenPair([]); setGenRotators([]); setGenNotes("");
     });
   };
 
