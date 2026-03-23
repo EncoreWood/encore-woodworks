@@ -457,7 +457,7 @@ export default function CalendarPage() {
         <DropdownMenuItem onClick={() => handleOpenAdd("designMeeting")}><Users className="w-4 h-4 mr-2" />Design Meeting</DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleOpenAdd("bathroomCleaning")}><Sparkles className="w-4 h-4 mr-2" />Bathroom Cleaning</DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleOpenAdd("vacation")}><CalendarIcon className="w-4 h-4 mr-2" />Vacation</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => { setShowCleaningDialog(true); setCleaningWeekStart(selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")); }}><Sparkles className="w-4 h-4 mr-2 text-teal-600" />Rotating Cleaning Schedule</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => { setShowGenerateDialog(true); setGenWeekStart(selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")); }}><Sparkles className="w-4 h-4 mr-2 text-teal-600" />Cleaning Schedule</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
