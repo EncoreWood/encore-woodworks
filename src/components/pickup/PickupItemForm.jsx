@@ -19,6 +19,7 @@ const defaultForm = {
   priority: "medium",
   room_name: "",
   notes: "",
+  pts: "",
   files: [],
   sketch_url: null,
   linkToProduction: false,
