@@ -1059,7 +1059,7 @@ export default function CalendarPage() {
             </div>
 
             <div>
-              <Label>Permanent Pair <span className="text-slate-400 font-normal">(always clean together on Day 1 and Day 2)</span></Label>
+              <Label>Permanent Pair <span className="text-slate-400 font-normal">(always clean together on Day 1 only)</span></Label>
               <div className="flex flex-wrap gap-1.5 mt-2 border rounded-lg p-2 bg-slate-50">
                 {employees.map(emp => {
                   const sel = genPair.includes(emp.full_name);
