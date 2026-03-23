@@ -146,18 +146,22 @@ export default function CalendarPage() {
   });
 
   const handleGenerateSchedule = () => {
-    if (!genWeekStart || genPair.length < 2 || genRotators.length === 0) return;
+    if (!genWeekStart || genPair.length < 2 || genRotators.length < 2) return;
     const startDate = new Date(genWeekStart + "T00:00:00");
     const promises = [];
     for (let i = 0; i < genWeekCount; i++) {
       const weekDate = new Date(startDate);
       weekDate.setDate(startDate.getDate() + i * 7);
       const weekStr = format(weekDate, "yyyy-MM-dd");
-      const rotatingPerson = genRotators[i % genRotators.length];
+      // Pick a rotating pair from the pool (2 people per week, cycling)
+      const pairStart = (i * 2) % genRotators.length;
+      const p1 = genRotators[pairStart % genRotators.length];
+      const p2 = genRotators[(pairStart + 1) % genRotators.length];
+      const rotatingPair = p1 === p2 ? [p1] : [p1, p2];
       promises.push(createCleaningScheduleMutation.mutateAsync({
         week_start: weekStr,
         permanent_pair: genPair,
-        rotating_person: rotatingPerson,
+        rotating_person: rotatingPair.join(", "),
         day1_of_week: genDay1,
         day2_of_week: genDay2,
         notes: genNotes || undefined
