@@ -545,6 +545,7 @@ export default function CalendarPage() {
               const dayTasks = getTasksForDate(date);
               const weeklyCleanings = getCleaningScheduleForDate(date);
               const isEmpty = !presenter && activeProjects.length === 0 && meetings.length === 0 && cleanings.length === 0 && vacs.length === 0 && dayTasks.length === 0 && weeklyCleanings.length === 0;
+              
 
               return (
                 <>
