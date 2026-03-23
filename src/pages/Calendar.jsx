@@ -902,12 +902,13 @@ export default function CalendarPage() {
                 const isPast = cs.week_start && new Date(cs.week_start + "T00:00:00") < startOfDay(new Date());
                 const isSubbing = editingSchedule?.id === cs.id && editingSchedule?._subSlot;
                 const isEditingFull = editingSchedule?.id === cs.id && !editingSchedule?._subSlot;
+                const rotPair = cs.rotating_person ? cs.rotating_person.split(", ").map(s => s.trim()).filter(Boolean) : [];
                 const day1People = cs.day1_sub
                   ? [...(cs.permanent_pair || []).filter(n => n !== cs.day1_sub_for), cs.day1_sub]
                   : (cs.permanent_pair || []);
                 const day2People = cs.day2_sub
-                  ? [...(cs.permanent_pair || []), cs.day2_sub]
-                  : [...(cs.permanent_pair || []), cs.rotating_person].filter(Boolean);
+                  ? [...rotPair.filter(n => n !== cs.day2_sub_for), cs.day2_sub]
+                  : rotPair;
 
                 return (
                   <div key={cs.id} className={`p-3 rounded-lg border ${isPast ? "bg-slate-50 border-slate-200 opacity-60" : "bg-teal-50 border-teal-200"}`}>
