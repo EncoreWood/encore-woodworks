@@ -83,9 +83,12 @@ export default function ProductionCard({
   };
 
   const color = getProjectColor ? getProjectColor(item.project_id) : null;
-  const cardStyle = color
-    ? { borderLeft: `4px solid ${color}`, backgroundColor: color + "18" }
-    : {};
+  const isHighPriority = item.priority === "high";
+  const cardStyle = isHighPriority
+    ? { borderLeft: `4px solid #ef4444`, backgroundColor: "#fef2f2" }
+    : color
+      ? { borderLeft: `4px solid ${color}`, backgroundColor: color + "18" }
+      : {};
 
   const typeBadgeClass =
     item.type === "cabinet" ? "bg-blue-50 text-blue-700 border-blue-200"
