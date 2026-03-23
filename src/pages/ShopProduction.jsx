@@ -154,7 +154,7 @@ export default function ShopProduction() {
 
     // Optimistic update immediately so UI feels instant
     queryClient.setQueryData(["productionItems"], (old = []) =>
-      old.map(i => i.id === itemId ? { ...i, stage: newStage, files: safeFiles, completed_date: completedDate } : i)
+      old.map(i => i.id === itemId ? { ...i, stage: newStage, files: safeFiles, completed_date: completedDate, pts_logged: ptsLogged, pts_logged_date: ptsLoggedDate } : i)
     );
 
     await base44.entities.ProductionItem.update(itemId, updatePayload);
