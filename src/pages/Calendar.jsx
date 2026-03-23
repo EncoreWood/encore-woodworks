@@ -608,13 +608,14 @@ export default function CalendarPage() {
                   ))}
                   {(activeFilter === "all" || activeFilter === "cleaning") && weeklyCleanings.map(({ cs, slot }) => {
                     const isDay1 = slot === "day1";
+                    const rotatingPair = cs.rotating_person ? cs.rotating_person.split(", ").map(s => s.trim()).filter(Boolean) : [];
                     const people = isDay1
                       ? (cs.day1_sub
                           ? [...(cs.permanent_pair || []).filter(n => n !== cs.day1_sub_for), cs.day1_sub]
                           : (cs.permanent_pair || []))
                       : (cs.day2_sub
-                          ? [...(cs.permanent_pair || []), cs.day2_sub]
-                          : [...(cs.permanent_pair || []), cs.rotating_person].filter(Boolean));
+                          ? [...rotatingPair.filter(n => n !== cs.day2_sub_for), cs.day2_sub]
+                          : rotatingPair);
                     const completed = isDay1 ? cs.completed_day1 : cs.completed_day2;
                     const hasSub = isDay1 ? !!cs.day1_sub : !!cs.day2_sub;
                     return (
