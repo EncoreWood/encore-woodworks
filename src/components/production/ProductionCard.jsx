@@ -252,6 +252,17 @@ export default function ProductionCard({
           </div>
         </div>
 
+        {/* Priority badge */}
+        {item.priority && item.priority !== "medium" && (
+          <div className="mb-2">
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+              item.priority === "high" ? "bg-red-100 text-red-700 border border-red-300" : "bg-slate-100 text-slate-500 border border-slate-200"
+            }`}>
+              {item.priority === "high" ? "🔴 High Priority" : "Low Priority"}
+            </span>
+          </div>
+        )}
+
         {item.notes && <p className="text-sm text-slate-600 mb-3">{item.notes}</p>}
 
         {/* Sketch thumbnail */}
