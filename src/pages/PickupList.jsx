@@ -306,9 +306,12 @@ export default function PickupList() {
                                     <TypeIcon className={cn("w-5 h-5 flex-shrink-0", item.status === "resolved" ? "text-emerald-500" : "text-slate-400")} />
                                   </button>
                                   <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
                                     <p className={cn("text-sm font-medium text-slate-900", item.status === "resolved" && "line-through")}>{item.title}</p>
-                                    {item.notes && <p className="text-xs text-slate-500 mt-0.5 truncate">{item.notes}</p>}
-                                    {hasAttachments && (
+                                    {item.pts > 0 && <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5">{item.pts} PTS</span>}
+                                  </div>
+                                  {item.notes && <p className="text-xs text-slate-500 mt-0.5 truncate">{item.notes}</p>}
+                                  {hasAttachments && (
                                       <div className="flex items-center gap-2 mt-1">
                                         {item.files?.length > 0 && <span className="text-xs text-slate-400 flex items-center gap-1"><FileText className="w-3 h-3" />{item.files.length} file{item.files.length !== 1 ? "s" : ""}</span>}
                                         {item.sketch_url && <span className="text-xs text-slate-400 flex items-center gap-1"><PenLine className="w-3 h-3" />Sketch</span>}
