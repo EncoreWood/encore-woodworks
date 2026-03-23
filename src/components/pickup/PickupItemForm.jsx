@@ -272,5 +272,6 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
         </form>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
