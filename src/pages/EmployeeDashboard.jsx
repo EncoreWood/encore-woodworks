@@ -55,17 +55,28 @@ export default function EmployeeDashboard() {
 
   const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh);
 
+  // Use pts_logged (permanently recorded on first completion) for accurate tallies
   const getPtsFromItems = (items) =>
-    items.reduce((sum, item) => sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0), 0);
+    items.reduce((sum, item) => {
+      if (item.pts_logged != null) return sum + item.pts_logged;
+      // Fallback for older items without pts_logged
+      if (item.pts != null) return sum + item.pts;
+      return sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
+    }, 0);
 
   const todayStr = format(now, "yyyy-MM-dd");
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
   const monthStart = startOfMonth(now);
+  // Quarterly = rolling 4-month window (resets every 4 months from Jan: Jan-Apr, May-Aug, Sep-Dec)
+  const currentMonth = now.getMonth(); // 0-indexed
+  const quarterlyStartMonth = Math.floor(currentMonth / 4) * 4;
+  const quarterlyStart = new Date(now.getFullYear(), quarterlyStartMonth, 1);
 
-  const completedStageItems = productionItems.filter(i => i.stage === "complete");
-  const dayPts = getPtsFromItems(completedStageItems.filter(i => i.completed_date === todayStr));
-  const weekPts = getPtsFromItems(completedStageItems.filter(i => i.completed_date && new Date(i.completed_date) >= weekStart));
-  const monthPts = getPtsFromItems(completedStageItems.filter(i => i.completed_date && new Date(i.completed_date) >= monthStart));
+  const loggedItems = productionItems.filter(i => i.pts_logged_date != null);
+  const dayPts = getPtsFromItems(loggedItems.filter(i => i.pts_logged_date === todayStr));
+  const weekPts = getPtsFromItems(loggedItems.filter(i => i.pts_logged_date && new Date(i.pts_logged_date) >= weekStart));
+  const monthPts = getPtsFromItems(loggedItems.filter(i => i.pts_logged_date && new Date(i.pts_logged_date) >= monthStart));
+  const quarterlyPts = getPtsFromItems(loggedItems.filter(i => i.pts_logged_date && new Date(i.pts_logged_date) >= quarterlyStart));
 
   const inProductionProjects = projects.filter(p => p.status === "in_production");
 
