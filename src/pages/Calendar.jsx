@@ -1122,7 +1122,7 @@ export default function CalendarPage() {
               <Button variant="outline" onClick={() => setShowGenerateDialog(false)}>Cancel</Button>
               <Button
                 onClick={handleGenerateSchedule}
-                disabled={!genWeekStart || genPair.length < 2 || genRotators.length === 0}
+                disabled={!genWeekStart || genPair.length < 2 || genRotators.length < 2}
                 className="bg-teal-600 hover:bg-teal-700"
               >
                 Generate {genWeekCount} Weeks
