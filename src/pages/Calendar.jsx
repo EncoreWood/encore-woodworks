@@ -510,7 +510,8 @@ export default function CalendarPage() {
               const cleanings = getBathroomCleaningsForDate(date);
               const vacs = getVacationsForDate(date);
               const dayTasks = getTasksForDate(date);
-              const isEmpty = !presenter && activeProjects.length === 0 && meetings.length === 0 && cleanings.length === 0 && vacs.length === 0 && dayTasks.length === 0;
+              const weeklyCleanings = getCleaningScheduleForDate(date);
+              const isEmpty = !presenter && activeProjects.length === 0 && meetings.length === 0 && cleanings.length === 0 && vacs.length === 0 && dayTasks.length === 0 && weeklyCleanings.length === 0;
 
               return (
                 <>
