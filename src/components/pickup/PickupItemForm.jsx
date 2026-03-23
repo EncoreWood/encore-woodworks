@@ -43,6 +43,7 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
   useEffect(() => {
     if (open) {
       setSelectedProjectId(initialData?.project_id || projectId || "");
+      setShowSketch(false);
       setForm(initialData ? {
         title: initialData.title || "",
         type: initialData.type || "missing",
@@ -50,6 +51,8 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
         priority: initialData.priority || "medium",
         room_name: initialData.room_name || "",
         notes: initialData.notes || "",
+        files: initialData.files || [],
+        sketch_url: initialData.sketch_url || null,
         linkToProduction: false,
         productionStage: "face_frame"
       } : defaultForm);
