@@ -97,7 +97,16 @@ export default function PickupList() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.PickupItem.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      await base44.entities.PickupItem.update(id, data);
+      // Sync priority to linked production item if it changed
+      if (data.priority !== undefined) {
+        const item = allPickupItems.find(i => i.id === id);
+        if (item?.production_item_id) {
+          await base44.entities.ProductionItem.update(item.production_item_id, { priority: data.priority });
+        }
+      }
+    },
     onMutate: async ({ id, data }) => {
       await queryClient.cancelQueries({ queryKey: ["pickupItems"] });
       const prev = queryClient.getQueryData(["pickupItems"]);
