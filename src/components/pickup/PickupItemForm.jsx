@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Factory } from "lucide-react";
+import { Factory, PenLine, X } from "lucide-react";
+import FileUploader from "@/components/projects/FileUploader";
+import SketchPad from "@/components/production/SketchPad";
 
 const defaultForm = {
   title: "",
