@@ -275,6 +275,35 @@ export default function ProductionCard({
           </div>
         )}
 
+        {/* Card-level PTS — shown when there are no files (e.g. pickup items) */}
+        {(!item.files || item.files.length === 0) && onInlinePtsChange && (
+          <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+            <span className="text-xs font-semibold text-slate-500">PTS</span>
+            {editingPts?.itemId === item.id && editingPts?.fileIdx === -1 ? (
+              <input type="number" min="0" defaultValue={item.pts ?? ""} autoFocus
+                onClick={e => e.stopPropagation()}
+                onBlur={(e) => {
+                  const val = e.target.value === "" ? undefined : Number(e.target.value);
+                  base44.entities.ProductionItem.update(item.id, { pts: val });
+                  setEditingPts(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const val = e.target.value === "" ? undefined : Number(e.target.value);
+                    base44.entities.ProductionItem.update(item.id, { pts: val });
+                    setEditingPts(null);
+                  }
+                }}
+                className="w-14 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600 bg-amber-50" placeholder="0" />
+            ) : (
+              <button onClick={(e) => { e.stopPropagation(); setEditingPts({ itemId: item.id, fileIdx: -1 }); }}
+                className="h-6 px-2 text-xs border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 min-w-[40px] text-center">
+                {item.pts ?? "—"}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Files */}
         {item.files && item.files.length > 0 && (
           <div className="space-y-2 pt-2 border-t border-slate-100">
