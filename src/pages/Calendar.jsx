@@ -787,6 +787,66 @@ export default function CalendarPage() {
         initialData={editingProject}
         isLoading={createProjectMutation.isPending || updateProjectMutation.isPending}
       />
+
+      {/* Rotating Cleaning Schedule Dialog */}
+      <Dialog open={showCleaningDialog} onOpenChange={setShowCleaningDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Generate Rotating Cleaning Schedule</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Starting Week (Monday)</Label>
+              <Input type="date" value={cleaningWeekStart} onChange={e => setCleaningWeekStart(e.target.value)} />
+            </div>
+            <div>
+              <Label>Number of Weeks to Schedule</Label>
+              <Select value={String(autoRotateCount)} onValueChange={v => setAutoRotateCount(parseInt(v))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[2,3,4,6,8,12,26,52].map(n => <SelectItem key={n} value={String(n)}>{n} weeks</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Employees to Rotate (select order)</Label>
+              <div className="space-y-2 mt-2 max-h-48 overflow-y-auto border rounded-lg p-2">
+                {employees.map(emp => (
+                  <div key={emp.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`cr-${emp.id}`}
+                      checked={cleaningAssignees.includes(emp.full_name)}
+                      onCheckedChange={(checked) => {
+                        setCleaningAssignees(prev =>
+                          checked ? [...prev, emp.full_name] : prev.filter(n => n !== emp.full_name)
+                        );
+                      }}
+                    />
+                    <Label htmlFor={`cr-${emp.id}`} className="cursor-pointer font-normal">{emp.full_name}</Label>
+                  </div>
+                ))}
+              </div>
+              {cleaningAssignees.length > 0 && (
+                <p className="text-xs text-slate-500 mt-1">Rotation order: {cleaningAssignees.join(" → ")}</p>
+              )}
+            </div>
+            <div>
+              <Label>Notes (optional)</Label>
+              <Input value={cleaningNotes} onChange={e => setCleaningNotes(e.target.value)} placeholder="e.g. Shop floor + bathroom" />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowCleaningDialog(false)}>Cancel</Button>
+              <Button
+                onClick={handleGenerateRotatingSchedule}
+                disabled={!cleaningWeekStart || cleaningAssignees.length === 0}
+                className="bg-teal-600 hover:bg-teal-700"
+              >
+                Generate {autoRotateCount} Weeks
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
