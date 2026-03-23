@@ -28,6 +28,7 @@ const defaultForm = {
 export default function PickupItemForm({ open, onOpenChange, onSubmit, initialData, projectId, projectName, rooms = [], isLoading }) {
   const [form, setForm] = useState(defaultForm);
   const [selectedProjectId, setSelectedProjectId] = useState(projectId || "");
+  const [showSketch, setShowSketch] = useState(false);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
