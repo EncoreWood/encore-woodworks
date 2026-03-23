@@ -129,6 +129,16 @@ export default function EmployeeDashboard() {
         {/* Project Orders Status */}
         <ProjectOrdersPanel inProductionProjects={inProductionProjects} />
 
+        {/* Cleaning Schedule */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-5">
+          <div className="flex items-center gap-2 px-6 py-4 border-b border-slate-100">
+            <span className="text-base font-bold text-slate-800">🧹 Cleaning Schedule — This Week</span>
+          </div>
+          <div className="p-5">
+            <CleaningScheduleWidget showCheckboxes={true} />
+          </div>
+        </div>
+
       </div>
 
       <ProjectForm

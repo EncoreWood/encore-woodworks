@@ -454,6 +454,11 @@ export default function MorningMeeting() {
             )}
           </SectionCard>
 
+          {/* Cleaning Schedule */}
+          <SectionCard title="Cleaning Schedule — This Week" icon={Sparkles} color="slate" defaultOpen={true}>
+            <CleaningScheduleWidget showCheckboxes={false} />
+          </SectionCard>
+
           {/* 6. Tasks, Action Items — meeting tasks + global tasks */}
           <SectionCard title="Tasks, Action Items" icon={CheckCircle2} color="purple"
             count={meetingTasks.filter(t => !t.completed).length + globalActiveTasks.length}
