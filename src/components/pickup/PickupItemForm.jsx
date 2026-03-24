@@ -203,6 +203,7 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
               <Input
                 type="number"
                 min="0"
+                step="any"
                 value={form.pts}
                 onChange={(e) => setForm({ ...form, pts: e.target.value })}
                 placeholder="0"

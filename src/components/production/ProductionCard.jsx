@@ -280,16 +280,16 @@ export default function ProductionCard({
           <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
             <span className="text-xs font-semibold text-slate-500">PTS</span>
             {editingPts?.itemId === item.id && editingPts?.fileIdx === -1 ? (
-              <input type="number" min="0" defaultValue={item.pts ?? ""} autoFocus
+              <input type="number" min="0" step="any" defaultValue={item.pts ?? ""} autoFocus
                 onClick={e => e.stopPropagation()}
                 onBlur={(e) => {
-                  const val = e.target.value === "" ? undefined : Number(e.target.value);
+                  const val = e.target.value === "" ? undefined : parseFloat(e.target.value);
                   base44.entities.ProductionItem.update(item.id, { pts: val });
                   setEditingPts(null);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    const val = e.target.value === "" ? undefined : Number(e.target.value);
+                    const val = e.target.value === "" ? undefined : parseFloat(e.target.value);
                     base44.entities.ProductionItem.update(item.id, { pts: val });
                     setEditingPts(null);
                   }
@@ -318,7 +318,7 @@ export default function ProductionCard({
                   <div className="absolute top-1 right-1 flex items-center gap-1 bg-white border border-amber-200 rounded px-1.5 py-0.5 shadow">
                     <span className="text-xs font-semibold text-slate-500">PTS</span>
                     {editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
-                      <input type="number" min="0" defaultValue={file.pts ?? ""} autoFocus
+                      <input type="number" min="0" step="any" defaultValue={file.pts ?? ""} autoFocus
                         onClick={e => e.stopPropagation()}
                         onBlur={(e) => { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
                         onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
@@ -362,7 +362,7 @@ export default function ProductionCard({
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <span className="text-xs font-semibold text-slate-500">PTS</span>
                       {editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
-                        <input type="number" min="0" defaultValue={file.pts ?? ""} autoFocus
+                        <input type="number" min="0" step="any" defaultValue={file.pts ?? ""} autoFocus
                           onClick={e => e.stopPropagation()}
                           onBlur={(e) => { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
                           onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
@@ -390,7 +390,7 @@ export default function ProductionCard({
                   <div className="flex items-center gap-1">
                     <span className="text-xs font-semibold text-slate-500">PTS</span>
                     {editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
-                      <input type="number" min="0" defaultValue={file.pts ?? ""} autoFocus
+                      <input type="number" min="0" step="any" defaultValue={file.pts ?? ""} autoFocus
                         onClick={e => e.stopPropagation()}
                         onBlur={(e) => { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
                         onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
