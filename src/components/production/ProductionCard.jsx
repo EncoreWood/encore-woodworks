@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { getPickupCardStyle } from "@/lib/pickupCardStyle";
 import { createPortal } from "react-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -83,15 +84,12 @@ export default function ProductionCard({
   };
 
   const color = getProjectColor ? getProjectColor(item.project_id) : null;
-  const isHighPriority = item.priority === "high";
-  const isMediumPriority = item.priority === "medium";
-  const cardStyle = isHighPriority
-    ? { borderLeft: `4px solid #dc2626`, backgroundColor: "#fee2e2" }
-    : isMediumPriority
-      ? { borderLeft: `4px solid #ca8a04`, backgroundColor: "#fef9c3" }
-      : color
-        ? { borderLeft: `4px solid ${color}`, backgroundColor: color + "18" }
-        : {};
+  const isPickup = item.type === "pickup" || !!item.pickup_item_id;
+  const cardStyle = isPickup
+    ? getPickupCardStyle(item.priority)
+    : color
+      ? { borderLeft: `4px solid ${color}`, backgroundColor: color + "18" }
+      : {};
 
 
   const typeBadgeClass =
@@ -256,13 +254,15 @@ export default function ProductionCard({
           </div>
         </div>
 
-        {/* Priority badge */}
-        {item.priority && item.priority !== "medium" && (
+        {/* Priority badge — only show on pickup cards */}
+        {isPickup && item.priority && (
           <div className="mb-2">
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-              item.priority === "high" ? "bg-red-200 text-red-800 border border-red-400" : "bg-slate-100 text-slate-500 border border-slate-200"
+              item.priority === "high" ? "bg-green-200 text-green-800 border border-green-400" :
+              item.priority === "medium" ? "bg-amber-100 text-amber-800 border border-amber-300" :
+              "bg-blue-100 text-blue-700 border border-blue-300"
             }`}>
-              {item.priority === "high" ? "🔴 High Priority" : "Low Priority"}
+              {item.priority === "high" ? "🟢 High Priority" : item.priority === "medium" ? "🟡 Medium Priority" : "🔵 Low Priority"}
             </span>
           </div>
         )}

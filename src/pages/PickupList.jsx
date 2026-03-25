@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import PickupItemForm from "../components/pickup/PickupItemForm";
 import { cn } from "@/lib/utils";
+import { getPickupCardStyle } from "@/lib/pickupCardStyle";
 
 const typeConfig = {
   missing: { label: "Missing", color: "bg-red-100 text-red-700", icon: AlertCircle },
@@ -307,12 +308,10 @@ export default function PickupList() {
                             const isExpanded = expandedItems.has(item.id);
                             return (
                               <div key={item.id} className={cn("border-b border-slate-50 last:border-0", item.status === "resolved" && "opacity-50")}>
-                                <div className={cn(
-                                  "px-5 py-3 flex items-center gap-3 transition-colors",
-                                  item.priority === "high" ? "bg-red-50 hover:bg-red-100" :
-                                  item.priority === "medium" ? "bg-yellow-50 hover:bg-yellow-100" :
-                                  "hover:bg-slate-50"
-                                )}>
+                                <div
+                                  className="px-5 py-3 flex items-center gap-3 transition-colors"
+                                  style={{ borderLeft: getPickupCardStyle(item.priority).borderLeft || "4px solid transparent", backgroundColor: getPickupCardStyle(item.priority).backgroundColor || undefined }}
+                                >
                                   <button onClick={() => handleStatusCycle(item)} title="Click to advance status">
                                     <TypeIcon className={cn("w-5 h-5 flex-shrink-0", item.status === "resolved" ? "text-emerald-500" : "text-slate-400")} />
                                   </button>
