@@ -13,6 +13,7 @@ import ProjectOrdersPanel from "@/components/dashboard/ProjectOrdersPanel";
 import PtsOverviewCard from "@/components/dashboard/PtsOverviewCard";
 import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
 import { format, startOfWeek, startOfMonth, subMonths } from "date-fns";
+import { Clock } from "lucide-react";
 
 export default function EmployeeDashboard() {
   const queryClient = useQueryClient();
@@ -81,6 +82,21 @@ export default function EmployeeDashboard() {
 
   const inProductionProjects = projects.filter(p => p.status === "in_production");
 
+  // Today's hours for current user
+  const { data: todayTimeEntries = [] } = useQuery({
+    queryKey: ["todayTimeEntries", currentUser?.email, todayStr],
+    queryFn: async () => {
+      const emps = await base44.entities.Employee.list();
+      const emp = emps.find(e => e.user_email === currentUser?.email || e.email === currentUser?.email);
+      if (!emp) return [];
+      return base44.entities.TimeEntry.filter({ employee_id: emp.id, date: todayStr });
+    },
+    enabled: !!currentUser
+  });
+  const todayHours = todayTimeEntries
+    .filter(e => e.entry_type === "work")
+    .reduce((sum, e) => sum + (e.hours_worked || 0), 0);
+
   return (
     <div className="min-h-screen bg-slate-50">
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
@@ -101,9 +117,17 @@ export default function EmployeeDashboard() {
                 <p className="text-xs text-slate-400 text-right">Mountain Time</p>
               </div>
             </div>
-            <Button onClick={() => setShowForm(true)} className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm">
-              <Plus className="w-4 h-4 mr-1" /> New Project
-            </Button>
+            <div className="flex items-center gap-2">
+              {todayHours > 0 && (
+                <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-full px-4 py-2 text-sm font-semibold shadow-sm">
+                  <Clock className="w-4 h-4" />
+                  {todayHours.toFixed(2)} hrs today
+                </div>
+              )}
+              <Button onClick={() => setShowForm(true)} className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm">
+                <Plus className="w-4 h-4 mr-1" /> New Project
+              </Button>
+            </div>
           </div>
         </div>
 

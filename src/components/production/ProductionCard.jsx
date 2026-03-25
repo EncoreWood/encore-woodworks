@@ -258,11 +258,11 @@ export default function ProductionCard({
         {isPickup && item.priority && (
           <div className="mb-2">
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-              item.priority === "high" ? "bg-green-200 text-green-800 border border-green-400" :
+              item.priority === "high" ? "bg-red-200 text-red-800 border border-red-400" :
               item.priority === "medium" ? "bg-amber-100 text-amber-800 border border-amber-300" :
               "bg-blue-100 text-blue-700 border border-blue-300"
             }`}>
-              {item.priority === "high" ? "🟢 High Priority" : item.priority === "medium" ? "🟡 Medium Priority" : "🔵 Low Priority"}
+              {item.priority === "high" ? "🔴 High Priority" : item.priority === "medium" ? "🟡 Medium Priority" : "🔵 Low Priority"}
             </span>
           </div>
         )}

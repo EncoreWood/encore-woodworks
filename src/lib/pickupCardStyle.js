@@ -5,7 +5,7 @@
 export function getPickupCardStyle(priority) {
   switch (priority) {
     case "high":
-      return { borderLeft: "4px solid #22c55e", backgroundColor: "#f0fdf4" };
+      return { borderLeft: "4px solid #ef4444", backgroundColor: "#fef2f2" };
     case "medium":
       return { borderLeft: "4px solid #f59e0b", backgroundColor: "#fffbeb" };
     case "low":
