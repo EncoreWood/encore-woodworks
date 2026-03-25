@@ -244,6 +244,7 @@ function MessageBubble({ msg, currentUser, onReply, replySource, accentColor, on
 }
 
 export default function ChatBoard() {
+  const [sidebarOpen, setSidebarOpen] = useState(true); // desktop: always open; mobile: toggleable
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
@@ -464,12 +465,45 @@ export default function ChatBoard() {
     else { setLightboxIndex(null); setLightboxImages([]); }
   };
 
+  // Swipe-to-close for mobile sidebar
+  const swipeStartX = useRef(null);
+  const handleSidebarTouchStart = (e) => { swipeStartX.current = e.touches[0].clientX; };
+  const handleSidebarTouchEnd = (e) => {
+    if (swipeStartX.current === null) return;
+    const dx = swipeStartX.current - e.changedTouches[0].clientX;
+    if (dx > 60) setSidebarOpen(false); // swipe left to close
+    swipeStartX.current = null;
+  };
+
+  const handleRoomSelect = (room) => {
+    setSelectedRoom(room);
+    setSidebarOpen(false); // close sidebar on mobile after selecting
+  };
+
 
 
   return (
     <div className="h-screen flex bg-slate-100 overflow-hidden">
-      {/* Sidebar */}
-      <aside className="w-72 bg-white border-r border-slate-200 flex flex-col shadow-sm flex-shrink-0">
+
+      {/* Mobile sidebar overlay backdrop */}
+      {sidebarOpen && (
+        <div
+          className="sm:hidden fixed inset-0 z-30 bg-black/40"
+          onPointerDown={(e) => { e.preventDefault(); setSidebarOpen(false); }}
+        />
+      )}
+
+      {/* Sidebar — always visible on desktop, drawer on mobile */}
+      <aside
+        className={`
+          fixed sm:static inset-y-0 left-0 z-40
+          w-72 bg-white border-r border-slate-200 flex flex-col shadow-sm flex-shrink-0
+          transition-transform duration-200 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full sm:translate-x-0'}
+        `}
+        onTouchStart={handleSidebarTouchStart}
+        onTouchEnd={handleSidebarTouchEnd}
+      >
         <div className="p-4 border-b border-slate-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -489,18 +523,32 @@ export default function ChatBoard() {
               <button onClick={() => setShowAddDialog(true)} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" title="New Room">
                 <Plus className="w-4 h-4 text-slate-500" />
               </button>
+              {/* Close button — mobile only */}
+              <button
+                className="sm:hidden p-1.5 hover:bg-slate-100 rounded-lg transition-colors"
+                onPointerDown={(e) => { e.preventDefault(); setSidebarOpen(false); }}
+                title="Close"
+              >
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
             </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 space-y-5">
+        {/* Scrollable room list — touch events stop propagation so scroll doesn't close drawer */}
+        <div
+          className="flex-1 overflow-y-auto p-3 space-y-5"
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchEnd={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
           {/* Encore Chats */}
           <div>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-1">Encore Chats</p>
             <div className="space-y-0.5">
               {encoreRooms.length === 0 ? (
                 <p className="text-xs text-slate-400 px-3 py-2">No rooms yet</p>
-              ) : encoreRooms.map(room => <RoomItem key={room.id} room={room} selectedRoomId={selectedRoom?.id} unreadCounts={unreadCounts} projects={projects} onSelect={setSelectedRoom} />)}
+              ) : encoreRooms.map(room => <RoomItem key={room.id} room={room} selectedRoomId={selectedRoom?.id} unreadCounts={unreadCounts} projects={projects} onSelect={handleRoomSelect} />)}
             </div>
           </div>
 
@@ -510,23 +558,31 @@ export default function ChatBoard() {
             <div className="space-y-0.5">
               {projectRooms.length === 0 ? (
                 <p className="text-xs text-slate-400 px-3 py-2">No project rooms yet</p>
-              ) : projectRooms.map(room => <RoomItem key={room.id} room={room} selectedRoomId={selectedRoom?.id} unreadCounts={unreadCounts} projects={projects} onSelect={setSelectedRoom} />)}
+              ) : projectRooms.map(room => <RoomItem key={room.id} room={room} selectedRoomId={selectedRoom?.id} unreadCounts={unreadCounts} projects={projects} onSelect={handleRoomSelect} />)}
             </div>
           </div>
         </div>
       </aside>
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         {selectedRoom ? (
           <>
             {/* Header */}
-            <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: accentColor }} />
-                <div>
-                  <h2 className="font-bold text-slate-900 text-base">{selectedRoom.name}</h2>
-                  {selectedRoom.description && <p className="text-xs text-slate-500">{selectedRoom.description}</p>}
+            <div className="bg-white border-b border-slate-200 px-3 sm:px-6 py-3 flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                {/* Hamburger to re-open sidebar on mobile */}
+                <button
+                  className="sm:hidden p-1.5 hover:bg-slate-100 rounded-lg flex-shrink-0"
+                  onPointerDown={(e) => { e.preventDefault(); setSidebarOpen(true); }}
+                  title="Rooms"
+                >
+                  <Hash className="w-4 h-4 text-slate-500" />
+                </button>
+                <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: accentColor }} />
+                <div className="min-w-0">
+                  <h2 className="font-bold text-slate-900 text-base truncate">{selectedRoom.name}</h2>
+                  {selectedRoom.description && <p className="text-xs text-slate-500 truncate">{selectedRoom.description}</p>}
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -646,6 +702,12 @@ export default function ChatBoard() {
               <p className="text-lg font-semibold text-slate-500">Select a chat room</p>
               <p className="text-sm text-slate-400">Choose a room from the sidebar to start messaging</p>
             </div>
+            <button
+              className="sm:hidden mt-2 px-4 py-2 bg-amber-600 text-white text-sm font-semibold rounded-xl"
+              onPointerDown={(e) => { e.preventDefault(); setSidebarOpen(true); }}
+            >
+              Browse Rooms
+            </button>
           </div>
         )}
       </main>
