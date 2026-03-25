@@ -603,20 +603,19 @@ export default function Layout({ children, currentPageName }) {
       {(() => {
         const rootTabs = ["Dashboard", "Kanban", "ShopProduction", "ChatBoard"];
         const isRoot = rootTabs.includes(currentPageName);
-        // Find display name from navGroups
         let displayName = currentPageName;
         Object.values(navGroups).forEach(group => {
           const found = group.items.find(i => i.page === currentPageName);
           if (found) displayName = found.name;
         });
         return (
-          <div className="sm:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-2 px-4 h-12 border-b border-slate-400 shadow-sm" style={{ backgroundColor: "#9ca3af", paddingTop: "env(safe-area-inset-top)" }}>
+          <div className="sm:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-2 px-3 h-11 border-b border-slate-400 shadow-sm" style={{ backgroundColor: "#9ca3af", paddingTop: "env(safe-area-inset-top)" }}>
             {!isRoot ? (
-              <button onClick={() => window.history.back()} className="flex items-center text-slate-800 font-medium text-sm">
-                <ChevronLeft className="w-5 h-5" />Back
+              <button onClick={() => window.history.back()} className="flex items-center text-slate-800 font-medium text-xs">
+                <ChevronLeft className="w-4 h-4" />Back
               </button>
             ) : null}
-            <span className={`font-semibold text-slate-900 text-base flex-1 ${!isRoot ? "ml-2" : ""}`}>{displayName}</span>
+            <span className={`font-semibold text-slate-900 text-sm flex-1 ${!isRoot ? "ml-1" : ""}`}>{displayName}</span>
             <button onClick={() => setMobileNavOpen(true)} className="p-1 text-slate-800">
               <Menu className="w-5 h-5" />
             </button>
@@ -632,7 +631,7 @@ export default function Layout({ children, currentPageName }) {
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        <div className="sm:hidden h-12" style={{ paddingTop: "env(safe-area-inset-top)" }} />
+        <div className="sm:hidden h-11" style={{ paddingTop: "env(safe-area-inset-top)" }} />
         {children}
         {/* Bottom spacer for mobile tab bar */}
         <div className="sm:hidden h-16" />
@@ -641,51 +640,64 @@ export default function Layout({ children, currentPageName }) {
       {/* Mobile Tab Bar */}
       <MobileTabBar currentPageName={currentPageName} />
 
-      {/* Mobile Nav Drawer */}
+      {/* Mobile Nav Drawer — slides in from left, collapsible arrow tab */}
       {mobileNavOpen && (
         <div className="sm:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileNavOpen(false)} />
-          <div className="relative ml-auto w-72 h-full flex flex-col shadow-2xl overflow-y-auto" style={{ backgroundColor: "#9ca3af" }}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-400">
-              <span className="font-bold text-slate-900 text-base">Menu</span>
-              <button onClick={() => setMobileNavOpen(false)} className="p-1 text-slate-800"><XIcon className="w-5 h-5" /></button>
-            </div>
-            <nav className="p-4 space-y-4 flex-1">
-              {Object.entries(navGroups).map(([groupKey, group]) => {
-                // Admin section only visible to admins
-                if (groupKey === "admin" && currentUser?.role !== "admin") return null;
-                
-                const visibleItems = currentUser?.role === "admin"
-                  ? group.items
-                  : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page));
-                if (visibleItems.length === 0) return null;
-                return (
-                  <div key={groupKey}>
-                    <p className="text-xs font-bold text-slate-600 uppercase px-2 mb-1">{group.name}</p>
-                    <div className="space-y-1">
-                      {visibleItems.map((item) => (
-                        <Link
-                          key={item.page}
-                          to={createPageUrl(item.page)}
-                          className={cn(
-                            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                            currentPageName === item.page ? "text-white shadow-md" : "text-slate-800"
-                          )}
-                          style={currentPageName === item.page ? { backgroundColor: "#8a7560" } : undefined}
-                        >
-                          <item.icon className="w-4 h-4 flex-shrink-0" />
-                          <span>{item.name}</span>
-                        </Link>
-                      ))}
+          <div className="relative flex h-full">
+            {/* Drawer panel */}
+            <div className="relative w-64 h-full flex flex-col shadow-2xl overflow-y-auto" style={{ backgroundColor: "#9ca3af" }}>
+              {/* Logo mini */}
+              <div className="flex items-center justify-between px-3 py-2 border-b border-slate-400">
+                <span className="font-bold text-slate-900 text-sm">Menu</span>
+                <button onClick={() => setMobileNavOpen(false)} className="p-1 text-slate-800"><XIcon className="w-4 h-4" /></button>
+              </div>
+              <nav className="p-3 space-y-3 flex-1 overflow-y-auto">
+                {Object.entries(navGroups).map(([groupKey, group]) => {
+                  if (groupKey === "admin" && currentUser?.role !== "admin") return null;
+                  const visibleItems = currentUser?.role === "admin"
+                    ? group.items
+                    : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page));
+                  if (visibleItems.length === 0) return null;
+                  return (
+                    <div key={groupKey}>
+                      <p className="text-xs font-bold text-slate-600 uppercase px-2 mb-1 tracking-wider">{group.name}</p>
+                      <div className="space-y-0.5">
+                        {visibleItems.map((item) => (
+                          <Link
+                            key={item.page}
+                            to={createPageUrl(item.page)}
+                            className={cn(
+                              "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                              currentPageName === item.page ? "text-white shadow-md" : "text-slate-800"
+                            )}
+                            style={currentPageName === item.page ? { backgroundColor: "#8a7560" } : undefined}
+                          >
+                            <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span>{item.name}</span>
+                          </Link>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </nav>
-            <div className="p-4 border-t border-slate-400 space-y-2">
-              <Link to={createPageUrl("AccountSettings")} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-800 text-sm font-medium">
-                <UserCircle className="w-4 h-4" /> Account
-              </Link>
+                  );
+                })}
+              </nav>
+              <div className="p-3 border-t border-slate-400">
+                <Link to={createPageUrl("AccountSettings")} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-800 text-xs font-medium">
+                  <UserCircle className="w-3.5 h-3.5" /> Account
+                </Link>
+              </div>
+            </div>
+            {/* Collapse arrow tab — sticks to right edge of drawer */}
+            <div className="flex items-center">
+              <button
+                onClick={() => setMobileNavOpen(false)}
+                className="flex items-center justify-center w-6 h-16 rounded-r-xl shadow-md border border-l-0 border-slate-400 text-slate-700"
+                style={{ backgroundColor: "#9ca3af" }}
+                title="Collapse menu"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
