@@ -93,6 +93,7 @@ export default function ProductionCard({
         ? { borderLeft: `4px solid ${color}`, backgroundColor: color + "18" }
         : {};
 
+
   const typeBadgeClass =
     item.type === "cabinet" ? "bg-blue-50 text-blue-700 border-blue-200"
     : item.type === "misc" ? "bg-purple-50 text-purple-700 border-purple-200"
@@ -120,8 +121,8 @@ export default function ProductionCard({
         />
       )}
       <Card
-        className={`p-4 bg-white border-0 shadow-sm transition-shadow overflow-hidden ${isDragging ? "shadow-lg" : ""}`}
-        style={cardStyle}
+        className={`p-4 border-0 shadow-sm transition-shadow overflow-hidden ${isDragging ? "shadow-lg" : ""}`}
+        style={{ backgroundColor: "#ffffff", ...cardStyle }}
       >
         {/* Header row */}
         {item.project_name && (
