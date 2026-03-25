@@ -34,7 +34,7 @@ const productionStageColors = {
 
 const priorityConfig = {
   low: "bg-slate-100 text-slate-600",
-  medium: "bg-blue-100 text-blue-700",
+  medium: "bg-yellow-100 text-yellow-800",
   high: "bg-red-100 text-red-700"
 };
 
@@ -309,7 +309,9 @@ export default function PickupList() {
                               <div key={item.id} className={cn("border-b border-slate-50 last:border-0", item.status === "resolved" && "opacity-50")}>
                                 <div className={cn(
                                   "px-5 py-3 flex items-center gap-3 transition-colors",
-                                  item.priority === "high" ? "bg-red-50 hover:bg-red-100" : "hover:bg-slate-50"
+                                  item.priority === "high" ? "bg-red-50 hover:bg-red-100" :
+                                  item.priority === "medium" ? "bg-yellow-50 hover:bg-yellow-100" :
+                                  "hover:bg-slate-50"
                                 )}>
                                   <button onClick={() => handleStatusCycle(item)} title="Click to advance status">
                                     <TypeIcon className={cn("w-5 h-5 flex-shrink-0", item.status === "resolved" ? "text-emerald-500" : "text-slate-400")} />
@@ -329,10 +331,12 @@ export default function PickupList() {
                                   </div>
                                   <div className="flex items-center gap-2 flex-shrink-0">
                                     <Badge className={cn("text-xs border-0", typeConfig[item.type]?.color)}>{typeConfig[item.type]?.label}</Badge>
-                                    <Badge className={cn("text-xs font-semibold", 
-                                      item.priority === "high" ? "bg-red-200 text-red-800 border border-red-400" : priorityConfig[item.priority] + " border-0"
+                                    <Badge className={cn("text-xs font-semibold border-0",
+                                      item.priority === "high" ? "bg-red-200 text-red-800" :
+                                      item.priority === "medium" ? "bg-yellow-100 text-yellow-800" :
+                                      "bg-slate-100 text-slate-600"
                                     )}>
-                                      {item.priority === "high" ? "🔴 High" : item.priority}
+                                      {item.priority === "high" ? "🔴 High" : item.priority === "medium" ? "🟡 Medium" : "Low"}
                                     </Badge>
                                     <Badge className={cn("text-xs border-0", statusConfig[item.status]?.color)}>
                                       {statusConfig[item.status]?.label}

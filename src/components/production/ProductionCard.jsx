@@ -84,11 +84,14 @@ export default function ProductionCard({
 
   const color = getProjectColor ? getProjectColor(item.project_id) : null;
   const isHighPriority = item.priority === "high";
+  const isMediumPriority = item.priority === "medium";
   const cardStyle = isHighPriority
-    ? { borderLeft: `4px solid #ef4444`, backgroundColor: "#fef2f2" }
-    : color
-      ? { borderLeft: `4px solid ${color}`, backgroundColor: color + "18" }
-      : {};
+    ? { borderLeft: `4px solid #dc2626`, backgroundColor: "#fee2e2" }
+    : isMediumPriority
+      ? { borderLeft: `4px solid #ca8a04`, backgroundColor: "#fef9c3" }
+      : color
+        ? { borderLeft: `4px solid ${color}`, backgroundColor: color + "18" }
+        : {};
 
   const typeBadgeClass =
     item.type === "cabinet" ? "bg-blue-50 text-blue-700 border-blue-200"
@@ -256,7 +259,7 @@ export default function ProductionCard({
         {item.priority && item.priority !== "medium" && (
           <div className="mb-2">
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-              item.priority === "high" ? "bg-red-100 text-red-700 border border-red-300" : "bg-slate-100 text-slate-500 border border-slate-200"
+              item.priority === "high" ? "bg-red-200 text-red-800 border border-red-400" : "bg-slate-100 text-slate-500 border border-slate-200"
             }`}>
               {item.priority === "high" ? "🔴 High Priority" : "Low Priority"}
             </span>
