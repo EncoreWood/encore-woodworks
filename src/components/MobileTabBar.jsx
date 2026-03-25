@@ -12,7 +12,6 @@ const ALL_TABS = [
   { label: "Chat", icon: MessageSquare, page: "ChatBoard", scope: ["ChatBoard"] },
 ];
 
-// Always accessible regardless of permissions
 const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy"]);
 
 export default function MobileTabBar({ currentPageName }) {
@@ -23,10 +22,7 @@ export default function MobileTabBar({ currentPageName }) {
   useEffect(() => {
     const load = async () => {
       const user = await base44.auth.me();
-      if (user?.role === "admin") {
-        setTabs(ALL_TABS);
-        return;
-      }
+      if (user?.role === "admin") { setTabs(ALL_TABS); return; }
       const emps = await base44.entities.Employee.list();
       const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
       if (emp) {
@@ -37,7 +33,7 @@ export default function MobileTabBar({ currentPageName }) {
     load();
   }, []);
 
-  // Save current full URL to the owning tab's storage slot
+  // Save current URL to owning tab's storage slot
   useEffect(() => {
     for (const tab of tabs) {
       if (tab.scope.includes(currentPageName)) {
@@ -47,39 +43,36 @@ export default function MobileTabBar({ currentPageName }) {
     }
   }, [currentPageName, location, tabs]);
 
-  const handleTabClick = (e, tab) => {
+  const handleTabPress = (tab) => {
     const saved = sessionStorage.getItem(`tab_last_${tab.page}`);
     const current = location.pathname + location.search;
-    if (saved && saved !== current) {
-      e.preventDefault();
-      navigate(saved);
-    }
+    const target = saved && saved !== current ? saved : createPageUrl(tab.page);
+    navigate(target);
   };
 
   return (
     <nav
-      className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 flex"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      className="sm:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 flex"
+      style={{ backgroundColor: "#9ca3af", paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       {tabs.map((tab) => {
         const isActive = tab.scope.includes(currentPageName);
         return (
-          <a
+          <button
             key={tab.page}
-            href={createPageUrl(tab.page)}
-            onClick={(e) => {
-              e.preventDefault();
-              handleTabClick(e, tab);
-              if (!e.defaultPrevented) navigate(createPageUrl(tab.page));
-            }}
+            type="button"
+            onPointerDown={(e) => { e.preventDefault(); handleTabPress(tab); }}
             className={cn(
-              "flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors",
-              isActive ? "text-amber-600" : "text-slate-500"
+              "flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[52px] transition-colors active:opacity-60 touch-manipulation select-none",
+              isActive ? "text-amber-800" : "text-slate-700"
             )}
           >
-            <tab.icon className="w-5 h-5" />
-            <span className="text-[10px] font-medium">{tab.label}</span>
-          </a>
+            <tab.icon className={cn("w-5 h-5", isActive && "drop-shadow-sm")} />
+            <span className={cn("text-[10px] font-semibold", isActive ? "text-amber-800" : "text-slate-700")}>
+              {tab.label}
+            </span>
+            {isActive && <div className="absolute bottom-0 w-8 h-0.5 rounded-full bg-amber-600" />}
+          </button>
         );
       })}
     </nav>

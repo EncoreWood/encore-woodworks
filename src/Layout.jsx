@@ -611,12 +611,20 @@ export default function Layout({ children, currentPageName }) {
         return (
           <div className="sm:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-2 px-3 h-11 border-b border-slate-400 shadow-sm" style={{ backgroundColor: "#9ca3af", paddingTop: "env(safe-area-inset-top)" }}>
             {!isRoot ? (
-              <button onClick={() => window.history.back()} className="flex items-center text-slate-800 font-medium text-xs">
+              <button
+                type="button"
+                onPointerDown={(e) => { e.preventDefault(); window.history.back(); }}
+                className="flex items-center text-slate-800 font-medium text-xs touch-manipulation select-none active:opacity-60 min-w-[48px] min-h-[44px] justify-start"
+              >
                 <ChevronLeft className="w-4 h-4" />Back
               </button>
             ) : null}
             <span className={`font-semibold text-slate-900 text-sm flex-1 ${!isRoot ? "ml-1" : ""}`}>{displayName}</span>
-            <button onClick={() => setMobileNavOpen(true)} className="p-1 text-slate-800">
+            <button
+              type="button"
+              onPointerDown={(e) => { e.preventDefault(); setMobileNavOpen(true); }}
+              className="flex items-center justify-center touch-manipulation select-none active:opacity-60 min-w-[44px] min-h-[44px] text-slate-800"
+            >
               <Menu className="w-5 h-5" />
             </button>
           </div>
@@ -643,7 +651,10 @@ export default function Layout({ children, currentPageName }) {
       {/* Mobile Nav Drawer — slides in from left, collapsible arrow tab */}
       {mobileNavOpen && (
         <div className="sm:hidden fixed inset-0 z-50 flex">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileNavOpen(false)} />
+          <div
+            className="absolute inset-0 bg-black/40"
+            onPointerDown={(e) => { e.preventDefault(); setMobileNavOpen(false); }}
+          />
           <div className="relative flex h-full">
             {/* Drawer panel */}
             <div className="relative w-64 h-full flex flex-col shadow-2xl overflow-y-auto" style={{ backgroundColor: "#9ca3af" }}>
@@ -667,8 +678,9 @@ export default function Layout({ children, currentPageName }) {
                           <Link
                             key={item.page}
                             to={createPageUrl(item.page)}
+                            onPointerDown={() => setMobileNavOpen(false)}
                             className={cn(
-                              "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                              "flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium transition-all touch-manipulation select-none active:opacity-70 min-h-[40px]",
                               currentPageName === item.page ? "text-white shadow-md" : "text-slate-800"
                             )}
                             style={currentPageName === item.page ? { backgroundColor: "#8a7560" } : undefined}
@@ -688,15 +700,16 @@ export default function Layout({ children, currentPageName }) {
                 </Link>
               </div>
             </div>
-            {/* Collapse arrow tab — sticks to right edge of drawer */}
+            {/* Collapse arrow tab — large touch target on right edge */}
             <div className="flex items-center">
               <button
-                onClick={() => setMobileNavOpen(false)}
-                className="flex items-center justify-center w-6 h-16 rounded-r-xl shadow-md border border-l-0 border-slate-400 text-slate-700"
+                type="button"
+                onPointerDown={(e) => { e.preventDefault(); setMobileNavOpen(false); }}
+                className="flex items-center justify-center w-8 h-20 rounded-r-xl shadow-md border border-l-0 border-slate-400 text-slate-700 touch-manipulation select-none active:opacity-60"
                 style={{ backgroundColor: "#9ca3af" }}
                 title="Collapse menu"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-5 h-5" />
               </button>
             </div>
           </div>
