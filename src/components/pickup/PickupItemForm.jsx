@@ -267,9 +267,11 @@ export default function PickupItemForm({ open, onOpenChange, onSubmit, initialDa
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="cut">Cut</SelectItem>
                       <SelectItem value="face_frame">Face Frame</SelectItem>
                       <SelectItem value="spray">Spray</SelectItem>
                       <SelectItem value="build">Build</SelectItem>
+                      <SelectItem value="complete">Complete</SelectItem>
                       <SelectItem value="on_hold">On Hold</SelectItem>
                     </SelectContent>
                   </Select>
