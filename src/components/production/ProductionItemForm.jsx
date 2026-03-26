@@ -131,9 +131,12 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
                 <Select value={formData.stage} onValueChange={(v) => handleChange("stage", v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="cut">Cut</SelectItem>
                     <SelectItem value="face_frame">Face Frame</SelectItem>
                     <SelectItem value="spray">Spray</SelectItem>
                     <SelectItem value="build">Build</SelectItem>
+                    <SelectItem value="complete">Complete</SelectItem>
+                    <SelectItem value="on_hold">On Hold</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
