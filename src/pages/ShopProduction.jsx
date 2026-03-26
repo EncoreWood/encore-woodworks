@@ -41,6 +41,11 @@ export default function ShopProduction() {
   const [linkingItem, setLinkingItem] = useState(null); // job info item being linked
   const [packetsFormContext, setPacketsFormContext] = useState(null); // { project, roomName } for Job Packets add
   const [openFolderContext, setOpenFolderContext] = useState(null); // { project, roomName } to auto-open a folder in Job Packets
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    base44.auth.me().then(setCurrentUser).catch(() => {});
+  }, []);
 
   const { data: items = [] } = useQuery({
     queryKey: ["productionItems"],
@@ -296,12 +301,37 @@ export default function ShopProduction() {
     queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === id ? { ...i, ...fields } : i));
   };
 
+  // Get CAD files from the project tagged to a specific room
+  const getRoomCadFiles = (projectId, roomName) => {
+    if (!projectId || !roomName) return [];
+    const proj = projects.find(p => p.id === projectId);
+    if (!proj?.files) return [];
+    const isCad = (f) => {
+      const ext = (f.name || "").toLowerCase().split('.').pop();
+      return f.tag === "cad_dxf" || f.tag === "cad_file" || ext === "dxf" || ext === "glb" || ext === "gltf";
+    };
+    return proj.files.filter(f => isCad(f) && f.room_name === roomName);
+  };
+
+  // Move a card to a different stage via dropdown (same logic as drag-end)
+  const handleMoveStage = async (item, newStage) => {
+    if (item.stage === newStage) return;
+    await handleDragEnd({
+      draggableId: item.id,
+      source: { droppableId: item.stage, index: 0 },
+      destination: { droppableId: newStage, index: 0 },
+    });
+  };
+
   const sharedCardProps = {
     editingPts,
     setEditingPts,
+    currentUser,
     onInlinePtsChange: handleInlinePtsChange,
     onAnnotate: handleAnnotatePdf,
     getProjectColor,
+    getRoomCadFiles,
+    onMoveStage: handleMoveStage,
     onPickup: (item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id }),
     onEdit: (item) => { setEditingItem(item); setShowForm(true); },
     onDelete: (id) => deleteMutation.mutate(id),
@@ -385,6 +415,7 @@ export default function ShopProduction() {
                                          item={item}
                                          isDragging={snapshot.isDragging}
                                          {...sharedCardProps}
+                                         roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
                                          onReturnToFolder={hasRoom ? returnToFolder : undefined}
                                          onSendToJobInfo={sendToJobInfo}
                                          roomFolderLabel={hasRoom ? item.room_name : undefined}
@@ -462,6 +493,8 @@ export default function ShopProduction() {
                                                    roomGlbName={matchedRoom?.glb_name}
                                                    editingPts={editingPts}
                                                    setEditingPts={setEditingPts}
+                                                   currentUser={currentUser}
+                                                   roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
                                                    onInlinePtsChange={handleInlinePtsChange}
                                                    onAnnotate={handleAnnotatePdf}
                                                    getProjectColor={getProjectColor}

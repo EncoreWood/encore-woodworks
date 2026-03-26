@@ -4,8 +4,10 @@ import { createPortal } from "react-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, ArrowRight, Box, Upload, Loader2, PenLine } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, ArrowRight, Box, Upload, Loader2, PenLine, FileCode2, ChevronDown } from "lucide-react";
 import GlbViewer from "@/components/cad/GlbViewer";
+import DxfViewer from "@/components/cad/DxfViewer";
 import { base44 } from "@/api/base44Client";
 import SketchPad from "@/components/production/SketchPad";
 
@@ -37,6 +39,15 @@ function PdfPreviewTooltip({ url, anchorEl }) {
   );
 }
 
+const PRODUCTION_STAGES = [
+  { id: "cut", label: "1. Cut" },
+  { id: "face_frame", label: "2. Face Frame" },
+  { id: "spray", label: "3. Spray" },
+  { id: "build", label: "4. Build" },
+  { id: "complete", label: "5. Complete" },
+  { id: "on_hold", label: "On Hold" },
+];
+
 export default function ProductionCard({
   item,
   editingPts,
@@ -48,6 +59,9 @@ export default function ProductionCard({
   onAnnotate,
   getProjectColor,
   isDragging,
+  currentUser,           // for admin-only PTS editing
+  roomCadFiles,          // CAD files tagged to this card's room
+  onMoveStage,           // called with (item, newStage) to move card to a different column
   // Job Info / Packets mode
   linkedProductionItem,
   onLinkClick,
@@ -67,7 +81,9 @@ export default function ProductionCard({
   const [showCardGlb, setShowCardGlb] = useState(false);
   const [showSketch, setShowSketch] = useState(false);
   const [uploadingGlb, setUploadingGlb] = useState(false);
+  const [viewingCad, setViewingCad] = useState(null);
   const glbInputRef = useRef(null);
+  const isAdmin = currentUser?.role === "admin";
 
   const cardGlbUrl = item.glb_url;
   const cardGlbName = item.glb_name || item.name;
@@ -279,11 +295,49 @@ export default function ProductionCard({
           </div>
         )}
 
+        {/* Stage move dropdown — only on production board cards (has a stage) */}
+        {item.stage && onMoveStage && (
+          <div className="mb-2" onClick={e => e.stopPropagation()}>
+            <Select value={item.stage} onValueChange={(v) => onMoveStage(item, v)}>
+              <SelectTrigger className="h-7 text-xs border-slate-200 bg-slate-50 focus:ring-0">
+                <ChevronDown className="w-3 h-3 mr-1 text-slate-400" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PRODUCTION_STAGES.map(s => (
+                  <SelectItem key={s.id} value={s.id} className="text-xs">{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* CAD files for this room */}
+        {roomCadFiles && roomCadFiles.length > 0 && (
+          <div className="mb-2 flex flex-wrap gap-1">
+            {roomCadFiles.map((f, i) => {
+              const ext = (f.name || "").toLowerCase().split('.').pop();
+              const isViewable = ["dxf", "glb", "gltf"].includes(ext);
+              return (
+                <button
+                  key={i}
+                  onClick={(e) => { e.stopPropagation(); if (isViewable) setViewingCad(f); else window.open(f.url, "_blank"); }}
+                  className="flex items-center gap-1 text-xs bg-cyan-50 border border-cyan-200 text-cyan-700 rounded px-2 py-0.5 hover:bg-cyan-100 transition-colors"
+                  title={f.name}
+                >
+                  <FileCode2 className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate max-w-[80px]">{f.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Card-level PTS — shown when there are no files (e.g. pickup items) */}
         {(!item.files || item.files.length === 0) && onInlinePtsChange && (
           <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
             <span className="text-xs font-semibold text-slate-500">PTS</span>
-            {editingPts?.itemId === item.id && editingPts?.fileIdx === -1 ? (
+            {isAdmin && editingPts?.itemId === item.id && editingPts?.fileIdx === -1 ? (
               <input type="number" min="0" step="any" defaultValue={item.pts ?? ""} autoFocus
                 onClick={e => e.stopPropagation()}
                 onBlur={(e) => {
@@ -300,8 +354,10 @@ export default function ProductionCard({
                 }}
                 className="w-14 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600 bg-amber-50" placeholder="0" />
             ) : (
-              <button onClick={(e) => { e.stopPropagation(); setEditingPts({ itemId: item.id, fileIdx: -1 }); }}
-                className="h-6 px-2 text-xs border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 min-w-[40px] text-center">
+              <button
+                onClick={(e) => { e.stopPropagation(); if (isAdmin) setEditingPts({ itemId: item.id, fileIdx: -1 }); }}
+                className={`h-6 px-2 text-xs border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 min-w-[40px] text-center ${isAdmin ? "hover:bg-amber-100 cursor-pointer" : "cursor-default"}`}
+              >
                 {item.pts ?? "—"}
               </button>
             )}
@@ -321,15 +377,17 @@ export default function ProductionCard({
                   <img src={file.url} alt={file.name} className="w-full rounded-md border border-slate-200" />
                   <div className="absolute top-1 right-1 flex items-center gap-1 bg-white border border-amber-200 rounded px-1.5 py-0.5 shadow">
                     <span className="text-xs font-semibold text-slate-500">PTS</span>
-                    {editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
+                    {isAdmin && editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
                       <input type="number" min="0" step="any" defaultValue={file.pts ?? ""} autoFocus
                         onClick={e => e.stopPropagation()}
                         onBlur={(e) => { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
                         onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
                         className="w-10 text-xs text-center font-bold text-amber-600 border-none outline-none bg-transparent" placeholder="0" />
                     ) : (
-                      <button onClick={(e) => { e.stopPropagation(); setEditingPts({ itemId: item.id, fileIdx: idx }); }}
-                        className="text-xs font-bold text-amber-600 min-w-[24px] text-center hover:underline">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); if (isAdmin) setEditingPts({ itemId: item.id, fileIdx: idx }); }}
+                        className={`text-xs font-bold text-amber-600 min-w-[24px] text-center ${isAdmin ? "hover:underline cursor-pointer" : "cursor-default"}`}
+                      >
                         {file.pts ?? "—"}
                       </button>
                     )}
@@ -365,15 +423,17 @@ export default function ProductionCard({
                     </span>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <span className="text-xs font-semibold text-slate-500">PTS</span>
-                      {editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
+                      {isAdmin && editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
                         <input type="number" min="0" step="any" defaultValue={file.pts ?? ""} autoFocus
                           onClick={e => e.stopPropagation()}
                           onBlur={(e) => { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
                           onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
                           className="w-12 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600 bg-amber-50" placeholder="0" />
                       ) : (
-                        <button onClick={(e) => { e.stopPropagation(); setEditingPts({ itemId: item.id, fileIdx: idx }); }}
-                          className="h-6 px-2 text-xs border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 hover:bg-amber-100 min-w-[40px] text-center">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); if (isAdmin) setEditingPts({ itemId: item.id, fileIdx: idx }); }}
+                          className={`h-6 px-2 text-xs border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 min-w-[40px] text-center ${isAdmin ? "hover:bg-amber-100 cursor-pointer" : "cursor-default"}`}
+                        >
                           {file.pts ?? "—"}
                         </button>
                       )}
@@ -386,33 +446,40 @@ export default function ProductionCard({
               );
 
               return (
-                <div key={idx} className="flex items-center gap-2">
-                  <button onClick={(e) => { e.stopPropagation(); window.open(file.url, "_blank"); }}
-                    className="text-amber-600 hover:text-amber-700 underline text-left flex-1 text-xs">
-                    {file.name}
-                  </button>
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs font-semibold text-slate-500">PTS</span>
-                    {editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
-                      <input type="number" min="0" step="any" defaultValue={file.pts ?? ""} autoFocus
-                        onClick={e => e.stopPropagation()}
-                        onBlur={(e) => { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
-                        className="w-12 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600" placeholder="0" />
-                    ) : (
-                      <button onClick={(e) => { e.stopPropagation(); setEditingPts({ itemId: item.id, fileIdx: idx }); }}
-                        className="h-6 px-2 text-xs border border-amber-200 rounded font-bold text-amber-600 hover:bg-amber-50 min-w-[40px] text-center">
-                        {file.pts ?? "—"}
-                      </button>
-                    )}
-                  </div>
-                </div>
+               <div key={idx} className="flex items-center gap-2">
+                 <button onClick={(e) => { e.stopPropagation(); window.open(file.url, "_blank"); }}
+                   className="text-amber-600 hover:text-amber-700 underline text-left flex-1 text-xs">
+                   {file.name}
+                 </button>
+                 <div className="flex items-center gap-1">
+                   <span className="text-xs font-semibold text-slate-500">PTS</span>
+                   {isAdmin && editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
+                     <input type="number" min="0" step="any" defaultValue={file.pts ?? ""} autoFocus
+                       onClick={e => e.stopPropagation()}
+                       onBlur={(e) => { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
+                       onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
+                       className="w-12 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600" placeholder="0" />
+                   ) : (
+                     <button
+                       onClick={(e) => { e.stopPropagation(); if (isAdmin) setEditingPts({ itemId: item.id, fileIdx: idx }); }}
+                       className={`h-6 px-2 text-xs border border-amber-200 rounded font-bold text-amber-600 min-w-[40px] text-center ${isAdmin ? "hover:bg-amber-50 cursor-pointer" : "cursor-default"}`}
+                     >
+                       {file.pts ?? "—"}
+                     </button>
+                   )}
+                 </div>
+               </div>
               );
             })}
           </div>
         )}
       </Card>
       <PdfPreviewTooltip url={hoveredPdfUrl} anchorEl={hoveredAnchorEl} />
+      {viewingCad && (() => {
+        const ext = (viewingCad.name || "").toLowerCase().split('.').pop();
+        if (ext === "glb" || ext === "gltf") return <GlbViewer file={viewingCad} onClose={() => setViewingCad(null)} />;
+        return <DxfViewer file={viewingCad} onClose={() => setViewingCad(null)} />;
+      })()}
     </>
   );
 }
