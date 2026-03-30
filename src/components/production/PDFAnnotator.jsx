@@ -74,13 +74,29 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   };
   const handlePanPointerUp = () => { panStartRef.current = null; };
 
-  // Pinch-to-zoom touch handlers on the scroll container
+  // Scroll wheel panning (horizontal + vertical)
+  const handleWheel = (e) => {
+    if (!scrollContainerRef.current) return;
+    e.preventDefault();
+    scrollContainerRef.current.scrollLeft += e.deltaX;
+    scrollContainerRef.current.scrollTop += e.deltaY;
+  };
+
+  // Pinch-to-zoom & touch pan — always active regardless of tool
   const handleTouchStart = (e) => {
     if (e.touches.length === 2) {
-      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      lastTouchDistRef.current = dist;
-    } else if (tool === "pan" && e.touches.length === 1) {
-      panStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, scrollLeft: scrollContainerRef.current?.scrollLeft || 0, scrollTop: scrollContainerRef.current?.scrollTop || 0 };
+      lastTouchDistRef.current = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    } else if (e.touches.length === 1) {
+      // Pan is always available via single-finger touch
+      panStartRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        scrollLeft: scrollContainerRef.current?.scrollLeft || 0,
+        scrollTop: scrollContainerRef.current?.scrollTop || 0
+      };
     }
   };
   const handleTouchMove = (e) => {
@@ -92,7 +108,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         setScale(s => Math.max(0.3, Math.min(3, s * ratio)));
       }
       lastTouchDistRef.current = dist;
-    } else if (tool === "pan" && e.touches.length === 1 && panStartRef.current) {
+    } else if (e.touches.length === 1 && panStartRef.current) {
       e.preventDefault();
       const dx = e.touches[0].clientX - panStartRef.current.x;
       const dy = e.touches[0].clientY - panStartRef.current.y;
@@ -439,7 +455,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          style={{ cursor: tool === "pan" ? (panStartRef.current ? "grabbing" : "grab") : undefined, touchAction: tool === "pan" ? "none" : "auto" }}
+          onWheel={handleWheel}
+          style={{ cursor: tool === "pan" ? (panStartRef.current ? "grabbing" : "grab") : undefined, touchAction: "none" }}
         >
           <div className="flex items-center justify-center min-h-full p-4">
             <div className="relative inline-block" ref={pageContainerRef}>

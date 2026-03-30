@@ -144,6 +144,19 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
           )}
 
           <div className="space-y-2">
+            <Label htmlFor="pts">Points (PTS)</Label>
+            <Input
+              id="pts"
+              type="number"
+              step="0.1"
+              min="0"
+              value={formData.pts ?? ""}
+              onChange={(e) => handleChange("pts", e.target.value === "" ? undefined : parseFloat(e.target.value))}
+              placeholder="e.g. 1.5"
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>
             <Textarea
               id="notes"
