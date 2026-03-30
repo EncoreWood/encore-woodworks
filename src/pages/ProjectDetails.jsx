@@ -18,9 +18,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft, Edit, Trash2, User, Mail, Phone, MapPin, Calendar,
-  DollarSign, Palette, Wrench, FileText, Loader2, DoorOpen,
-  ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X, Calculator, Box, Upload
+ArrowLeft, Edit, Trash2, User, Mail, Phone, MapPin, Calendar,
+DollarSign, Palette, Wrench, FileText, Loader2, DoorOpen,
+ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X, Calculator, Box, Upload, Archive, ArchiveRestore
 } from "lucide-react";
 import { format } from "date-fns";
 import ProjectForm from "../components/projects/ProjectForm";
@@ -278,6 +278,15 @@ export default function ProjectDetails() {
                 <Button onClick={() => setShowProposalForm(true)} className="bg-amber-600 hover:bg-amber-700"><Plus className="w-4 h-4 mr-2" />Create Proposal</Button>
               )}
               <Button variant="outline" onClick={() => setShowEditForm(true)}><Edit className="w-4 h-4 mr-2" />Edit Project</Button>
+              {project.archived ? (
+                <Button variant="outline" className="text-amber-600 hover:text-amber-700 hover:bg-amber-50" onClick={() => updateMutation.mutate({ archived: false, archived_date: null })}>
+                  <ArchiveRestore className="w-4 h-4 mr-2" />Restore
+                </Button>
+              ) : (
+                <Button variant="outline" className="text-slate-600 hover:text-slate-700 hover:bg-slate-100" onClick={() => { if (confirm(`Archive "${project.project_name}"? It will be removed from active views.`)) updateMutation.mutate({ archived: true, archived_date: new Date().toISOString().split("T")[0] }); }}>
+                  <Archive className="w-4 h-4 mr-2" />Archive
+                </Button>
+              )}
               <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setShowDeleteDialog(true)}>
                 <Trash2 className="w-4 h-4" />
               </Button>

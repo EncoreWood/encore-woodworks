@@ -50,10 +50,11 @@ export default function OrdersBoard() {
 
   const queryClient = useQueryClient();
 
-  const { data: projects = [], isLoading: loadingProjects } = useQuery({
+  const { data: allProjects = [], isLoading: loadingProjects } = useQuery({
     queryKey: ["projects"],
     queryFn: () => base44.entities.Project.list()
   });
+  const projects = allProjects.filter(p => !p.archived);
 
   const { data: orders = [], isLoading: loadingOrders } = useQuery({
     queryKey: ["projectOrders"],

@@ -1,0 +1,370 @@
+{
+  "name": "Project",
+  "type": "object",
+  "properties": {
+    "project_name": {
+      "type": "string",
+      "description": "Name of the cabinet project"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Client's full name (legacy)"
+    },
+    "client_email": {
+      "type": "string",
+      "description": "Client's email address (legacy)"
+    },
+    "client_phone": {
+      "type": "string",
+      "description": "Client's phone number (legacy)"
+    },
+    "contractor": {
+      "type": "object",
+      "description": "Contractor contact info",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        }
+      }
+    },
+    "home_owner": {
+      "type": "object",
+      "description": "Home owner contact info",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        }
+      }
+    },
+    "designer": {
+      "type": "object",
+      "description": "Designer contact info",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "phone": {
+          "type": "string"
+        }
+      }
+    },
+    "project_type": {
+      "type": "string",
+      "enum": [
+        "kitchen",
+        "bathroom",
+        "closet",
+        "garage",
+        "office",
+        "laundry",
+        "custom",
+        "new_construction",
+        "remodel"
+      ],
+      "description": "Type of cabinet project"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "inquiry",
+        "side_projects",
+        "quoted",
+        "approved",
+        "in_design",
+        "in_production",
+        "ready_for_install",
+        "installing",
+        "completed",
+        "on_hold"
+      ],
+      "default": "inquiry",
+      "description": "Current project status"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this project has been archived and removed from active views"
+    },
+    "archived_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the project was archived"
+    },
+    "invoice_status": {
+      "type": "string",
+      "enum": [
+        "deposit_invoice_sent",
+        "deposit_received",
+        "ninety_percent_sent",
+        "ninety_percent_received",
+        "final_sent",
+        "paid_in_full"
+      ],
+      "default": "deposit_invoice_sent",
+      "description": "Invoice status for tracking payments"
+    },
+    "deposit_invoice_amount": {
+      "type": "number"
+    },
+    "deposit_invoice_sent_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "deposit_invoice_received_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "ninety_percent_invoice_amount": {
+      "type": "number"
+    },
+    "ninety_percent_invoice_sent_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "ninety_percent_invoice_received_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "final_invoice_amount": {
+      "type": "number"
+    },
+    "final_invoice_sent_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "final_invoice_received_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "default": "medium"
+    },
+    "card_color": {
+      "type": "string",
+      "default": ""
+    },
+    "project_manager": {
+      "type": "string"
+    },
+    "project_manager_name": {
+      "type": "string"
+    },
+    "shop_manager": {
+      "type": "string"
+    },
+    "shop_manager_name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "estimated_budget": {
+      "type": "number"
+    },
+    "actual_cost": {
+      "type": "number"
+    },
+    "deposit_paid": {
+      "type": "number"
+    },
+    "payments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "date": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "estimated_completion": {
+      "type": "string",
+      "format": "date"
+    },
+    "actual_completion": {
+      "type": "string",
+      "format": "date"
+    },
+    "install_start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "install_end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "design_complete": {
+      "type": "boolean",
+      "default": false
+    },
+    "materials_ordered": {
+      "type": "boolean",
+      "default": false
+    },
+    "production_complete": {
+      "type": "boolean",
+      "default": false
+    },
+    "installation_complete": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string"
+    },
+    "project_url": {
+      "type": "string"
+    },
+    "cabinet_style": {
+      "type": "string"
+    },
+    "hardware_type": {
+      "type": "string"
+    },
+    "finish": {
+      "type": "string"
+    },
+    "wood_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "available_wood_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "Maple",
+        "Oak",
+        "Cherry",
+        "Walnut",
+        "Birch",
+        "Hickory",
+        "Pine",
+        "Alder",
+        "Ash",
+        "Mahogany"
+      ]
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "tag": {
+            "type": "string"
+          },
+          "uploaded_date": {
+            "type": "string"
+          },
+          "room_name": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "rooms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "room_name": {
+            "type": "string"
+          },
+          "cabinet_count": {
+            "type": "number"
+          },
+          "style": {
+            "type": "string"
+          },
+          "finish": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "completed": {
+            "type": "boolean",
+            "default": false
+          },
+          "glb_url": {
+            "type": "string"
+          },
+          "glb_name": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "next_action": {
+      "type": "string"
+    },
+    "next_action_owner": {
+      "type": "string"
+    },
+    "next_action_due": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "project_name",
+    "client_name",
+    "project_type"
+  ]
+}

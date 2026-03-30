@@ -27,6 +27,7 @@ const productionColumns = [
 
 const ACTIVE_PROJECT_STATUSES = ["in_production", "ready_for_install", "installing", "in_design", "approved"];
 
+
 export default function ShopProduction() {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("production");
@@ -74,7 +75,7 @@ export default function ShopProduction() {
     return unsub;
   }, [queryClient]);
 
-  const activeProjects = projects.filter(p => ACTIVE_PROJECT_STATUSES.includes(p.status));
+  const activeProjects = projects.filter(p => ACTIVE_PROJECT_STATUSES.includes(p.status) && !p.archived);
 
   const getProjectColor = (projectId) => {
     if (!projectId) return null;

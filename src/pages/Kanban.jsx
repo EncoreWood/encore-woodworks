@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { User, MapPin, Calendar, DollarSign, MessageCircle, Plus, CheckCircle2, Circle, Settings, Pencil, Trash2, ArrowRight, GripVertical, Palette, ClipboardList } from "lucide-react";
+import { User, MapPin, Calendar, DollarSign, MessageCircle, Plus, CheckCircle2, Circle, Settings, Pencil, Trash2, ArrowRight, GripVertical, Palette, ClipboardList, Archive } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
@@ -183,6 +183,11 @@ export default function Kanban() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projects"] })
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: (id) => base44.entities.Project.update(id, { archived: true, archived_date: format(new Date(), "yyyy-MM-dd") }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projects"] })
+  });
+
   const [colorPickerProjectId, setColorPickerProjectId] = useState(null);
   const [pickupFormProject, setPickupFormProject] = useState(null);
 
@@ -224,7 +229,7 @@ export default function Kanban() {
   const getProjectsByStatus = (status, tabKey) => {
     const tab = tabKey || activeTab;
     if (!Array.isArray(projects)) return [];
-    const filtered = projects.filter((p) => p.status === status);
+    const filtered = projects.filter((p) => p.status === status && !p.archived);
     if (tab === "side-projects") {
       return filtered.filter((p) => p.project_type === "custom");
     }
@@ -516,6 +521,15 @@ export default function Kanban() {
                                            >
                                              <ClipboardList className="w-3 h-3 mr-1" />
                                              Pickup
+                                           </Button>
+                                           <Button
+                                             variant="outline"
+                                             size="sm"
+                                             className="text-slate-500 hover:text-slate-700"
+                                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (confirm(`Archive "${project.project_name}"? It will be removed from active views.`)) archiveMutation.mutate(project.id); }}
+                                             title="Archive project"
+                                           >
+                                             <Archive className="w-3 h-3" />
                                            </Button>
                                            <div className="relative">
                                              <button

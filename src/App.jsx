@@ -17,6 +17,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Admin from './pages/Admin';
 import GroupLean from './pages/GroupLean';
 import IndividualLean from './pages/IndividualLean';
+import ArchivedProjects from './pages/ArchivedProjects';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -67,6 +68,7 @@ const AuthenticatedApp = () => {
       <Route path="/Admin" element={<LayoutWrapper currentPageName="Admin"><Admin /></LayoutWrapper>} />
       <Route path="/GroupLean" element={<LayoutWrapper currentPageName="GroupLean"><GroupLean /></LayoutWrapper>} />
       <Route path="/IndividualLean" element={<LayoutWrapper currentPageName="IndividualLean"><IndividualLean /></LayoutWrapper>} />
+      <Route path="/ArchivedProjects" element={<LayoutWrapper currentPageName="ArchivedProjects"><ArchivedProjects /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
