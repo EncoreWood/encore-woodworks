@@ -72,170 +72,165 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
         />
       )}
       <Dialog open={open && !showSketch} onOpenChange={(v) => { if (!showSketch) onOpenChange(v); }}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold text-slate-900">
+      <DialogContent className="max-w-md flex flex-col max-h-[90vh]">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="text-base font-semibold text-slate-900">
             {initialData ? "Edit Production Item" : "Add Production Item"}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Item Name *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => handleChange("name", e.target.value)}
-              placeholder="e.g., Kitchen Upper Cabinets"
-              required
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          {/* Scrollable body */}
+          <div className="flex-1 overflow-y-auto space-y-3 py-2 pr-1">
 
-          {jobInfoProjects ? (
-            <div className="space-y-2">
-              <Label>Project *</Label>
-              <Select
-                value={formData.project_id || ""}
-                onValueChange={(v) => {
-                  const proj = jobInfoProjects.find(p => p.id === v);
-                  handleChange("project_id", v);
-                  handleChange("project_name", proj?.project_name || "");
-                  handleChange("type", "cabinet");
-                  handleChange("stage", "face_frame");
-                  handleChange("is_job_info", true);
-                }}
-              >
-                <SelectTrigger><SelectValue placeholder="Select project..." /></SelectTrigger>
-                <SelectContent>
-                  {jobInfoProjects.map(p => (
-                    <SelectItem key={p.id} value={p.id}>{p.project_name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-slate-600">Item Name *</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) => handleChange("name", e.target.value)}
+                placeholder="e.g., Kitchen Upper Cabinets"
+                required
+                className="h-9 text-sm"
+              />
             </div>
-          ) : (
-            <>
-              <div className="space-y-2">
-                <Label htmlFor="type">Type *</Label>
-                <Select value={formData.type} onValueChange={(v) => handleChange("type", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+
+            {jobInfoProjects ? (
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-slate-600">Project *</Label>
+                <Select
+                  value={formData.project_id || ""}
+                  onValueChange={(v) => {
+                    const proj = jobInfoProjects.find(p => p.id === v);
+                    handleChange("project_id", v);
+                    handleChange("project_name", proj?.project_name || "");
+                    handleChange("type", "cabinet");
+                    handleChange("stage", "face_frame");
+                    handleChange("is_job_info", true);
+                  }}
+                >
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select project..." /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cabinet">Cabinet</SelectItem>
-                    <SelectItem value="misc">Misc</SelectItem>
-                    <SelectItem value="pickup">Pick up</SelectItem>
+                    {jobInfoProjects.map(p => (
+                      <SelectItem key={p.id} value={p.id}>{p.project_name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="stage">Starting Stage</Label>
-                <Select value={formData.stage} onValueChange={(v) => handleChange("stage", v)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cut">Cut</SelectItem>
-                    <SelectItem value="face_frame">Face Frame</SelectItem>
-                    <SelectItem value="spray">Spray</SelectItem>
-                    <SelectItem value="build">Build</SelectItem>
-                    <SelectItem value="complete">Complete</SelectItem>
-                    <SelectItem value="on_hold">On Hold</SelectItem>
-                  </SelectContent>
-                </Select>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-slate-600">Type *</Label>
+                  <Select value={formData.type} onValueChange={(v) => handleChange("type", v)}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cabinet">Cabinet</SelectItem>
+                      <SelectItem value="misc">Misc</SelectItem>
+                      <SelectItem value="pickup">Pick up</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-medium text-slate-600">Starting Stage</Label>
+                  <Select value={formData.stage} onValueChange={(v) => handleChange("stage", v)}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cut">Cut</SelectItem>
+                      <SelectItem value="face_frame">Face Frame</SelectItem>
+                      <SelectItem value="spray">Spray</SelectItem>
+                      <SelectItem value="build">Build</SelectItem>
+                      <SelectItem value="complete">Complete</SelectItem>
+                      <SelectItem value="on_hold">On Hold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </>
-          )}
+            )}
 
-          <div className="space-y-2">
-            <Label htmlFor="pts">Points (PTS)</Label>
-            <Input
-              id="pts"
-              type="number"
-              step="0.1"
-              min="0"
-              value={formData.pts ?? ""}
-              onChange={(e) => handleChange("pts", e.target.value === "" ? undefined : parseFloat(e.target.value))}
-              placeholder="e.g. 1.5"
-            />
-          </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-slate-600">Points (PTS)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                value={formData.pts ?? ""}
+                onChange={(e) => handleChange("pts", e.target.value === "" ? undefined : parseFloat(e.target.value))}
+                placeholder="e.g. 1.5"
+                className="h-9 text-sm"
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => handleChange("notes", e.target.value)}
-              placeholder="Additional notes..."
-              rows={3}
-            />
-          </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-slate-600">Notes</Label>
+              <Textarea
+                value={formData.notes}
+                onChange={(e) => handleChange("notes", e.target.value)}
+                placeholder="Additional notes..."
+                rows={2}
+                className="text-sm resize-none"
+              />
+            </div>
 
-          <div className="space-y-2">
             <FileUploader
               files={formData.files || []}
               onChange={(files) => handleChange("files", files)}
               label="Attach Files"
             />
-          </div>
 
-          {/* 3D Model */}
-          <div className="space-y-2">
-            <Label>3D Model (GLB)</Label>
-            {formData.glb_url ? (
-              <div className="flex items-center gap-2 p-2 border border-indigo-200 bg-indigo-50 rounded-lg">
-                <Box className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-                <span className="text-sm text-indigo-700 flex-1 truncate">{formData.glb_name || "3D Model"}</span>
-                <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-xs text-indigo-600 border-indigo-300"
-                  onClick={() => setShowGlb(true)}>
-                  View
-                </Button>
-                <button type="button" onClick={removeGlb} className="text-slate-400 hover:text-red-500">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ) : (
-              <>
-                <input ref={glbInputRef} type="file" accept=".glb,.gltf" className="hidden" onChange={handleGlbUpload} />
-                <Button type="button" variant="outline" className="w-full gap-2 border-dashed"
-                  onClick={() => glbInputRef.current?.click()} disabled={uploadingGlb}>
-                  {uploadingGlb ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  {uploadingGlb ? "Uploading..." : "Upload 3D Model"}
-                </Button>
-              </>
-            )}
-          </div>
-
-          {showGlb && formData.glb_url && (
-            <GlbViewer file={{ url: formData.glb_url, name: formData.glb_name || "3D Model" }} onClose={() => setShowGlb(false)} />
-          )}
-
-          {/* Sketch */}
-          <div className="space-y-2">
-            <Label>Sketch / Drawing</Label>
-            {formData.sketch_url ? (
-              <div className="space-y-2">
-                <img src={formData.sketch_url} alt="Sketch" className="w-full rounded-lg border border-slate-200 max-h-48 object-contain bg-white" />
-                <div className="flex gap-2">
-                  <Button type="button" size="sm" variant="outline" className="gap-1 text-xs" onClick={() => setShowSketch(true)}>
-                    <PenLine className="w-3 h-3" /> Edit Sketch
-                  </Button>
-                  <Button type="button" size="sm" variant="outline" className="gap-1 text-xs text-red-600 border-red-200"
-                    onClick={() => setFormData(prev => ({ ...prev, sketch_url: null }))}>
-                    <X className="w-3 h-3" /> Remove
-                  </Button>
+            {/* 3D Model */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-slate-600">3D Model (GLB)</Label>
+              {formData.glb_url ? (
+                <div className="flex items-center gap-2 p-2 border border-indigo-200 bg-indigo-50 rounded-lg">
+                  <Box className="w-4 h-4 text-indigo-600 flex-shrink-0" />
+                  <span className="text-xs text-indigo-700 flex-1 truncate">{formData.glb_name || "3D Model"}</span>
+                  <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-xs text-indigo-600 border-indigo-300" onClick={() => setShowGlb(true)}>View</Button>
+                  <button type="button" onClick={removeGlb} className="text-slate-400 hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
                 </div>
-              </div>
-            ) : (
-              <Button type="button" variant="outline" className="w-full gap-2 border-dashed"
-                onClick={() => setShowSketch(true)}>
-                <PenLine className="w-4 h-4" /> Open Sketch Pad
-              </Button>
+              ) : (
+                <>
+                  <input ref={glbInputRef} type="file" accept=".glb,.gltf" className="hidden" onChange={handleGlbUpload} />
+                  <Button type="button" variant="outline" size="sm" className="w-full gap-2 border-dashed text-xs h-8"
+                    onClick={() => glbInputRef.current?.click()} disabled={uploadingGlb}>
+                    {uploadingGlb ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                    {uploadingGlb ? "Uploading..." : "Upload 3D Model"}
+                  </Button>
+                </>
+              )}
+            </div>
+
+            {showGlb && formData.glb_url && (
+              <GlbViewer file={{ url: formData.glb_url, name: formData.glb_name || "3D Model" }} onClose={() => setShowGlb(false)} />
             )}
+
+            {/* Sketch */}
+            <div className="space-y-1">
+              <Label className="text-xs font-medium text-slate-600">Sketch / Drawing</Label>
+              {formData.sketch_url ? (
+                <div className="space-y-1.5">
+                  <img src={formData.sketch_url} alt="Sketch" className="w-full rounded-lg border border-slate-200 max-h-32 object-contain bg-white" />
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" variant="outline" className="gap-1 text-xs h-7" onClick={() => setShowSketch(true)}>
+                      <PenLine className="w-3 h-3" /> Edit
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" className="gap-1 text-xs h-7 text-red-600 border-red-200"
+                      onClick={() => setFormData(prev => ({ ...prev, sketch_url: null }))}>
+                      <X className="w-3 h-3" /> Remove
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button type="button" variant="outline" size="sm" className="w-full gap-2 border-dashed text-xs h-8" onClick={() => setShowSketch(true)}>
+                  <PenLine className="w-3.5 h-3.5" /> Open Sketch Pad
+                </Button>
+              )}
+            </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading} className="bg-amber-600 hover:bg-amber-700">
-              {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+          {/* Sticky footer */}
+          <div className="flex justify-end gap-2 pt-3 border-t flex-shrink-0">
+            <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" size="sm" disabled={isLoading} className="bg-amber-600 hover:bg-amber-700">
+              {isLoading && <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" />}
               {initialData ? "Update Item" : "Add Item"}
             </Button>
           </div>
