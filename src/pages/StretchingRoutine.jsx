@@ -191,7 +191,7 @@ export default function StretchingRoutine() {
         <button onClick={handleReset} className="text-white/60 hover:text-white text-sm flex items-center gap-1">
           <RotateCcw className="w-4 h-4" /> Reset
         </button>
-        <span className="text-xs text-white/50">🎵 Music playing below</span>
+        <div />
         <div className="w-16" />
       </div>
 
@@ -213,19 +213,18 @@ export default function StretchingRoutine() {
       </div>
 
       {/* Bottom music player */}
-      <div className="px-6 pb-4 flex items-center gap-3">
-        <img
-          src="https://img.youtube.com/vi/QEWV6fiYaDU/default.jpg"
-          alt="Music"
-          className="w-12 h-9 rounded-lg object-cover flex-shrink-0 shadow"
-        />
-        <div className="flex-1 rounded-xl overflow-hidden" style={{ height: 60 }}>
+      <div className="px-6 pb-4">
+        <div className="w-full rounded-2xl overflow-hidden shadow-2xl">
           <iframe
-            src="https://www.youtube.com/embed/QEWV6fiYaDU?si=qEb2IommcvSXi2Rc&start=89&autoplay=1&mute=0"
-            title="Background Music"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            width="560"
+            height="315"
+            src="https://www.youtube.com/embed/QEWV6fiYaDU?si=qEb2IommcvSXi2Rc&start=10"
+            title="YouTube video player"
             frameBorder="0"
-            className="w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+            className="w-full aspect-video"
           />
         </div>
       </div>
