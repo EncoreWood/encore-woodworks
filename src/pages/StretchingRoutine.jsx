@@ -79,9 +79,19 @@ export default function StretchingRoutine() {
   const intervalRef = useRef(null);
   const musicRef = useRef(null);
 
+  const totalSeconds = useRef(0);
+
   useEffect(() => {
     if (phase === "active") {
+      totalSeconds.current = 0;
       intervalRef.current = setInterval(() => {
+        totalSeconds.current += 1;
+        // End after 3 minutes (180s) to match the video
+        if (totalSeconds.current >= 180) {
+          clearInterval(intervalRef.current);
+          setPhase("done");
+          return;
+        }
         setTick(prev => {
           if (prev >= 29) {
             setBgIdx(i => (i + 1) % BG_GRADIENTS.length);
@@ -176,34 +186,17 @@ export default function StretchingRoutine() {
   return (
     <div className={`min-h-screen bg-gradient-to-br ${currentBg} flex flex-col text-white transition-all duration-[3000ms]`}>
 
-      {/* Hidden music autoplay iframe */}
-      <iframe
-        ref={musicRef}
-        src="https://www.youtube.com/embed/QEWV6fiYaDU?si=qEb2IommcvSXi2Rc&start=89&autoplay=1&mute=0"
-        title="Background Music"
-        allow="autoplay"
-        style={{ position: "absolute", width: 0, height: 0, border: 0, opacity: 0, pointerEvents: "none" }}
-      />
-
       {/* Top bar */}
       <div className="px-6 pt-4 pb-3 flex items-center justify-between">
         <button onClick={handleReset} className="text-white/60 hover:text-white text-sm flex items-center gap-1">
           <RotateCcw className="w-4 h-4" /> Reset
         </button>
-        {/* Music thumbnail */}
-        <div className="flex items-center gap-2 bg-black/30 rounded-xl px-3 py-1.5">
-          <img
-            src="https://img.youtube.com/vi/QEWV6fiYaDU/default.jpg"
-            alt="Music"
-            className="w-10 h-7 rounded object-cover"
-          />
-          <span className="text-xs text-white/70">🎵 Music playing</span>
-        </div>
+        <span className="text-xs text-white/50">🎵 Music playing below</span>
         <div className="w-16" />
       </div>
 
       {/* Video — full width, centered */}
-      <div className="flex-1 flex items-center justify-center px-6 pb-8">
+      <div className="flex-1 flex items-center justify-center px-6 pb-4">
         <div className="w-full max-w-4xl">
           <div className="w-full rounded-2xl overflow-hidden shadow-2xl">
             <iframe
@@ -216,6 +209,24 @@ export default function StretchingRoutine() {
               className="w-full aspect-video"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Bottom music player */}
+      <div className="px-6 pb-4 flex items-center gap-3">
+        <img
+          src="https://img.youtube.com/vi/QEWV6fiYaDU/default.jpg"
+          alt="Music"
+          className="w-12 h-9 rounded-lg object-cover flex-shrink-0 shadow"
+        />
+        <div className="flex-1 rounded-xl overflow-hidden" style={{ height: 60 }}>
+          <iframe
+            src="https://www.youtube.com/embed/QEWV6fiYaDU?si=qEb2IommcvSXi2Rc&start=89&autoplay=1&mute=0"
+            title="Background Music"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            frameBorder="0"
+            className="w-full h-full"
+          />
         </div>
       </div>
     </div>
