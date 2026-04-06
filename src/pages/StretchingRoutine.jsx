@@ -6,76 +6,58 @@ import { Play, Pause, SkipForward, RotateCcw, CheckCircle2 } from "lucide-react"
 
 const stretches = [
   {
-    name: "Neck Rolls",
-    duration: 30,
-    muscle: "Neck & Upper Traps",
-    emoji: "🔄",
-    color: "from-sky-400 to-blue-500",
-    description: "Slowly roll your head in full circles. Keep shoulders relaxed and breathe deeply.",
-    tip: "Go slow — no fast jerking movements!"
-  },
-  {
-    name: "Shoulder Rolls",
-    duration: 30,
-    muscle: "Shoulders & Upper Back",
-    emoji: "🤸",
-    color: "from-violet-400 to-purple-500",
-    description: "Roll both shoulders backward in big circles 5x, then reverse direction 5x.",
-    tip: "Really exaggerate the motion — big circles!"
-  },
-  {
-    name: "Chest Opener",
-    duration: 30,
-    muscle: "Chest & Pecs",
-    emoji: "💪",
-    color: "from-amber-400 to-orange-500",
-    description: "Clasp hands behind your back, squeeze shoulder blades together and lift chest up.",
-    tip: "Hold steady — feel the chest stretch open."
-  },
-  {
-    name: "Side Body Stretch",
-    duration: 30,
-    muscle: "Obliques & Lats",
-    emoji: "🌊",
-    color: "from-teal-400 to-green-500",
-    description: "Reach one arm overhead and lean to the opposite side. Switch halfway.",
-    tip: "Keep hips square — the stretch should be in your side."
-  },
-  {
-    name: "Standing Forward Bend",
+    name: "Standing Forward Fold",
     duration: 30,
     muscle: "Hamstrings & Lower Back",
     emoji: "🙇",
-    color: "from-rose-400 to-red-500",
-    description: "Feet hip-width apart, hinge at hips and let arms hang. Bend knees slightly if needed.",
-    tip: "Let gravity do the work — don't force it down."
+    color: "from-sky-400 to-blue-500",
+    description: "Feet together, bend down as far as you can. Hands on ankles. Try to spread legs slightly and reach lower.",
+    tip: "Let gravity pull you down — no bouncing!"
   },
   {
-    name: "Quad Stretch",
+    name: "Single Leg to Chest",
     duration: 30,
-    muscle: "Quadriceps & Hip Flexors",
+    muscle: "Hip Flexors & Glutes",
     emoji: "🦵",
-    color: "from-indigo-400 to-blue-600",
-    description: "Hold a wall for balance. Pull one foot to glutes and hold 15s. Switch legs.",
-    tip: "Stand tall — don't lean forward!"
+    color: "from-violet-400 to-purple-500",
+    description: "Stand tall, raise one leg and pull your knee to your chest. Hold 15s then switch legs.",
+    tip: "If you lose balance, lean on a wall or chair."
   },
   {
-    name: "Calf Stretch",
+    name: "Wide Leg Forward Bend",
     duration: 30,
-    muscle: "Calves & Achilles",
-    emoji: "👣",
-    color: "from-emerald-400 to-green-600",
-    description: "Step one foot back, press heel into floor. Lean slightly forward. Switch legs.",
-    tip: "Keep back heel flat on the ground."
+    muscle: "Inner Thighs & Back",
+    emoji: "🤸",
+    color: "from-amber-400 to-orange-500",
+    description: "Spread legs wide, arms stretched and joined. Bend down and stretch, keeping your back straight.",
+    tip: "Feel the stretch in your back and arms — keep the spine long."
   },
   {
-    name: "Hip Circles",
+    name: "Side Body Stretch — Left",
+    duration: 15,
+    muscle: "Obliques & Lats",
+    emoji: "🌊",
+    color: "from-teal-400 to-green-500",
+    description: "Legs slightly apart, join arms above and stretch them to the right side. Feel the full left side stretch.",
+    tip: "Push a little more at the end — really feel it!"
+  },
+  {
+    name: "Side Body Stretch — Right",
+    duration: 15,
+    muscle: "Obliques & Lats",
+    emoji: "🌊",
+    color: "from-emerald-400 to-teal-600",
+    description: "Now stretch arms over to the left side. Feel the full right side stretch.",
+    tip: "Keep hips square and arms fully extended."
+  },
+  {
+    name: "Neck Stretch",
     duration: 30,
-    muscle: "Hips & Lower Back",
-    emoji: "⭕",
-    color: "from-yellow-400 to-amber-500",
-    description: "Hands on hips, feet shoulder-width apart. Make big slow circles with your hips.",
-    tip: "This one always gets a laugh — own it!"
+    muscle: "Neck & Upper Traps",
+    emoji: "🔄",
+    color: "from-rose-400 to-red-500",
+    description: "Feet together, hands clasped behind your head (nape). Slowly lower your chin to your chest and hold.",
+    tip: "Go slow and gentle — feel the back of the neck lengthen."
   }
 ];
 
@@ -253,17 +235,26 @@ export default function StretchingRoutine() {
             />
           </div>
 
-          {/* Music player below the video */}
-          <div className="rounded-xl overflow-hidden opacity-90">
-            <iframe
-              src="https://www.youtube.com/embed/QEWV6fiYaDU?autoplay=1&loop=1&playlist=QEWV6fiYaDU"
-              title="Background Music"
-              className="w-full"
-              style={{ height: "80px" }}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              frameBorder="0"
+          {/* Music — clickable thumbnail that opens YouTube */}
+          <a
+            href="https://www.youtube.com/watch?v=QEWV6fiYaDU&t=89"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 bg-black/30 hover:bg-black/50 rounded-xl px-4 py-2 transition-all group"
+          >
+            <img
+              src="https://img.youtube.com/vi/QEWV6fiYaDU/default.jpg"
+              alt="Background Music"
+              className="w-16 h-12 rounded-lg object-cover flex-shrink-0"
             />
-          </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-white/50 uppercase tracking-wide mb-0.5">🎵 Background Music</p>
+              <p className="text-sm text-white font-medium truncate">Open in YouTube</p>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center flex-shrink-0 group-hover:bg-red-500">
+              <Play className="w-3 h-3 text-white ml-0.5" />
+            </div>
+          </a>
         </div>
 
         {/* RIGHT — Timer & controls */}
