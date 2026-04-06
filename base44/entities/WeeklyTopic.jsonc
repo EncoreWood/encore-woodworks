@@ -1,0 +1,43 @@
+{
+  "name": "WeeklyTopic",
+  "type": "object",
+  "properties": {
+    "week_start": {
+      "type": "string",
+      "format": "date",
+      "description": "Monday date of the week this topic belongs to"
+    },
+    "label": {
+      "type": "string",
+      "description": "Topic title or label"
+    },
+    "url": {
+      "type": "string",
+      "description": "URL or file link for the topic resource"
+    },
+    "item_type": {
+      "type": "string",
+      "enum": [
+        "link",
+        "file"
+      ],
+      "description": "Type of resource"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Meeting notes and discussion points for this topic"
+    },
+    "presented_by": {
+      "type": "string",
+      "description": "Name of person who presented the topic"
+    },
+    "presented_at": {
+      "type": "string",
+      "description": "ISO timestamp of when the topic was presented"
+    }
+  },
+  "required": [
+    "week_start",
+    "label"
+  ]
+}

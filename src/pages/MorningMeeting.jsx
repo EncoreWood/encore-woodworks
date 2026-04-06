@@ -16,6 +16,8 @@ import {
   ChevronLeft, ChevronRight, Edit, Plus, Trash2, ChevronDown,
   Megaphone, BookOpen, ClipboardList, Zap, Crosshair, Link2, Upload, X, Sparkles, AlertTriangle
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { startOfWeek } from "date-fns";
 import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
 import { format, addDays, subDays } from "date-fns";
 
@@ -81,6 +83,10 @@ export default function MorningMeeting() {
   const [teachUploading, setTeachUploading] = useState(false);
   const [newTask, setNewTask] = useState("");
   const [newAssignee, setNewAssignee] = useState("");
+  const [weeklyTopicLabel, setWeeklyTopicLabel] = useState("");
+  const [weeklyTopicUrl, setWeeklyTopicUrl] = useState("");
+  const [weeklyTopicNotes, setWeeklyTopicNotes] = useState("");
+  const [weeklyTopicUploading, setWeeklyTopicUploading] = useState(false);
 
   const dateString = format(selectedDate, "yyyy-MM-dd");
   const queryClient = useQueryClient();
@@ -144,6 +150,15 @@ export default function MorningMeeting() {
   const announcements = dailyNotes.filter(n => n.type === "announcement");
   const teachItems = dailyNotes.filter(n => n.type === "teach_item");
 
+  // Weekly topic — keyed by the Monday of the selected week
+  const weekStartDate = startOfWeek(selectedDate, { weekStartsOn: 1 });
+  const weekStartStr = format(weekStartDate, "yyyy-MM-dd");
+
+  const { data: weeklyTopics = [] } = useQuery({
+    queryKey: ["weeklyTopics", weekStartStr],
+    queryFn: () => base44.entities.WeeklyTopic.filter({ week_start: weekStartStr })
+  });
+
   // --- Mutations ---
   const savePresenterMutation = useMutation({
     mutationFn: async (name) => {
@@ -167,6 +182,27 @@ export default function MorningMeeting() {
   const deleteNoteMutation = useMutation({
     mutationFn: (id) => base44.entities.DailyNote.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dailyNotes", dateString] })
+  });
+
+  const addWeeklyTopicMutation = useMutation({
+    mutationFn: (data) => base44.entities.WeeklyTopic.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["weeklyTopics", weekStartStr] });
+      queryClient.invalidateQueries({ queryKey: ["weeklyTopics"] });
+      setWeeklyTopicLabel("");
+      setWeeklyTopicUrl("");
+      setWeeklyTopicNotes("");
+    }
+  });
+
+  const updateWeeklyTopicMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.WeeklyTopic.update(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["weeklyTopics", weekStartStr] })
+  });
+
+  const deleteWeeklyTopicMutation = useMutation({
+    mutationFn: (id) => base44.entities.WeeklyTopic.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["weeklyTopics", weekStartStr] })
   });
 
   const createTaskMutation = useMutation({
@@ -281,6 +317,36 @@ export default function MorningMeeting() {
     setTeachUploading(false);
   };
 
+  const handleAddWeeklyTopic = () => {
+    if (!weeklyTopicLabel.trim()) return;
+    addWeeklyTopicMutation.mutate({
+      week_start: weekStartStr,
+      label: weeklyTopicLabel.trim(),
+      url: weeklyTopicUrl.trim() || undefined,
+      item_type: weeklyTopicUrl.trim() ? "link" : undefined,
+      notes: weeklyTopicNotes.trim() || undefined,
+      presented_by: getPresenter(),
+      presented_at: new Date().toISOString()
+    });
+  };
+
+  const handleWeeklyTopicFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setWeeklyTopicUploading(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    addWeeklyTopicMutation.mutate({
+      week_start: weekStartStr,
+      label: file.name,
+      url: file_url,
+      item_type: "file",
+      notes: weeklyTopicNotes.trim() || undefined,
+      presented_by: getPresenter(),
+      presented_at: new Date().toISOString()
+    });
+    setWeeklyTopicUploading(false);
+  };
+
   const handleAddTask = () => {
     if (newTask.trim()) {
       createTaskMutation.mutate({
@@ -381,36 +447,63 @@ export default function MorningMeeting() {
             </div>
           </SectionCard>
 
-          {/* 2. 5-Minute Teach Something New — persisted per date */}
-          <SectionCard title="5-Minute Teach Something New" icon={BookOpen} color="green" count={teachItems.length}>
-            <div className="space-y-2 mb-3">
-              {teachItems.length === 0 && <p className="text-slate-400 text-sm text-center py-2">Add a file or URL to present.</p>}
-              {teachItems.map((item) => (
-                <div key={item.id} className="flex items-center gap-2 bg-green-50 rounded-lg px-3 py-2">
-                  {item.item_type === "link" ? <Link2 className="w-4 h-4 text-green-600 flex-shrink-0" /> : <Upload className="w-4 h-4 text-green-600 flex-shrink-0" />}
-                  <a href={item.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-blue-600 hover:underline truncate">{item.label}</a>
-                  <button onClick={() => deleteNoteMutation.mutate(item.id)} className="text-slate-400 hover:text-red-500">
-                    <X className="w-3 h-3" />
-                  </button>
+          {/* 2. Weekly Topic — persisted per week, logged to admin */}
+          <SectionCard title="Weekly Topic" icon={BookOpen} color="green" count={weeklyTopics.length}>
+            {/* Existing topics for this week */}
+            <div className="space-y-3 mb-4">
+              {weeklyTopics.length === 0 && <p className="text-slate-400 text-sm text-center py-2">No topic added for this week yet.</p>}
+              {weeklyTopics.map((topic) => (
+                <div key={topic.id} className="bg-green-50 rounded-lg border border-green-200 overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-2">
+                    {topic.item_type === "file" ? <Upload className="w-4 h-4 text-green-600 flex-shrink-0" /> : <Link2 className="w-4 h-4 text-green-600 flex-shrink-0" />}
+                    {topic.url
+                      ? <a href={topic.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-blue-600 hover:underline font-medium truncate">{topic.label}</a>
+                      : <span className="flex-1 text-sm font-medium text-slate-700">{topic.label}</span>
+                    }
+                    <button onClick={() => deleteWeeklyTopicMutation.mutate(topic.id)} className="text-slate-400 hover:text-red-500 ml-2">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  {/* Notes for this topic */}
+                  <div className="px-3 pb-2">
+                    <Textarea
+                      placeholder="Add notes for this topic..."
+                      value={topic.notes || ""}
+                      onChange={e => updateWeeklyTopicMutation.mutate({ id: topic.id, data: { notes: e.target.value } })}
+                      className="text-sm min-h-[60px] bg-white border-green-200"
+                    />
+                    {topic.presented_at && (
+                      <p className="text-xs text-slate-400 mt-1">
+                        Logged {format(new Date(topic.presented_at), "EEE MMM d 'at' h:mm a")}
+                        {topic.presented_by && ` · ${topic.presented_by}`}
+                      </p>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
-            <div className="space-y-2">
+
+            {/* Add new topic */}
+            <div className="border-t border-green-100 pt-3 space-y-2">
               <div className="flex gap-2">
-                <Input placeholder="Label (optional)" value={newTeachLabel} onChange={e => setNewTeachLabel(e.target.value)} className="flex-1 text-sm" />
-                <Input placeholder="URL link..." value={newTeachUrl} onChange={e => setNewTeachUrl(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddTeachUrl()} className="flex-1 text-sm" />
-                <Button size="sm" onClick={handleAddTeachUrl} disabled={!newTeachUrl.trim()} className="bg-green-600 hover:bg-green-700">
-                  <Link2 className="w-4 h-4" />
+                <Input placeholder="Topic label..." value={weeklyTopicLabel} onChange={e => setWeeklyTopicLabel(e.target.value)} className="flex-1 text-sm" />
+                <Input placeholder="URL (optional)" value={weeklyTopicUrl} onChange={e => setWeeklyTopicUrl(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddWeeklyTopic()} className="flex-1 text-sm" />
+                <Button size="sm" onClick={handleAddWeeklyTopic} disabled={!weeklyTopicLabel.trim() || addWeeklyTopicMutation.isPending} className="bg-green-600 hover:bg-green-700">
+                  <Plus className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="cursor-pointer">
-                  <input type="file" className="hidden" onChange={handleTeachFileUpload} />
-                  <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-green-300 text-green-700 text-sm hover:bg-green-50 transition ${teachUploading ? "opacity-50 pointer-events-none" : ""}`}>
-                    <Upload className="w-4 h-4" /> {teachUploading ? "Uploading..." : "Upload File"}
-                  </span>
-                </label>
-              </div>
+              <Textarea
+                placeholder="Pre-add notes (optional)..."
+                value={weeklyTopicNotes}
+                onChange={e => setWeeklyTopicNotes(e.target.value)}
+                className="text-sm min-h-[60px] border-green-200"
+              />
+              <label className="cursor-pointer">
+                <input type="file" className="hidden" onChange={handleWeeklyTopicFileUpload} />
+                <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-green-300 text-green-700 text-sm hover:bg-green-50 transition ${weeklyTopicUploading ? "opacity-50 pointer-events-none" : ""}`}>
+                  <Upload className="w-4 h-4" /> {weeklyTopicUploading ? "Uploading..." : "Upload File"}
+                </span>
+              </label>
             </div>
           </SectionCard>
 
