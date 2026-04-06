@@ -9,8 +9,6 @@ import "react-pdf/dist/esm/Page/TextLayer.css";
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", hideDownload = false }) {
-  if (!pdfUrl) return null;
-
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(0.5);
@@ -341,6 +339,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   ];
 
   const cursorStyle = tool === "pan" ? (panStartRef.current ? "grabbing" : "grab") : tool === "text" ? "text" : tool === "highlight" ? "cell" : "crosshair";
+
+  if (!pdfUrl) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

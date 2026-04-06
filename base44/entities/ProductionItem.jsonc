@@ -1,0 +1,136 @@
+{
+  "name": "ProductionItem",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Item name or description"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "cabinet",
+        "misc",
+        "pickup"
+      ],
+      "description": "Type of production item"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "cut",
+        "face_frame",
+        "spray",
+        "build",
+        "complete",
+        "on_hold"
+      ],
+      "default": "face_frame",
+      "description": "Current production stage"
+    },
+    "is_job_info": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, this item lives only in the Job Info tab and is not shown on the Production board"
+    },
+    "linked_production_item_id": {
+      "type": "string",
+      "description": "ID of the production board card this Job Info card is linked to"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for reference"
+    },
+    "room_name": {
+      "type": "string",
+      "description": "Room name for reference"
+    },
+    "pickup_item_id": {
+      "type": "string",
+      "description": "Reference to PickupItem ID if this card was created from the pickup list"
+    },
+    "pts": {
+      "type": "number",
+      "description": "Card-level point value (used when no files are attached, e.g. pickup items)"
+    },
+    "pts_logged": {
+      "type": "number",
+      "description": "Points value recorded when first moved to complete. Never changes after first completion."
+    },
+    "pts_logged_date": {
+      "type": "string",
+      "format": "date",
+      "description": "The date pts_logged was recorded (used for complete day/week/month tallies)"
+    },
+    "stage_pts_log": {
+      "type": "array",
+      "description": "Log of pts recorded each time a card leaves a stage (excluding cut and on_hold). Used for per-column day/week/month tallies.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from_stage": {
+            "type": "string",
+            "description": "The stage the item left"
+          },
+          "pts": {
+            "type": "number"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    },
+    "glb_url": {
+      "type": "string"
+    },
+    "glb_name": {
+      "type": "string"
+    },
+    "sketch_url": {
+      "type": "string"
+    },
+    "files": {
+      "type": "array",
+      "description": "Item files (photos, drawings, etc.)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "pts": {
+            "type": "number",
+            "description": "Point value for this file"
+          },
+          "annotations": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "completed_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the item was moved to the complete stage"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "type"
+  ]
+}

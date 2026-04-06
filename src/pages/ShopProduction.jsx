@@ -148,6 +148,14 @@ export default function ShopProduction() {
       ? format(new Date(), "yyyy-MM-dd")
       : item.pts_logged_date;
 
+    // Per-column stage exit log (track when pts leave face_frame, spray, build, complete columns)
+    const TRACKED_STAGES = ["face_frame", "spray", "build", "complete"];
+    const oldStage = item.stage;
+    let stagePtsLog = item.stage_pts_log || [];
+    if (oldStage && TRACKED_STAGES.includes(oldStage) && oldStage !== newStage && totalPts > 0) {
+      stagePtsLog = [...stagePtsLog, { from_stage: oldStage, pts: totalPts, date: format(new Date(), "yyyy-MM-dd") }];
+    }
+
     const updatePayload = {
       name: item.name, type: item.type, stage: newStage,
       project_id: item.project_id, project_name: item.project_name, room_name: item.room_name,
@@ -155,12 +163,13 @@ export default function ShopProduction() {
       pts: item.pts,
       pts_logged: ptsLogged,
       pts_logged_date: ptsLoggedDate,
-      completed_date: completedDate
+      completed_date: completedDate,
+      stage_pts_log: stagePtsLog
     };
 
     // Optimistic update immediately so UI feels instant
     queryClient.setQueryData(["productionItems"], (old = []) =>
-      old.map(i => i.id === itemId ? { ...i, stage: newStage, files: safeFiles, completed_date: completedDate, pts_logged: ptsLogged, pts_logged_date: ptsLoggedDate } : i)
+      old.map(i => i.id === itemId ? { ...i, stage: newStage, files: safeFiles, completed_date: completedDate, pts_logged: ptsLogged, pts_logged_date: ptsLoggedDate, stage_pts_log: stagePtsLog } : i)
     );
 
     await base44.entities.ProductionItem.update(itemId, updatePayload);
@@ -221,42 +230,49 @@ export default function ShopProduction() {
     setAnnotatingPdf(null); setCurrentPdfUrl(null); setCurrentAnnotations([]);
   };
 
-  // PTS stats — use pts_logged (permanently written when first completed) for accurate tallies
-  // Falls back to summing file pts for items completed before pts_logged was introduced
+  // PTS stats — per column (face_frame, spray, build, complete) with day/week/month tallies
   const now = new Date();
   const todayStr = format(now, "yyyy-MM-dd");
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
   const monthStart = startOfMonth(now);
   const boardItems = items.filter(i => !i.is_job_info);
 
-  const getItemPts = (item) => {
-    // Prefer the permanently-logged value; fall back to live file pts + card pts
-    if (item.pts_logged != null) return parseFloat(item.pts_logged) || 0;
-    const filePts = (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
-    const cardPts = parseFloat(item.pts) || 0;
-    return filePts + cardPts;
+  const STAT_STAGES = ["face_frame", "spray", "build", "complete"];
+  const STAT_LABELS = { face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete" };
+
+  // For each tracked stage, sum pts from stage_pts_log entries with from_stage === stage
+  const getColStats = (stage) => {
+    let day = 0, week = 0, month = 0;
+    for (const item of boardItems) {
+      const log = item.stage_pts_log || [];
+      for (const entry of log) {
+        if (entry.from_stage !== stage) continue;
+        const d = entry.date;
+        if (!d) continue;
+        const entryDate = new Date(d + "T00:00:00");
+        const pts = parseFloat(entry.pts) || 0;
+        if (d === todayStr) day += pts;
+        if (entryDate >= weekStart) week += pts;
+        if (entryDate >= monthStart) month += pts;
+      }
+    }
+    return { day, week, month };
   };
 
-  // Items that have ever been completed (have pts_logged_date OR completed_date)
-  const loggedItems = boardItems.filter(i => i.pts_logged_date || i.completed_date);
-  const getDateStr = (i) => i.pts_logged_date || i.completed_date;
-
-  const dayPts = loggedItems.filter(i => getDateStr(i) === todayStr).reduce((s, i) => s + getItemPts(i), 0);
-  const weekPts = loggedItems.filter(i => getDateStr(i) && new Date(getDateStr(i)) >= weekStart).reduce((s, i) => s + getItemPts(i), 0);
-  const monthPts = loggedItems.filter(i => getDateStr(i) && new Date(getDateStr(i)) >= monthStart).reduce((s, i) => s + getItemPts(i), 0);
+  const colStats = Object.fromEntries(STAT_STAGES.map(s => [s, getColStats(s)]));
 
   const returnToFolder = async (item) => {
     const files = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
     await base44.entities.ProductionItem.update(item.id, { ...item, files, is_job_info: false, stage: null });
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
-    setActiveTab("job_packets");
+    // NOTE: intentionally NOT switching tabs — admin stays on production
   };
 
   const returnToFolderFromJobInfo = async (item) => {
     const files = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
     await base44.entities.ProductionItem.update(item.id, { ...item, files, is_job_info: false, stage: null });
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
-    setActiveTab("job_packets");
+    // NOTE: intentionally NOT switching tabs
   };
 
   const sendToJobInfo = async (item) => {
@@ -349,19 +365,31 @@ export default function ShopProduction() {
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Shop Production</h1>
             <p className="text-slate-500 mt-1">Track projects through production stages</p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex gap-2">
-              {[{ label: "Day", val: dayPts }, { label: "Week", val: weekPts }, { label: "Month", val: monthPts }].map(({ label, val }) => (
-                <div key={label} className="text-center rounded-lg px-3 py-2 shadow-sm border bg-white border-slate-200">
-                  <p className="text-xs font-medium text-slate-500">{label}</p>
-                  <p className="text-lg font-bold text-green-700">{val} <span className="text-xs font-semibold opacity-70">PTS</span></p>
-                </div>
-              ))}
-            </div>
+          <div className="flex items-center gap-3">
             <Button onClick={() => { setJobInfoMode(false); setShowForm(true); }} className="bg-amber-600 hover:bg-amber-700">
               <Plus className="w-4 h-4 mr-2" /> Add Item
             </Button>
           </div>
+        </div>
+
+        {/* Per-column PTS stats */}
+        <div className="mb-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {STAT_STAGES.map(stage => {
+            const s = colStats[stage];
+            return (
+              <div key={stage} className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{STAT_LABELS[stage]}</p>
+                <div className="flex gap-3">
+                  {[{ label: "Day", val: s.day }, { label: "Week", val: s.week }, { label: "Month", val: s.month }].map(({ label, val }) => (
+                    <div key={label} className="text-center flex-1">
+                      <p className="text-xs text-slate-400">{label}</p>
+                      <p className="text-base font-bold text-green-700">{val}<span className="text-xs font-medium opacity-60 ml-0.5">p</span></p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -417,8 +445,8 @@ export default function ShopProduction() {
                                          isDragging={snapshot.isDragging}
                                          {...sharedCardProps}
                                          roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
-                                         onReturnToFolder={hasRoom ? returnToFolder : undefined}
-                                         onSendToJobInfo={sendToJobInfo}
+                                         onReturnToFolder={currentUser?.role === "admin" && hasRoom ? returnToFolder : undefined}
+                                         onSendToJobInfo={currentUser?.role === "admin" ? sendToJobInfo : undefined}
                                          roomFolderLabel={hasRoom ? item.room_name : undefined}
                                          onOpenRoomFolder={hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
                                        />
@@ -487,26 +515,26 @@ export default function ShopProduction() {
                                              const matchedRoom = proj?.rooms?.find(r => r.room_name === item.room_name);
                                              return (
                                                <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                                                 <ProductionCard
-                                                   item={item}
-                                                   isDragging={false}
-                                                   roomGlbUrl={matchedRoom?.glb_url}
-                                                   roomGlbName={matchedRoom?.glb_name}
-                                                   editingPts={editingPts}
-                                                   setEditingPts={setEditingPts}
-                                                   currentUser={currentUser}
-                                                   roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
-                                                   onInlinePtsChange={handleInlinePtsChange}
-                                                   onAnnotate={handleAnnotatePdf}
-                                                   getProjectColor={getProjectColor}
-                                                   onPickup={(item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id })}
-                                                   onEdit={(item) => { setEditingItem(item); setShowForm(true); }}
-                                                   onDelete={(id) => deleteMutation.mutate(id)}
-                                                   onSendToJobInfo={undefined}
-                                                   onReturnToFolder={matchedRoom ? returnToFolderFromJobInfo : undefined}
-                                                   roomFolderLabel={item.room_name}
-                                                   onOpenRoomFolder={matchedRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
-                                                 />
+                                                  <ProductionCard
+                                                    item={item}
+                                                    isDragging={false}
+                                                    roomGlbUrl={matchedRoom?.glb_url}
+                                                    roomGlbName={matchedRoom?.glb_name}
+                                                    editingPts={editingPts}
+                                                    setEditingPts={setEditingPts}
+                                                    currentUser={currentUser}
+                                                    roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
+                                                    onInlinePtsChange={handleInlinePtsChange}
+                                                    onAnnotate={handleAnnotatePdf}
+                                                    getProjectColor={getProjectColor}
+                                                    onPickup={currentUser?.role === "admin" ? (item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id }) : undefined}
+                                                    onEdit={currentUser?.role === "admin" ? (item) => { setEditingItem(item); setShowForm(true); } : undefined}
+                                                    onDelete={currentUser?.role === "admin" ? (id) => deleteMutation.mutate(id) : undefined}
+                                                    onSendToJobInfo={undefined}
+                                                    onReturnToFolder={currentUser?.role === "admin" && matchedRoom ? returnToFolderFromJobInfo : undefined}
+                                                    roomFolderLabel={item.room_name}
+                                                    onOpenRoomFolder={matchedRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
+                                                  />
                                                  {/* Link row */}
                                                  <div className="mt-1 flex items-center justify-between gap-2">
                                                    {linkedProd ? (

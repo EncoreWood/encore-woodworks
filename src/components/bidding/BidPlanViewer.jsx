@@ -89,8 +89,6 @@ function measToNatural(m, nw, nh) {
 }
 
 export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", rooms = [], onAddToRoom, projectName = "" }) {
-  if (!pdfUrl) return null;
-
   // PDF / view state
   const [numPages, setNumPages]         = useState(null);
   const [pageNumber, setPageNumber]     = useState(1);
@@ -636,6 +634,8 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
 
   const cursor = tool==="pointer" ? (dragRef.current ? "grabbing" : "grab") : ["measure","calibrate","trace"].includes(tool) ? "crosshair" : tool==="text" ? "text" : tool==="highlight" ? "cell" : "crosshair";
   const scaleLabel = detectedScale ? (detectedScale.scale_text || `${detectedScale.inches_per_foot}" = 1'`) : null;
+
+  if (!pdfUrl) return null;
 
   return (
     <>
