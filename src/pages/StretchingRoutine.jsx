@@ -243,7 +243,7 @@ export default function StretchingRoutine() {
           {/* Stretch video — theatre style, muted, starts at 1:25 */}
           <div className="w-full rounded-2xl overflow-hidden shadow-2xl">
             <iframe
-              src="https://www.youtube.com/embed/TrGY7fneUKM?si=aTBf0yssbEj_KLlJ&start=85&autoplay=1&mute=1"
+              src="https://www.youtube.com/embed/TrGY7fneUKM?si=aTBf0yssbEj_KLlJ&start=89&autoplay=1&mute=1"
               title="YouTube video player"
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
