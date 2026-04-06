@@ -73,8 +73,7 @@
         "type": "object",
         "properties": {
           "from_stage": {
-            "type": "string",
-            "description": "The stage the item left"
+            "type": "string"
           },
           "pts": {
             "type": "number"
@@ -82,6 +81,31 @@
           "date": {
             "type": "string",
             "format": "date"
+          }
+        }
+      }
+    },
+    "stage_move_log": {
+      "type": "array",
+      "description": "Timestamp log of every stage transition, recording who moved the item and when.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from_stage": {
+            "type": "string",
+            "description": "Stage moved from"
+          },
+          "to_stage": {
+            "type": "string",
+            "description": "Stage moved to"
+          },
+          "moved_by": {
+            "type": "string",
+            "description": "Full name or email of the user who moved it"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "ISO datetime of the move"
           }
         }
       }

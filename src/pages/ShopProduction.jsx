@@ -156,6 +156,17 @@ export default function ShopProduction() {
       stagePtsLog = [...stagePtsLog, { from_stage: oldStage, pts: totalPts, date: format(new Date(), "yyyy-MM-dd") }];
     }
 
+    // Stage move log — always record who moved it and when
+    const stageMoveLog = [...(item.stage_move_log || [])];
+    if (oldStage !== newStage) {
+      stageMoveLog.push({
+        from_stage: oldStage || null,
+        to_stage: newStage,
+        moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     const updatePayload = {
       name: item.name, type: item.type, stage: newStage,
       project_id: item.project_id, project_name: item.project_name, room_name: item.room_name,
@@ -164,12 +175,13 @@ export default function ShopProduction() {
       pts_logged: ptsLogged,
       pts_logged_date: ptsLoggedDate,
       completed_date: completedDate,
-      stage_pts_log: stagePtsLog
+      stage_pts_log: stagePtsLog,
+      stage_move_log: stageMoveLog
     };
 
     // Optimistic update immediately so UI feels instant
     queryClient.setQueryData(["productionItems"], (old = []) =>
-      old.map(i => i.id === itemId ? { ...i, stage: newStage, files: safeFiles, completed_date: completedDate, pts_logged: ptsLogged, pts_logged_date: ptsLoggedDate, stage_pts_log: stagePtsLog } : i)
+      old.map(i => i.id === itemId ? { ...i, stage: newStage, files: safeFiles, completed_date: completedDate, pts_logged: ptsLogged, pts_logged_date: ptsLoggedDate, stage_pts_log: stagePtsLog, stage_move_log: stageMoveLog } : i)
     );
 
     await base44.entities.ProductionItem.update(itemId, updatePayload);

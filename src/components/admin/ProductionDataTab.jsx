@@ -3,17 +3,25 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth, differenceInDays, startOfYear } from "date-fns";
+
+const STAGE_LABELS = { cut: "Cut", face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete", on_hold: "On Hold" };
+const STAGE_COLORS = { cut: "bg-orange-100 text-orange-700", face_frame: "bg-blue-100 text-blue-700", spray: "bg-purple-100 text-purple-700", build: "bg-amber-100 text-amber-700", complete: "bg-green-100 text-green-700", on_hold: "bg-red-100 text-red-700" };
 
 export default function ProductionDataTab() {
   const [dateFrom, setDateFrom] = useState(format(subMonths(new Date(), 3), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
   const [selectedEmployee, setSelectedEmployee] = useState("all");
 
+  const [logFilter, setLogFilter] = useState("all");
+  const [logSearch, setLogSearch] = useState("");
+
   const { data: projects = [] } = useQuery({ queryKey: ["projects"], queryFn: () => base44.entities.Project.list() });
   const { data: timeEntries = [] } = useQuery({ queryKey: ["timeEntries"], queryFn: () => base44.entities.TimeEntry.list() });
   const { data: employees = [] } = useQuery({ queryKey: ["employees"], queryFn: () => base44.entities.Employee.list() });
+  const { data: productionItems = [] } = useQuery({ queryKey: ["productionItems"], queryFn: () => base44.entities.ProductionItem.list() });
 
   // Filter by date range
   const completedProjects = projects.filter(p => {
@@ -108,6 +116,89 @@ export default function ProductionDataTab() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Stage Movement Log */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            📋 Stage Movement Log
+            <span className="text-sm font-normal text-slate-500 ml-1">— who moved what and when</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-3 mb-4 flex-wrap">
+            <input
+              type="text"
+              placeholder="Search by item or project..."
+              value={logSearch}
+              onChange={e => setLogSearch(e.target.value)}
+              className="flex-1 px-3 py-2 border rounded-lg text-sm"
+            />
+            <Select value={logFilter} onValueChange={setLogFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Filter stage" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stages</SelectItem>
+                {Object.entries(STAGE_LABELS).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {(() => {
+            // Flatten all log entries with item context
+            const allEntries = [];
+            productionItems.forEach(item => {
+              (item.stage_move_log || []).forEach(entry => {
+                allEntries.push({ ...entry, item_name: item.name, project_name: item.project_name, room_name: item.room_name });
+              });
+            });
+            // Sort newest first
+            allEntries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            const filtered = allEntries.filter(e => {
+              const matchStage = logFilter === "all" || e.to_stage === logFilter || e.from_stage === logFilter;
+              const search = logSearch.toLowerCase();
+              const matchSearch = !search || (e.item_name || "").toLowerCase().includes(search) || (e.project_name || "").toLowerCase().includes(search) || (e.moved_by || "").toLowerCase().includes(search);
+              return matchStage && matchSearch;
+            }).slice(0, 100);
+
+            if (filtered.length === 0) return <p className="text-slate-400 text-center py-6 text-sm">No movement logs yet. They'll appear here as items are moved between stages.</p>;
+
+            return (
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                {filtered.map((entry, idx) => (
+                  <div key={idx} className="flex items-center gap-3 bg-slate-50 rounded-lg px-3 py-2.5 text-sm border border-slate-100">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-slate-800 truncate">{entry.item_name}</p>
+                      {entry.project_name && <p className="text-xs text-slate-500 truncate">{entry.project_name}{entry.room_name ? ` · ${entry.room_name}` : ""}</p>}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {entry.from_stage && (
+                        <>
+                          <Badge className={`text-xs ${STAGE_COLORS[entry.from_stage] || "bg-slate-100 text-slate-600"}`}>
+                            {STAGE_LABELS[entry.from_stage] || entry.from_stage}
+                          </Badge>
+                          <span className="text-slate-400">→</span>
+                        </>
+                      )}
+                      <Badge className={`text-xs ${STAGE_COLORS[entry.to_stage] || "bg-slate-100 text-slate-600"}`}>
+                        {STAGE_LABELS[entry.to_stage] || entry.to_stage}
+                      </Badge>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-xs font-medium text-slate-700">{entry.moved_by}</p>
+                      <p className="text-xs text-slate-400">{entry.timestamp ? format(new Date(entry.timestamp), "MMM d, h:mm a") : "—"}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+        </CardContent>
+      </Card>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
