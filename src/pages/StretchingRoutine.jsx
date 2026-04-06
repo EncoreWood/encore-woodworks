@@ -252,27 +252,17 @@ export default function StretchingRoutine() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 pb-6">
-        {/* Stretch video thumbnail — opens in new tab at 1:25 since embedding is blocked */}
-        <a
-          href="https://www.youtube.com/watch?v=TrGY7fneUKM&t=85"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full max-w-xs rounded-2xl overflow-hidden shadow-2xl mb-4 block relative group"
-        >
-          <img
-            src="https://img.youtube.com/vi/TrGY7fneUKM/hqdefault.jpg"
-            alt="Stretching Routine Video"
-            className="w-full aspect-video object-cover"
+        {/* Stretch video — muted, starts at 1:25 (85s) */}
+        <div className="w-full max-w-xs rounded-2xl overflow-hidden shadow-2xl mb-4">
+          <iframe
+            src="https://www.youtube.com/embed/TrGY7fneUKM?autoplay=1&mute=1&start=85&rel=0"
+            title="Stretching Routine"
+            className="w-full aspect-video"
+            allow="autoplay; encrypted-media"
+            allowFullScreen
+            frameBorder="0"
           />
-          <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/50 transition-all">
-            <div className="w-14 h-14 rounded-full bg-red-600 flex items-center justify-center shadow-xl">
-              <Play className="w-6 h-6 text-white ml-1" />
-            </div>
-          </div>
-          <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-0.5 rounded">
-            Opens at 1:25
-          </div>
-        </a>
+        </div>
 
         {/* Stretch name */}
         <h2 className="text-2xl font-black text-center mb-1">{current.name}</h2>
