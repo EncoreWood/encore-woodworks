@@ -151,10 +151,12 @@ export default function ShopProduction() {
       : item.pts_logged_date;
 
     // Per-column stage exit log (track when pts leave face_frame, spray, build, complete columns)
+    // Each stage can only be logged ONCE per card — no duplicate points if card moves back and forth
     const TRACKED_STAGES = ["face_frame", "spray", "build", "complete"];
     const oldStage = item.stage;
     let stagePtsLog = item.stage_pts_log || [];
-    if (oldStage && TRACKED_STAGES.includes(oldStage) && oldStage !== newStage) {
+    const alreadyLoggedForStage = stagePtsLog.some(entry => entry.from_stage === oldStage);
+    if (oldStage && TRACKED_STAGES.includes(oldStage) && oldStage !== newStage && !alreadyLoggedForStage) {
       stagePtsLog = [...stagePtsLog, { from_stage: oldStage, pts: totalPts, date: format(new Date(), "yyyy-MM-dd") }];
     }
 
