@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   User, AlertCircle, Coffee, Target, CheckCircle2,
   ChevronLeft, ChevronRight, Edit, Plus, Trash2, ChevronDown,
-  Megaphone, BookOpen, ClipboardList, Zap, Crosshair, Link2, Upload, X, Sparkles
+  Megaphone, BookOpen, ClipboardList, Zap, Crosshair, Link2, Upload, X, Sparkles, AlertTriangle
 } from "lucide-react";
 import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
 import { format, addDays, subDays } from "date-fns";
@@ -127,7 +127,12 @@ export default function MorningMeeting() {
 
   const { data: productionItems = [] } = useQuery({
     queryKey: ["productionItemsAll"],
-    queryFn: () => base44.entities.ProductionItem.list("-updated_date", 100)
+    queryFn: () => base44.entities.ProductionItem.list("-updated_date", 200)
+  });
+
+  const { data: struggles = [] } = useQuery({
+    queryKey: ["struggles"],
+    queryFn: () => base44.entities.Struggle.list("-created_date", 20)
   });
 
   // Persistent announcements and teach items from DailyNote
@@ -414,24 +419,80 @@ export default function MorningMeeting() {
 
           {/* 4. Previous Day Review */}
           <SectionCard title="Previous Day Review" icon={ClipboardList} color="blue">
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs font-semibold text-orange-600 uppercase tracking-wide mb-2">Open Pickup Items</p>
-                {pickupItems.filter(p => p.status === "open").slice(0, 5).length === 0 ? (
-                  <p className="text-slate-400 text-sm">No open pickup items.</p>
+            {(() => {
+              const yesterday = format(subDays(selectedDate, 1), "yyyy-MM-dd");
+              const movedFaceToSpray = productionItems.filter(i =>
+                !i.is_job_info && (i.stage_move_log || []).some(l => l.from_stage === "face_frame" && l.to_stage === "spray" && l.timestamp?.startsWith(yesterday))
+              );
+              const movedSprayToBuild = productionItems.filter(i =>
+                !i.is_job_info && (i.stage_move_log || []).some(l => l.from_stage === "spray" && l.to_stage === "build" && l.timestamp?.startsWith(yesterday))
+              );
+              const movedBuildToComplete = productionItems.filter(i =>
+                !i.is_job_info && (i.stage_move_log || []).some(l => l.from_stage === "build" && l.to_stage === "complete" && l.timestamp?.startsWith(yesterday))
+              );
+              const sections = [
+                { label: "Face Frame → Spray", items: movedFaceToSpray, color: "bg-purple-50 border-purple-200", dot: "bg-purple-500" },
+                { label: "Spray → Build", items: movedSprayToBuild, color: "bg-amber-50 border-amber-200", dot: "bg-amber-500" },
+                { label: "Build → Complete", items: movedBuildToComplete, color: "bg-green-50 border-green-200", dot: "bg-green-500" },
+              ];
+              const totalMoved = movedFaceToSpray.length + movedSprayToBuild.length + movedBuildToComplete.length;
+              if (totalMoved === 0) return <p className="text-slate-400 text-sm text-center py-2">No stage moves recorded for yesterday.</p>;
+              return (
+                <div className="space-y-3">
+                  {sections.map(sec => sec.items.length > 0 && (
+                    <div key={sec.label}>
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{sec.label}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {sec.items.map(item => (
+                          <div key={item.id} className={`flex items-center gap-1.5 rounded px-2 py-1 border text-sm ${sec.color}`}>
+                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${sec.dot}`} />
+                            <span className="text-slate-700 font-medium">{item.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </SectionCard>
+
+          {/* Struggles & Solutions */}
+          {(() => {
+            const openStruggles = struggles.filter(s => s.status !== "resolved");
+            return (
+              <SectionCard title="Struggles & Solutions" icon={AlertTriangle} color="red" count={openStruggles.length}>
+                {openStruggles.length === 0 ? (
+                  <div className="flex items-center justify-center gap-2 py-4 text-slate-400">
+                    <CheckCircle2 className="w-4 h-4" /> <span className="text-sm">No open struggles!</span>
+                  </div>
                 ) : (
-                  <div className="space-y-1">
-                    {pickupItems.filter(p => p.status === "open").slice(0, 5).map(item => (
-                      <div key={item.id} className="flex items-center gap-2 bg-orange-50 rounded px-3 py-1.5 text-sm">
-                        <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" />
-                        <span className="text-slate-700">{item.title} <span className="text-slate-400 text-xs">– {item.project_name}</span></span>
+                  <div className="space-y-2">
+                    {openStruggles.slice(0, 8).map(s => (
+                      <div key={s.id} className="flex items-start gap-3 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                        <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-red-800 truncate">{s.problem}</p>
+                          <p className="text-xs text-slate-500">
+                            {s.reported_by && <span>{s.reported_by} · </span>}
+                            {s.production_item_name && <span>{s.production_item_name} · </span>}
+                            {s.created_date && format(new Date(s.created_date), "MMM d")}
+                          </p>
+                          {s.solution && <p className="text-xs text-green-700 mt-0.5">✅ {s.solution}</p>}
+                          {(s.comments || []).length > 0 && (
+                            <p className="text-xs text-slate-400 mt-0.5">💬 {s.comments.length} comment{s.comments.length !== 1 ? "s" : ""}</p>
+                          )}
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${s.status === "in_progress" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>
+                          {s.status?.replace("_", " ") || "open"}
+                        </span>
                       </div>
                     ))}
                   </div>
                 )}
-              </div>
-            </div>
-          </SectionCard>
+              </SectionCard>
+            );
+          })()}
 
           {/* 5. Today's Focus */}
           <SectionCard title="Today's Focus" icon={Crosshair} color="orange" count={todaysFocusProjects.length}>

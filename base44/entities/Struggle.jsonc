@@ -1,0 +1,61 @@
+{
+  "name": "Struggle",
+  "type": "object",
+  "properties": {
+    "problem": {
+      "type": "string",
+      "description": "Description of the struggle or problem"
+    },
+    "solution": {
+      "type": "string",
+      "description": "Proposed or implemented solution"
+    },
+    "reported_by": {
+      "type": "string",
+      "description": "Name of the person who reported the struggle"
+    },
+    "production_item_name": {
+      "type": "string",
+      "description": "Name of the production item this struggle is linked to (if any)"
+    },
+    "production_item_id": {
+      "type": "string",
+      "description": "ID of the production item this struggle is linked to"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for reference"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "in_progress",
+        "resolved"
+      ],
+      "default": "open",
+      "description": "Current status of the struggle"
+    },
+    "comments": {
+      "type": "array",
+      "description": "Collaborative comments from team members",
+      "items": {
+        "type": "object",
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "problem"
+  ]
+}

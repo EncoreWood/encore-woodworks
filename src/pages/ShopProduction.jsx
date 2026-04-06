@@ -8,7 +8,8 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Factory, Briefcase, Link2, Unlink, Package } from "lucide-react";
+import { Plus, Factory, Briefcase, Link2, Unlink, Package, AlertTriangle } from "lucide-react";
+import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ProductionItemForm from "../components/production/ProductionItemForm";
 import PDFAnnotator from "../components/production/PDFAnnotator";
@@ -43,6 +44,7 @@ export default function ShopProduction() {
   const [packetsFormContext, setPacketsFormContext] = useState(null); // { project, roomName } for Job Packets add
   const [openFolderContext, setOpenFolderContext] = useState(null); // { project, roomName } to auto-open a folder in Job Packets
   const [currentUser, setCurrentUser] = useState(null);
+  const [reportingStruggle, setReportingStruggle] = useState(null); // item to report struggle for
 
   useEffect(() => {
     base44.auth.me().then(setCurrentUser).catch(() => {});
@@ -362,6 +364,7 @@ export default function ShopProduction() {
     getRoomCadFiles,
     onMoveStage: handleMoveStage,
     onPickup: (item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id }),
+    onReportStruggle: (item) => setReportingStruggle(item),
     onEdit: (item) => { setEditingItem(item); setShowForm(true); },
     onDelete: (id) => deleteMutation.mutate(id),
     onUpdate: handleGlbUpdate,
@@ -687,6 +690,14 @@ export default function ShopProduction() {
               </div>
             </DialogContent>
           </Dialog>
+        )}
+
+        {reportingStruggle && (
+          <ReportStruggleDialog
+            open={!!reportingStruggle}
+            onOpenChange={(open) => { if (!open) setReportingStruggle(null); }}
+            item={reportingStruggle}
+          />
         )}
 
         {annotatingPdf && currentPdfUrl && (

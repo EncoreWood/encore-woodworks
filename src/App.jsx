@@ -18,6 +18,7 @@ import Admin from './pages/Admin';
 import GroupLean from './pages/GroupLean';
 import IndividualLean from './pages/IndividualLean';
 import ArchivedProjects from './pages/ArchivedProjects';
+import StrugglesSolutions from './pages/StrugglesSolutions';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -69,6 +70,7 @@ const AuthenticatedApp = () => {
       <Route path="/GroupLean" element={<LayoutWrapper currentPageName="GroupLean"><GroupLean /></LayoutWrapper>} />
       <Route path="/IndividualLean" element={<LayoutWrapper currentPageName="IndividualLean"><IndividualLean /></LayoutWrapper>} />
       <Route path="/ArchivedProjects" element={<LayoutWrapper currentPageName="ArchivedProjects"><ArchivedProjects /></LayoutWrapper>} />
+      <Route path="/StrugglesSolutions" element={<LayoutWrapper currentPageName="StrugglesSolutions"><StrugglesSolutions /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
