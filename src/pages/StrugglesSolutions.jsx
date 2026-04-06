@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertTriangle, MessageSquare, CheckCircle2, Clock, Plus, Send } from "lucide-react";
+import { AlertTriangle, MessageSquare, CheckCircle2, Clock, Plus, Send, Archive, ArchiveRestore } from "lucide-react";
 import { format } from "date-fns";
 
 const STATUS_COLORS = {
@@ -19,6 +19,7 @@ export default function StrugglesSolutions() {
   const [viewing, setViewing] = useState(null);
   const [commentText, setCommentText] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [showArchived, setShowArchived] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: struggles = [], isLoading } = useQuery({
@@ -56,7 +57,18 @@ export default function StrugglesSolutions() {
     },
   });
 
-  const filtered = filterStatus === "all" ? struggles : struggles.filter(s => s.status === filterStatus);
+  const archiveMutation = useMutation({
+    mutationFn: ({ id, archived }) => base44.entities.Struggle.update(id, { archived }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["struggles"] });
+      setViewing(null);
+    },
+  });
+
+  const activeStruggles = struggles.filter(s => !s.archived);
+  const archivedStruggles = struggles.filter(s => s.archived);
+  const displayList = showArchived ? archivedStruggles : activeStruggles;
+  const filtered = filterStatus === "all" ? displayList : displayList.filter(s => s.status === filterStatus);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-red-50">
@@ -68,17 +80,30 @@ export default function StrugglesSolutions() {
             </h1>
             <p className="text-slate-500 mt-1">Report struggles from production and collaborate on solutions</p>
           </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Filter" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="resolved">Resolved</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={showArchived ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShowArchived(v => !v)}
+              className={showArchived ? "bg-slate-700 hover:bg-slate-800" : ""}
+            >
+              <Archive className="w-4 h-4 mr-1" />
+              {showArchived ? `Archive (${archivedStruggles.length})` : `Show Archive`}
+            </Button>
+            {!showArchived && (
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Filter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          </div>
         </div>
 
         {isLoading ? (
@@ -86,16 +111,17 @@ export default function StrugglesSolutions() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-slate-400">
             <CheckCircle2 className="w-12 h-12 mx-auto mb-3 text-green-300" />
-            <p className="text-lg font-medium">No struggles reported</p>
-            <p className="text-sm">Use the ! button on any production card to report one</p>
+            <p className="text-lg font-medium">{showArchived ? "No archived struggles" : "No struggles reported"}</p>
+            {!showArchived && <p className="text-sm">Use the ! button on any production card to report one</p>}
           </div>
         ) : (
           <div className="space-y-3">
+            {showArchived && <p className="text-xs text-slate-400 text-center">Showing {archivedStruggles.length} archived struggle{archivedStruggles.length !== 1 ? "s" : ""}. Click any to unarchive.</p>}
             {filtered.map((struggle) => (
               <div
                 key={struggle.id}
                 onClick={() => setViewing(struggle)}
-                className="bg-white rounded-xl border border-slate-200 shadow-sm px-5 py-4 cursor-pointer hover:border-red-300 hover:shadow-md transition-all"
+                className={`bg-white rounded-xl border shadow-sm px-5 py-4 cursor-pointer hover:shadow-md transition-all ${showArchived ? "border-slate-200 opacity-75 hover:opacity-100" : "border-slate-200 hover:border-red-300"}`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -169,17 +195,28 @@ export default function StrugglesSolutions() {
 
               {/* Status change (admin) */}
               {currentUser?.role === "admin" && (
-                <div className="flex gap-2 items-center">
-                  <span className="text-xs text-slate-500 font-medium">Update status:</span>
-                  {["open", "in_progress", "resolved"].map(s => (
-                    <button
-                      key={s}
-                      onClick={() => updateStatusMutation.mutate({ id: viewing.id, status: s })}
-                      className={`text-xs px-2 py-1 rounded-full border transition-all ${viewing.status === s ? "bg-slate-800 text-white border-slate-800" : "border-slate-300 text-slate-600 hover:bg-slate-100"}`}
-                    >
-                      {s.replace("_", " ")}
-                    </button>
-                  ))}
+                <div className="space-y-2">
+                  <div className="flex gap-2 items-center flex-wrap">
+                    <span className="text-xs text-slate-500 font-medium">Update status:</span>
+                    {["open", "in_progress", "resolved"].map(s => (
+                      <button
+                        key={s}
+                        onClick={() => updateStatusMutation.mutate({ id: viewing.id, status: s })}
+                        className={`text-xs px-2 py-1 rounded-full border transition-all ${viewing.status === s ? "bg-slate-800 text-white border-slate-800" : "border-slate-300 text-slate-600 hover:bg-slate-100"}`}
+                      >
+                        {s.replace("_", " ")}
+                      </button>
+                    ))}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => archiveMutation.mutate({ id: viewing.id, archived: !viewing.archived })}
+                    disabled={archiveMutation.isPending}
+                    className={viewing.archived ? "text-green-700 border-green-300 hover:bg-green-50" : "text-slate-500 border-slate-300 hover:bg-slate-50"}
+                  >
+                    {viewing.archived ? <><ArchiveRestore className="w-3.5 h-3.5 mr-1" /> Unarchive</> : <><Archive className="w-3.5 h-3.5 mr-1" /> Archive</>}
+                  </Button>
                 </div>
               )}
 

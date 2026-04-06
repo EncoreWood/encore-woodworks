@@ -36,6 +36,11 @@
       "default": "open",
       "description": "Current status of the struggle"
     },
+    "archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this struggle has been archived"
+    },
     "comments": {
       "type": "array",
       "description": "Collaborative comments from team members",
