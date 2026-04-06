@@ -203,7 +203,29 @@ export default function MorningMeeting() {
     return motivationalQuotes[dayOfYear % motivationalQuotes.length];
   };
 
-  const getPresenter = () => presenterData?.presenter_name || "Not Set";
+  // Auto-rotation: Mon(1)–Thu(4), cycle through employees sorted by name
+  const getAutoPresenter = () => {
+    if (teamMembers.length === 0) return null;
+    const sorted = [...teamMembers].sort((a, b) => a.full_name.localeCompare(b.full_name));
+    // Count Mon–Thu days since a fixed epoch (2024-01-01 was a Monday)
+    const epoch = new Date("2024-01-01T00:00:00");
+    const dayOfWeek = selectedDate.getDay(); // 0=Sun,1=Mon,...,6=Sat
+    if (dayOfWeek === 0 || dayOfWeek === 5 || dayOfWeek === 6) return null; // Fri/Sat/Sun no meeting
+    // Count Mon–Thu occurrences from epoch to selectedDate
+    const msPerDay = 86400000;
+    const totalDays = Math.floor((selectedDate - epoch) / msPerDay);
+    let meetingDayCount = 0;
+    for (let i = 0; i <= totalDays; i++) {
+      const d = new Date(epoch.getTime() + i * msPerDay).getDay();
+      if (d >= 1 && d <= 4) meetingDayCount++;
+    }
+    return sorted[(meetingDayCount - 1) % sorted.length]?.full_name || null;
+  };
+
+  const getPresenter = () => {
+    if (presenterData?.presenter_name) return presenterData.presenter_name;
+    return getAutoPresenter() || "Not Set";
+  };
 
   // Urgent items: high-priority pickup items (not resolved/archived) + high-priority production items (not complete)
   const urgentPickups = pickupItems.filter(p => p.priority === "high" && p.status !== "resolved" && !p.archived);
@@ -218,7 +240,15 @@ export default function MorningMeeting() {
     highPriorityPickupIds.has(p.id) && p.stage !== "complete"
   );
 
-  const todaysFocusProjects = projects.filter(p => ["ready_for_install", "installing"].includes(p.status));
+  // Today's Focus: projects actively in production, with their active rooms
+  const todaysFocusProjects = projects.filter(p => p.status === "in_production" && !p.archived);
+  // Get active rooms for a project (rooms that have production items not yet complete)
+  const getActiveRooms = (projectId) => {
+    const activeItems = productionItems.filter(i =>
+      i.project_id === projectId && !i.is_job_info && i.stage !== "complete" && i.room_name
+    );
+    return [...new Set(activeItems.map(i => i.room_name))];
+  };
 
   // Combined tasks: meeting tasks for this date + all global tasks not completed
   const globalActiveTasks = [...allTasks, ...inProgressTasks];
@@ -296,6 +326,9 @@ export default function MorningMeeting() {
               <User className="w-5 h-5" />
               <span className="font-semibold">Presenter:</span>
               <span className="font-bold text-lg">{getPresenter()}</span>
+              {!presenterData?.presenter_name && getAutoPresenter() && (
+                <span className="text-xs bg-blue-400/50 px-2 py-0.5 rounded-full">auto</span>
+              )}
               <Button size="icon" variant="ghost" className="h-7 w-7 ml-2 text-white hover:bg-blue-700"
                 onClick={() => { setPresenterName(presenterData?.presenter_name || ""); setShowPresenterDialog(true); }}>
                 <Edit className="w-4 h-4" />
@@ -497,20 +530,29 @@ export default function MorningMeeting() {
           {/* 5. Today's Focus */}
           <SectionCard title="Today's Focus" icon={Crosshair} color="orange" count={todaysFocusProjects.length}>
             {todaysFocusProjects.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-2">No installs or ready-for-install projects today.</p>
+              <p className="text-slate-400 text-sm text-center py-2">No projects currently in production.</p>
             ) : (
               <div className="space-y-2">
-                {todaysFocusProjects.map(project => (
-                  <Link key={project.id} to={createPageUrl("ProjectDetails") + "?id=" + project.id}>
-                    <div className="flex items-center justify-between bg-orange-50 rounded-lg px-3 py-2.5 border border-orange-200 hover:bg-orange-100 transition-all">
-                      <div>
-                        <p className="font-semibold text-orange-800 text-sm">{project.project_name}</p>
-                        <p className="text-xs text-orange-600">{project.client_name} · {project.status?.replace(/_/g, " ")}</p>
+                {todaysFocusProjects.map(project => {
+                  const activeRooms = getActiveRooms(project.id);
+                  return (
+                    <Link key={project.id} to={createPageUrl("ProjectDetails") + "?id=" + project.id}>
+                      <div className="bg-orange-50 rounded-lg px-3 py-2.5 border border-orange-200 hover:bg-orange-100 transition-all">
+                        <div className="flex items-center justify-between">
+                          <p className="font-semibold text-orange-800 text-sm">{project.project_name}</p>
+                          {project.address && <span className="text-xs text-orange-500 max-w-[120px] truncate">{project.address}</span>}
+                        </div>
+                        {activeRooms.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {activeRooms.map(room => (
+                              <span key={room} className="text-xs bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded-full">{room}</span>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      {project.address && <span className="text-xs text-orange-500 max-w-[120px] truncate">{project.address}</span>}
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </SectionCard>

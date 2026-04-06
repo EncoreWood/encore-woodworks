@@ -255,19 +255,33 @@ export default function ShopProduction() {
   const STAT_LABELS = { face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete" };
 
   // For each tracked stage, sum pts from stage_pts_log entries with from_stage === stage
+  // For "complete" column: use pts_logged / pts_logged_date (items rarely leave complete)
   const getColStats = (stage) => {
     let day = 0, week = 0, month = 0;
-    for (const item of boardItems) {
-      const log = item.stage_pts_log || [];
-      for (const entry of log) {
-        if (entry.from_stage !== stage) continue;
-        const d = entry.date;
+    if (stage === "complete") {
+      for (const item of boardItems) {
+        const d = item.pts_logged_date;
         if (!d) continue;
+        const pts = parseFloat(item.pts_logged) || 0;
+        if (pts === 0) continue;
         const entryDate = new Date(d + "T00:00:00");
-        const pts = parseFloat(entry.pts) || 0;
         if (d === todayStr) day += pts;
         if (entryDate >= weekStart) week += pts;
         if (entryDate >= monthStart) month += pts;
+      }
+    } else {
+      for (const item of boardItems) {
+        const log = item.stage_pts_log || [];
+        for (const entry of log) {
+          if (entry.from_stage !== stage) continue;
+          const d = entry.date;
+          if (!d) continue;
+          const entryDate = new Date(d + "T00:00:00");
+          const pts = parseFloat(entry.pts) || 0;
+          if (d === todayStr) day += pts;
+          if (entryDate >= weekStart) week += pts;
+          if (entryDate >= monthStart) month += pts;
+        }
       }
     }
     return { day, week, month };
