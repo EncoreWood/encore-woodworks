@@ -154,7 +154,7 @@ export default function ShopProduction() {
     const TRACKED_STAGES = ["face_frame", "spray", "build", "complete"];
     const oldStage = item.stage;
     let stagePtsLog = item.stage_pts_log || [];
-    if (oldStage && TRACKED_STAGES.includes(oldStage) && oldStage !== newStage && totalPts > 0) {
+    if (oldStage && TRACKED_STAGES.includes(oldStage) && oldStage !== newStage) {
       stagePtsLog = [...stagePtsLog, { from_stage: oldStage, pts: totalPts, date: format(new Date(), "yyyy-MM-dd") }];
     }
 

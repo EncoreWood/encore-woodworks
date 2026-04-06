@@ -244,8 +244,12 @@ export default function MorningMeeting() {
   const todaysFocusProjects = projects.filter(p => p.status === "in_production" && !p.archived);
   // Get active rooms for a project (rooms that have production items not yet complete)
   const getActiveRooms = (projectId) => {
+    const ACTIVE_STAGES = ["cut", "face_frame", "spray", "build"];
     const activeItems = productionItems.filter(i =>
-      i.project_id === projectId && !i.is_job_info && i.stage !== "complete" && i.room_name
+      i.project_id === projectId &&
+      !i.is_job_info &&
+      ACTIVE_STAGES.includes(i.stage) &&
+      i.room_name
     );
     return [...new Set(activeItems.map(i => i.room_name))];
   };
