@@ -85,9 +85,14 @@ export default function ProjectCard({ project }) {
   const completedPhases = phases.filter(Boolean).length;
   const progress = (completedPhases / phases.length) * 100;
 
+  const cardColor = project.card_color;
+
   return (
     <Link to={createPageUrl("ProjectDetails") + `?id=${project.id}`}>
-      <Card className="group p-5 bg-white border-0 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer">
+      <Card
+        className="group p-5 bg-white border-0 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden relative"
+        style={cardColor ? { borderLeft: `4px solid ${cardColor}` } : undefined}
+      >
         <div className="flex items-start justify-between mb-4">
           <div className="space-y-1 flex-1">
             <div className="flex items-center gap-2">

@@ -14,6 +14,24 @@ import WoodTypeSelector from "./WoodTypeSelector";
 
 const emptyContact = { name: "", email: "", phone: "" };
 
+const PROJECT_COLORS = [
+  { label: "None", value: "", bg: "bg-white", border: "border-slate-300" },
+  { label: "Red", value: "#ef4444", bg: "bg-red-500", border: "border-red-500" },
+  { label: "Orange", value: "#f97316", bg: "bg-orange-500", border: "border-orange-500" },
+  { label: "Amber", value: "#f59e0b", bg: "bg-amber-500", border: "border-amber-500" },
+  { label: "Yellow", value: "#eab308", bg: "bg-yellow-500", border: "border-yellow-500" },
+  { label: "Lime", value: "#84cc16", bg: "bg-lime-500", border: "border-lime-500" },
+  { label: "Green", value: "#22c55e", bg: "bg-green-500", border: "border-green-500" },
+  { label: "Teal", value: "#14b8a6", bg: "bg-teal-500", border: "border-teal-500" },
+  { label: "Cyan", value: "#06b6d4", bg: "bg-cyan-500", border: "border-cyan-500" },
+  { label: "Blue", value: "#3b82f6", bg: "bg-blue-500", border: "border-blue-500" },
+  { label: "Indigo", value: "#6366f1", bg: "bg-indigo-500", border: "border-indigo-500" },
+  { label: "Purple", value: "#a855f7", bg: "bg-purple-500", border: "border-purple-500" },
+  { label: "Pink", value: "#ec4899", bg: "bg-pink-500", border: "border-pink-500" },
+  { label: "Rose", value: "#f43f5e", bg: "bg-rose-500", border: "border-rose-500" },
+  { label: "Slate", value: "#64748b", bg: "bg-slate-500", border: "border-slate-500" },
+];
+
 const initialFormState = {
   project_name: "",
   client_name: "",
@@ -25,6 +43,7 @@ const initialFormState = {
   project_type: "kitchen",
   status: "inquiry",
   priority: "medium",
+  card_color: "",
   project_manager: "",
   project_manager_name: "",
   shop_manager: "",
@@ -176,6 +195,31 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
                    <SelectItem value="urgent">Urgent</SelectItem>
                  </SelectContent>
                </Select>
+              </div>
+
+              {/* Color Picker */}
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Project Color</Label>
+                <div className="flex flex-wrap gap-2">
+                  {PROJECT_COLORS.map((c) => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      title={c.label}
+                      onClick={() => handleChange("card_color", c.value)}
+                      className={`w-7 h-7 rounded-full border-2 transition-all ${c.bg} ${
+                        formData.card_color === c.value
+                          ? "border-slate-900 scale-110 shadow-md"
+                          : c.border + " hover:scale-105"
+                      }`}
+                    />
+                  ))}
+                </div>
+                {formData.card_color && (
+                  <p className="text-xs text-slate-500">
+                    Selected: {PROJECT_COLORS.find(c => c.value === formData.card_color)?.label}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                <Label htmlFor="project_manager">Project Manager</Label>
