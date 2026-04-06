@@ -216,14 +216,17 @@ export default function StretchingRoutine() {
   // Active phase
   return (
     <div className={`min-h-screen bg-gradient-to-br ${current.color} flex flex-col text-white`}>
-      {/* Background music — hidden, autoplay */}
-      <iframe
-        src="https://www.youtube.com/embed/QEWV6fiYaDU?autoplay=1&loop=1&playlist=QEWV6fiYaDU&controls=0"
-        title="Background Music"
-        className="hidden"
-        allow="autoplay"
-        frameBorder="0"
-      />
+      {/* Background music — small visible player (browsers require user interaction + visible element for audio autoplay) */}
+      <div className="mx-6 mt-2 rounded-xl overflow-hidden opacity-80">
+        <iframe
+          src="https://www.youtube.com/embed/QEWV6fiYaDU?autoplay=1&loop=1&playlist=QEWV6fiYaDU"
+          title="Background Music"
+          className="w-full"
+          style={{ height: "80px" }}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          frameBorder="0"
+        />
+      </div>
 
       {/* Header */}
       <div className="flex items-center justify-between px-6 pt-5 pb-2">
@@ -255,12 +258,15 @@ export default function StretchingRoutine() {
         {/* Stretch video — muted, starts at 1:25 (85s) */}
         <div className="w-full max-w-xs rounded-2xl overflow-hidden shadow-2xl mb-4">
           <iframe
-            src="https://www.youtube.com/embed/TrGY7fneUKM?autoplay=1&mute=1&start=85&rel=0"
-            title="Stretching Routine"
-            className="w-full aspect-video"
-            allow="autoplay; encrypted-media"
-            allowFullScreen
+            width="560"
+            height="315"
+            src="https://www.youtube.com/embed/TrGY7fneUKM?si=aTBf0yssbEj_KLlJ&start=85&autoplay=1&mute=1"
+            title="YouTube video player"
             frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+            className="w-full aspect-video"
           />
         </div>
 
