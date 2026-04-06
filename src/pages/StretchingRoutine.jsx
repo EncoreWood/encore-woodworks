@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, SkipForward, RotateCcw, CheckCircle2, Music, VolumeX } from "lucide-react";
+import { Play, Pause, SkipForward, RotateCcw, CheckCircle2 } from "lucide-react";
 
 const stretches = [
   {
@@ -86,7 +86,7 @@ export default function StretchingRoutine() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [timeLeft, setTimeLeft] = useState(stretches[0].duration);
   const [running, setRunning] = useState(false);
-  const [showMusic, setShowMusic] = useState(false);
+
   const intervalRef = useRef(null);
 
   const current = stretches[currentIdx];
@@ -179,26 +179,6 @@ export default function StretchingRoutine() {
             <Play className="w-6 h-6 mr-2" /> Start Stretching!
           </Button>
 
-          <button
-            onClick={() => setShowMusic(v => !v)}
-            className="flex items-center gap-2 mx-auto text-sm text-blue-300 hover:text-blue-100"
-          >
-            <Music className="w-4 h-4" />
-            {showMusic ? "Hide music player" : "Play workout music 🎵"}
-          </button>
-
-          {showMusic && (
-            <div className="mt-4 rounded-xl overflow-hidden">
-              <iframe
-                src="https://www.youtube.com/embed/ZbZSe6N_BXs?autoplay=1&loop=1&playlist=ZbZSe6N_BXs"
-                title="Workout Music"
-                className="w-full h-20"
-                allow="autoplay"
-                frameBorder="0"
-              />
-            </div>
-          )}
-
           <div className="mt-6">
             <Link to={createPageUrl("MorningMeeting")}>
               <button className="text-sm text-slate-500 hover:text-slate-300">← Back to Morning Meeting</button>
@@ -236,7 +216,16 @@ export default function StretchingRoutine() {
   // Active phase
   return (
     <div className={`min-h-screen bg-gradient-to-br ${current.color} flex flex-col text-white`}>
-      {/* Music toggle */}
+      {/* Background music — hidden, autoplay */}
+      <iframe
+        src="https://www.youtube.com/embed/QEWV6fiYaDU?autoplay=1&loop=1&playlist=QEWV6fiYaDU&controls=0"
+        title="Background Music"
+        className="hidden"
+        allow="autoplay"
+        frameBorder="0"
+      />
+
+      {/* Header */}
       <div className="flex items-center justify-between px-6 pt-5 pb-2">
         <button onClick={handleReset} className="text-white/70 hover:text-white text-sm flex items-center gap-1">
           <RotateCcw className="w-4 h-4" /> Reset
@@ -244,23 +233,8 @@ export default function StretchingRoutine() {
         <div className="text-center">
           <p className="text-xs text-white/60">{currentIdx + 1} of {stretches.length}</p>
         </div>
-        <button onClick={() => setShowMusic(v => !v)} className="text-white/70 hover:text-white">
-          {showMusic ? <VolumeX className="w-5 h-5" /> : <Music className="w-5 h-5" />}
-        </button>
+        <div className="w-10" />
       </div>
-
-      {/* Hidden music iframe */}
-      {showMusic && (
-        <div className="mx-6 rounded-xl overflow-hidden mb-2">
-          <iframe
-            src="https://www.youtube.com/embed/ZbZSe6N_BXs?autoplay=1&loop=1&playlist=ZbZSe6N_BXs"
-            title="Workout Music"
-            className="w-full h-16"
-            allow="autoplay"
-            frameBorder="0"
-          />
-        </div>
-      )}
 
       {/* Overall progress bar */}
       <div className="mx-6 mb-4">
@@ -278,17 +252,21 @@ export default function StretchingRoutine() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 pb-6">
-        {/* Big emoji */}
-        <div
-          className="text-8xl mb-4"
-          style={{ animation: running ? "bounce 1s infinite" : "none" }}
-        >
-          {current.emoji}
+        {/* Stretch video — muted, starts at 1:25 (85s) */}
+        <div className="w-full max-w-xs rounded-2xl overflow-hidden shadow-2xl mb-4">
+          <iframe
+            src="https://www.youtube.com/embed/TrGY7fneUKM?autoplay=1&mute=1&start=85&controls=0&modestbranding=1&rel=0"
+            title="Stretching Routine"
+            className="w-full aspect-video"
+            allow="autoplay"
+            frameBorder="0"
+            allowFullScreen
+          />
         </div>
 
         {/* Stretch name */}
-        <h2 className="text-3xl font-black text-center mb-1">{current.name}</h2>
-        <p className="text-white/70 text-sm font-medium mb-6">{current.muscle}</p>
+        <h2 className="text-2xl font-black text-center mb-1">{current.name}</h2>
+        <p className="text-white/70 text-sm font-medium mb-4">{current.muscle}</p>
 
         {/* Circular timer */}
         <div className="relative mb-6">
