@@ -364,7 +364,7 @@ export default function ShopProduction() {
     getRoomCadFiles,
     onMoveStage: handleMoveStage,
     onPickup: (item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id }),
-    onReportStruggle: (item) => setReportingStruggle(item),
+
     onEdit: (item) => { setEditingItem(item); setShowForm(true); },
     onDelete: (id) => deleteMutation.mutate(id),
     onUpdate: handleGlbUpdate,
@@ -381,6 +381,13 @@ export default function ShopProduction() {
             <p className="text-slate-500 mt-1">Track projects through production stages</p>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              onClick={() => setReportingStruggle(true)}
+              variant="outline"
+              className="border-red-300 text-red-600 hover:bg-red-50"
+            >
+              <AlertTriangle className="w-4 h-4 mr-2" /> Report Struggle
+            </Button>
             <Button onClick={() => { setJobInfoMode(false); setShowForm(true); }} className="bg-amber-600 hover:bg-amber-700">
               <Plus className="w-4 h-4 mr-2" /> Add Item
             </Button>
@@ -692,13 +699,10 @@ export default function ShopProduction() {
           </Dialog>
         )}
 
-        {reportingStruggle && (
-          <ReportStruggleDialog
-            open={!!reportingStruggle}
-            onOpenChange={(open) => { if (!open) setReportingStruggle(null); }}
-            item={reportingStruggle}
-          />
-        )}
+        <ReportStruggleDialog
+          open={!!reportingStruggle}
+          onOpenChange={(open) => { if (!open) setReportingStruggle(false); }}
+        />
 
         {annotatingPdf && currentPdfUrl && (
           <PDFAnnotator

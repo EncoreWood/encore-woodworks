@@ -136,7 +136,14 @@ export default function StrugglesSolutions() {
                         <span className="text-xs text-slate-500 font-medium">· {struggle.production_item_name}</span>
                       )}
                     </div>
-                    <p className="font-semibold text-slate-800 truncate">{struggle.problem}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-slate-800 truncate">{struggle.problem}</p>
+                      {struggle.frustration_level && (
+                        <span className="flex-shrink-0 text-xs font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">
+                          🔥{struggle.frustration_level}
+                        </span>
+                      )}
+                    </div>
                     {struggle.solution && (
                       <p className="text-sm text-green-700 mt-1 truncate">✅ {struggle.solution}</p>
                     )}
@@ -178,6 +185,18 @@ export default function StrugglesSolutions() {
                 {viewing.project_name && <span>· {viewing.project_name}</span>}
                 {viewing.production_item_name && <span>· {viewing.production_item_name}</span>}
               </div>
+
+              {/* Frustration level */}
+              {viewing.frustration_level && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-500">Frustration:</span>
+                  <div className="flex gap-1">
+                    {[1,2,3,4,5].map(l => (
+                      <span key={l} className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold border ${l <= viewing.frustration_level ? "bg-red-500 text-white border-red-500" : "bg-slate-100 text-slate-300 border-slate-200"}`}>{l}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Problem */}
               <div>

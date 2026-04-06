@@ -26,6 +26,10 @@
       "type": "string",
       "description": "Project name for reference"
     },
+    "frustration_level": {
+      "type": "number",
+      "description": "Frustration level from 1 (minor) to 5 (critical)"
+    },
     "status": {
       "type": "string",
       "enum": [
