@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, SkipForward, RotateCcw, CheckCircle2 } from "lucide-react";
+import { Play, RotateCcw, CheckCircle2 } from "lucide-react";
 
 const stretches = [
   {
@@ -61,78 +61,55 @@ const stretches = [
   }
 ];
 
-const MUSIC_URL = "https://www.youtube.com/embed/videoseries?list=PLbpi6ZahtOH6Ar_3GPy3workoutmusic&autoplay=1&mute=0&loop=1";
+// Background color cycles every 30s — one gradient per stretch color
+const BG_GRADIENTS = [
+  "from-sky-900 via-blue-950 to-indigo-950",
+  "from-violet-900 via-purple-950 to-indigo-950",
+  "from-amber-900 via-orange-950 to-yellow-950",
+  "from-teal-900 via-green-950 to-emerald-950",
+  "from-emerald-900 via-teal-950 to-cyan-950",
+  "from-rose-900 via-red-950 to-pink-950",
+];
 
 export default function StretchingRoutine() {
   const [phase, setPhase] = useState("intro"); // intro | active | done
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(stretches[0].duration);
-  const [running, setRunning] = useState(false);
+  const [bgIdx, setBgIdx] = useState(0);
+  const [tick, setTick] = useState(0); // 0–29 within each 30s cycle
 
   const intervalRef = useRef(null);
-
-  const current = stretches[currentIdx];
-  const totalTime = stretches.reduce((s, x) => s + x.duration, 0);
-  const elapsed = stretches.slice(0, currentIdx).reduce((s, x) => s + x.duration, 0) + (current.duration - timeLeft);
-  const overallProgress = Math.min(100, (elapsed / totalTime) * 100);
+  const musicRef = useRef(null);
 
   useEffect(() => {
-    if (running && phase === "active") {
+    if (phase === "active") {
       intervalRef.current = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            // Move to next
-            if (currentIdx < stretches.length - 1) {
-              setCurrentIdx(i => i + 1);
-              return stretches[currentIdx + 1].duration;
-            } else {
-              clearInterval(intervalRef.current);
-              setRunning(false);
-              setPhase("done");
-              return 0;
-            }
+        setTick(prev => {
+          if (prev >= 29) {
+            setBgIdx(i => (i + 1) % BG_GRADIENTS.length);
+            return 0;
           }
-          return prev - 1;
+          return prev + 1;
         });
       }, 1000);
+    } else {
+      clearInterval(intervalRef.current);
     }
     return () => clearInterval(intervalRef.current);
-  }, [running, phase, currentIdx]);
+  }, [phase]);
 
   const handleStart = () => {
     setPhase("active");
-    setRunning(true);
-    setCurrentIdx(0);
-    setTimeLeft(stretches[0].duration);
-  };
-
-  const handleSkip = () => {
-    clearInterval(intervalRef.current);
-    if (currentIdx < stretches.length - 1) {
-      const next = currentIdx + 1;
-      setCurrentIdx(next);
-      setTimeLeft(stretches[next].duration);
-      if (running) {
-        // restart interval
-        setRunning(false);
-        setTimeout(() => setRunning(true), 50);
-      }
-    } else {
-      setRunning(false);
-      setPhase("done");
-    }
+    setBgIdx(0);
+    setTick(0);
   };
 
   const handleReset = () => {
     clearInterval(intervalRef.current);
     setPhase("intro");
-    setRunning(false);
-    setCurrentIdx(0);
-    setTimeLeft(stretches[0].duration);
+    setBgIdx(0);
+    setTick(0);
   };
 
-  const progressPct = ((current.duration - timeLeft) / current.duration) * 100;
-  const circumference = 2 * Math.PI * 54;
+  const currentBg = BG_GRADIENTS[bgIdx];
 
   if (phase === "intro") {
     return (
@@ -142,8 +119,8 @@ export default function StretchingRoutine() {
           <h1 className="text-4xl font-black mb-2 bg-gradient-to-r from-amber-300 to-orange-400 bg-clip-text text-transparent">
             Let's Stretch!
           </h1>
-          <p className="text-blue-200 text-lg mb-2">4 minutes · 8 stretches · Full body</p>
-          <p className="text-slate-400 text-sm mb-8">Covering neck, shoulders, chest, back, hips & legs</p>
+          <p className="text-blue-200 text-lg mb-2">3 minutes · 6 stretches · Full body</p>
+          <p className="text-slate-400 text-sm mb-8">Follow along with the video — background music plays automatically</p>
 
           <div className="grid grid-cols-4 gap-2 mb-8">
             {stretches.map((s, i) => (
@@ -197,136 +174,47 @@ export default function StretchingRoutine() {
 
   // Active phase
   return (
-    <div className={`min-h-screen bg-gradient-to-br ${current.color} flex flex-col text-white`}>
+    <div className={`min-h-screen bg-gradient-to-br ${currentBg} flex flex-col text-white transition-all duration-[3000ms]`}>
 
-      {/* Top bar: progress + reset */}
-      <div className="px-6 pt-4 pb-2">
-        <div className="flex items-center justify-between mb-2">
-          <button onClick={handleReset} className="text-white/70 hover:text-white text-sm flex items-center gap-1">
-            <RotateCcw className="w-4 h-4" /> Reset
-          </button>
-          <p className="text-xs text-white/60">{currentIdx + 1} of {stretches.length}</p>
-          <div className="w-16" />
+      {/* Hidden music autoplay iframe */}
+      <iframe
+        ref={musicRef}
+        src="https://www.youtube.com/embed/QEWV6fiYaDU?si=qEb2IommcvSXi2Rc&start=89&autoplay=1&mute=0"
+        title="Background Music"
+        allow="autoplay"
+        style={{ position: "absolute", width: 0, height: 0, border: 0, opacity: 0, pointerEvents: "none" }}
+      />
+
+      {/* Top bar */}
+      <div className="px-6 pt-4 pb-3 flex items-center justify-between">
+        <button onClick={handleReset} className="text-white/60 hover:text-white text-sm flex items-center gap-1">
+          <RotateCcw className="w-4 h-4" /> Reset
+        </button>
+        {/* Music thumbnail */}
+        <div className="flex items-center gap-2 bg-black/30 rounded-xl px-3 py-1.5">
+          <img
+            src="https://img.youtube.com/vi/QEWV6fiYaDU/default.jpg"
+            alt="Music"
+            className="w-10 h-7 rounded object-cover"
+          />
+          <span className="text-xs text-white/70">🎵 Music playing</span>
         </div>
-        <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-          <div className="h-full bg-white rounded-full transition-all duration-1000" style={{ width: `${overallProgress}%` }} />
-        </div>
-        <div className="flex justify-between text-xs text-white/60 mt-1">
-          <span>{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")} elapsed</span>
-          <span>{Math.floor(totalTime / 60)}:{String(totalTime % 60).padStart(2, "0")} total</span>
-        </div>
+        <div className="w-16" />
       </div>
 
-      {/* Two-column layout */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-4 px-6 pb-6 pt-2">
-
-        {/* LEFT — Theatre video */}
-        <div className="flex flex-col gap-3 lg:flex-1">
-          {/* Stretch video — theatre style, muted, starts at 1:25 */}
+      {/* Video — full width, centered */}
+      <div className="flex-1 flex items-center justify-center px-6 pb-8">
+        <div className="w-full max-w-4xl">
           <div className="w-full rounded-2xl overflow-hidden shadow-2xl">
             <iframe
               src="https://www.youtube.com/embed/TrGY7fneUKM?si=aTBf0yssbEj_KLlJ&start=89&autoplay=1&mute=1"
-              title="YouTube video player"
+              title="Stretching video"
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               referrerPolicy="strict-origin-when-cross-origin"
               allowFullScreen
               className="w-full aspect-video"
             />
-          </div>
-
-          {/* Music — clickable thumbnail that opens YouTube */}
-          <a
-            href="https://www.youtube.com/watch?v=QEWV6fiYaDU&t=89"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 bg-black/30 hover:bg-black/50 rounded-xl px-4 py-2 transition-all group"
-          >
-            <img
-              src="https://img.youtube.com/vi/QEWV6fiYaDU/default.jpg"
-              alt="Background Music"
-              className="w-16 h-12 rounded-lg object-cover flex-shrink-0"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-white/50 uppercase tracking-wide mb-0.5">🎵 Background Music</p>
-              <p className="text-sm text-white font-medium truncate">Open in YouTube</p>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center flex-shrink-0 group-hover:bg-red-500">
-              <Play className="w-3 h-3 text-white ml-0.5" />
-            </div>
-          </a>
-        </div>
-
-        {/* RIGHT — Timer & controls */}
-        <div className="flex flex-col items-center justify-center gap-4 lg:w-80">
-          {/* Stretch name */}
-          <div className="text-center">
-            <h2 className="text-3xl font-black mb-1">{current.name}</h2>
-            <p className="text-white/70 text-sm font-medium">{current.muscle}</p>
-          </div>
-
-          {/* Circular timer */}
-          <div className="relative">
-            <svg width="160" height="160" className="-rotate-90">
-              <circle cx="80" cy="80" r="68" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="10" />
-              <circle
-                cx="80" cy="80" r="68"
-                fill="none"
-                stroke="white"
-                strokeWidth="10"
-                strokeLinecap="round"
-                strokeDasharray={2 * Math.PI * 68}
-                strokeDashoffset={2 * Math.PI * 68 - (progressPct / 100) * 2 * Math.PI * 68}
-                style={{ transition: "stroke-dashoffset 1s linear" }}
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-5xl font-black">{timeLeft}</span>
-              <span className="text-sm text-white/60">sec</span>
-            </div>
-          </div>
-
-          {/* Description */}
-          <div className="bg-white/20 backdrop-blur rounded-2xl p-4 text-center w-full">
-            <p className="text-sm font-medium text-white mb-2">{current.description}</p>
-            <p className="text-xs text-white/70 italic">💡 {current.tip}</p>
-          </div>
-
-          {/* Controls */}
-          <div className="flex gap-3 w-full">
-            <button
-              onClick={() => setRunning(r => !r)}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-white/20 hover:bg-white/30 font-bold text-lg"
-            >
-              {running ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-              {running ? "Pause" : "Resume"}
-            </button>
-            <button
-              onClick={handleSkip}
-              className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/20 hover:bg-white/30 font-bold"
-            >
-              <SkipForward className="w-5 h-5" /> Skip
-            </button>
-          </div>
-
-          {/* Upcoming stretches */}
-          <div className="w-full">
-            <p className="text-xs text-white/50 uppercase tracking-wider mb-2 text-center">Up Next</p>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {stretches.slice(currentIdx + 1, currentIdx + 4).map((s, i) => (
-                <div key={i} className="flex-shrink-0 bg-white/15 rounded-xl px-3 py-2 text-center min-w-[72px]">
-                  <div className="text-xl">{s.emoji}</div>
-                  <p className="text-xs text-white/80 font-medium leading-tight">{s.name}</p>
-                  <p className="text-xs text-white/50">{s.duration}s</p>
-                </div>
-              ))}
-              {currentIdx === stretches.length - 1 && (
-                <div className="flex-shrink-0 bg-white/15 rounded-xl px-3 py-2 text-center min-w-[72px]">
-                  <div className="text-xl">🎉</div>
-                  <p className="text-xs text-white/80 font-medium">Done!</p>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>
