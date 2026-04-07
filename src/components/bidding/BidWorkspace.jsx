@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Upload, Sparkles, Plus, Save, Check, RefreshCw, FileText, Settings2, AlertCircle, BookOpen, Send, Link2, Kanban } from "lucide-react";
+import { ArrowLeft, Upload, Sparkles, Plus, Save, Check, RefreshCw, FileText, Settings2, AlertCircle, BookOpen, Send, Link2, Kanban, Search, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createPageUrl } from "@/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BidPricingSettings from "./BidPricingSettings";
@@ -50,6 +51,9 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const [categories, setCategories] = useState([]);
   const [analyzeError, setAnalyzeError] = useState(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [showLinkProjectDialog, setShowLinkProjectDialog] = useState(false);
+  const [projectSearch, setProjectSearch] = useState("");
+  const [allProjects, setAllProjects] = useState([]);
 
   const { data: bidData } = useQuery({
     queryKey: ["bid", bidId],
@@ -337,29 +341,31 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
     setRooms(prev => [...prev, { id: `room_${Date.now()}`, room_name: "", items: [] }]);
   };
 
+  const openLinkDialog = async () => {
+    const projs = await base44.entities.Project.list("-created_date", 200);
+    setAllProjects(projs.filter(p => !p.archived));
+    setProjectSearch("");
+    setShowLinkProjectDialog(true);
+  };
+
+  const handleLinkProject = async (project) => {
+    setLinkedProjectId(project.id);
+    setShowLinkProjectDialog(false);
+    // Also save the link immediately if bid already exists
+    if (bidId) {
+      await base44.entities.Bid.update(bidId, { project_id: project.id });
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     const name = projectName || "Untitled Bid";
-
-    // If this is a new bid and not already linked to a project, auto-create one
-    let projectIdToLink = linkedProjectId;
-    if (!bidId && !projectIdToLink) {
-      const newProject = await base44.entities.Project.create({
-        project_name: name,
-        client_name: clientName,
-        address,
-        project_type: "custom",
-        status: "inquiry"
-      });
-      projectIdToLink = newProject.id;
-      setLinkedProjectId(newProject.id);
-    }
 
     const data = {
       project_name: name,
       client_name: clientName,
       address,
-      project_id: projectIdToLink,
+      project_id: linkedProjectId || null,
       plan_file_url: planFileUrl,
       plan_file_name: planFileName,
       bid_type: bidType,
@@ -397,19 +403,21 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
           className="text-lg font-bold border-none shadow-none p-0 h-auto focus-visible:ring-0 bg-transparent flex-1"
         />
         {linkedProjectId ? (
-          <a href={createPageUrl("ProjectDetails") + "?id=" + linkedProjectId} className="hidden sm:flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 hover:bg-amber-100 transition-colors flex-shrink-0">
-            <Link2 className="w-3.5 h-3.5" /> View Project
-          </a>
+          <div className="hidden sm:flex items-center gap-1">
+            <a href={createPageUrl("ProjectDetails") + "?id=" + linkedProjectId} className="flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 hover:bg-amber-100 transition-colors">
+              <Link2 className="w-3.5 h-3.5" /> View Project
+            </a>
+            <button onClick={() => setLinkedProjectId(null)} className="text-slate-400 hover:text-red-500 p-1" title="Unlink project"><X className="w-3.5 h-3.5" /></button>
+          </div>
         ) : (
           <Button
             variant="outline"
             size="sm"
-            onClick={handleCreateProjectCard}
-            disabled={isCreatingProject}
-            className="hidden sm:flex h-9 gap-1.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+            onClick={openLinkDialog}
+            className="hidden sm:flex h-9 gap-1.5 text-slate-700 border-slate-300 hover:bg-slate-50"
           >
-            <Kanban className="w-4 h-4" />
-            {isCreatingProject ? "Creating..." : "Create Project Card"}
+            <Link2 className="w-4 h-4" />
+            Link Project
           </Button>
         )}
         <Select value={status} onValueChange={setStatus}>
@@ -619,6 +627,42 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
           </Card>
         )}
       </div>
+
+      {/* Link Project Dialog */}
+      <Dialog open={showLinkProjectDialog} onOpenChange={setShowLinkProjectDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Link to Project</DialogTitle>
+          </DialogHeader>
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              placeholder="Search projects..."
+              value={projectSearch}
+              onChange={e => setProjectSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div className="max-h-72 overflow-y-auto space-y-1">
+            {allProjects
+              .filter(p => !projectSearch || p.project_name?.toLowerCase().includes(projectSearch.toLowerCase()) || p.client_name?.toLowerCase().includes(projectSearch.toLowerCase()))
+              .map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => handleLinkProject(p)}
+                  className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-50 border border-transparent hover:border-amber-200 transition-colors"
+                >
+                  <div className="font-medium text-sm text-slate-800">{p.project_name}</div>
+                  {p.client_name && <div className="text-xs text-slate-500">{p.client_name}</div>}
+                </button>
+              ))}
+            {allProjects.filter(p => !projectSearch || p.project_name?.toLowerCase().includes(projectSearch.toLowerCase()) || p.client_name?.toLowerCase().includes(projectSearch.toLowerCase())).length === 0 && (
+              <p className="text-sm text-slate-400 text-center py-6">No projects found</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <BidPricingSettings open={showPricingSettings} onClose={() => setShowPricingSettings(false)} onPricingUpdated={loadPricing} />
       <BidCatalogEditor open={showCatalogEditor} onClose={() => setShowCatalogEditor(false)} onSaved={() => { loadCatalog(); loadCategories(); }} />
