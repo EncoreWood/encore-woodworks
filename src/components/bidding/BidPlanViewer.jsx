@@ -93,6 +93,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const [numPages, setNumPages]         = useState(null);
   const [pageNumber, setPageNumber]     = useState(1);
   const [scale, setScale]               = useState(1.0);
+  // renderScale is what react-pdf actually renders at (updates with debounce to avoid blank flash)
+  const [renderScale, setRenderScale]   = useState(1.0);
+  const renderScaleTimer                 = useRef(null);
   const [rotation, setRotation]         = useState(0);
   const [autoFitted, setAutoFitted]     = useState(false);
 
@@ -169,12 +172,26 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     }
   }, [open]);
 
+  // ── Debounce renderScale so react-pdf only re-renders after zoom settles ─────
+  useEffect(() => {
+    if (renderScaleTimer.current) clearTimeout(renderScaleTimer.current);
+    renderScaleTimer.current = setTimeout(() => {
+      setRenderScale(scale);
+    }, 300);
+    return () => clearTimeout(renderScaleTimer.current);
+  }, [scale]);
+
+  // Visual scale factor: the CSS transform ratio between desired scale and rendered scale
+  const visualScale = renderScale > 0 ? scale / renderScale : 1;
+
   // ── Auto-fit ──────────────────────────────────────────────────────────────
   const [naturalPageWidth, setNaturalPageWidth] = useState(null);
   useEffect(() => {
     if (naturalPageWidth && !autoFitted && scrollRef.current) {
       const w = scrollRef.current.clientWidth - 64;
-      setScale(Math.min(Math.max(w / naturalPageWidth, 0.3), 3.0));
+      const fitted = Math.min(Math.max(w / naturalPageWidth, 0.3), 3.0);
+      setScale(fitted);
+      setRenderScale(fitted); // set both immediately on first fit — no debounce needed
       setAutoFitted(true);
     }
   }, [naturalPageWidth, autoFitted]);
@@ -227,25 +244,25 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     const dw = el.offsetWidth, dh = el.offsetHeight;
     if (!dw || !dh) return;
     setDisplaySize({ w: dw, h: dh });
-    // Natural size is fixed by page+rotation; compute from display size and current scale
-    const nw = Math.round(dw / scale), nh = Math.round(dh / scale);
+    // Natural size is fixed by page+rotation; compute from display size and renderScale
+    const nw = Math.round(dw / renderScale), nh = Math.round(dh / renderScale);
     naturalRef.current = { w: nw, h: nh };
     setNaturalSize({ w: nw, h: nh });
-  }, [scale]);
+  }, [renderScale]);
 
   const onDocumentLoadSuccess = ({ numPages }) => setNumPages(numPages);
   const onPageLoadSuccess = () => {
     setTimeout(() => {
       const el = pageContainerRef.current?.querySelector(".react-pdf__Page__canvas");
       if (el) {
-        const nw = el.offsetWidth / scale;
+        const nw = el.offsetWidth / renderScale;
         if (!autoFitted) setNaturalPageWidth(nw);
       }
       syncSizes();
     }, 80);
   };
 
-  useEffect(() => { setTimeout(syncSizes, 120); }, [scale, rotation, pageNumber]);
+  useEffect(() => { setTimeout(syncSizes, 120); }, [renderScale, rotation, pageNumber]);
 
   // ── Convert loaded annotations to natural coords once naturalSize is known ─
   const convertedRef = useRef(false);
@@ -723,9 +740,29 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
               </div>
             )}
             <div className="flex items-start justify-center min-h-full p-6">
-              <div className="relative inline-block shadow-xl" ref={pageContainerRef} style={{transition:"width 0.15s ease, height 0.15s ease", willChange:"width, height"}}>
+              {/* Outer div reserves the visually-scaled space so the scrollbar tracks correctly */}
+              <div style={{
+                width: displaySize.w * visualScale,
+                height: displaySize.h * visualScale,
+                flexShrink: 0,
+                position: "relative",
+                transition: "width 0.1s ease-out, height 0.1s ease-out",
+              }}>
+              <div
+                ref={pageContainerRef}
+                style={{
+                  display: "inline-block",
+                  position: "absolute",
+                  top: 0, left: 0,
+                  transform: `scale(${visualScale})`,
+                  transformOrigin: "top left",
+                  transition: "transform 0.1s ease-out",
+                  willChange: "transform",
+                  boxShadow: "0 10px 40px rgba(0,0,0,0.25)",
+                }}
+              >
                 <Document file={pdfUrl} onLoadSuccess={onDocumentLoadSuccess} loading={<div className="flex items-center justify-center p-20 text-slate-500 bg-white">Loading PDF...</div>}>
-                  <Page pageNumber={pageNumber} scale={scale} rotate={rotation} renderTextLayer={false} renderAnnotationLayer={false} onLoadSuccess={onPageLoadSuccess}/>
+                  <Page pageNumber={pageNumber} scale={renderScale} rotate={rotation} renderTextLayer={false} renderAnnotationLayer={false} onLoadSuccess={onPageLoadSuccess}/>
                 </Document>
 
                 {/* Canvas: buffer = natural size, CSS = display size — this is the key to drift-free annotations */}
@@ -739,8 +776,6 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                     height: displaySize.h + "px",
                     cursor, touchAction:"none",
                     pointerEvents: (pendingRoom || editingRoom) ? "none" : "auto",
-                    transition: "width 0.15s ease, height 0.15s ease",
-                    willChange: "width, height",
                   }}
                   onPointerDown={handlePointerDown}
                   onPointerMove={handlePointerMove}
@@ -775,6 +810,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                   </div>
                 )}
               </div>
+              </div>{/* end outer size-reserving div */}
             </div>
           </div>
 
