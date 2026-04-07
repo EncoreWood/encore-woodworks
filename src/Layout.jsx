@@ -47,6 +47,7 @@ export default function Layout({ children, currentPageName }) {
       name: "Admin",
       items: [
         { name: "Admin Dashboard", icon: BarChart3, iconName: "BarChart3", page: "Admin" },
+        { name: "Billing Tracker", icon: FileTextIcon, iconName: "FileText", page: "BillingTracker" },
       ]
     },
     projects: {

@@ -1,0 +1,82 @@
+{
+  "name": "BillingItem",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the billing item"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Monthly Bill",
+        "Supplier Debt",
+        "Loan"
+      ],
+      "description": "Category of billing item"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Current",
+        "Behind",
+        "On Hold",
+        "Paid Off"
+      ],
+      "default": "Current",
+      "description": "Payment status"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "Normal",
+        "High",
+        "Critical"
+      ],
+      "default": "Normal",
+      "description": "Priority level"
+    },
+    "monthly_amount": {
+      "type": "number",
+      "description": "Monthly payment amount"
+    },
+    "total_owed": {
+      "type": "number",
+      "description": "Total remaining balance owed"
+    },
+    "original_amount": {
+      "type": "number",
+      "description": "Original total amount (for loans and supplier debt)"
+    },
+    "amount_paid": {
+      "type": "number",
+      "description": "Total amount paid so far"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Payment due date"
+    },
+    "auto_pay": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this is set up for auto-pay"
+    },
+    "plan_notes": {
+      "type": "string",
+      "description": "Payoff plan or notes"
+    },
+    "vendor_contact": {
+      "type": "string",
+      "description": "Vendor or lender contact info"
+    },
+    "notes": {
+      "type": "string",
+      "description": "General notes"
+    }
+  },
+  "required": [
+    "name",
+    "category"
+  ]
+}
