@@ -157,6 +157,13 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    if (file.size > MAX_SIZE) {
+      setAnalyzeError(`File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Please upload a file under 10MB. Try compressing the PDF or uploading a PNG/JPG image instead.`);
+      e.target.value = "";
+      return;
+    }
+    setAnalyzeError(null);
     setIsUploading(true);
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
     setPlanFileUrl(file_url);
@@ -200,7 +207,9 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
      const roomNotesSection = roomNotes ? `\n\nAdditional notes from room annotations:\n${roomNotes}` : "";
      const mainPlanNotesSection = aiNotes ? `\n\nMain plan annotations and notes:\n${aiNotes}` : "";
 
-    const result = await base44.integrations.Core.InvokeLLM({
+    let result;
+    try {
+      result = await base44.integrations.Core.InvokeLLM({
       model: "gemini_3_pro",
       prompt: `You are a professional cabinet estimator analyzing architectural floor plans for a ${styleLabel} cabinet project. ${pricingNote}
 ${extractedText}${mainPlanNotesSection}${roomNotesSection}
@@ -245,6 +254,13 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
         }
       }
     });
+    } catch (err) {
+      setAnalyzeError(err?.message?.includes("10MB") || err?.message?.includes("size")
+        ? "The plan file is too large for AI analysis. Please compress the PDF or convert it to a PNG/JPG image (under 10MB)."
+        : `Analysis failed: ${err?.message || "Unknown error"}`);
+      setIsAnalyzing(false);
+      return;
+    }
 
     if (!result.rooms || result.rooms.length === 0) {
       setAnalyzeError("AI couldn't identify cabinet areas. Try a clearer image (PNG/JPG works best), or add rooms manually.");
