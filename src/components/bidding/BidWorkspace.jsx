@@ -157,12 +157,6 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-    if (file.size > MAX_SIZE) {
-      setAnalyzeError(`File is too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Please upload a file under 10MB. Try compressing the PDF or uploading a PNG/JPG image instead.`);
-      e.target.value = "";
-      return;
-    }
     setAnalyzeError(null);
     setIsUploading(true);
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
@@ -255,9 +249,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
       }
     });
     } catch (err) {
-      setAnalyzeError(err?.message?.includes("10MB") || err?.message?.includes("size")
-        ? "The plan file is too large for AI analysis. Please compress the PDF or convert it to a PNG/JPG image (under 10MB)."
-        : `Analysis failed: ${err?.message || "Unknown error"}`);
+      setAnalyzeError(`Analysis failed: ${err?.message || "Unknown error"}`);
       setIsAnalyzing(false);
       return;
     }
