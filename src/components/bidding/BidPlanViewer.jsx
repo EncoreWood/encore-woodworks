@@ -124,6 +124,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const [manualScaleInput, setManualScaleInput] = useState("");
   const [showScaleOverride, setShowScaleOverride] = useState(false);
 
+  // Measure unit toggle
+  const [measureUnit, setMeasureUnit]     = useState("lf"); // "lf" | "in"
+
   // Measure (natural-px transient coords)
   const [measureStart, setMeasureStart]   = useState(null);
   const [measurePreview, setMeasurePreview] = useState(null);
@@ -302,8 +305,14 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
 
   const computeRealFeet = (p1, p2) => {
     if (!pxPerFtNat) return null;
-    // p1, p2 in natural px — no scale division needed
     return Math.hypot(p2.x - p1.x, p2.y - p1.y) / pxPerFtNat;
+  };
+
+  // Format a feet value according to current unit
+  const fmtMeasure = (feet) => {
+    if (feet == null) return "?";
+    if (measureUnit === "in") return `${(feet * 12).toFixed(1)}"`;
+    return `${feet.toFixed(1)} LF`;
   };
 
   // ── Hit-test (all coords in natural space) ───────────────────────────────
@@ -558,7 +567,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       ctx.lineWidth=isSel?3:2.5; ctx.setLineDash([]);
       ctx.beginPath(); ctx.moveTo(s.x,s.y); ctx.lineTo(en.x,en.y); ctx.stroke();
       [s,en].forEach(pt=>{ctx.beginPath();ctx.arc(pt.x,pt.y,4,0,Math.PI*2);ctx.fill();});
-      const mx=(s.x+en.x)/2, my=(s.y+en.y)/2, lbl=m.realFeet!=null?`${m.realFeet.toFixed(1)} LF`:"?";
+      const mx=(s.x+en.x)/2, my=(s.y+en.y)/2, lbl=fmtMeasure(m.realFeet);
       ctx.font="bold 11px sans-serif"; const tm=ctx.measureText(lbl);
       ctx.fillStyle=isSel?"rgba(59,130,246,0.95)":"rgba(239,68,68,0.92)";
       ctx.beginPath(); if(ctx.roundRect)ctx.roundRect(mx-tm.width/2-5,my-15,tm.width+10,19,4);else ctx.rect(mx-tm.width/2-5,my-15,tm.width+10,19); ctx.fill();
@@ -573,7 +582,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         ctx.beginPath(); ctx.moveTo(measureStart.x,measureStart.y); ctx.lineTo(measurePreview.x,measurePreview.y); ctx.stroke(); ctx.setLineDash([]);
         const rf=computeRealFeet(measureStart,measurePreview);
         if (rf!=null) {
-          const mx2=(measureStart.x+measurePreview.x)/2, my2=(measureStart.y+measurePreview.y)/2, ltxt=`${rf.toFixed(1)} LF`;
+          const mx2=(measureStart.x+measurePreview.x)/2, my2=(measureStart.y+measurePreview.y)/2, ltxt=fmtMeasure(rf);
           ctx.font="bold 12px sans-serif"; const m2=ctx.measureText(ltxt);
           ctx.fillStyle="rgba(245,158,11,0.95)"; ctx.fillRect(mx2-m2.width/2-4,my2-15,m2.width+8,18);
           ctx.fillStyle="white"; ctx.fillText(ltxt,mx2-m2.width/2,my2);
@@ -633,7 +642,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       ctx.fillStyle=`rgba(${r2},${g2},${b2},0.35)`; ctx.strokeStyle=`rgba(${r2},${g2},${b2},0.8)`; ctx.lineWidth=1.5;
       ctx.fillRect(x,y,w,h); ctx.strokeRect(x,y,w,h);
     }
-  }, [annList, measurements, currentPath, currentLine, pageNumber, color, highlightColor, naturalSize, tool, measureStart, measurePreview, calibStart, calibPreview, selectedAnn, tracePoints, tracePreview, tracedRooms]);
+  }, [annList, measurements, currentPath, currentLine, pageNumber, color, highlightColor, naturalSize, tool, measureStart, measurePreview, calibStart, calibPreview, selectedAnn, tracePoints, tracePreview, tracedRooms, measureUnit, fmtMeasure]);
 
   // ── Toolbar config ─────────────────────────────────────────────────────────
   const toolConfig = [
@@ -699,6 +708,19 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
               <Icon className="w-3.5 h-3.5"/>{label}
             </Button>
           ))}
+          {/* Unit toggle — only visible when measure tool is active */}
+          {tool === "measure" && (
+            <div className="flex items-center gap-0.5 bg-slate-100 rounded-md p-0.5 ml-1">
+              <button
+                onClick={() => setMeasureUnit("lf")}
+                className={`px-2.5 py-1 text-xs font-semibold rounded transition-all ${measureUnit === "lf" ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"}`}
+              >LF</button>
+              <button
+                onClick={() => setMeasureUnit("in")}
+                className={`px-2.5 py-1 text-xs font-semibold rounded transition-all ${measureUnit === "in" ? "bg-white shadow text-orange-600" : "text-slate-500 hover:text-slate-700"}`}
+              >IN</button>
+            </div>
+          )}
           <div className="border-l h-5 mx-1"/>
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={()=>{const pa=annList.filter(a=>a.page===pageNumber);if(!pa.length)return;const last=pa[pa.length-1];setAnnList(p=>p.filter(a=>a!==last));}}><Undo2 className="w-3.5 h-3.5 mr-1"/>Undo</Button>
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={()=>setAnnList(p=>p.filter(a=>a.page!==pageNumber))}>Clear Page</Button>
@@ -849,10 +871,15 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                   {measurements.map((m,idx)=>(
                     <div key={m.id||idx} className={`p-2 rounded-lg border ${selectedAnn?.kind==="measurement"&&selectedAnn.idx===idx?"border-blue-400 bg-blue-50":"border-red-200 bg-red-50"}`}>
                       <div className="flex items-start justify-between gap-1 mb-1">
-                        <input type="number" step="0.1" value={m.realFeet!=null?m.realFeet:""}
-                          onChange={e=>setMeasurements(p=>p.map((x,i)=>i===idx?{...x,realFeet:parseFloat(e.target.value)||null}:x))}
-                          className="w-20 text-sm font-bold text-red-700 border border-red-200 rounded px-1 focus:outline-none bg-white" placeholder="LF"/>
-                        <span className="text-xs text-red-500 font-semibold mt-1">LF</span>
+                        <input type="number" step="0.1"
+                          value={m.realFeet != null ? (measureUnit === "in" ? parseFloat((m.realFeet * 12).toFixed(1)) : m.realFeet) : ""}
+                          onChange={e => {
+                            const v = parseFloat(e.target.value) || null;
+                            const feet = v != null ? (measureUnit === "in" ? v / 12 : v) : null;
+                            setMeasurements(p => p.map((x, i) => i === idx ? { ...x, realFeet: feet } : x));
+                          }}
+                          className="w-20 text-sm font-bold text-red-700 border border-red-200 rounded px-1 focus:outline-none bg-white" placeholder={measureUnit === "in" ? "IN" : "LF"}/>
+                        <span className="text-xs text-red-500 font-semibold mt-1">{measureUnit === "in" ? '"' : "LF"}</span>
                         <button onClick={()=>setMeasurements(p=>p.filter((_,i)=>i!==idx))} className="text-slate-300 hover:text-red-500 mt-0.5"><X className="w-3 h-3"/></button>
                       </div>
                       <input value={m.label} onChange={e=>setMeasurements(p=>p.map((x,i)=>i===idx?{...x,label:e.target.value}:x))}
@@ -950,7 +977,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
         <div className="bg-white rounded-xl shadow-2xl p-5 w-80">
           <h3 className="font-bold text-slate-900 mb-1">Send to Bid</h3>
-          <p className="text-sm text-slate-600 mb-3">{sendingM.label} — <span className="font-bold text-emerald-700">{sendingM.realFeet?.toFixed(2)} LF</span></p>
+          <p className="text-sm text-slate-600 mb-3">{sendingM.label} — <span className="font-bold text-emerald-700">{fmtMeasure(sendingM.realFeet)}</span></p>
           <div className="space-y-3 mb-4">
             <div>
               <label className="text-xs font-semibold text-slate-500 mb-1 block">Room</label>
