@@ -178,19 +178,24 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
 
     let extractedText = "";
     try {
-      const extracted = await base44.integrations.Core.ExtractDataFromUploadedFile({
-        file_url: planFileUrl,
-        json_schema: {
-          type: "object",
-          properties: {
-            room_labels: { type: "array", items: { type: "string" } },
-            dimensions: { type: "array", items: { type: "string" } },
-            notes: { type: "string" }
+      // Only attempt text extraction for smaller files (under 8MB)
+      const headRes = await fetch(planFileUrl, { method: "HEAD" }).catch(() => null);
+      const contentLength = headRes ? parseInt(headRes.headers.get("content-length") || "0") : 0;
+      if (!contentLength || contentLength < 8 * 1024 * 1024) {
+        const extracted = await base44.integrations.Core.ExtractDataFromUploadedFile({
+          file_url: planFileUrl,
+          json_schema: {
+            type: "object",
+            properties: {
+              room_labels: { type: "array", items: { type: "string" } },
+              dimensions: { type: "array", items: { type: "string" } },
+              notes: { type: "string" }
+            }
           }
+        });
+        if (extracted?.status === "success" && extracted.output) {
+          extractedText = `\n\nExtracted plan text: ${JSON.stringify(extracted.output)}`;
         }
-      });
-      if (extracted?.status === "success" && extracted.output) {
-        extractedText = `\n\nExtracted plan text: ${JSON.stringify(extracted.output)}`;
       }
     } catch (_) {}
 
@@ -204,7 +209,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
     let result;
     try {
       result = await base44.integrations.Core.InvokeLLM({
-      model: "gemini_3_pro",
+      model: "gemini_3_1_pro",
       prompt: `You are a professional cabinet estimator analyzing architectural floor plans for a ${styleLabel} cabinet project. ${pricingNote}
 ${extractedText}${mainPlanNotesSection}${roomNotesSection}
 
