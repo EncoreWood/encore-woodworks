@@ -700,9 +700,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
             <input type="color" value={color} onChange={e=>setColor(e.target.value)} className="w-7 h-7 rounded border cursor-pointer ml-1"/>
           ) : null}
           <div className="border-l h-5 mx-1"/>
-          <Button variant="outline" size="sm" className="h-8" onClick={()=>setScale(s=>Math.max(0.3,s-0.15))}><ZoomOut className="w-4 h-4"/></Button>
+          <Button variant="outline" size="sm" className="h-8" onClick={()=>setScale(s=>Math.max(0.3,Math.round((s-0.1)*100)/100))}><ZoomOut className="w-4 h-4"/></Button>
           <span className="text-xs text-slate-600 w-9 text-center">{Math.round(scale*100)}%</span>
-          <Button variant="outline" size="sm" className="h-8" onClick={()=>setScale(s=>Math.min(3,s+0.15))}><ZoomIn className="w-4 h-4"/></Button>
+          <Button variant="outline" size="sm" className="h-8" onClick={()=>setScale(s=>Math.min(3,Math.round((s+0.1)*100)/100))}><ZoomIn className="w-4 h-4"/></Button>
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={fitToPage}><Maximize2 className="w-3.5 h-3.5 mr-1"/>Fit</Button>
         </div>
 
@@ -714,7 +714,8 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
 
         {/* Main */}
         <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 overflow-auto bg-slate-200" ref={scrollRef}>
+          <div className="flex-1 overflow-auto bg-slate-200" ref={scrollRef} onWheel={e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();setScale(s=>Math.min(3,Math.max(0.3,Math.round((s - e.deltaY*0.001)*100)/100)));}}}>
+
             {showNotesField && (
               <div className="p-3 border-b bg-white">
                 <label className="text-xs font-semibold text-slate-500 mb-1 block">Notes for AI</label>
@@ -722,7 +723,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
               </div>
             )}
             <div className="flex items-start justify-center min-h-full p-6">
-              <div className="relative inline-block shadow-xl" ref={pageContainerRef}>
+              <div className="relative inline-block shadow-xl" ref={pageContainerRef} style={{transition:"width 0.15s ease, height 0.15s ease", willChange:"width, height"}}>
                 <Document file={pdfUrl} onLoadSuccess={onDocumentLoadSuccess} loading={<div className="flex items-center justify-center p-20 text-slate-500 bg-white">Loading PDF...</div>}>
                   <Page pageNumber={pageNumber} scale={scale} rotate={rotation} renderTextLayer={false} renderAnnotationLayer={false} onLoadSuccess={onPageLoadSuccess}/>
                 </Document>
@@ -737,7 +738,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                     width: displaySize.w + "px",
                     height: displaySize.h + "px",
                     cursor, touchAction:"none",
-                    pointerEvents: (pendingRoom || editingRoom) ? "none" : "auto"
+                    pointerEvents: (pendingRoom || editingRoom) ? "none" : "auto",
+                    transition: "width 0.15s ease, height 0.15s ease",
+                    willChange: "width, height",
                   }}
                   onPointerDown={handlePointerDown}
                   onPointerMove={handlePointerMove}
