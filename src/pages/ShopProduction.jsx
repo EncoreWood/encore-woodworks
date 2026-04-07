@@ -247,10 +247,11 @@ export default function ShopProduction() {
   };
 
   // PTS stats — per column (face_frame, spray, build, complete) with day/week/month tallies
-  const now = new Date();
-  const todayStr = format(now, "yyyy-MM-dd");
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 }); // Monday
-  const monthStart = startOfMonth(now);
+  // Use local (Denver) time so "today" matches how dates are stored (local date strings)
+  const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Denver" }));
+  const todayStr = format(nowLocal, "yyyy-MM-dd");
+  const weekStart = startOfWeek(nowLocal, { weekStartsOn: 1 }); // Monday
+  const monthStart = startOfMonth(nowLocal);
   const boardItems = items.filter(i => !i.is_job_info);
 
   const STAT_STAGES = ["face_frame", "spray", "build", "complete"];
