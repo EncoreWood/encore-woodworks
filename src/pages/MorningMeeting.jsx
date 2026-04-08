@@ -215,9 +215,12 @@ export default function MorningMeeting() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["weeklyTopics", weekStartStr] })
   });
 
-  const deleteWeeklyTopicMutation = useMutation({
-    mutationFn: (id) => base44.entities.WeeklyTopic.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["weeklyTopics", weekStartStr] })
+  const archiveWeeklyTopicMutation = useMutation({
+    mutationFn: (id) => base44.entities.WeeklyTopic.update(id, { archived: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["weeklyTopics", weekStartStr] });
+      queryClient.invalidateQueries({ queryKey: ["weeklyTopics"] });
+    }
   });
 
   const createTaskMutation = useMutation({
@@ -463,11 +466,11 @@ export default function MorningMeeting() {
           </SectionCard>
 
           {/* 2. Weekly Topic — persisted per week, logged to admin */}
-          <SectionCard title="Weekly Topic" icon={BookOpen} color="green" count={weeklyTopics.length}>
+          <SectionCard title="Weekly Topic" icon={BookOpen} color="green" count={weeklyTopics.filter(t => !t.archived).length}>
             {/* Existing topics for this week */}
             <div className="space-y-3 mb-4">
-              {weeklyTopics.length === 0 && <p className="text-slate-400 text-sm text-center py-2">No topic added for this week yet.</p>}
-              {weeklyTopics.map((topic) => (
+              {weeklyTopics.filter(t => !t.archived).length === 0 && <p className="text-slate-400 text-sm text-center py-2">No topic added for this week yet.</p>}
+              {weeklyTopics.filter(t => !t.archived).map((topic) => (
                 <div key={topic.id} className="bg-green-50 rounded-lg border border-green-200 overflow-hidden">
                   <div className="flex items-center gap-2 px-3 py-2">
                     {topic.item_type === "file" ? <Upload className="w-4 h-4 text-green-600 flex-shrink-0" /> : <Link2 className="w-4 h-4 text-green-600 flex-shrink-0" />}
@@ -475,7 +478,7 @@ export default function MorningMeeting() {
                       ? <a href={topic.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-blue-600 hover:underline font-medium truncate">{topic.label}</a>
                       : <span className="flex-1 text-sm font-medium text-slate-700">{topic.label}</span>
                     }
-                    <button onClick={() => deleteWeeklyTopicMutation.mutate(topic.id)} className="text-slate-400 hover:text-red-500 ml-2">
+                    <button onClick={() => archiveWeeklyTopicMutation.mutate(topic.id)} className="text-slate-400 hover:text-amber-600 ml-2" title="Archive topic">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
