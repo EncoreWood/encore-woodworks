@@ -74,6 +74,7 @@ import TimeSheet from './pages/TimeSheet';
 import Tools from './pages/Tools';
 import Presentations from './pages/Presentations';
 import EmployeeDashboard from './pages/EmployeeDashboard';
+import Assignments from './pages/Assignments';
 import __Layout from './Layout.jsx';
 
 
@@ -105,6 +106,7 @@ export const PAGES = {
     "Tools": Tools,
     "Presentations": Presentations,
     "EmployeeDashboard": EmployeeDashboard,
+    "Assignments": Assignments,
 }
 
 export const pagesConfig = {

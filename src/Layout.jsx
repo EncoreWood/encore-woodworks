@@ -74,6 +74,7 @@ export default function Layout({ children, currentPageName }) {
           { name: "Purchase Orders", icon: Package, iconName: "Package", page: "PurchaseOrders" },
           { name: "Suppliers", icon: Truck, iconName: "Truck", page: "Suppliers" },
           { name: "Encore Docs", icon: FileText, iconName: "FileText", page: "EncoreDocs" },
+          { name: "Assignments", icon: Clipboard, iconName: "Clipboard", page: "Assignments" },
           { name: "SOPs", icon: FileText, iconName: "FileText", page: "SOPBoard" },
           { name: "Notepad", icon: StickyNote, iconName: "StickyNote", page: "Notepad" },
         ]

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -90,6 +90,12 @@ export default function CalendarPage() {
   const { data: bathroomCleanings = [] } = useQuery({ queryKey: ["bathroomCleanings"], queryFn: () => base44.entities.BathroomCleaning.list() });
   const { data: vacations = [] } = useQuery({ queryKey: ["vacations"], queryFn: () => base44.entities.Vacation.list() });
   const { data: cleaningSchedules = [] } = useQuery({ queryKey: ["cleaningSchedules"], queryFn: () => base44.entities.CleaningSchedule.list() });
+  const { data: installAppointments = [] } = useQuery({ queryKey: ["InstallAppointment"], queryFn: () => base44.entities.InstallAppointment.list("-date", 200) });
+  const { data: deliveryAppointments = [] } = useQuery({ queryKey: ["DeliveryAppointment"], queryFn: () => base44.entities.DeliveryAppointment.list("-date", 200) });
+  const { data: assignedTasks = [] } = useQuery({ queryKey: ["assignmentTasks"], queryFn: () => base44.entities.Task.list("-created_date", 200) });
+
+  const [currentUser, setCurrentUser] = useState(null);
+  useEffect(() => { base44.auth.me().then(setCurrentUser); }, []);
 
   const [showCleaningManager, setShowCleaningManager] = useState(false);
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
@@ -274,6 +280,13 @@ export default function CalendarPage() {
   const getPresenterForDate = (date) => presenters.find(p => p.date === format(date, "yyyy-MM-dd"));
   const getDesignMeetingsForDate = (date) => designMeetings.filter(m => m.date === format(date, "yyyy-MM-dd"));
   const getTasksForDate = (date) => tasks.filter(t => t.date === format(date, "yyyy-MM-dd"));
+  const getInstallsForDate = (date) => installAppointments.filter(a => a.date === format(date, "yyyy-MM-dd") && a.status !== "cancelled");
+  const getDeliveriesForDate = (date) => deliveryAppointments.filter(a => a.date === format(date, "yyyy-MM-dd") && a.status !== "cancelled");
+  const getAssignedTasksForDate = (date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    const isAdmin = currentUser?.role === "admin";
+    return assignedTasks.filter(t => t.due_date === dateStr && (isAdmin || t.assigned_to_email === currentUser?.email));
+  };
   const getBathroomCleaningsForDate = (date) => bathroomCleanings.filter(c => c.date === format(date, "yyyy-MM-dd"));
   const getVacationsForDate = (date) => vacations.filter(v => isWithinInterval(date, { start: new Date(v.start_date), end: new Date(v.end_date) }));
 
@@ -403,6 +416,9 @@ export default function CalendarPage() {
     const meetingCount = getDesignMeetingsForDate(date).length;
     const taskCount = getTasksForDate(date).length;
     const cleaningCount = getBathroomCleaningsForDate(date).length + getCleaningScheduleForDate(date).length;
+    const installApptCount = getInstallsForDate(date).length;
+    const deliveryCount = getDeliveriesForDate(date).length;
+    const assignedTaskCount = getAssignedTasksForDate(date).filter(t => t.status !== "completed").length;
 
     return (
       <div className="w-full flex flex-col gap-0.5 p-1.5" style={{ minHeight: "140px" }}>
@@ -446,6 +462,15 @@ export default function CalendarPage() {
           )}
           {cleaningCount > 0 && (activeFilter === "all" || activeFilter === "cleaning") && (
             <div className="text-[9px] px-1 py-0.5 bg-cyan-500 text-white rounded font-medium">{cleaningCount}C</div>
+          )}
+          {installApptCount > 0 && (activeFilter === "all" || activeFilter === "projects") && (
+            <div className="text-[9px] px-1 py-0.5 bg-orange-600 text-white rounded font-medium">{installApptCount}I</div>
+          )}
+          {deliveryCount > 0 && (activeFilter === "all" || activeFilter === "projects") && (
+            <div className="text-[9px] px-1 py-0.5 bg-teal-600 text-white rounded font-medium">{deliveryCount}D</div>
+          )}
+          {assignedTaskCount > 0 && (activeFilter === "all" || activeFilter === "tasks") && (
+            <div className="text-[9px] px-1 py-0.5 bg-indigo-500 text-white rounded font-medium">{assignedTaskCount}A</div>
           )}
         </div>
       </div>
@@ -573,7 +598,10 @@ export default function CalendarPage() {
               const vacs = getVacationsForDate(date);
               const dayTasks = getTasksForDate(date);
               const weeklyCleanings = getCleaningScheduleForDate(date);
-              const isEmpty = !presenter && activeProjects.length === 0 && meetings.length === 0 && cleanings.length === 0 && vacs.length === 0 && dayTasks.length === 0 && weeklyCleanings.length === 0;
+              const installs = getInstallsForDate(date);
+              const deliveries = getDeliveriesForDate(date);
+              const myAssignedTasks = getAssignedTasksForDate(date);
+              const isEmpty = !presenter && activeProjects.length === 0 && meetings.length === 0 && cleanings.length === 0 && vacs.length === 0 && dayTasks.length === 0 && weeklyCleanings.length === 0 && installs.length === 0 && deliveries.length === 0 && myAssignedTasks.length === 0;
               
 
               return (
@@ -695,6 +723,59 @@ export default function CalendarPage() {
                     </div>
                   )}
 
+                  {/* Install Appointments */}
+                  {(activeFilter === "all" || activeFilter === "projects") && installs.map((a) => (
+                    <div key={a.id} className="p-2.5 bg-orange-50 rounded-lg border border-orange-200 text-sm">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-orange-900 mb-0.5">
+                        <Hammer className="w-3 h-3" />Install
+                      </div>
+                      <p className="text-xs text-orange-700 font-medium truncate">{a.project_name}</p>
+                      {a.client_name && <p className="text-[10px] text-orange-600 truncate">{a.client_name}</p>}
+                      {a.crew?.length > 0 && <p className="text-[10px] text-orange-500 truncate">👷 {a.crew.join(", ")}</p>}
+                    </div>
+                  ))}
+
+                  {/* Delivery Appointments */}
+                  {(activeFilter === "all" || activeFilter === "projects") && deliveries.map((a) => (
+                    <div key={a.id} className="p-2.5 bg-teal-50 rounded-lg border border-teal-200 text-sm">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-teal-900 mb-0.5">
+                        <ArrowRight className="w-3 h-3" />Delivery
+                      </div>
+                      <p className="text-xs text-teal-700 font-medium truncate">{a.project_name}</p>
+                      {a.client_name && <p className="text-[10px] text-teal-600 truncate">{a.client_name}</p>}
+                      {a.driver && <p className="text-[10px] text-teal-500 truncate">🚚 {a.driver}</p>}
+                    </div>
+                  ))}
+
+                  {/* Assigned Tasks (user-filtered) */}
+                  {(activeFilter === "all" || activeFilter === "tasks") && myAssignedTasks.length > 0 && (
+                    <div className="border-t border-slate-200 pt-2.5">
+                      <h4 className="text-xs font-semibold text-indigo-700 mb-2 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3 h-3" />My Tasks
+                      </h4>
+                      <div className="space-y-1.5">
+                        {myAssignedTasks.map((task) => (
+                          <div key={task.id} className={`flex items-center gap-1.5 p-1.5 rounded text-xs ${task.status === "completed" ? "bg-slate-50" : "bg-indigo-50 border border-indigo-100"}`}>
+                            <Checkbox
+                              checked={task.status === "completed"}
+                              onCheckedChange={() => {
+                                const next = task.status === "completed" ? "todo" : "completed";
+                                base44.entities.Task.update(task.id, { status: next }).then(() => queryClient.invalidateQueries({ queryKey: ["assignmentTasks"] }));
+                              }}
+                              className="data-[state=checked]:bg-indigo-600"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className={task.status === "completed" ? "text-slate-400 line-through" : "text-indigo-800 font-medium"}>{task.title}</span>
+                              {task.assigned_to && currentUser?.role === "admin" && (
+                                <span className="text-[10px] text-slate-400 ml-1">→ {task.assigned_to}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {isEmpty && <p className="text-xs text-slate-400 text-center py-4 italic">No items scheduled</p>}
                 </>
               );
@@ -762,6 +843,9 @@ export default function CalendarPage() {
             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-orange-500" /><span className="text-slate-600 text-[11px]">Install</span></div>
             <div className="flex items-center gap-1.5"><div className="px-0.5 py-0 bg-violet-500 text-white rounded text-[8px]">M</div><span className="text-slate-600 text-[11px]">Meeting</span></div>
             <div className="flex items-center gap-1.5"><div className="px-0.5 py-0 bg-purple-500 text-white rounded text-[8px]">T</div><span className="text-slate-600 text-[11px]">Task</span></div>
+            <div className="flex items-center gap-1.5"><div className="px-0.5 py-0 bg-orange-600 text-white rounded text-[8px]">I</div><span className="text-slate-600 text-[11px]">Install Appt</span></div>
+            <div className="flex items-center gap-1.5"><div className="px-0.5 py-0 bg-teal-600 text-white rounded text-[8px]">D</div><span className="text-slate-600 text-[11px]">Delivery</span></div>
+            <div className="flex items-center gap-1.5"><div className="px-0.5 py-0 bg-indigo-500 text-white rounded text-[8px]">A</div><span className="text-slate-600 text-[11px]">My Tasks</span></div>
           </div>
         </div>
       </div>

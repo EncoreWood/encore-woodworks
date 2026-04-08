@@ -1,0 +1,62 @@
+{
+  "name": "Task",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for reference"
+    },
+    "title": {
+      "type": "string",
+      "description": "Task title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Task description"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "todo",
+        "in_progress",
+        "completed"
+      ],
+      "default": "todo",
+      "description": "Task status"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "medium",
+      "description": "Task priority"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Employee name assigned to task"
+    },
+    "assigned_to_email": {
+      "type": "string",
+      "description": "Email of the employee assigned to this task (used for privacy filtering)"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Task due date"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}
