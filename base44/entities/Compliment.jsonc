@@ -1,0 +1,38 @@
+{
+  "name": "Compliment",
+  "type": "object",
+  "properties": {
+    "from": {
+      "type": "string",
+      "description": "Who is giving the compliment"
+    },
+    "to": {
+      "type": "string",
+      "description": "Who the compliment is for"
+    },
+    "message": {
+      "type": "string",
+      "description": "The compliment message"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the compliment"
+    },
+    "submitted_at": {
+      "type": "string",
+      "description": "ISO timestamp of submission"
+    },
+    "share_in_meeting": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to share this in the morning meeting"
+    }
+  },
+  "required": [
+    "from",
+    "to",
+    "message",
+    "date"
+  ]
+}

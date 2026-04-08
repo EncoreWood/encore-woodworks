@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Factory, Briefcase, Link2, Unlink, Package, AlertTriangle, PackageX, Sunset } from "lucide-react";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
+import GiveComplimentDialog from "../components/production/GiveComplimentDialog";
 import ReportMissingDialog from "../components/production/ReportMissingDialog";
 import EndOfDayDialog from "../components/production/EndOfDayDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -47,6 +48,7 @@ export default function ShopProduction() {
   const [openFolderContext, setOpenFolderContext] = useState(null); // { project, roomName } to auto-open a folder in Job Packets
   const [currentUser, setCurrentUser] = useState(null);
   const [reportingStruggle, setReportingStruggle] = useState(null);
+  const [givingCompliment, setGivingCompliment] = useState(false);
   const [reportingMissing, setReportingMissing] = useState(null); // item to report missing for (or true for generic)
   const [showEndOfDay, setShowEndOfDay] = useState(false);
 
@@ -428,6 +430,13 @@ export default function ShopProduction() {
             >
               <AlertTriangle className="w-4 h-4 mr-2" /> Report Struggle
             </Button>
+            <Button
+              onClick={() => setGivingCompliment(true)}
+              variant="outline"
+              className="border-amber-300 text-amber-600 hover:bg-amber-50"
+            >
+              🎉 Well Done
+            </Button>
             <Button onClick={() => { setJobInfoMode(false); setShowForm(true); }} className="bg-amber-600 hover:bg-amber-700">
               <Plus className="w-4 h-4 mr-2" /> Add Item
             </Button>
@@ -746,6 +755,11 @@ export default function ShopProduction() {
         <ReportStruggleDialog
           open={!!reportingStruggle}
           onOpenChange={(open) => { if (!open) setReportingStruggle(false); }}
+        />
+
+        <GiveComplimentDialog
+          open={givingCompliment}
+          onOpenChange={setGivingCompliment}
         />
 
         <ReportMissingDialog

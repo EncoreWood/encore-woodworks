@@ -151,6 +151,11 @@ export default function MorningMeeting() {
     queryFn: () => base44.entities.Struggle.list("-created_date", 20)
   });
 
+  const { data: compliments = [] } = useQuery({
+    queryKey: ["compliments"],
+    queryFn: () => base44.entities.Compliment.list("-submitted_at", 50)
+  });
+
   // Persistent announcements and teach items from DailyNote
   const { data: dailyNotes = [] } = useQuery({
     queryKey: ["dailyNotes", dateString],
@@ -705,6 +710,39 @@ export default function MorningMeeting() {
               );
             })()}
           </SectionCard>
+
+          {/* Compliments */}
+          {(() => {
+            const todayCompliments = compliments.filter(c => c.share_in_meeting && c.date === dateString);
+            const recentCompliments = compliments.filter(c => c.share_in_meeting).slice(0, 5);
+            const displayCompliments = todayCompliments.length > 0 ? todayCompliments : recentCompliments;
+            return (
+              <SectionCard title="Well Done! 🎉" icon={Sparkles} color="amber" count={displayCompliments.length} defaultOpen={todayCompliments.length > 0}>
+                {displayCompliments.length === 0 ? (
+                  <div className="flex items-center justify-center gap-2 py-4 text-slate-400">
+                    <span className="text-sm">No compliments shared for today. Give one from the Production board!</span>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {todayCompliments.length === 0 && (
+                      <p className="text-xs text-slate-400 text-center mb-2">Showing recent compliments (none submitted for today)</p>
+                    )}
+                    {displayCompliments.map(c => (
+                      <div key={c.id} className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">{c.from}</span>
+                          <span className="text-xs text-slate-400">→</span>
+                          <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">{c.to}</span>
+                          <span className="text-xs text-slate-400 ml-auto">{c.date}</span>
+                        </div>
+                        <p className="text-sm text-slate-700 leading-relaxed">"{c.message}"</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </SectionCard>
+            );
+          })()}
 
           {/* Struggles & Solutions */}
           {(() => {
