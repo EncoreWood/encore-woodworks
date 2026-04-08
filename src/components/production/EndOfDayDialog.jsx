@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 const RATINGS = [
   { value: "great", label: "Great", icon: Sun, color: "bg-green-500 text-white border-green-500" },
   { value: "good", label: "Good", icon: Smile, color: "bg-emerald-400 text-white border-emerald-400" },
+  { value: "fuck_alright", label: "F*** Alright", icon: Meh, color: "bg-teal-500 text-white border-teal-500" },
   { value: "okay", label: "Okay", icon: Meh, color: "bg-yellow-400 text-white border-yellow-400" },
   { value: "bad", label: "Bad", icon: Frown, color: "bg-orange-500 text-white border-orange-500" },
   { value: "terrible", label: "Terrible", icon: AlertCircle, color: "bg-red-600 text-white border-red-600" },

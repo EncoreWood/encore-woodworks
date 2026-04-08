@@ -563,9 +563,9 @@ export default function MorningMeeting() {
               const yesterday = format(subDays(selectedDate, 1), "yyyy-MM-dd");
 
               // --- End of Day Reviews ---
-              const RATING_ORDER = ["great", "good", "okay", "bad", "terrible"];
-              const RATING_LABELS = { great: "Great 🌟", good: "Good 😊", okay: "Okay 😐", bad: "Bad 😟", terrible: "Terrible 😣" };
-              const RATING_SCORES = { great: 4, good: 3, okay: 2, bad: 1, terrible: 0 };
+              const RATING_ORDER = ["great", "good", "fuck_alright", "okay", "bad", "terrible"];
+              const RATING_LABELS = { great: "Great 🌟", good: "Good 😊", fuck_alright: "F*** Alright 😤", okay: "Okay 😐", bad: "Bad 😟", terrible: "Terrible 😣" };
+              const RATING_SCORES = { great: 4, good: 3, fuck_alright: 2.5, okay: 2, bad: 1, terrible: 0 };
               const yesterdayReviews = endOfDayReviews.filter(r => r.date === yesterday);
               const avgScore = yesterdayReviews.length > 0
                 ? yesterdayReviews.reduce((sum, r) => sum + (RATING_SCORES[r.day_rating] ?? 2), 0) / yesterdayReviews.length

@@ -7,14 +7,15 @@ import { Sun, Smile, Meh, Frown, AlertCircle, CheckCircle2, XCircle, Calendar, U
 import { cn } from "@/lib/utils";
 
 const RATING_CONFIG = {
-  great:    { label: "Great",    icon: Sun,         color: "bg-green-100 text-green-800 border-green-200",   dot: "bg-green-500" },
-  good:     { label: "Good",     icon: Smile,       color: "bg-emerald-100 text-emerald-800 border-emerald-200", dot: "bg-emerald-400" },
-  okay:     { label: "Okay",     icon: Meh,         color: "bg-yellow-100 text-yellow-800 border-yellow-200", dot: "bg-yellow-400" },
-  bad:      { label: "Bad",      icon: Frown,       color: "bg-orange-100 text-orange-800 border-orange-200", dot: "bg-orange-500" },
-  terrible: { label: "Terrible", icon: AlertCircle, color: "bg-red-100 text-red-800 border-red-200",         dot: "bg-red-600" },
+  great:        { label: "Great",        icon: Sun,         color: "bg-green-100 text-green-800 border-green-200",     dot: "bg-green-500" },
+  good:         { label: "Good",         icon: Smile,       color: "bg-emerald-100 text-emerald-800 border-emerald-200", dot: "bg-emerald-400" },
+  fuck_alright: { label: "F*** Alright", icon: Meh,         color: "bg-teal-100 text-teal-800 border-teal-200",         dot: "bg-teal-500" },
+  okay:         { label: "Okay",         icon: Meh,         color: "bg-yellow-100 text-yellow-800 border-yellow-200",   dot: "bg-yellow-400" },
+  bad:          { label: "Bad",          icon: Frown,       color: "bg-orange-100 text-orange-800 border-orange-200",   dot: "bg-orange-500" },
+  terrible:     { label: "Terrible",     icon: AlertCircle, color: "bg-red-100 text-red-800 border-red-200",             dot: "bg-red-600" },
 };
 
-const RATING_ORDER = ["great", "good", "okay", "bad", "terrible"];
+const RATING_ORDER = ["great", "good", "fuck_alright", "okay", "bad", "terrible"];
 
 function StatCard({ label, value, sub, accent }) {
   return (

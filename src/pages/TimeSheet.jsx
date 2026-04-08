@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, Plus, Trash2, CheckCircle2, Play, Square, Settings, Circle, Calendar, RefreshCw, Pencil } from "lucide-react";
+import { Clock, Plus, Trash2, CheckCircle2, Play, Square, Settings, Circle, Calendar, RefreshCw, Pencil, UtensilsCrossed, Timer, Briefcase } from "lucide-react";
 import { format, addDays, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import VacationRequestForm from "../components/team/VacationRequestForm";
 import ClockInModal from "../components/timesheet/ClockInModal";
@@ -228,6 +228,21 @@ export default function TimeSheet() {
     setClockInTime(null);
     setElapsedTime("00:00:00");
     setOpenTimeEntryId(null);
+    queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
+  };
+
+  const handleForgotLunch = async () => {
+    if (!selectedEmployee) return;
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    // Find the most recent completed entry for today and subtract 30 min
+    const todayEntries = timeEntries.filter(e => e.employee_id === selectedEmployee.id && e.date === todayStr && e.entry_type === "work" && e.clock_out);
+    if (todayEntries.length === 0) return;
+    const latest = todayEntries.sort((a, b) => (b.clock_out || "").localeCompare(a.clock_out || ""))[0];
+    const newHours = Math.max(0, (latest.hours_worked || 0) - 0.5);
+    await base44.entities.TimeEntry.update(latest.id, {
+      hours_worked: parseFloat(newHours.toFixed(2)),
+      notes: (latest.notes ? latest.notes + " " : "") + "[−30 min lunch]"
+    });
     queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
   };
 
@@ -457,227 +472,183 @@ export default function TimeSheet() {
 
             {/* EMPLOYEE DETAILS TAB */}
             <TabsContent value="employee">
-              {currentUser?.role === "user" && selectedEmployee && (
-                <p className="text-sm font-semibold text-slate-700 mb-4">👤 {selectedEmployee.full_name}'s Time Card</p>
-              )}
               {/* Date Navigation */}
-              <div className="flex items-center gap-4 mb-8">
-              <Button
-                variant="outline"
-                onClick={() => setSelectedDate(addDays(selectedDate, -1))}
-              >
-                ← Previous
-              </Button>
-              <Input
-                type="date"
-                value={format(selectedDate, "yyyy-MM-dd")}
-                onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                className="max-w-xs"
-              />
-              <Button
-                variant="outline"
-                onClick={() => setSelectedDate(addDays(selectedDate, 1))}
-              >
-                Next →
-              </Button>
-              <span className="text-sm text-slate-600 ml-auto">
-                {format(selectedDate, "EEEE, MMMM d, yyyy")}
-              </span>
-            </div>
+              <div className="flex items-center gap-3 mb-6 flex-wrap">
+                <Button variant="outline" size="sm" onClick={() => setSelectedDate(addDays(selectedDate, -1))}>← Prev</Button>
+                <Input type="date" value={format(selectedDate, "yyyy-MM-dd")} onChange={(e) => setSelectedDate(new Date(e.target.value))} className="max-w-[160px] text-sm" />
+                <Button variant="outline" size="sm" onClick={() => setSelectedDate(addDays(selectedDate, 1))}>Next →</Button>
+                <span className="text-sm text-slate-500 ml-auto font-medium">{format(selectedDate, "EEEE, MMMM d, yyyy")}</span>
+              </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Employee List */}
-            {currentUser?.role === "admin" && (
-             <div className="lg:col-span-1">
-               <Card>
-                 <CardHeader>
-                   <CardTitle className="text-lg">Employees</CardTitle>
-                 </CardHeader>
-                 <CardContent className="space-y-2 max-h-96 overflow-y-auto">
-                   {employees.map((emp) => (
-                     <button
-                       key={emp.id}
-                       onClick={() => setSelectedEmployee(emp)}
-                       className={`w-full text-left p-3 rounded-lg border transition-all ${
-                         selectedEmployee?.id === emp.id
-                           ? "bg-amber-50 border-amber-200 font-semibold text-amber-900"
-                           : "border-slate-200 hover:bg-slate-50 text-slate-700"
-                       }`}
-                     >
-                       {emp.full_name}
-                       <span className="text-xs text-slate-500 block">{emp.position}</span>
-                     </button>
-                   ))}
-                 </CardContent>
-               </Card>
-             </div>
-            )}
-            {currentUser?.role === "user" && !selectedEmployee && (
-             <div className="lg:col-span-1">
-               <Card className="bg-amber-50 border-amber-200">
-                 <CardContent className="pt-6 text-center">
-                   <p className="text-slate-600 font-medium">Loading your profile...</p>
-                 </CardContent>
-               </Card>
-             </div>
-            )}
-
-          {/* Time Entries */}
-          <div className="lg:col-span-2 space-y-4">
-            {selectedEmployee ? (
-              <>
-                <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-slate-900">
-                    {selectedEmployee.full_name}'s Time Card
-                  </h2>
-                  <div className="flex gap-2 flex-wrap">
-                    {clockInTime ? (
-                      <>
-                        <Button onClick={handleClockOut} className="bg-red-600 hover:bg-red-700">
-                          <Square className="w-4 h-4 mr-2" />
-                          Clock Out ({elapsedTime})
-                        </Button>
-                        <Button onClick={() => setShowSwitchModal(true)} variant="outline" className="border-amber-400 text-amber-700 hover:bg-amber-50">
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Switch Project{currentProjectName ? ` · ${currentProjectName}` : ""}
-                        </Button>
-                      </>
-                    ) : (
-                      <Button onClick={handleClockIn} className="bg-green-600 hover:bg-green-700">
-                        <Play className="w-4 h-4 mr-2" />
-                        Clock In
-                      </Button>
-                    )}
-                    {currentUser?.role === "admin" && (
-                     <Button
-                       onClick={() => setShowAddEntry(true)}
-                       variant="outline"
-                     >
-                       <Plus className="w-4 h-4 mr-2" />
-                       Add Entry
-                     </Button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Daily Summary */}
-                <Card className="bg-gradient-to-br from-slate-50 to-slate-100">
-                  <CardContent className="pt-6">
-                    <div className="grid grid-cols-4 gap-4 text-center">
-                      <div>
-                        <p className="text-sm text-slate-600">Work Hours</p>
-                        <p className="text-2xl font-bold text-slate-900">
-                          {employeeEntries
-                            .filter(e => e.entry_type === "work")
-                            .reduce((sum, e) => sum + (e.hours_worked || 0), 0)
-                            .toFixed(2)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-slate-600">PTO Days</p>
-                        <p className="text-2xl font-bold text-yellow-600">
-                          {employeeEntries.filter(e => e.entry_type === "pto").length}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-slate-600">Vacation Days</p>
-                        <p className="text-2xl font-bold text-purple-600">
-                          {employeeEntries.filter(e => e.entry_type === "vacation").length}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-slate-600">Sick Days</p>
-                        <p className="text-2xl font-bold text-red-600">
-                          {employeeEntries.filter(e => e.entry_type === "sick").length}
-                        </p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Entries List */}
-                <div className="space-y-3">
-                  {employeeEntries.length === 0 ? (
-                    <Card className="text-center py-8">
-                      <p className="text-slate-500">No time entries for this date</p>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Admin: Employee List */}
+                {currentUser?.role === "admin" && (
+                  <div className="lg:col-span-1">
+                    <Card>
+                      <CardHeader><CardTitle className="text-lg">Employees</CardTitle></CardHeader>
+                      <CardContent className="space-y-2 max-h-96 overflow-y-auto">
+                        {employees.map((emp) => (
+                          <button key={emp.id} onClick={() => setSelectedEmployee(emp)}
+                            className={`w-full text-left p-3 rounded-lg border transition-all ${selectedEmployee?.id === emp.id ? "bg-amber-50 border-amber-300 font-semibold text-amber-900" : "border-slate-200 hover:bg-slate-50 text-slate-700"}`}>
+                            {emp.full_name}
+                            <span className="text-xs text-slate-500 block">{emp.position}</span>
+                          </button>
+                        ))}
+                      </CardContent>
                     </Card>
-                  ) : (
-                    employeeEntries.map((entry) => (
-                      <Card key={entry.id} className="border-l-4 border-l-amber-500">
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${typeColors[entry.entry_type]}`}>
-                                  {entry.entry_type.toUpperCase()}
-                                </span>
-                                {entry.approved && (
-                                  <CheckCircle2 className="w-4 h-4 text-green-600" />
-                                )}
-                              </div>
-                              {entry.entry_type === "work" && (
-                                <div className="text-sm text-slate-600">
-                                  <p className="font-medium text-slate-700">{format(new Date(entry.date), "MMM d, yyyy")}</p>
-                                  <p>{entry.clock_in} - {entry.clock_out} ({entry.hours_worked} hrs)</p>
-                                </div>
-                              )}
-                              {entry.entry_type !== "work" && (
-                                <p className="text-sm text-slate-600 font-medium">{format(new Date(entry.date), "MMM d, yyyy")}</p>
-                              )}
-                              {entry.notes && (
-                                <p className="text-sm text-slate-600 mt-1">{entry.notes}</p>
-                              )}
-                            </div>
-                            {currentUser?.role === "admin" && (
-                            <div className="flex gap-2">
-                              {!entry.approved && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    approveEntryMutation.mutate({
-                                      id: entry.id,
-                                      data: { approved: true }
-                                    })
-                                  }
-                                  className="text-green-600"
-                                >
-                                  Approve
+                  </div>
+                )}
+
+                {/* Time Card Content */}
+                <div className={currentUser?.role === "admin" ? "lg:col-span-2 space-y-5" : "lg:col-span-3 space-y-5"}>
+                  {selectedEmployee ? (() => {
+                    const dateStr = format(selectedDate, "yyyy-MM-dd");
+                    const dayEntries = employeeEntries.filter(e => e.date === dateStr);
+                    const workEntries = dayEntries.filter(e => e.entry_type === "work");
+                    const totalDayHours = workEntries.reduce((s, e) => s + (e.hours_worked || 0), 0);
+                    const isToday = dateStr === format(new Date(), "yyyy-MM-dd");
+
+                    // Week total (Mon–Sun containing selectedDate)
+                    const weekMon = startOfWeek(selectedDate, { weekStartsOn: 1 });
+                    const weekSun = endOfWeek(selectedDate, { weekStartsOn: 1 });
+                    const weekEntries = employeeEntries.filter(e => {
+                      const d = new Date(e.date);
+                      return e.entry_type === "work" && d >= weekMon && d <= weekSun;
+                    });
+                    const weekTotal = weekEntries.reduce((s, e) => s + (e.hours_worked || 0), 0);
+
+                    return (
+                      <>
+                        {/* Header + Clock Controls */}
+                        <div className="flex items-center justify-between flex-wrap gap-3">
+                          <div>
+                            <h2 className="text-xl font-bold text-slate-900">{selectedEmployee.full_name}</h2>
+                            <p className="text-sm text-slate-500">{selectedEmployee.position || "Employee"}</p>
+                          </div>
+                          <div className="flex gap-2 flex-wrap">
+                            {isToday && (clockInTime ? (
+                              <>
+                                <Button onClick={handleClockOut} className="bg-red-600 hover:bg-red-700 gap-2">
+                                  <Square className="w-4 h-4" /> Clock Out ({elapsedTime})
                                 </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleOpenEdit(entry)}
-                                className="text-blue-600"
-                              >
-                                <Pencil className="w-4 h-4" />
+                                <Button onClick={() => setShowSwitchModal(true)} variant="outline" className="border-amber-400 text-amber-700 hover:bg-amber-50 gap-2">
+                                  <RefreshCw className="w-4 h-4" /> Switch{currentProjectName ? ` · ${currentProjectName}` : ""}
+                                </Button>
+                                <Button onClick={handleForgotLunch} variant="outline" className="border-slate-300 text-slate-600 hover:bg-slate-50 gap-2" title="Deduct 30 min for missed lunch">
+                                  <UtensilsCrossed className="w-4 h-4" /> Forgot Lunch
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button onClick={handleClockIn} className="bg-green-600 hover:bg-green-700 gap-2">
+                                  <Play className="w-4 h-4" /> Clock In
+                                </Button>
+                                {workEntries.length > 0 && (
+                                  <Button onClick={handleForgotLunch} variant="outline" className="border-slate-300 text-slate-600 hover:bg-slate-50 gap-2" title="Deduct 30 min for missed lunch">
+                                    <UtensilsCrossed className="w-4 h-4" /> Forgot Lunch
+                                  </Button>
+                                )}
+                              </>
+                            ))}
+                            {currentUser?.role === "admin" && (
+                              <Button onClick={() => setShowAddEntry(true)} variant="outline" className="gap-2">
+                                <Plus className="w-4 h-4" /> Add Entry
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => deleteEntryMutation.mutate(entry.id)}
-                                className="text-red-600"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
                             )}
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))
+                        </div>
+
+                        {/* Day + Week Summary Cards */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <div className="col-span-2 bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200 rounded-xl px-5 py-4">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Timer className="w-4 h-4 text-amber-600" />
+                              <p className="text-xs font-bold text-amber-700 uppercase tracking-wide">{isToday ? "Today's Total" : format(selectedDate, "MMM d") + " Total"}</p>
+                            </div>
+                            <p className="text-3xl font-bold text-amber-900">{totalDayHours.toFixed(2)}<span className="text-sm font-normal ml-1 text-amber-700">hrs</span></p>
+                            {isToday && clockInTime && <p className="text-xs text-amber-600 mt-1">⏱ Currently clocked in: {elapsedTime}</p>}
+                          </div>
+                          <div className="col-span-2 bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-xl px-5 py-4">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Clock className="w-4 h-4 text-slate-500" />
+                              <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">This Week</p>
+                            </div>
+                            <p className="text-3xl font-bold text-slate-800">{weekTotal.toFixed(2)}<span className="text-sm font-normal ml-1 text-slate-500">hrs</span></p>
+                            <p className="text-xs text-slate-400 mt-1">{weekTotal > 40 ? `+${(weekTotal - 40).toFixed(2)} overtime` : `${(40 - weekTotal).toFixed(2)} hrs to 40`}</p>
+                          </div>
+                        </div>
+
+                        {/* Work Entries for the Selected Day */}
+                        <div>
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-3">
+                            Work Entries — {format(selectedDate, "MMMM d, yyyy")}
+                          </p>
+                          {workEntries.length === 0 && dayEntries.filter(e => e.entry_type !== "work").length === 0 ? (
+                            <div className="text-center py-10 bg-white border border-slate-200 rounded-xl text-slate-400">
+                              <Clock className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                              <p className="text-sm">No entries for this day</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              {workEntries.map((entry, idx) => (
+                                <div key={entry.id} className="bg-white border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-4 shadow-sm">
+                                  <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                                    <span className="text-xs font-bold text-amber-700">{idx + 1}</span>
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      {entry.project_name && (
+                                        <span className="flex items-center gap-1 text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
+                                          <Briefcase className="w-3 h-3" /> {entry.project_name}
+                                        </span>
+                                      )}
+                                      {entry.approved && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                                    </div>
+                                    <div className="flex items-center gap-3 mt-1 text-sm text-slate-600">
+                                      <span className="font-mono font-semibold text-slate-800">{entry.clock_in || "—"} → {entry.clock_out || <span className="text-green-600 animate-pulse">Active</span>}</span>
+                                      {entry.hours_worked != null && (
+                                        <span className="text-xs bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-full border border-blue-100">{entry.hours_worked.toFixed(2)} hrs</span>
+                                      )}
+                                    </div>
+                                    {entry.notes && <p className="text-xs text-slate-400 mt-0.5 italic">{entry.notes}</p>}
+                                  </div>
+                                  {currentUser?.role === "admin" && (
+                                    <div className="flex gap-1 flex-shrink-0">
+                                      {!entry.approved && (
+                                        <Button size="sm" variant="ghost" onClick={() => approveEntryMutation.mutate({ id: entry.id, data: { approved: true } })} className="text-green-600 hover:bg-green-50 h-8 px-2 text-xs">✓ Approve</Button>
+                                      )}
+                                      <Button size="sm" variant="ghost" onClick={() => handleOpenEdit(entry)} className="text-blue-600 hover:bg-blue-50 h-8 w-8 p-0"><Pencil className="w-3.5 h-3.5" /></Button>
+                                      <Button size="sm" variant="ghost" onClick={() => deleteEntryMutation.mutate(entry.id)} className="text-red-500 hover:bg-red-50 h-8 w-8 p-0"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+
+                              {/* Non-work entries (PTO, vacation, sick) */}
+                              {dayEntries.filter(e => e.entry_type !== "work").map(entry => (
+                                <div key={entry.id} className={`border rounded-xl px-4 py-3 flex items-center justify-between shadow-sm ${typeColors[entry.entry_type]} bg-opacity-30`}>
+                                  <div>
+                                    <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded-full ${typeColors[entry.entry_type]}`}>{entry.entry_type}</span>
+                                    {entry.notes && <p className="text-xs text-slate-500 mt-1">{entry.notes}</p>}
+                                  </div>
+                                  {currentUser?.role === "admin" && (
+                                    <Button size="sm" variant="ghost" onClick={() => deleteEntryMutation.mutate(entry.id)} className="text-red-500 hover:bg-red-50 h-8 w-8 p-0"><Trash2 className="w-3.5 h-3.5" /></Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })() : (
+                    <div className="text-center py-16 bg-white border border-slate-200 rounded-xl">
+                      <Clock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                      <p className="text-slate-500 font-medium">Select an employee to view their time card</p>
+                    </div>
                   )}
                 </div>
-              </>
-            ) : (
-              <Card className="text-center py-12">
-                <Clock className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <p className="text-slate-600 font-medium">Select an employee to view their time card</p>
-              </Card>
-            )}
-            </div>
-            </div>
+              </div>
             </TabsContent>
 
             {/* VACATION TAB */}

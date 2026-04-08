@@ -34,6 +34,7 @@ export default function Layout({ children, currentPageName }) {
   const [showClockInModal, setShowClockInModal] = useState(false);
   const [showSwitchModal, setShowSwitchModal] = useState(false);
   const [currentProjectName, setCurrentProjectName] = useState(null);
+  const [todayCompletedHours, setTodayCompletedHours] = useState(0);
 
   const defaultNavGroups = {
     dashboard: {
@@ -382,6 +383,9 @@ export default function Layout({ children, currentPageName }) {
             reconstructed.setHours(h, m, 0, 0);
             setClockInTime(reconstructed);
           }
+          // Sum all completed work entries for today
+          const completedToday = entries.filter(e => e.date === todayStr && e.clock_out && e.hours_worked);
+          setTodayCompletedHours(completedToday.reduce((s, e) => s + (e.hours_worked || 0), 0));
         }
       }
       setPermissionsReady(true);
@@ -488,7 +492,16 @@ export default function Layout({ children, currentPageName }) {
               {currentUser?.full_name && (
                 <p className="text-xs font-semibold text-slate-700 text-center mb-2 truncate">👤 {currentUser.full_name}</p>
               )}
-              {clockInTime ? (
+              {/* Daily total completed hours */}
+              {(todayCompletedHours > 0 || clockInTime) && (
+                <div className="mb-2 text-center">
+                  <p className="text-xs text-slate-600 font-medium">
+                    Today: <span className="font-bold text-slate-800">{todayCompletedHours.toFixed(2)} hrs</span>
+                    {clockInTime && <span className="text-slate-500"> + active</span>}
+                  </p>
+                </div>
+              )}
+          {clockInTime ? (
                 <div className="flex gap-1.5">
                   <button
                     onClick={handleClockOut}
