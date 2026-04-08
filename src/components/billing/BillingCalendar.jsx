@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isSameDay } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isSameDay, differenceInCalendarDays, differenceInCalendarWeeks, parseISO } from "date-fns";
+import { ChevronLeft, ChevronRight, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 
 const STATUS_COLORS = {
   "Current":  "bg-green-100 text-green-800 border-green-300",
@@ -10,45 +12,87 @@ const STATUS_COLORS = {
   "Paid Off": "bg-slate-100 text-slate-500 border-slate-300",
 };
 
+// Returns true if a billing item with the given recurrence should appear on `day`
+function occursOnDay(item, day) {
+  if (!item.due_date || item.status === "Paid Off") return false;
+  const anchor = parseISO(item.due_date);
+  const recurrence = item.recurrence || "monthly";
+
+  if (recurrence === "once") {
+    return isSameDay(anchor, day);
+  }
+  if (recurrence === "monthly") {
+    // Same day-of-month each month, on or after anchor month
+    return anchor.getDate() === day.getDate() && day >= startOfMonth(anchor);
+  }
+  if (recurrence === "weekly") {
+    // Same day-of-week, on or after anchor
+    return day >= anchor && differenceInCalendarDays(day, anchor) % 7 === 0;
+  }
+  if (recurrence === "biweekly") {
+    return day >= anchor && differenceInCalendarDays(day, anchor) % 14 === 0;
+  }
+  if (recurrence === "quarterly") {
+    if (day < anchor) return false;
+    // Same day-of-month, every 3 months
+    const monthDiff = (day.getFullYear() - anchor.getFullYear()) * 12 + (day.getMonth() - anchor.getMonth());
+    return anchor.getDate() === day.getDate() && monthDiff % 3 === 0;
+  }
+  if (recurrence === "annually") {
+    if (day < anchor) return false;
+    return anchor.getDate() === day.getDate() && anchor.getMonth() === day.getMonth();
+  }
+  return false;
+}
+
+const RECURRENCE_LABELS = {
+  once: "One-time",
+  weekly: "Weekly",
+  biweekly: "Bi-weekly",
+  monthly: "Monthly",
+  quarterly: "Quarterly",
+  annually: "Annually",
+};
+
 export default function BillingCalendar({ items }) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const queryClient = useQueryClient();
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-
-  // Pad start so calendar aligns to Sunday
-  const startPad = getDay(monthStart); // 0=Sun
+  const startPad = getDay(monthStart);
   const paddedDays = [...Array(startPad).fill(null), ...days];
 
-  // Group items by due_date day-of-month matching this month
-  const getDueItems = (day) => {
-    if (!day) return [];
-    const dayStr = format(day, "yyyy-MM-dd");
-    return items.filter(i => i.due_date === dayStr || (i.due_date && i.due_date.slice(8, 10) === format(day, "dd") && i.due_date.slice(5, 7) === format(day, "MM")));
-  };
+  const today = new Date();
 
-  // For recurring monthly bills, match by day-of-month only
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payment_log }) => base44.entities.BillingItem.update(id, { payment_log }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["billing-items"] }),
+  });
+
   const getItemsForDay = (day) => {
     if (!day) return [];
-    const dayOfMonth = parseInt(format(day, "d"), 10);
-    const monthStr = format(day, "yyyy-MM");
-
-    return items.filter(i => {
-      if (!i.due_date) return false;
-      if (i.status === "Paid Off") return false;
-      const due = new Date(i.due_date + "T12:00:00");
-      // Exact match
-      if (format(due, "yyyy-MM-dd") === format(day, "yyyy-MM-dd")) return true;
-      // Monthly recurrence: same day-of-month for Monthly Bills
-      if (i.category === "Monthly Bill") {
-        return due.getDate() === dayOfMonth;
-      }
-      return false;
-    });
+    return items.filter(i => occursOnDay(i, day));
   };
 
-  const today = new Date();
+  const isPaidForDate = (item, dateStr) => {
+    const log = item.payment_log || [];
+    const entry = log.find(e => e.date === dateStr);
+    return entry ? entry.paid : false;
+  };
+
+  const togglePaid = (item, dateStr) => {
+    const log = [...(item.payment_log || [])];
+    const idx = log.findIndex(e => e.date === dateStr);
+    const currentPaid = idx >= 0 ? log[idx].paid : false;
+    if (idx >= 0) {
+      log[idx] = { ...log[idx], paid: !currentPaid };
+    } else {
+      log.push({ date: dateStr, paid: true });
+    }
+    updateMutation.mutate({ id: item.id, payment_log: log });
+  };
 
   return (
     <div>
@@ -76,6 +120,8 @@ export default function BillingCalendar({ items }) {
           if (!day) return <div key={`pad-${idx}`} />;
           const dueItems = getItemsForDay(day);
           const isToday = isSameDay(day, today);
+          const dayStr = format(day, "yyyy-MM-dd");
+
           return (
             <div
               key={day.toISOString()}
@@ -85,15 +131,38 @@ export default function BillingCalendar({ items }) {
                 {format(day, "d")}
               </div>
               <div className="space-y-0.5">
-                {dueItems.map(item => (
-                  <div
-                    key={item.id}
-                    title={`${item.name} — ${item.category} — ${item.status}${item.monthly_amount ? ` — $${item.monthly_amount}` : ""}`}
-                    className={`text-xs px-1 py-0.5 rounded border truncate font-medium ${STATUS_COLORS[item.status] || "bg-slate-100 text-slate-700 border-slate-200"}`}
-                  >
-                    {item.name}
-                  </div>
-                ))}
+                {dueItems.map(item => {
+                  const paid = isPaidForDate(item, dayStr);
+                  return (
+                    <div key={item.id} className="group">
+                      <div
+                        className={`text-xs px-1 py-0.5 rounded border truncate font-medium transition-all ${
+                          paid
+                            ? "bg-green-100 text-green-700 border-green-300 line-through opacity-60"
+                            : STATUS_COLORS[item.status] || "bg-slate-100 text-slate-700 border-slate-200"
+                        }`}
+                        title={`${item.name} — ${RECURRENCE_LABELS[item.recurrence] || "Monthly"}${item.monthly_amount ? ` — $${item.monthly_amount}` : ""} — ${paid ? "PAID" : item.status}`}
+                      >
+                        {item.name}
+                      </div>
+                      {/* Paid/Not paid toggle */}
+                      <button
+                        onClick={() => togglePaid(item, dayStr)}
+                        className={`w-full mt-0.5 flex items-center gap-0.5 text-[10px] font-semibold rounded px-1 py-0.5 transition-all ${
+                          paid
+                            ? "bg-green-50 text-green-600 hover:bg-red-50 hover:text-red-600"
+                            : "bg-slate-50 text-slate-400 hover:bg-green-50 hover:text-green-600"
+                        }`}
+                        title={paid ? "Mark as unpaid" : "Mark as paid"}
+                      >
+                        {paid
+                          ? <><CheckCircle2 className="w-2.5 h-2.5 flex-shrink-0" /> Paid</>
+                          : <><XCircle className="w-2.5 h-2.5 flex-shrink-0" /> Unpaid</>
+                        }
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
@@ -108,7 +177,10 @@ export default function BillingCalendar({ items }) {
             <span className="text-xs text-slate-600">{status}</span>
           </div>
         ))}
-        <span className="text-xs text-slate-400 ml-2">· Monthly Bills recur each month by due day · Hover items for details</span>
+        <div className="flex items-center gap-1.5">
+          <CheckCircle2 className="w-3 h-3 text-green-600" />
+          <span className="text-xs text-slate-600">Paid this occurrence</span>
+        </div>
       </div>
     </div>
   );

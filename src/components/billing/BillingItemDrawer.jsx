@@ -10,6 +10,7 @@ import { base44 } from "@/api/base44Client";
 
 const EMPTY = {
   name: "", category: "Monthly Bill", status: "Current", priority: "Normal",
+  recurrence: "monthly",
   monthly_amount: "", total_owed: "", original_amount: "", amount_paid: "",
   due_date: "", auto_pay: false, plan_notes: "", vendor_contact: "", notes: ""
 };
@@ -102,6 +103,21 @@ export default function BillingItemDrawer({ open, onOpenChange, item, defaultCat
               <Label>Due Date</Label>
               <Input type="date" value={form.due_date || ""} onChange={e => set("due_date", e.target.value)} />
             </div>
+          </div>
+
+          <div>
+            <Label>Recurrence</Label>
+            <Select value={form.recurrence || "monthly"} onValueChange={v => set("recurrence", v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="once">One-time (no recurrence)</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="biweekly">Bi-weekly (every 2 weeks)</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="quarterly">Quarterly (every 3 months)</SelectItem>
+                <SelectItem value="annually">Annually</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

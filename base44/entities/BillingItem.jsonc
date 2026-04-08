@@ -36,6 +36,19 @@
       "default": "Normal",
       "description": "Priority level"
     },
+    "recurrence": {
+      "type": "string",
+      "enum": [
+        "once",
+        "weekly",
+        "biweekly",
+        "monthly",
+        "quarterly",
+        "annually"
+      ],
+      "default": "monthly",
+      "description": "How often this bill recurs"
+    },
     "monthly_amount": {
       "type": "number",
       "description": "Monthly payment amount"
@@ -55,12 +68,28 @@
     "due_date": {
       "type": "string",
       "format": "date",
-      "description": "Payment due date"
+      "description": "Payment due date (anchor date for recurrence)"
     },
     "auto_pay": {
       "type": "boolean",
       "default": false,
       "description": "Whether this is set up for auto-pay"
+    },
+    "payment_log": {
+      "type": "array",
+      "description": "Log of paid/unpaid status per occurrence date",
+      "items": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "paid": {
+            "type": "boolean"
+          }
+        }
+      }
     },
     "plan_notes": {
       "type": "string",
