@@ -136,6 +136,16 @@ export default function MorningMeeting() {
     queryFn: () => base44.entities.ProductionItem.list("-updated_date", 200)
   });
 
+  const { data: endOfDayReviews = [] } = useQuery({
+    queryKey: ["endOfDayReviews"],
+    queryFn: () => base44.entities.EndOfDayReview.list("-submitted_at", 100)
+  });
+
+  const { data: columnMoveLogs = [] } = useQuery({
+    queryKey: ["columnMoveLogsAll"],
+    queryFn: () => base44.entities.ColumnMoveLog.list("-moved_at", 500)
+  });
+
   const { data: struggles = [] } = useQuery({
     queryKey: ["struggles"],
     queryFn: () => base44.entities.Struggle.list("-created_date", 20)
@@ -548,40 +558,149 @@ export default function MorningMeeting() {
           </SectionCard>
 
           {/* 4. Previous Day Review */}
-          <SectionCard title="Previous Day Review" icon={ClipboardList} color="blue">
+          <SectionCard title="Previous Day Review" icon={ClipboardList} color="blue" defaultOpen={true}>
             {(() => {
               const yesterday = format(subDays(selectedDate, 1), "yyyy-MM-dd");
-              const movedFaceToSpray = productionItems.filter(i =>
-                !i.is_job_info && (i.stage_move_log || []).some(l => l.from_stage === "face_frame" && l.to_stage === "spray" && l.timestamp?.startsWith(yesterday))
-              );
-              const movedSprayToBuild = productionItems.filter(i =>
-                !i.is_job_info && (i.stage_move_log || []).some(l => l.from_stage === "spray" && l.to_stage === "build" && l.timestamp?.startsWith(yesterday))
-              );
-              const movedBuildToComplete = productionItems.filter(i =>
-                !i.is_job_info && (i.stage_move_log || []).some(l => l.from_stage === "build" && l.to_stage === "complete" && l.timestamp?.startsWith(yesterday))
-              );
-              const sections = [
-                { label: "Face Frame → Spray", items: movedFaceToSpray, color: "bg-purple-50 border-purple-200", dot: "bg-purple-500" },
-                { label: "Spray → Build", items: movedSprayToBuild, color: "bg-amber-50 border-amber-200", dot: "bg-amber-500" },
-                { label: "Build → Complete", items: movedBuildToComplete, color: "bg-green-50 border-green-200", dot: "bg-green-500" },
+
+              // --- End of Day Reviews ---
+              const RATING_ORDER = ["great", "good", "okay", "bad", "terrible"];
+              const RATING_LABELS = { great: "Great 🌟", good: "Good 😊", okay: "Okay 😐", bad: "Bad 😟", terrible: "Terrible 😣" };
+              const RATING_SCORES = { great: 4, good: 3, okay: 2, bad: 1, terrible: 0 };
+              const yesterdayReviews = endOfDayReviews.filter(r => r.date === yesterday);
+              const avgScore = yesterdayReviews.length > 0
+                ? yesterdayReviews.reduce((sum, r) => sum + (RATING_SCORES[r.day_rating] ?? 2), 0) / yesterdayReviews.length
+                : null;
+              const dominantRating = avgScore !== null
+                ? RATING_ORDER[Math.max(0, Math.round(4 - avgScore))]
+                : null;
+              const cleanCount = yesterdayReviews.filter(r => r.area_clean).length;
+              const blockers = yesterdayReviews.filter(r => r.blockers?.trim()).map(r => ({ who: r.submitted_by, text: r.blockers }));
+              const accomplishments = yesterdayReviews.filter(r => r.accomplishments?.trim()).map(r => ({ who: r.submitted_by, text: r.accomplishments }));
+              const tomorrowPlans = yesterdayReviews.filter(r => r.tomorrow_plan?.trim()).map(r => ({ who: r.submitted_by, text: r.tomorrow_plan }));
+
+              // --- Production Points by Stage ---
+              const STAGE_CONFIG = [
+                { id: "face_frame", label: "Face Frame", color: "bg-blue-100 text-blue-800 border-blue-200" },
+                { id: "spray",      label: "Spray",      color: "bg-purple-100 text-purple-800 border-purple-200" },
+                { id: "build",      label: "Build",      color: "bg-amber-100 text-amber-800 border-amber-200" },
+                { id: "complete",   label: "Complete",   color: "bg-green-100 text-green-800 border-green-200" },
+                { id: "on_hold",    label: "On Hold",    color: "bg-red-100 text-red-800 border-red-200" },
               ];
-              const totalMoved = movedFaceToSpray.length + movedSprayToBuild.length + movedBuildToComplete.length;
-              if (totalMoved === 0) return <p className="text-slate-400 text-sm text-center py-2">No stage moves recorded for yesterday.</p>;
+              const stagePts = {};
+              for (const log of columnMoveLogs) {
+                if (!log.moved_at) continue;
+                const logDate = format(new Date(log.moved_at), "yyyy-MM-dd");
+                if (logDate !== yesterday) continue;
+                const pts = parseFloat(log.points_awarded) || 0;
+                if (pts === 0) continue;
+                stagePts[log.to_column] = (stagePts[log.to_column] || 0) + pts;
+              }
+              const totalPts = Object.values(stagePts).reduce((s, v) => s + v, 0);
+              const hasAnyData = yesterdayReviews.length > 0 || totalPts > 0;
+
+              if (!hasAnyData) return (
+                <p className="text-slate-400 text-sm text-center py-4">No data recorded for {format(subDays(selectedDate, 1), "MMMM d")}.</p>
+              );
+
               return (
-                <div className="space-y-3">
-                  {sections.map(sec => sec.items.length > 0 && (
-                    <div key={sec.label}>
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">{sec.label}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {sec.items.map(item => (
-                          <div key={item.id} className={`flex items-center gap-1.5 rounded px-2 py-1 border text-sm ${sec.color}`}>
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${sec.dot}`} />
-                            <span className="text-slate-700 font-medium">{item.name}</span>
-                          </div>
-                        ))}
+                <div className="space-y-5">
+                  {/* Production Points */}
+                  {totalPts > 0 && (
+                    <div>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">📦 Points Produced by Stage</p>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {STAGE_CONFIG.map(({ id, label, color }) => {
+                          const pts = stagePts[id] || 0;
+                          return (
+                            <div key={id} className={`rounded-lg border px-3 py-2.5 text-center ${color} ${pts === 0 ? "opacity-40" : ""}`}>
+                              <p className="text-xs font-semibold mb-0.5">{label}</p>
+                              <p className="text-xl font-bold">{pts}<span className="text-xs font-normal ml-0.5">pts</span></p>
+                            </div>
+                          );
+                        })}
                       </div>
+                      <p className="text-right text-xs text-slate-400 mt-1">Total: <strong className="text-slate-700">{totalPts} pts</strong></p>
                     </div>
-                  ))}
+                  )}
+
+                  {/* EOD Review Summary */}
+                  {yesterdayReviews.length > 0 && (
+                    <div>
+                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">🌅 End of Day Reviews ({yesterdayReviews.length} submitted)</p>
+                      {/* Overall Rating */}
+                      <div className="flex items-center gap-4 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-3">
+                        <div className="flex-1">
+                          <p className="text-xs text-slate-500 mb-0.5">Overall Day Rating</p>
+                          <p className="text-lg font-bold text-slate-800">{dominantRating ? RATING_LABELS[dominantRating] : "—"}</p>
+                          <p className="text-xs text-slate-400">Avg score: {avgScore?.toFixed(1)}/4 · {yesterdayReviews.length} review{yesterdayReviews.length !== 1 ? "s" : ""}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-slate-500 mb-0.5">Area Clean</p>
+                          <p className={`text-base font-bold ${cleanCount === yesterdayReviews.length ? "text-green-600" : "text-orange-500"}`}>
+                            {cleanCount}/{yesterdayReviews.length}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Individual ratings */}
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {yesterdayReviews.map(r => {
+                          const ratingColors = { great: "bg-green-100 text-green-800", good: "bg-emerald-100 text-emerald-800", okay: "bg-yellow-100 text-yellow-800", bad: "bg-orange-100 text-orange-800", terrible: "bg-red-100 text-red-800" };
+                          return (
+                            <div key={r.id} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${ratingColors[r.day_rating] || "bg-slate-100 text-slate-600"}`}>
+                              {r.submitted_by} — {RATING_LABELS[r.day_rating]}
+                              {r.area_clean === false && <span className="ml-1 text-orange-500">⚠ Area</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Accomplishments */}
+                      {accomplishments.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">✅ Accomplished</p>
+                          <div className="space-y-1">
+                            {accomplishments.map((a, i) => (
+                              <div key={i} className="text-sm bg-green-50 border border-green-100 rounded-lg px-3 py-2">
+                                <span className="font-semibold text-green-800 text-xs">{a.who}: </span>
+                                <span className="text-slate-700">{a.text}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Blockers */}
+                      {blockers.length > 0 && (
+                        <div className="mb-3">
+                          <p className="text-xs font-semibold text-red-500 uppercase tracking-wide mb-1">🚧 Blockers</p>
+                          <div className="space-y-1">
+                            {blockers.map((b, i) => (
+                              <div key={i} className="text-sm bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                                <span className="font-semibold text-red-700 text-xs">{b.who}: </span>
+                                <span className="text-slate-700">{b.text}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Tomorrow's Plan */}
+                      {tomorrowPlans.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-1">📅 Today's Plan</p>
+                          <div className="space-y-1">
+                            {tomorrowPlans.map((t, i) => (
+                              <div key={i} className="text-sm bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                                <span className="font-semibold text-blue-700 text-xs">{t.who}: </span>
+                                <span className="text-slate-700">{t.text}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })()}
