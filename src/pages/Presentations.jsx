@@ -240,81 +240,129 @@ function PresentationEditor({ presId }) {
     <>
       <style>{`
         @media print {
-          .no-print { display: none !important; }
-          body { margin: 0; padding: 0; }
-          .print-slide-page {
+          body * { visibility: hidden; }
+          nav, aside, header, .sidebar, [class*="sidebar"],
+          [class*="nav"], [class*="toolbar"], [class*="header"],
+          .no-print, button { display: none !important; }
+
+          #print-slides, #print-slides * { visibility: visible; }
+
+          #print-slides {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+          }
+
+          .print-slide {
             page-break-after: always;
+            break-after: page;
             width: 100vw;
             min-height: 100vh;
+            padding: 32px;
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            padding: 24px;
-            box-sizing: border-box;
             background: white;
           }
-          .print-only-slides { display: block !important; }
-          .editor-main { display: none !important; }
+
+          .print-slide:last-child {
+            page-break-after: avoid;
+            break-after: avoid;
+          }
+
+          .print-slide img {
+            object-fit: contain !important;
+            max-width: 100%;
+            height: auto;
+          }
+
+          .print-slide table {
+            width: 100%;
+          }
+
+          @page {
+            size: landscape;
+            margin: 0.5in;
+          }
         }
-        @page { size: landscape; margin: 0.5cm; }
-        .print-only-slides { display: none; }
       `}</style>
 
-      {/* Print-only slides */}
-      <div className="print-only-slides">
+      {/* Always-rendered print container — hidden on screen, shown via @media print */}
+      <div id="print-slides" style={{ position: "absolute", top: 0, left: 0, width: 0, height: 0, overflow: "hidden", visibility: "hidden" }}>
         {slides.map((slide, i) => {
-          const rawImages = parseImages(slide.image_3d_url);
+          const images = parseImages(slide.image_3d_url);
           const spec = parseSpec(slide.notes);
-          const images = rawImages; // each is {url, width} or string
           const count = images.length;
-          const gridStyle = count === 1 ? { gridTemplateColumns: "1fr" } : count === 2 ? { gridTemplateColumns: "1fr 1fr" } : { gridTemplateColumns: "1fr 1fr 1fr" };
+          const gridCols = count === 1 ? "1fr" : count === 2 ? "1fr 1fr" : "1fr 1fr 1fr";
           return (
-            <div key={i} className="print-slide-page">
-              <div style={{ borderBottom: "2px solid #1e293b", paddingBottom: "8px", marginBottom: "12px" }}>
-                <h2 style={{ fontSize: "24px", fontWeight: "bold", margin: 0 }}>{slide.room_name}</h2>
-                {slide.slide_label && <p style={{ fontSize: "13px", color: "#64748b", margin: "2px 0 0" }}>{slide.slide_label}</p>}
+            <div key={i} className="print-slide">
+              {/* Room name header */}
+              <div style={{ borderBottom: "2px solid #1e293b", paddingBottom: "8px", marginBottom: "16px" }}>
+                <h2 style={{ fontSize: "26px", fontWeight: "bold", margin: 0, fontFamily: "Georgia, serif" }}>{slide.room_name}</h2>
+                {slide.slide_label && <p style={{ fontSize: "13px", color: "#64748b", margin: "4px 0 0" }}>{slide.slide_label}</p>}
               </div>
+
+              {/* Image grid */}
               {images.length > 0 && (
-                <div style={{ display: "grid", gap: "8px", marginBottom: "12px", ...gridStyle }}>
+                <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: "10px", marginBottom: "16px" }}>
                   {images.map((imgItem, j) => {
                     const src = imgItem?.url || imgItem;
-                    const w = imgItem?.width;
-                    return <img key={j} src={src} alt="" style={{ width: w ? w + "px" : "100%", maxHeight: "320px", objectFit: "contain", background: "#f8fafc", borderRadius: "4px" }} />;
+                    return (
+                      <img
+                        key={j}
+                        src={src}
+                        alt=""
+                        style={{ width: "100%", maxHeight: "380px", objectFit: "contain", background: "#f8fafc", borderRadius: "4px", display: "block" }}
+                      />
+                    );
                   })}
                 </div>
               )}
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
+
+              {/* Spec table */}
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", marginBottom: "12px" }}>
                 <tbody>
                   <tr>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", fontWeight: "600", background: "#f8fafc" }}>Wood Species / Finish</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>{spec.wood_species || ""}</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", fontWeight: "600", background: "#f8fafc" }}>Crown Type</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>{spec.crown_type || ""}</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", fontWeight: "600", background: "#f8fafc" }}>Ceiling Height</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>{spec.ceiling_height || ""}</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px", fontWeight: "600", background: "#f8fafc", whiteSpace: "nowrap" }}>Wood Species / Finish</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px" }}>{spec.wood_species || ""}</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px", fontWeight: "600", background: "#f8fafc", whiteSpace: "nowrap" }}>Crown Type</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px" }}>{spec.crown_type || ""}</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px", fontWeight: "600", background: "#f8fafc", whiteSpace: "nowrap" }}>Ceiling Height</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px" }}>{spec.ceiling_height || ""}</td>
                   </tr>
                   <tr>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", fontWeight: "600", background: "#f8fafc" }}>Notes</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }} colSpan={3}>{spec.notes_bullets || ""}</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", fontWeight: "600", background: "#f8fafc" }}>Door Profile</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>{spec.door_profile || ""}</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px", fontWeight: "600", background: "#f8fafc" }}>Notes</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px" }} colSpan={3}>{spec.notes_bullets || ""}</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px", fontWeight: "600", background: "#f8fafc", whiteSpace: "nowrap" }}>Door Profile</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px" }}>{spec.door_profile || ""}</td>
                   </tr>
                   <tr>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", fontWeight: "600", background: "#f8fafc" }}>Finish</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>{spec.finish || ""}</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", fontWeight: "600", background: "#f8fafc" }}>Cab Finished to Height</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }} colSpan={3}>{spec.cab_finished_height || ""}</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px", fontWeight: "600", background: "#f8fafc" }}>Finish</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px" }}>{spec.finish || ""}</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px", fontWeight: "600", background: "#f8fafc", whiteSpace: "nowrap" }}>Cab Finished to Height</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px" }} colSpan={3}>{spec.cab_finished_height || ""}</td>
                   </tr>
                 </tbody>
               </table>
+
+              {/* 2D drawing */}
+              {slide.image_2d_url && (
+                <img
+                  src={slide.image_2d_url}
+                  alt="2D Drawing"
+                  style={{ maxWidth: "100%", maxHeight: "280px", objectFit: "contain", background: "#f8fafc", borderRadius: "4px", display: "block" }}
+                />
+              )}
             </div>
           );
         })}
       </div>
 
       {/* Editor UI */}
-      <div className="editor-main flex flex-col h-screen bg-slate-100">
+      <div className="flex flex-col h-screen bg-slate-100">
         {/* Toolbar */}
-        <div className="no-print bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-3 flex-shrink-0">
+        <div className="no-print bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-3 flex-shrink-0 z-10">
           <button
             onClick={() => navigateTo("list")}
             className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 transition-colors"
@@ -350,7 +398,7 @@ function PresentationEditor({ presId }) {
         {/* Two-panel layout */}
         <div className="flex flex-1 overflow-hidden">
           {/* Left: thumbnail strip */}
-          <div className="no-print w-52 bg-white border-r border-slate-200 p-3 flex flex-col overflow-hidden flex-shrink-0">
+          <div className="no-print w-52 bg-white border-r border-slate-200 p-3 flex flex-col overflow-hidden flex-shrink-0 print:hidden">
             <SlideThumbnailStrip
               slides={slides}
               selectedIdx={selectedIdx}
