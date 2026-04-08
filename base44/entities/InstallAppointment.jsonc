@@ -1,0 +1,56 @@
+{
+  "name": "InstallAppointment",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Install date"
+    },
+    "time": {
+      "type": "string",
+      "description": "Start time"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Client name"
+    },
+    "address": {
+      "type": "string",
+      "description": "Install address"
+    },
+    "crew": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Crew members assigned"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Install notes"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "in_progress",
+        "completed",
+        "cancelled"
+      ],
+      "default": "scheduled"
+    }
+  },
+  "required": [
+    "date",
+    "project_name"
+  ]
+}

@@ -148,7 +148,7 @@ export default function MorningMeeting() {
 
   const { data: struggles = [] } = useQuery({
     queryKey: ["struggles"],
-    queryFn: () => base44.entities.Struggle.list("-created_date", 20)
+    queryFn: () => base44.entities.Struggle.list("-created_date", 50)
   });
 
   const { data: compliments = [] } = useQuery({
@@ -257,10 +257,10 @@ export default function MorningMeeting() {
     return motivationalQuotes[dayOfYear % motivationalQuotes.length];
   };
 
-  // Auto-rotation: Mon(1)–Thu(4), cycle through employees sorted by name
+  // Auto-rotation: Mon(1)–Thu(4), cycle through hardcoded list
+  const ROTATION_MEMBERS = ["Christian", "Sean", "Dan", "Ben Hunt", "Trason", "Paul"];
   const getAutoPresenter = () => {
-    if (teamMembers.length === 0) return null;
-    const sorted = [...teamMembers].sort((a, b) => a.full_name.localeCompare(b.full_name));
+    const sorted = ROTATION_MEMBERS;
     // Count Mon–Thu days since a fixed epoch (2024-01-01 was a Monday)
     const epoch = new Date("2024-01-01T00:00:00");
     const dayOfWeek = selectedDate.getDay(); // 0=Sun,1=Mon,...,6=Sat
@@ -273,7 +273,7 @@ export default function MorningMeeting() {
       const d = new Date(epoch.getTime() + i * msPerDay).getDay();
       if (d >= 1 && d <= 4) meetingDayCount++;
     }
-    return sorted[(meetingDayCount - 1) % sorted.length]?.full_name || null;
+    return sorted[(meetingDayCount - 1) % sorted.length] || null;
   };
 
   const getPresenter = () => {
@@ -750,7 +750,7 @@ export default function MorningMeeting() {
 
           {/* Struggles & Solutions */}
           {(() => {
-            const openStruggles = struggles.filter(s => s.status !== "resolved");
+            const openStruggles = struggles.filter(s => s.status !== "resolved" && !s.archived);
             return (
               <SectionCard title="Struggles & Solutions" icon={AlertTriangle} color="red" count={openStruggles.length}>
                 {openStruggles.length === 0 ? (

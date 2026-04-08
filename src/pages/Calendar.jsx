@@ -29,6 +29,9 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import ProjectForm from "../components/projects/ProjectForm";
+import AppointmentTab from "../components/calendar/AppointmentTab";
+import DesignMeetingTab from "../components/calendar/DesignMeetingTab";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const statusConfig = {
   inquiry:           { label: "Inquiry",        short: "INQ",  color: "bg-slate-700" },
@@ -472,6 +475,28 @@ export default function CalendarPage() {
 
   return (
     <div className="h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200 overflow-hidden flex flex-col">
+      {/* Top-level Tabs */}
+      <Tabs defaultValue="calendar" className="flex flex-col h-full overflow-hidden">
+        <div className="px-4 pt-3 pb-0 bg-white/40 backdrop-blur-sm border-b border-slate-200 flex-shrink-0">
+          <TabsList className="h-9">
+            <TabsTrigger value="calendar" className="text-xs">📅 Calendar</TabsTrigger>
+            <TabsTrigger value="design" className="text-xs">🎨 Design Meetings</TabsTrigger>
+            <TabsTrigger value="install" className="text-xs">🔨 Installs</TabsTrigger>
+            <TabsTrigger value="delivery" className="text-xs">🚚 Deliveries</TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="design" className="flex-1 overflow-hidden mt-0">
+          <DesignMeetingTab />
+        </TabsContent>
+        <TabsContent value="install" className="flex-1 overflow-hidden mt-0">
+          <AppointmentTab type="install" />
+        </TabsContent>
+        <TabsContent value="delivery" className="flex-1 overflow-hidden mt-0">
+          <AppointmentTab type="delivery" />
+        </TabsContent>
+
+        <TabsContent value="calendar" className="flex-1 overflow-hidden mt-0 flex flex-col">
       {/* Header */}
       <div className="px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between border-b border-slate-200 bg-white/40 backdrop-blur-sm flex-shrink-0">
         <div>
@@ -1029,6 +1054,10 @@ export default function CalendarPage() {
         </DialogContent>
       </Dialog>
 
+        </TabsContent>
+      </Tabs>
+
+      {/* Dialogs rendered outside Tabs so they work from any tab */}
       {/* Generate Schedule Dialog */}
       <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">

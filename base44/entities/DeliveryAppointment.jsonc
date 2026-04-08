@@ -1,0 +1,52 @@
+{
+  "name": "DeliveryAppointment",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Delivery date"
+    },
+    "time": {
+      "type": "string",
+      "description": "Delivery time"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Client name"
+    },
+    "address": {
+      "type": "string",
+      "description": "Delivery address"
+    },
+    "driver": {
+      "type": "string",
+      "description": "Driver/person responsible"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Delivery notes"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "scheduled",
+        "delivered",
+        "cancelled"
+      ],
+      "default": "scheduled"
+    }
+  },
+  "required": [
+    "date",
+    "project_name"
+  ]
+}
