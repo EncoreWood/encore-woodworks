@@ -8,9 +8,10 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Factory, Briefcase, Link2, Unlink, Package, AlertTriangle, PackageX } from "lucide-react";
+import { Plus, Factory, Briefcase, Link2, Unlink, Package, AlertTriangle, PackageX, Sunset } from "lucide-react";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
 import ReportMissingDialog from "../components/production/ReportMissingDialog";
+import EndOfDayDialog from "../components/production/EndOfDayDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ProductionItemForm from "../components/production/ProductionItemForm";
 import PDFAnnotator from "../components/production/PDFAnnotator";
@@ -47,6 +48,7 @@ export default function ShopProduction() {
   const [currentUser, setCurrentUser] = useState(null);
   const [reportingStruggle, setReportingStruggle] = useState(null);
   const [reportingMissing, setReportingMissing] = useState(null); // item to report missing for (or true for generic)
+  const [showEndOfDay, setShowEndOfDay] = useState(false);
 
   useEffect(() => {
     base44.auth.me().then(setCurrentUser).catch(() => {});
@@ -406,6 +408,13 @@ export default function ShopProduction() {
           </div>
           <div className="flex items-center gap-3">
             <Button
+              onClick={() => setShowEndOfDay(true)}
+              variant="outline"
+              className="border-amber-300 text-amber-700 hover:bg-amber-50"
+            >
+              <Sunset className="w-4 h-4 mr-2" /> End of Day
+            </Button>
+            <Button
               onClick={() => setReportingMissing(true)}
               variant="outline"
               className="border-orange-300 text-orange-600 hover:bg-orange-50"
@@ -744,6 +753,12 @@ export default function ShopProduction() {
           onOpenChange={(open) => { if (!open) setReportingMissing(null); }}
           currentUser={currentUser}
           prefillItem={reportingMissing !== true ? reportingMissing : null}
+        />
+
+        <EndOfDayDialog
+          open={showEndOfDay}
+          onOpenChange={setShowEndOfDay}
+          currentUser={currentUser}
         />
 
         {annotatingPdf && currentPdfUrl && (

@@ -1,0 +1,69 @@
+{
+  "name": "EndOfDayReview",
+  "type": "object",
+  "properties": {
+    "submitted_by": {
+      "type": "string",
+      "description": "Full name of the user who submitted"
+    },
+    "submitted_by_email": {
+      "type": "string",
+      "description": "Email of the user who submitted"
+    },
+    "submitted_at": {
+      "type": "string",
+      "description": "ISO timestamp of submission"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the review (YYYY-MM-DD)"
+    },
+    "day_rating": {
+      "type": "string",
+      "enum": [
+        "great",
+        "good",
+        "okay",
+        "bad",
+        "terrible"
+      ],
+      "description": "Overall day rating"
+    },
+    "reason": {
+      "type": "string",
+      "description": "Why was it good or bad?"
+    },
+    "last_cabinet": {
+      "type": "string",
+      "description": "Which cabinet did you end on?"
+    },
+    "area_clean": {
+      "type": "boolean",
+      "default": false,
+      "description": "Is the work area clean?"
+    },
+    "area_notes": {
+      "type": "string",
+      "description": "Notes about cleanliness if not clean"
+    },
+    "accomplishments": {
+      "type": "string",
+      "description": "What was accomplished today?"
+    },
+    "blockers": {
+      "type": "string",
+      "description": "Anything blocking progress?"
+    },
+    "tomorrow_plan": {
+      "type": "string",
+      "description": "What is the plan for tomorrow?"
+    }
+  },
+  "required": [
+    "submitted_by",
+    "submitted_at",
+    "date",
+    "day_rating"
+  ]
+}
