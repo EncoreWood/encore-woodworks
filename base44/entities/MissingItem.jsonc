@@ -26,6 +26,10 @@
       "type": "string",
       "description": "Cabinet identifier (e.g. Upper-Left, Base-1)"
     },
+    "item_description": {
+      "type": "string",
+      "description": "Description of what is missing"
+    },
     "missing_item_type": {
       "type": "string",
       "enum": [
@@ -41,7 +45,7 @@
     },
     "description": {
       "type": "string",
-      "description": "Additional description or notes"
+      "description": "Additional notes"
     },
     "production_stage": {
       "type": "string",
@@ -63,15 +67,34 @@
       "type": "string",
       "description": "ISO timestamp when reported"
     },
+    "confirmed_by": {
+      "type": "string",
+      "default": "[]",
+      "description": "JSON array string of names who confirmed they also noticed this"
+    },
     "status": {
       "type": "string",
       "enum": [
         "open",
-        "in_progress",
+        "ordered",
         "resolved"
       ],
       "default": "open",
       "description": "Current resolution status"
+    },
+    "ordered_by": {
+      "type": "string",
+      "description": "Name of the person who marked it as ordered"
+    },
+    "ordered_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date it was marked as ordered"
+    },
+    "resolved_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date it was resolved"
     },
     "archived": {
       "type": "boolean",

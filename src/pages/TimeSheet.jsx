@@ -35,6 +35,8 @@ export default function TimeSheet() {
   const [currentProjectName, setCurrentProjectName] = useState(null);
   const [editingEntry, setEditingEntry] = useState(null);
   const [editForm, setEditForm] = useState({ clock_in: "", clock_out: "", notes: "" });
+  const [showAdminVacation, setShowAdminVacation] = useState(false);
+  const [adminVacForm, setAdminVacForm] = useState({ employee_id: "", entry_type: "vacation", date: "", hours_worked: "8", notes: "" });
   const [settingsData, setSettingsData] = useState({
     hours_per_year: 160,
     accrual_rate: 0.0192,
@@ -561,6 +563,15 @@ export default function TimeSheet() {
                 </Card>
               )}
 
+              {/* Admin: Add Vacation Time button */}
+              {currentUser?.role === "admin" && (
+                <div className="mb-4 flex justify-end">
+                  <Button onClick={() => setShowAdminVacation(true)} className="bg-purple-600 hover:bg-purple-700 gap-2">
+                    <Plus className="w-4 h-4" /> Add Vacation/PTO for Employee
+                  </Button>
+                </div>
+              )}
+
               {selectedEmployee && (
                 <div className="max-w-4xl mx-auto">
                   <div className="mb-6">
@@ -844,6 +855,76 @@ export default function TimeSheet() {
                 <Button variant="outline" onClick={() => setEditingEntry(null)}>Cancel</Button>
                 <Button onClick={handleSaveEdit} className="bg-amber-600 hover:bg-amber-700" disabled={updateEntryMutation.isPending}>
                   {updateEntryMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Admin Add Vacation Dialog */}
+        <Dialog open={showAdminVacation} onOpenChange={setShowAdminVacation}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Vacation / PTO for Employee</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-xs text-slate-500 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                Admin-added entries are visible to the employee but cannot be edited by them.
+              </p>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Employee</label>
+                <Select value={adminVacForm.employee_id} onValueChange={v => setAdminVacForm(p => ({ ...p, employee_id: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select employee..." /></SelectTrigger>
+                  <SelectContent>
+                    {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Type</label>
+                <Select value={adminVacForm.entry_type} onValueChange={v => setAdminVacForm(p => ({ ...p, entry_type: v }))}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="vacation">Vacation</SelectItem>
+                    <SelectItem value="pto">PTO</SelectItem>
+                    <SelectItem value="sick">Sick Day</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Date</label>
+                <Input type="date" className="mt-1" value={adminVacForm.date} onChange={e => setAdminVacForm(p => ({ ...p, date: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Hours</label>
+                <Input type="number" min="1" max="24" step="0.5" className="mt-1" value={adminVacForm.hours_worked} onChange={e => setAdminVacForm(p => ({ ...p, hours_worked: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Notes (optional)</label>
+                <Input className="mt-1" value={adminVacForm.notes} onChange={e => setAdminVacForm(p => ({ ...p, notes: e.target.value }))} placeholder="e.g. Admin approved, company holiday..." />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowAdminVacation(false)}>Cancel</Button>
+                <Button
+                  disabled={!adminVacForm.employee_id || !adminVacForm.date || createEntryMutation.isPending}
+                  className="bg-purple-600 hover:bg-purple-700"
+                  onClick={() => {
+                    const emp = employees.find(e => e.id === adminVacForm.employee_id);
+                    if (!emp) return;
+                    createEntryMutation.mutate({
+                      employee_id: emp.id,
+                      employee_name: emp.full_name,
+                      date: adminVacForm.date,
+                      entry_type: adminVacForm.entry_type,
+                      hours_worked: parseFloat(adminVacForm.hours_worked) || 8,
+                      notes: adminVacForm.notes || `Added by admin`,
+                      approved: true,
+                    });
+                    setShowAdminVacation(false);
+                    setAdminVacForm({ employee_id: "", entry_type: "vacation", date: "", hours_worked: "8", notes: "" });
+                  }}
+                >
+                  Add Entry
                 </Button>
               </div>
             </div>

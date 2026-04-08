@@ -19,6 +19,8 @@ import PDFAnnotator from "../components/production/PDFAnnotator";
 import PickupItemForm from "../components/pickup/PickupItemForm";
 import ProductionCard from "../components/production/ProductionCard";
 import JobPacketsTab from "../components/production/JobPacketsTab";
+import ProductionMissingItemsTab from "../components/production/ProductionMissingItemsTab";
+import QuickReportMissingDialog from "../components/production/QuickReportMissingDialog";
 
 const productionColumns = [
   { id: "cut", label: "1. Cut", color: "bg-orange-50" },
@@ -49,7 +51,8 @@ export default function ShopProduction() {
   const [currentUser, setCurrentUser] = useState(null);
   const [reportingStruggle, setReportingStruggle] = useState(null);
   const [givingCompliment, setGivingCompliment] = useState(false);
-  const [reportingMissing, setReportingMissing] = useState(null); // item to report missing for (or true for generic)
+  const [reportingMissing, setReportingMissing] = useState(null);
+  const [quickReportItem, setQuickReportItem] = useState(null);
   const [showEndOfDay, setShowEndOfDay] = useState(false);
 
   useEffect(() => {
@@ -392,6 +395,7 @@ export default function ShopProduction() {
     onMoveStage: handleMoveStage,
     onPickup: (item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id }),
     onReportMissing: (item) => setReportingMissing(item),
+    onQuickReportMissing: (item) => setQuickReportItem(item),
 
     onEdit: (item) => { setEditingItem(item); setShowForm(true); },
     onDelete: (id) => deleteMutation.mutate(id),
@@ -473,6 +477,9 @@ export default function ShopProduction() {
             </TabsTrigger>
             <TabsTrigger value="job_packets" className="flex items-center gap-2">
               <Package className="w-4 h-4" /> Job Packets
+            </TabsTrigger>
+            <TabsTrigger value="missing_items" className="flex items-center gap-2">
+              <PackageX className="w-4 h-4" /> Missing Items
             </TabsTrigger>
           </TabsList>
 
@@ -661,6 +668,11 @@ export default function ShopProduction() {
               </div>
             </DragDropContext>
           </TabsContent>
+          {/* ── MISSING ITEMS TAB ── */}
+          <TabsContent value="missing_items" className="mt-0">
+            <ProductionMissingItemsTab currentUser={currentUser} />
+          </TabsContent>
+
           {/* ── JOB PACKETS TAB ── */}
           <TabsContent value="job_packets" className="mt-0">
             <JobPacketsTab
@@ -756,6 +768,15 @@ export default function ShopProduction() {
           open={!!reportingStruggle}
           onOpenChange={(open) => { if (!open) setReportingStruggle(false); }}
         />
+
+        {quickReportItem && (
+          <QuickReportMissingDialog
+            open={!!quickReportItem}
+            onOpenChange={(open) => { if (!open) setQuickReportItem(null); }}
+            item={quickReportItem}
+            currentUser={currentUser}
+          />
+        )}
 
         <GiveComplimentDialog
           open={givingCompliment}

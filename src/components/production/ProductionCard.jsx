@@ -5,7 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, ArrowRight, Box, Upload, Loader2, PenLine, FileCode2, ChevronDown, AlertTriangle, PackageX } from "lucide-react";
+import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, ArrowRight, Box, Upload, Loader2, PenLine, FileCode2, ChevronDown, AlertTriangle, PackageX, Flag } from "lucide-react";
+import MissingItemBadge from "@/components/production/MissingItemBadge";
 import GlbViewer from "@/components/cad/GlbViewer";
 import DxfViewer from "@/components/cad/DxfViewer";
 import { base44 } from "@/api/base44Client";
@@ -76,6 +77,7 @@ export default function ProductionCard({
   onUpdate,              // called with updated item data after GLB upload/remove
   onReportStruggle,      // called with item to open the struggle report dialog
   onReportMissing,       // called with item to open the missing item report dialog
+  onQuickReportMissing,  // called with item to open quick report dialog
 }) {
   const [hoveredPdfUrl, setHoveredPdfUrl] = useState(null);
   const [hoveredAnchorEl, setHoveredAnchorEl] = useState(null);
@@ -137,16 +139,23 @@ export default function ProductionCard({
         />
       )}
       <Card
-        className={`p-4 border-0 shadow-sm transition-shadow overflow-hidden ${isDragging ? "shadow-lg" : ""}`}
+        className={`relative p-4 border-0 shadow-sm transition-shadow overflow-hidden ${isDragging ? "shadow-lg" : ""}`}
         style={{ backgroundColor: "#ffffff", ...cardStyle }}
       >
+        {/* Missing item badge — top-right corner */}
+        {item.id && (
+          <div className="absolute top-2 right-2 z-10">
+            <MissingItemBadge itemId={item.id} currentUser={currentUser} />
+          </div>
+        )}
+
         {/* Header row */}
         {item.project_name && (
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs text-slate-500 font-medium truncate flex-1">
               {item.project_name}{item.room_name ? ` · ${item.room_name}` : ""}
             </p>
-            <div className="flex items-center gap-1 ml-1 flex-wrap justify-end">
+            <div className="flex items-center gap-1 ml-1 mr-5 flex-wrap justify-end">
               {/* Room folder link */}
               {onOpenRoomFolder && roomFolderLabel && (
                 <button
@@ -232,6 +241,15 @@ export default function ProductionCard({
                   title="Report a struggle"
                 >
                   !
+                </button>
+              )}
+              {onQuickReportMissing && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onQuickReportMissing(item); }}
+                  className="flex items-center justify-center w-5 h-5 rounded-full bg-orange-100 hover:bg-orange-200 text-orange-600 flex-shrink-0 transition-colors"
+                  title="Report a missing item"
+                >
+                  <Flag className="w-2.5 h-2.5" />
                 </button>
               )}
             </div>
