@@ -308,6 +308,26 @@ export default function MorningMeeting() {
     return [...new Set(activeItems.map(i => i.room_name))];
   };
 
+  // Design meetings, installs, and deliveries for selected date
+  const { data: todayDesignMeetings = [] } = useQuery({
+    queryKey: ["designMeetingsDate", dateString],
+    queryFn: () => base44.entities.DesignMeeting.filter({ date: dateString })
+  });
+  const { data: todayInstalls = [] } = useQuery({
+    queryKey: ["installsDate", dateString],
+    queryFn: async () => {
+      const all = await base44.entities.InstallAppointment.list("date", 500);
+      return all.filter(a => a.date === dateString && a.status !== "cancelled" && a.status !== "completed");
+    }
+  });
+  const { data: todayDeliveries = [] } = useQuery({
+    queryKey: ["deliveriesDate", dateString],
+    queryFn: async () => {
+      const all = await base44.entities.DeliveryAppointment.list("date", 500);
+      return all.filter(a => a.date === dateString && a.status !== "cancelled" && a.status !== "delivered");
+    }
+  });
+
   // Combined tasks: meeting tasks for this date + all global tasks not completed
   const globalActiveTasks = [...allTasks, ...inProgressTasks];
 
@@ -786,33 +806,94 @@ export default function MorningMeeting() {
           })()}
 
           {/* 5. Today's Focus */}
-          <SectionCard title="Today's Focus" icon={Crosshair} color="orange" count={todaysFocusProjects.length}>
-            {todaysFocusProjects.length === 0 ? (
-              <p className="text-slate-400 text-sm text-center py-2">No projects currently in production.</p>
-            ) : (
-              <div className="space-y-2">
-                {todaysFocusProjects.map(project => {
-                  const activeRooms = getActiveRooms(project.id);
-                  return (
-                    <Link key={project.id} to={createPageUrl("ProjectDetails") + "?id=" + project.id}>
-                      <div className="bg-orange-50 rounded-lg px-3 py-2.5 border border-orange-200 hover:bg-orange-100 transition-all">
-                        <div className="flex items-center justify-between">
-                          <p className="font-semibold text-orange-800 text-sm">{project.project_name}</p>
-                          {project.address && <span className="text-xs text-orange-500 max-w-[120px] truncate">{project.address}</span>}
-                        </div>
-                        {activeRooms.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {activeRooms.map(room => (
-                              <span key={room} className="text-xs bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded-full">{room}</span>
-                            ))}
-                          </div>
-                        )}
+          <SectionCard title="Today's Focus" icon={Crosshair} color="orange" count={todaysFocusProjects.length + todayDesignMeetings.length + todayInstalls.length + todayDeliveries.length}>
+            <div className="space-y-4">
+
+              {/* Design Meetings */}
+              {todayDesignMeetings.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-violet-600 uppercase tracking-wide mb-2">🎨 Design Meetings</p>
+                  <div className="space-y-1.5">
+                    {todayDesignMeetings.map(m => (
+                      <div key={m.id} className="bg-violet-50 border border-violet-200 rounded-lg px-3 py-2.5">
+                        <p className="font-semibold text-violet-800 text-sm">{m.client_name}</p>
+                        {m.project_name && <p className="text-xs text-violet-600">{m.project_name}</p>}
+                        {m.time && <p className="text-xs text-slate-500">🕐 {m.time}</p>}
                       </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Installs */}
+              {todayInstalls.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-orange-600 uppercase tracking-wide mb-2">🔨 Installs</p>
+                  <div className="space-y-1.5">
+                    {todayInstalls.map(a => (
+                      <div key={a.id} className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2.5">
+                        <p className="font-semibold text-orange-800 text-sm">{a.project_name}</p>
+                        {a.client_name && <p className="text-xs text-orange-600">{a.client_name}</p>}
+                        {a.address && <p className="text-xs text-slate-500">📍 {a.address}</p>}
+                        {a.crew?.length > 0 && <p className="text-xs text-slate-500">👷 {a.crew.join(", ")}</p>}
+                        {a.time && <p className="text-xs text-slate-500">🕐 {a.time}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Deliveries */}
+              {todayDeliveries.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-teal-600 uppercase tracking-wide mb-2">🚚 Deliveries</p>
+                  <div className="space-y-1.5">
+                    {todayDeliveries.map(a => (
+                      <div key={a.id} className="bg-teal-50 border border-teal-200 rounded-lg px-3 py-2.5">
+                        <p className="font-semibold text-teal-800 text-sm">{a.project_name}</p>
+                        {a.client_name && <p className="text-xs text-teal-600">{a.client_name}</p>}
+                        {a.address && <p className="text-xs text-slate-500">📍 {a.address}</p>}
+                        {a.driver && <p className="text-xs text-slate-500">🚚 {a.driver}</p>}
+                        {a.time && <p className="text-xs text-slate-500">🕐 {a.time}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* In-Production Projects */}
+              {todaysFocusProjects.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-orange-600 uppercase tracking-wide mb-2">🏭 In Production</p>
+                  <div className="space-y-1.5">
+                    {todaysFocusProjects.map(project => {
+                      const activeRooms = getActiveRooms(project.id);
+                      return (
+                        <Link key={project.id} to={createPageUrl("ProjectDetails") + "?id=" + project.id}>
+                          <div className="bg-orange-50 rounded-lg px-3 py-2.5 border border-orange-200 hover:bg-orange-100 transition-all">
+                            <div className="flex items-center justify-between">
+                              <p className="font-semibold text-orange-800 text-sm">{project.project_name}</p>
+                              {project.address && <span className="text-xs text-orange-500 max-w-[120px] truncate">{project.address}</span>}
+                            </div>
+                            {activeRooms.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {activeRooms.map(room => (
+                                  <span key={room} className="text-xs bg-orange-200 text-orange-800 px-1.5 py-0.5 rounded-full">{room}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {todaysFocusProjects.length === 0 && todayDesignMeetings.length === 0 && todayInstalls.length === 0 && todayDeliveries.length === 0 && (
+                <p className="text-slate-400 text-sm text-center py-2">Nothing scheduled for today.</p>
+              )}
+            </div>
           </SectionCard>
 
           {/* Cleaning Schedule */}

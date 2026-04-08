@@ -90,8 +90,8 @@ export default function CalendarPage() {
   const { data: bathroomCleanings = [] } = useQuery({ queryKey: ["bathroomCleanings"], queryFn: () => base44.entities.BathroomCleaning.list() });
   const { data: vacations = [] } = useQuery({ queryKey: ["vacations"], queryFn: () => base44.entities.Vacation.list() });
   const { data: cleaningSchedules = [] } = useQuery({ queryKey: ["cleaningSchedules"], queryFn: () => base44.entities.CleaningSchedule.list() });
-  const { data: installAppointments = [] } = useQuery({ queryKey: ["InstallAppointment"], queryFn: () => base44.entities.InstallAppointment.list("-date", 200) });
-  const { data: deliveryAppointments = [] } = useQuery({ queryKey: ["DeliveryAppointment"], queryFn: () => base44.entities.DeliveryAppointment.list("-date", 200) });
+  const { data: installAppointments = [] } = useQuery({ queryKey: ["InstallAppointment"], queryFn: () => base44.entities.InstallAppointment.list("date", 500) });
+  const { data: deliveryAppointments = [] } = useQuery({ queryKey: ["DeliveryAppointment"], queryFn: () => base44.entities.DeliveryAppointment.list("date", 500) });
   const { data: assignedTasks = [] } = useQuery({ queryKey: ["assignmentTasks"], queryFn: () => base44.entities.Task.list("-created_date", 200) });
 
   const [currentUser, setCurrentUser] = useState(null);
@@ -280,8 +280,8 @@ export default function CalendarPage() {
   const getPresenterForDate = (date) => presenters.find(p => p.date === format(date, "yyyy-MM-dd"));
   const getDesignMeetingsForDate = (date) => designMeetings.filter(m => m.date === format(date, "yyyy-MM-dd"));
   const getTasksForDate = (date) => tasks.filter(t => t.date === format(date, "yyyy-MM-dd"));
-  const getInstallsForDate = (date) => installAppointments.filter(a => a.date === format(date, "yyyy-MM-dd") && a.status !== "cancelled");
-  const getDeliveriesForDate = (date) => deliveryAppointments.filter(a => a.date === format(date, "yyyy-MM-dd") && a.status !== "cancelled");
+  const getInstallsForDate = (date) => installAppointments.filter(a => a.date === format(date, "yyyy-MM-dd") && a.status !== "cancelled" && a.status !== "completed");
+  const getDeliveriesForDate = (date) => deliveryAppointments.filter(a => a.date === format(date, "yyyy-MM-dd") && a.status !== "cancelled" && a.status !== "delivered");
   const getAssignedTasksForDate = (date) => {
     const dateStr = format(date, "yyyy-MM-dd");
     const isAdmin = currentUser?.role === "admin";
