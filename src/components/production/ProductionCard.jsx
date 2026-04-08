@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, ArrowRight, Box, Upload, Loader2, PenLine, FileCode2, ChevronDown, AlertTriangle } from "lucide-react";
+import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, ArrowRight, Box, Upload, Loader2, PenLine, FileCode2, ChevronDown, AlertTriangle, PackageX } from "lucide-react";
 import GlbViewer from "@/components/cad/GlbViewer";
 import DxfViewer from "@/components/cad/DxfViewer";
 import { base44 } from "@/api/base44Client";
@@ -75,6 +75,7 @@ export default function ProductionCard({
   roomGlbName,           // GLB file name
   onUpdate,              // called with updated item data after GLB upload/remove
   onReportStruggle,      // called with item to open the struggle report dialog
+  onReportMissing,       // called with item to open the missing item report dialog
 }) {
   const [hoveredPdfUrl, setHoveredPdfUrl] = useState(null);
   const [hoveredAnchorEl, setHoveredAnchorEl] = useState(null);
@@ -213,6 +214,15 @@ export default function ProductionCard({
                   title="Add pickup item"
                 >
                   <ClipboardList className="w-3 h-3" />
+                </button>
+              )}
+              {onReportMissing && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onReportMissing(item); }}
+                  className="flex items-center justify-center w-5 h-5 rounded-full bg-orange-100 hover:bg-orange-200 text-orange-600 flex-shrink-0 transition-colors"
+                  title="Report missing item"
+                >
+                  <PackageX className="w-3 h-3" />
                 </button>
               )}
               {onReportStruggle && (

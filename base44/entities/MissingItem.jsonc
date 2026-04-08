@@ -1,0 +1,86 @@
+{
+  "name": "MissingItem",
+  "type": "object",
+  "properties": {
+    "production_item_name": {
+      "type": "string",
+      "description": "Name of the production item this is linked to"
+    },
+    "production_item_id": {
+      "type": "string",
+      "description": "ID of the production item"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name"
+    },
+    "room_name": {
+      "type": "string",
+      "description": "Room the missing item belongs to"
+    },
+    "cabinet_name": {
+      "type": "string",
+      "description": "Cabinet identifier (e.g. Upper-Left, Base-1)"
+    },
+    "missing_item_type": {
+      "type": "string",
+      "enum": [
+        "door",
+        "drawer_front",
+        "hinges",
+        "glides",
+        "hardware",
+        "drawer_box",
+        "other"
+      ],
+      "description": "Type of missing item"
+    },
+    "description": {
+      "type": "string",
+      "description": "Additional description or notes"
+    },
+    "production_stage": {
+      "type": "string",
+      "enum": [
+        "cut",
+        "face_frame",
+        "spray",
+        "build",
+        "complete",
+        "on_hold"
+      ],
+      "description": "Production stage when this was reported"
+    },
+    "reported_by": {
+      "type": "string",
+      "description": "Full name or email of the user who reported it"
+    },
+    "reported_at": {
+      "type": "string",
+      "description": "ISO timestamp when reported"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "in_progress",
+        "resolved"
+      ],
+      "default": "open",
+      "description": "Current resolution status"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "production_item_name",
+    "reported_by",
+    "reported_at"
+  ]
+}

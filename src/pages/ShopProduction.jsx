@@ -8,8 +8,9 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Factory, Briefcase, Link2, Unlink, Package, AlertTriangle } from "lucide-react";
+import { Plus, Factory, Briefcase, Link2, Unlink, Package, AlertTriangle, PackageX } from "lucide-react";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
+import ReportMissingDialog from "../components/production/ReportMissingDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ProductionItemForm from "../components/production/ProductionItemForm";
 import PDFAnnotator from "../components/production/PDFAnnotator";
@@ -44,7 +45,8 @@ export default function ShopProduction() {
   const [packetsFormContext, setPacketsFormContext] = useState(null); // { project, roomName } for Job Packets add
   const [openFolderContext, setOpenFolderContext] = useState(null); // { project, roomName } to auto-open a folder in Job Packets
   const [currentUser, setCurrentUser] = useState(null);
-  const [reportingStruggle, setReportingStruggle] = useState(null); // item to report struggle for
+  const [reportingStruggle, setReportingStruggle] = useState(null);
+  const [reportingMissing, setReportingMissing] = useState(null); // item to report missing for (or true for generic)
 
   useEffect(() => {
     base44.auth.me().then(setCurrentUser).catch(() => {});
@@ -169,8 +171,10 @@ export default function ShopProduction() {
     const ptsLogged = newStage === "complete" && !item.pts_logged ? totalPts : item.pts_logged;
     const ptsLoggedDate = newStage === "complete" && !item.pts_logged_date ? localDateStr : item.pts_logged_date;
 
-    // Stage move log — always record who moved it and when
-    const stageMoveLog = [...(item.stage_move_log || []), {
+    // Stage move log — always record who moved it and when; prune entries older than 14 days
+    const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    const prunedLog = (item.stage_move_log || []).filter(e => e.timestamp && new Date(e.timestamp) >= cutoff);
+    const stageMoveLog = [...prunedLog, {
       from_stage: oldStage || null,
       to_stage: newStage,
       moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
@@ -383,6 +387,7 @@ export default function ShopProduction() {
     getRoomCadFiles,
     onMoveStage: handleMoveStage,
     onPickup: (item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id }),
+    onReportMissing: (item) => setReportingMissing(item),
 
     onEdit: (item) => { setEditingItem(item); setShowForm(true); },
     onDelete: (id) => deleteMutation.mutate(id),
@@ -400,6 +405,13 @@ export default function ShopProduction() {
             <p className="text-slate-500 mt-1">Track projects through production stages</p>
           </div>
           <div className="flex items-center gap-3">
+            <Button
+              onClick={() => setReportingMissing(true)}
+              variant="outline"
+              className="border-orange-300 text-orange-600 hover:bg-orange-50"
+            >
+              <PackageX className="w-4 h-4 mr-2" /> Report Missing
+            </Button>
             <Button
               onClick={() => setReportingStruggle(true)}
               variant="outline"
@@ -725,6 +737,13 @@ export default function ShopProduction() {
         <ReportStruggleDialog
           open={!!reportingStruggle}
           onOpenChange={(open) => { if (!open) setReportingStruggle(false); }}
+        />
+
+        <ReportMissingDialog
+          open={!!reportingMissing}
+          onOpenChange={(open) => { if (!open) setReportingMissing(null); }}
+          currentUser={currentUser}
+          prefillItem={reportingMissing !== true ? reportingMissing : null}
         />
 
         {annotatingPdf && currentPdfUrl && (

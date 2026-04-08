@@ -5,10 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Pencil, Trash2, CheckCircle2, AlertCircle, RefreshCw, Search, Archive, Factory, FileText, ChevronDown, ChevronUp, PenLine } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Pencil, Trash2, CheckCircle2, AlertCircle, RefreshCw, Search, Archive, Factory, FileText, ChevronDown, ChevronUp, PenLine, PackageX } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import PickupItemForm from "../components/pickup/PickupItemForm";
+import MissingItemsTab from "../components/pickup/MissingItemsTab";
 import { cn } from "@/lib/utils";
 import { getPickupCardStyle } from "@/lib/pickupCardStyle";
 
@@ -204,6 +206,18 @@ export default function PickupList() {
             </Button>
           </div>
         </div>
+
+        <Tabs defaultValue="pickup">
+          <TabsList className="mb-5">
+            <TabsTrigger value="pickup" className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" /> Pickup List
+            </TabsTrigger>
+            <TabsTrigger value="missing" className="flex items-center gap-2">
+              <PackageX className="w-4 h-4" /> Missing Items
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pickup" className="mt-0">
 
         {/* Filters */}
         <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6 flex flex-wrap gap-3 items-center">
@@ -419,7 +433,12 @@ export default function PickupList() {
             })}
           </div>
         )}
-      </div>
+          </TabsContent>
+
+          <TabsContent value="missing" className="mt-0">
+            <MissingItemsTab />
+          </TabsContent>
+        </Tabs>
 
       <PickupItemForm
         open={showForm}
@@ -427,7 +446,6 @@ export default function PickupList() {
         onSubmit={(data) => {
           if (editingItem?.id) {
             const { linkToProduction, productionStage, ...itemData } = data;
-            // Sync priority + files + notes to linked production item
             if (editingItem.production_item_id) {
               base44.entities.ProductionItem.update(editingItem.production_item_id, {
                 priority: itemData.priority,
@@ -448,6 +466,7 @@ export default function PickupList() {
         rooms={editingItem?.project_id ? (projects.find(p => p.id === editingItem.project_id)?.rooms || []) : []}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
+      </div>
     </div>
   );
 }
