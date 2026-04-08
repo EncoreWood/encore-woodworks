@@ -7,6 +7,7 @@ import { Plus, AlertTriangle } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import BillingCard from "@/components/billing/BillingCard";
 import BillingItemDrawer from "@/components/billing/BillingItemDrawer";
+import BillingCalendar from "@/components/billing/BillingCalendar";
 
 function fmt(n) {
   if (!n) return "$0";
@@ -135,6 +136,7 @@ export default function BillingTracker() {
               <TabsTrigger value="monthly">Monthly Bills</TabsTrigger>
               <TabsTrigger value="supplier">Supplier Debt</TabsTrigger>
               <TabsTrigger value="loans">Loans</TabsTrigger>
+              <TabsTrigger value="calendar">📅 Calendar</TabsTrigger>
             </TabsList>
 
             <TabsContent value="monthly">
@@ -147,6 +149,10 @@ export default function BillingTracker() {
 
             <TabsContent value="loans">
               <BillingTab items={items} category="Loan" onEdit={handleEdit} onAdd={() => handleAdd("Loan")} />
+            </TabsContent>
+
+            <TabsContent value="calendar">
+              <BillingCalendar items={items} />
             </TabsContent>
           </Tabs>
         </div>
