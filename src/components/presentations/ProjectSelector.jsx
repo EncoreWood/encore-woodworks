@@ -82,8 +82,8 @@ export default function ProjectSelector({ onProjectSelected }) {
 
       return created;
     },
-    onSuccess: (pres) => {
-      onProjectSelected(pres);
+    onSuccess: (created) => {
+      onProjectSelected(created);
     },
   });
 

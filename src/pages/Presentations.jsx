@@ -1,584 +1,499 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Plus, Eye, Edit2, Trash2, GripVertical, ArrowUp, ArrowDown, Upload, ChevronLeft, ChevronRight, Share2, Check } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Printer, Send, ChevronLeft, Copy, Trash2, Edit2 } from "lucide-react";
 import { format } from "date-fns";
 import ProjectSelector from "@/components/presentations/ProjectSelector";
+import SlideThumbnailStrip from "@/components/presentations/SlideThumbnailStrip";
+import SlidePreview, { parseImages, parseSpec } from "@/components/presentations/SlidePreview";
+import SendToClientModal from "@/components/presentations/SendToClientModal";
 
-const statusColors = {
-  draft: "bg-slate-100 text-slate-800",
-  ready: "bg-blue-100 text-blue-800",
-  sent: "bg-green-100 text-green-800",
+const STATUS_COLORS = {
+  draft: "bg-slate-100 text-slate-700 border-slate-300",
+  ready: "bg-blue-100 text-blue-700 border-blue-300",
+  sent: "bg-green-100 text-green-700 border-green-300",
 };
 
-export default function Presentations() {
+function getUrlParams() {
+  return new URLSearchParams(window.location.search);
+}
+
+function navigateTo(mode, id = null) {
+  const params = new URLSearchParams();
+  if (mode) params.set("mode", mode);
+  if (id) params.set("id", id);
+  window.history.pushState(null, "", `${window.location.pathname}?${params.toString()}`);
+  window.dispatchEvent(new Event("popstate"));
+}
+
+// ─── COVER THUMBNAIL ─────────────────────────────────────────────────────────
+function CoverThumb({ presId }) {
+  const { data: slides = [] } = useQuery({
+    queryKey: ["slides-thumb", presId],
+    queryFn: () => base44.entities.PresentationSlide.filter({ presentation_id: presId }, "sort_order"),
+    staleTime: 60000,
+  });
+  const first = slides[0];
+  const images = first ? parseImages(first.image_3d_url) : [];
+  const thumb = images[0];
+  if (thumb) return <img src={thumb} alt="" className="w-full h-full object-cover" />;
+  return <span className="text-xs text-slate-400">{slides.length} slide{slides.length !== 1 ? "s" : ""}</span>;
+}
+
+// ─── LIST VIEW ────────────────────────────────────────────────────────────────
+function PresentationsList({ onNew }) {
   const queryClient = useQueryClient();
-  const urlParams = new URLSearchParams(window.location.search);
-  const mode = urlParams.get("mode");
-  const presentationId = urlParams.get("id");
-  const projectId = urlParams.get("projectId");
-  const shareToken = urlParams.get("token");
-
-  const [showNewDialog, setShowNewDialog] = useState(false);
-  const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
-  const [slides, setSlides] = useState([]);
-  const [copied, setCopied] = useState(false);
-
-  // Data fetching
-  const { data: presentations = [], refetch: refetchPresentations } = useQuery({
+  const { data: presentations = [] } = useQuery({
     queryKey: ["presentations"],
     queryFn: () => base44.entities.Presentation.list("-created_date"),
   });
 
-  const { data: presentation } = useQuery({
-    queryKey: ["presentation", presentationId],
-    queryFn: () => base44.entities.Presentation.list().then(list => list.find(p => p.id === presentationId)),
-    enabled: !!presentationId,
-  });
-
-  const { data: sharePresentation } = useQuery({
-    queryKey: ["presentation-share", shareToken],
-    queryFn: () => base44.entities.Presentation.filter({ shared_link_token: shareToken }).then(list => list[0]),
-    enabled: !!shareToken,
-  });
-
-  const { data: existingSlides = [] } = useQuery({
-    queryKey: ["slides", presentationId],
-    queryFn: () => base44.entities.PresentationSlide.filter({ presentation_id: presentationId }, "sort_order"),
-    enabled: !!presentationId,
-  });
-
-  const { data: shareSlides = [] } = useQuery({
-    queryKey: ["slides-share", sharePresentation?.id],
-    queryFn: () => base44.entities.PresentationSlide.filter({ presentation_id: sharePresentation.id }, "sort_order"),
-    enabled: !!sharePresentation,
-  });
-
-  const { data: project } = useQuery({
-    queryKey: ["project", projectId],
-    queryFn: () => base44.entities.Project.list().then(list => list.find(p => p.id === projectId)),
-    enabled: !!projectId,
-  });
-
-  useEffect(() => {
-    if (existingSlides.length > 0) {
-      setSlides(existingSlides);
-      setCurrentSlideIdx(0);
+  const handleDuplicate = async (pres) => {
+    const { id, created_date, updated_date, ...rest } = pres;
+    const newPres = await base44.entities.Presentation.create({ ...rest, project_name: rest.project_name + " (Copy)", status: "draft" });
+    const slides = await base44.entities.PresentationSlide.filter({ presentation_id: id }, "sort_order");
+    for (const s of slides) {
+      const { id: sid, created_date: sc, updated_date: su, ...srest } = s;
+      await base44.entities.PresentationSlide.create({ ...srest, presentation_id: newPres.id });
     }
-  }, [existingSlides]);
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      let pres = presentation;
-      if (!pres.id) {
-        pres = await base44.entities.Presentation.create({
-          project_id: presentation.project_id,
-          project_name: presentation.project_name,
-          client_name: presentation.client_name,
-          address: presentation.address,
-          status: presentation.status,
-        });
-      } else {
-        await base44.entities.Presentation.update(pres.id, presentation);
-      }
-
-      for (let i = 0; i < slides.length; i++) {
-        const slide = { ...slides[i], presentation_id: pres.id, sort_order: i };
-        if (slide.id) {
-          await base44.entities.PresentationSlide.update(slide.id, slide);
-        } else {
-          await base44.entities.PresentationSlide.create(slide);
-        }
-      }
-      return pres;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["presentations"] });
-      queryClient.invalidateQueries({ queryKey: ["slides"] });
-    },
-  });
+    queryClient.invalidateQueries({ queryKey: ["presentations"] });
+  };
 
   const handleDelete = async (id) => {
-    if (confirm("Delete this presentation?")) {
-      await base44.entities.Presentation.delete(id);
-      refetchPresentations();
-    }
+    if (!confirm("Delete this presentation?")) return;
+    const slides = await base44.entities.PresentationSlide.filter({ presentation_id: id });
+    for (const s of slides) await base44.entities.PresentationSlide.delete(s.id);
+    await base44.entities.Presentation.delete(id);
+    queryClient.invalidateQueries({ queryKey: ["presentations"] });
   };
 
-  const handleProjectSelected = (proj) => {
-    setShowNewDialog(false);
-    navigateTo("editor", proj.id);
-  };
+  return (
+    <div className="min-h-screen p-6 sm:p-8" style={{ backgroundColor: "#d1d5db" }}>
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900">Presentations</h1>
+            <p className="text-slate-600 text-sm mt-1">Create and manage 3D design presentations for clients</p>
+          </div>
+          <Button onClick={onNew} className="bg-amber-700 hover:bg-amber-800 gap-2">
+            <Plus className="w-4 h-4" /> New Presentation
+          </Button>
+        </div>
 
-  const navigateTo = (newMode, id = null) => {
-    const params = new URLSearchParams();
-    params.set("mode", newMode);
-    if (id) params.set("id", id);
-    window.history.pushState(null, "", `?${params.toString()}`);
-    window.location.reload();
-  };
-
-  // Keyboard navigation for views
-  useEffect(() => {
-    const handleKeydown = (e) => {
-      if ((mode === "view" || mode === "share") && shareSlides.length > 0) {
-        if (e.key === "ArrowLeft" && currentSlideIdx > 0) setCurrentSlideIdx(currentSlideIdx - 1);
-        if (e.key === "ArrowRight" && currentSlideIdx < shareSlides.length - 1) setCurrentSlideIdx(currentSlideIdx + 1);
-      }
-    };
-    window.addEventListener("keydown", handleKeydown);
-    return () => window.removeEventListener("keydown", handleKeydown);
-  }, [currentSlideIdx, shareSlides, mode]);
-
-  // LIST VIEW
-  if (!mode || mode === "list") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-4xl font-bold text-slate-900">Presentations</h1>
-              <p className="text-slate-600 mt-1">Create and manage 3D design presentations</p>
-            </div>
-            <Button
-              onClick={() => setShowNewDialog(true)}
-              className="bg-amber-600 hover:bg-amber-700 flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              New Presentation
+        {presentations.length === 0 ? (
+          <div className="bg-white rounded-xl border border-slate-200 p-16 text-center">
+            <p className="text-slate-500 mb-4">No presentations yet.</p>
+            <Button onClick={onNew} className="bg-amber-700 hover:bg-amber-800 gap-2">
+              <Plus className="w-4 h-4" /> Create first presentation
             </Button>
-          </div>
-
-          {presentations.length === 0 ? (
-            <div className="bg-white rounded-lg border border-slate-200 p-12 text-center">
-              <p className="text-slate-600 mb-4">No presentations yet</p>
-              <Button onClick={() => setShowNewDialog(true)} variant="outline" className="gap-2">
-                <Plus className="w-4 h-4" />
-                Create your first presentation
-              </Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {presentations.map((pres) => (
-                <div key={pres.id} className="bg-white rounded-lg border border-slate-200 overflow-hidden hover:shadow-lg transition-all">
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-slate-900">{pres.project_name}</h3>
-                        <p className="text-sm text-slate-600">{pres.client_name}</p>
-                      </div>
-                      <Badge className={statusColors[pres.status]}>
-                        {pres.status === "draft" && "Draft"}
-                        {pres.status === "ready" && "Ready"}
-                        {pres.status === "sent" && "Sent"}
-                      </Badge>
-                    </div>
-
-                    {pres.address && <p className="text-xs text-slate-500 mb-4">{pres.address}</p>}
-                    {pres.sent_date && <p className="text-xs text-slate-500 mb-4">Sent: {format(new Date(pres.sent_date), "MMM d, yyyy")}</p>}
-                    <div className="text-xs text-slate-500 mb-4">Created: {format(new Date(pres.created_date), "MMM d, yyyy")}</div>
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => navigateTo("editor", pres.id)}
-                        className="flex-1"
-                      >
-                        <Button variant="outline" size="sm" className="w-full gap-2">
-                          <Edit2 className="w-3 h-3" />
-                          Edit
-                        </Button>
-                      </button>
-                      <button
-                        onClick={() => navigateTo("view", pres.id)}
-                        className="flex-1"
-                      >
-                        <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 gap-2">
-                          <Eye className="w-3 h-3" />
-                          View
-                        </Button>
-                      </button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(pres.id)}
-                        className="text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>New Presentation</DialogTitle>
-              </DialogHeader>
-              <ProjectSelector onProjectSelected={handleProjectSelected} />
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
-    );
-  }
-
-  // EDITOR VIEW
-  if (mode === "editor" && presentation) {
-    const currentSlide = slides[currentSlideIdx];
-
-    return (
-      <div className="min-h-screen bg-slate-50 flex flex-col">
-        <div className="bg-white border-b border-slate-200 p-6">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900">{presentation.project_name}</h1>
-              <p className="text-sm text-slate-600">{presentation.client_name}</p>
-            </div>
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => navigateTo("list")}>
-                Back
-              </Button>
-              <Button
-                onClick={() => saveMutation.mutate()}
-                className="bg-amber-600 hover:bg-amber-700"
-                disabled={saveMutation.isPending}
-              >
-                {saveMutation.isPending ? "Saving..." : "Save"}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 flex gap-6 p-6 max-w-7xl mx-auto w-full">
-          <div className="w-40 flex flex-col gap-3">
-            <Button
-              onClick={() => setSlides([...slides, { room_name: "New Room", slide_label: "", notes: "", sort_order: slides.length }])}
-              variant="outline"
-              className="w-full gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Add Slide
-            </Button>
-            <div className="space-y-2 flex-1 overflow-y-auto">
-              {slides.map((slide, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentSlideIdx(idx)}
-                  className={`w-full p-2 rounded text-left text-xs border transition-all ${
-                    currentSlideIdx === idx ? "border-amber-600 bg-amber-50" : "border-slate-200 bg-white hover:border-slate-300"
-                  }`}
-                >
-                  <div className="font-medium truncate">{slide.room_name}</div>
-                  {slide.slide_label && <div className="text-slate-500 truncate">{slide.slide_label}</div>}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {currentSlide && (
-            <div className="flex-1 bg-white rounded-lg border border-slate-200 p-6 space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Room Name</label>
-                <Input
-                  value={currentSlide.room_name}
-                  onChange={(e) => {
-                    const updated = [...slides];
-                    updated[currentSlideIdx].room_name = e.target.value;
-                    setSlides(updated);
-                  }}
-                  placeholder="e.g., Kitchen"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Slide Label</label>
-                <Input
-                  value={currentSlide.slide_label || ""}
-                  onChange={(e) => {
-                    const updated = [...slides];
-                    updated[currentSlideIdx].slide_label = e.target.value;
-                    setSlides(updated);
-                  }}
-                  placeholder="e.g., Kitchen Island Option 1"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">3D Image</label>
-                {currentSlide.image_3d_url ? (
-                  <div className="space-y-2">
-                    <img src={currentSlide.image_3d_url} alt="3D" className="w-full h-48 object-cover rounded" />
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => {
-                        const updated = [...slides];
-                        updated[currentSlideIdx].image_3d_url = null;
-                        setSlides(updated);
-                      }}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ) : (
-                  <label className="border-2 border-dashed border-slate-300 rounded-lg p-6 cursor-pointer hover:border-slate-400 transition-all flex flex-col items-center gap-2">
-                    <Upload className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm text-slate-600">Upload 3D image</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        if (e.target.files?.[0]) {
-                          const { file_url } = await base44.integrations.Core.UploadFile({ file: e.target.files[0] });
-                          const updated = [...slides];
-                          updated[currentSlideIdx].image_3d_url = file_url;
-                          setSlides(updated);
-                        }
-                      }}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">2D Image</label>
-                {currentSlide.image_2d_url ? (
-                  <div className="space-y-2">
-                    <img src={currentSlide.image_2d_url} alt="2D" className="w-full h-32 object-cover rounded" />
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => {
-                        const updated = [...slides];
-                        updated[currentSlideIdx].image_2d_url = null;
-                        setSlides(updated);
-                      }}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                ) : (
-                  <label className="border-2 border-dashed border-slate-300 rounded-lg p-6 cursor-pointer hover:border-slate-400 transition-all flex flex-col items-center gap-2">
-                    <Upload className="w-4 h-4 text-slate-600" />
-                    <span className="text-sm text-slate-600">Upload 2D image</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        if (e.target.files?.[0]) {
-                          const { file_url } = await base44.integrations.Core.UploadFile({ file: e.target.files[0] });
-                          const updated = [...slides];
-                          updated[currentSlideIdx].image_2d_url = file_url;
-                          setSlides(updated);
-                        }
-                      }}
-                      className="hidden"
-                    />
-                  </label>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
-                <Textarea
-                  value={currentSlide.notes || ""}
-                  onChange={(e) => {
-                    const updated = [...slides];
-                    updated[currentSlideIdx].notes = e.target.value;
-                    setSlides(updated);
-                  }}
-                  placeholder="Add notes for this slide..."
-                  rows={4}
-                />
-              </div>
-
-              <div className="flex gap-2 border-t border-slate-200 pt-4">
-                <Button
-                  onClick={() => {
-                    const updated = [...slides];
-                    [updated[currentSlideIdx - 1], updated[currentSlideIdx]] = [updated[currentSlideIdx], updated[currentSlideIdx - 1]];
-                    setSlides(updated);
-                    setCurrentSlideIdx(currentSlideIdx - 1);
-                  }}
-                  disabled={currentSlideIdx === 0}
-                  variant="outline"
-                  size="sm"
-                  className="gap-1"
-                >
-                  <ArrowUp className="w-3 h-3" />
-                  Up
-                </Button>
-                <Button
-                  onClick={() => {
-                    const updated = [...slides];
-                    [updated[currentSlideIdx], updated[currentSlideIdx + 1]] = [updated[currentSlideIdx + 1], updated[currentSlideIdx]];
-                    setSlides(updated);
-                    setCurrentSlideIdx(currentSlideIdx + 1);
-                  }}
-                  disabled={currentSlideIdx === slides.length - 1}
-                  variant="outline"
-                  size="sm"
-                  className="gap-1"
-                >
-                  <ArrowDown className="w-3 h-3" />
-                  Down
-                </Button>
-                <Button
-                  onClick={() => {
-                    if (confirm("Delete this slide?")) {
-                      setSlides(slides.filter((_, i) => i !== currentSlideIdx));
-                      setCurrentSlideIdx(Math.max(0, currentSlideIdx - 1));
-                    }
-                  }}
-                  variant="ghost"
-                  size="sm"
-                  className="ml-auto text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  Delete
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // VIEW & SHARE VIEWS
-  const viewSlides = mode === "share" ? shareSlides : existingSlides;
-  const viewPresentation = mode === "share" ? sharePresentation : presentation;
-
-  if ((mode === "view" || mode === "share") && viewPresentation && viewSlides.length > 0) {
-    const currentSlide = viewSlides[currentSlideIdx];
-    const isCoverSlide = currentSlideIdx === 0;
-
-    return (
-      <div className="w-full h-screen bg-slate-900 text-white flex flex-col">
-        {isCoverSlide ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8">
-            <img
-              src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png"
-              alt="Encore Woodworks"
-              className="h-32 mb-8"
-            />
-            <h1 className="text-5xl font-bold text-center mb-4">{viewPresentation.project_name}</h1>
-            <p className="text-2xl text-slate-300 mb-8">{viewPresentation.client_name}</p>
-            <p className="text-xl text-slate-400">3D Renderings</p>
-            <p className="text-sm text-slate-500 mt-12">{format(new Date(), "MMMM d, yyyy")}</p>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-12">
-            {currentSlide.image_3d_url && (
-              <img
-                src={currentSlide.image_3d_url}
-                alt={currentSlide.room_name}
-                className="max-h-96 max-w-2xl object-cover rounded-lg mb-6"
-              />
-            )}
-            <h2 className="text-4xl font-bold mb-4">{currentSlide.room_name}</h2>
-            {currentSlide.notes && (
-              <p className="text-slate-300 text-center max-w-2xl mb-6">{currentSlide.notes}</p>
-            )}
-            {currentSlide.image_2d_url && (
-              <img
-                src={currentSlide.image_2d_url}
-                alt={`${currentSlide.room_name} 2D`}
-                className="max-h-48 max-w-xl object-cover rounded-lg"
-              />
-            )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {presentations.map(pres => (
+              <div key={pres.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col">
+                <div className="h-36 bg-slate-100 flex items-center justify-center text-slate-300 text-sm border-b border-slate-100">
+                  <CoverThumb presId={pres.id} />
+                </div>
+                <div className="p-4 flex-1 flex flex-col">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-slate-900 truncate">{pres.project_name}</h3>
+                      <p className="text-sm text-slate-500 truncate">{pres.client_name}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-full border font-medium capitalize ${STATUS_COLORS[pres.status]}`}>
+                      {pres.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mb-3">{format(new Date(pres.created_date), "MMM d, yyyy")}</p>
+                  <div className="flex gap-2 mt-auto">
+                    <Button size="sm" className="flex-1 bg-amber-700 hover:bg-amber-800 gap-1" onClick={() => navigateTo("editor", pres.id)}>
+                      <Edit2 className="w-3 h-3" /> Open
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleDuplicate(pres)} title="Duplicate">
+                      <Copy className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-red-600 hover:bg-red-50" onClick={() => handleDelete(pres.id)} title="Delete">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
 
-        <div className="bg-slate-800 border-t border-slate-700 p-4 flex items-center justify-between">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setCurrentSlideIdx(Math.max(0, currentSlideIdx - 1))}
-              disabled={currentSlideIdx === 0}
-              className="p-2 hover:bg-slate-700 rounded disabled:opacity-50"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setCurrentSlideIdx(Math.min(viewSlides.length - 1, currentSlideIdx + 1))}
-              disabled={currentSlideIdx === viewSlides.length - 1}
-              className="p-2 hover:bg-slate-700 rounded disabled:opacity-50"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            <span className="text-slate-400 text-sm ml-4">
-              {currentSlideIdx + 1} / {viewSlides.length}
-            </span>
+// ─── EDITOR VIEW ──────────────────────────────────────────────────────────────
+function PresentationEditor({ presId }) {
+  const queryClient = useQueryClient();
+  const [selectedIdx, setSelectedIdx] = useState(0);
+  const [slides, setSlides] = useState([]);
+  const [presData, setPresData] = useState(null);
+  const [showSend, setShowSend] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [autoSaveTimer, setAutoSaveTimer] = useState(null);
+
+  const { data: presentation, isLoading: presLoading } = useQuery({
+    queryKey: ["presentation", presId],
+    queryFn: () => base44.entities.Presentation.list().then(l => l.find(p => p.id === presId)),
+    enabled: !!presId,
+  });
+
+  const { data: existingSlides = [], isLoading: slidesLoading } = useQuery({
+    queryKey: ["slides", presId],
+    queryFn: () => base44.entities.PresentationSlide.filter({ presentation_id: presId }, "sort_order"),
+    enabled: !!presId,
+  });
+
+  useEffect(() => {
+    if (presentation) setPresData({ ...presentation });
+  }, [presentation]);
+
+  useEffect(() => {
+    if (existingSlides.length > 0) setSlides([...existingSlides]);
+  }, [existingSlides]);
+
+  const scheduleAutoSave = (updatedSlides, updatedPres) => {
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    const slidesToSave = updatedSlides || slides;
+    const presToSave = updatedPres || presData;
+    const t = setTimeout(() => doSave(slidesToSave, presToSave), 2000);
+    setAutoSaveTimer(t);
+  };
+
+  const doSave = async (slidesToSave, presToSave) => {
+    setSaving(true);
+    if (presToSave?.id) {
+      await base44.entities.Presentation.update(presToSave.id, {
+        project_name: presToSave.project_name,
+        client_name: presToSave.client_name,
+        status: presToSave.status,
+      });
+    }
+    const existingIds = new Set(existingSlides.map(s => s.id));
+    const updatedSlides = [...slidesToSave];
+    for (let i = 0; i < updatedSlides.length; i++) {
+      const slide = { ...updatedSlides[i], presentation_id: presId, sort_order: i };
+      if (slide.id && existingIds.has(slide.id)) {
+        await base44.entities.PresentationSlide.update(slide.id, slide);
+      } else if (!slide.id) {
+        const created = await base44.entities.PresentationSlide.create(slide);
+        updatedSlides[i] = created;
+      }
+    }
+    setSlides(updatedSlides);
+    queryClient.invalidateQueries({ queryKey: ["presentations"] });
+    setSaving(false);
+  };
+
+  const updateSlide = (idx, patch) => {
+    const updated = slides.map((s, i) => i === idx ? { ...s, ...patch } : s);
+    setSlides(updated);
+    scheduleAutoSave(updated, null);
+  };
+
+  const addSlide = () => {
+    const newSlide = { room_name: "New Room", slide_label: "", notes: "{}", image_3d_url: "[]", sort_order: slides.length };
+    const updated = [...slides, newSlide];
+    setSlides(updated);
+    setSelectedIdx(updated.length - 1);
+    scheduleAutoSave(updated, null);
+  };
+
+  const reorderSlides = (fromIdx, toIdx) => {
+    const updated = [...slides];
+    const [moved] = updated.splice(fromIdx, 1);
+    updated.splice(toIdx, 0, moved);
+    setSlides(updated);
+    setSelectedIdx(toIdx);
+    scheduleAutoSave(updated, null);
+  };
+
+  const deleteSlide = async (idx) => {
+    if (!confirm("Delete this slide?")) return;
+    const slide = slides[idx];
+    if (slide?.id) await base44.entities.PresentationSlide.delete(slide.id);
+    const updated = slides.filter((_, i) => i !== idx);
+    setSlides(updated);
+    setSelectedIdx(Math.max(0, idx - 1));
+  };
+
+  const updatePres = (patch) => {
+    const updated = { ...presData, ...patch };
+    setPresData(updated);
+    scheduleAutoSave(null, updated);
+  };
+
+  if (presLoading || slidesLoading) return <div className="p-8 text-center text-slate-500">Loading...</div>;
+  if (!presData) return <div className="p-8 text-center text-slate-500">Presentation not found.</div>;
+
+  const currentSlide = slides[selectedIdx];
+
+  return (
+    <>
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          body { margin: 0; padding: 0; }
+          .print-slide-page {
+            page-break-after: always;
+            width: 100vw;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            box-sizing: border-box;
+            background: white;
+          }
+          .print-only-slides { display: block !important; }
+          .editor-main { display: none !important; }
+        }
+        @page { size: landscape; margin: 0.5cm; }
+        .print-only-slides { display: none; }
+      `}</style>
+
+      {/* Print-only slides */}
+      <div className="print-only-slides">
+        {slides.map((slide, i) => {
+          const images = parseImages(slide.image_3d_url);
+          const spec = parseSpec(slide.notes);
+          const count = images.length;
+          const gridStyle = count === 1 ? { gridTemplateColumns: "1fr" } : count === 2 ? { gridTemplateColumns: "1fr 1fr" } : { gridTemplateColumns: "1fr 1fr 1fr" };
+          return (
+            <div key={i} className="print-slide-page">
+              <div style={{ borderBottom: "2px solid #1e293b", paddingBottom: "8px", marginBottom: "12px" }}>
+                <h2 style={{ fontSize: "24px", fontWeight: "bold", margin: 0 }}>{slide.room_name}</h2>
+                {slide.slide_label && <p style={{ fontSize: "13px", color: "#64748b", margin: "2px 0 0" }}>{slide.slide_label}</p>}
+              </div>
+              {images.length > 0 && (
+                <div style={{ display: "grid", gap: "8px", marginBottom: "12px", ...gridStyle }}>
+                  {images.map((url, j) => (
+                    <img key={j} src={url} alt="" style={{ width: "100%", maxHeight: "320px", objectFit: "cover", borderRadius: "4px" }} />
+                  ))}
+                </div>
+              )}
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
+                <tbody>
+                  <tr>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", fontWeight: "600", background: "#f8fafc" }}>Wood Species / Finish</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>{spec.wood_species || ""}</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", fontWeight: "600", background: "#f8fafc" }}>Crown Type</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>{spec.crown_type || ""}</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", fontWeight: "600", background: "#f8fafc" }}>Ceiling Height</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>{spec.ceiling_height || ""}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", fontWeight: "600", background: "#f8fafc" }}>Notes</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }} colSpan={3}>{spec.notes_bullets || ""}</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", fontWeight: "600", background: "#f8fafc" }}>Door Profile</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>{spec.door_profile || ""}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", fontWeight: "600", background: "#f8fafc" }}>Finish</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }}>{spec.finish || ""}</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px", fontWeight: "600", background: "#f8fafc" }}>Cab Finished to Height</td>
+                    <td style={{ border: "1px solid #cbd5e1", padding: "4px 8px" }} colSpan={3}>{spec.cab_finished_height || ""}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Editor UI */}
+      <div className="editor-main flex flex-col h-screen bg-slate-100">
+        {/* Toolbar */}
+        <div className="no-print bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-3 flex-shrink-0">
+          <button
+            onClick={() => navigateTo("list")}
+            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" /> Back
+          </button>
+          <div className="w-px h-5 bg-slate-200" />
+          <input
+            className="font-semibold text-slate-900 text-sm border-none outline-none bg-transparent min-w-0 flex-1"
+            value={presData.project_name || ""}
+            onChange={e => updatePres({ project_name: e.target.value })}
+            placeholder="Presentation title"
+          />
+          <Select value={presData.status || "draft"} onValueChange={v => updatePres({ status: v })}>
+            <SelectTrigger className="h-8 w-28 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="ready">Ready</SelectItem>
+              <SelectItem value="sent">Sent</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-xs text-slate-400">{saving ? "Saving..." : "Saved"}</span>
+          <Button size="sm" variant="outline" onClick={() => window.print()} className="gap-1.5">
+            <Printer className="w-3.5 h-3.5" /> Export PDF
+          </Button>
+          <Button size="sm" className="bg-amber-700 hover:bg-amber-800 gap-1.5" onClick={() => setShowSend(true)}>
+            <Send className="w-3.5 h-3.5" /> Send to Client
+          </Button>
+        </div>
+
+        {/* Two-panel layout */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left: thumbnail strip */}
+          <div className="no-print w-52 bg-white border-r border-slate-200 p-3 flex flex-col overflow-hidden flex-shrink-0">
+            <SlideThumbnailStrip
+              slides={slides}
+              selectedIdx={selectedIdx}
+              onSelect={setSelectedIdx}
+              onAdd={addSlide}
+              onReorder={reorderSlides}
+            />
           </div>
 
-          {mode === "view" && (
-            <div className="flex gap-2">
-              {viewPresentation.status === "draft" && (
-                <Button
-                  onClick={async () => {
-                    await base44.entities.Presentation.update(viewPresentation.id, { status: "ready" });
-                    queryClient.invalidateQueries({ queryKey: ["presentation"] });
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  Mark as Ready
+          {/* Right: slide editor */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {currentSlide ? (
+              <div className="max-w-4xl mx-auto space-y-4">
+                <SlidePreview
+                  slide={currentSlide}
+                  onUpdate={(patch) => updateSlide(selectedIdx, patch)}
+                  editable={true}
+                />
+                <div className="flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-red-600 hover:bg-red-50 gap-1"
+                    onClick={() => deleteSlide(selectedIdx)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete Slide
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                <p className="mb-4">No slides yet.</p>
+                <Button onClick={addSlide} className="bg-amber-700 hover:bg-amber-800 gap-2">
+                  <Plus className="w-4 h-4" /> Add First Slide
                 </Button>
-              )}
-              {viewPresentation.status === "ready" && (
-                <Button
-                  onClick={async () => {
-                    const token = Math.random().toString(36).substring(2, 15);
-                    await base44.entities.Presentation.update(viewPresentation.id, {
-                      status: "sent",
-                      sent_date: format(new Date(), "yyyy-MM-dd"),
-                      shared_link_token: token,
-                    });
-                    queryClient.invalidateQueries({ queryKey: ["presentation"] });
-                  }}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  Mark as Sent
-                </Button>
-              )}
-              {viewPresentation.shared_link_token && (
-                <Button
-                  onClick={async () => {
-                    const link = `${window.location.origin}${createPageUrl(`Presentations?mode=share&token=${viewPresentation.shared_link_token}`)}`;
-                    await navigator.clipboard.writeText(link);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                  variant="outline"
-                  className="text-white border-slate-600 hover:bg-slate-700 gap-2"
-                >
-                  {copied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
-                  {copied ? "Copied!" : "Copy Link"}
-                </Button>
-              )}
-              <Button
-                onClick={() => navigateTo("list")}
-                variant="outline"
-                className="text-white border-slate-600 hover:bg-slate-700"
-              >
-                Close
-              </Button>
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    );
-  }
 
-  return <div className="p-8">Loading...</div>;
+      <SendToClientModal
+        open={showSend}
+        onOpenChange={setShowSend}
+        presentation={presData}
+        onSent={() => queryClient.invalidateQueries({ queryKey: ["presentations"] })}
+      />
+    </>
+  );
+}
+
+// ─── SHARE VIEW ───────────────────────────────────────────────────────────────
+function ShareView({ token }) {
+  const [idx, setIdx] = useState(0);
+
+  const { data: presentation } = useQuery({
+    queryKey: ["pres-share", token],
+    queryFn: () => base44.entities.Presentation.filter({ shared_link_token: token }).then(r => r[0]),
+    enabled: !!token,
+  });
+
+  const { data: slides = [] } = useQuery({
+    queryKey: ["slides-share", presentation?.id],
+    queryFn: () => base44.entities.PresentationSlide.filter({ presentation_id: presentation.id }, "sort_order"),
+    enabled: !!presentation?.id,
+  });
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === "ArrowLeft") setIdx(i => Math.max(0, i - 1));
+      if (e.key === "ArrowRight") setIdx(i => Math.min(slides.length - 1, i + 1));
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [slides]);
+
+  if (!presentation) return <div className="p-8 text-center">Loading...</div>;
+
+  const slide = slides[idx];
+
+  return (
+    <div className="min-h-screen bg-slate-900 text-white flex flex-col">
+      <div className="flex-1 flex flex-col items-center justify-center p-8 max-w-5xl mx-auto w-full">
+        {idx === 0 && slides.length === 0 ? (
+          <div className="text-center">
+            <h1 className="text-5xl font-bold mb-4">{presentation.project_name}</h1>
+            <p className="text-2xl text-slate-300">{presentation.client_name}</p>
+          </div>
+        ) : slide ? (
+          <div className="w-full">
+            <SlidePreview slide={slide} onUpdate={() => {}} editable={false} />
+          </div>
+        ) : (
+          <div className="text-center">
+            <h1 className="text-5xl font-bold mb-4">{presentation.project_name}</h1>
+            <p className="text-2xl text-slate-300">{presentation.client_name}</p>
+          </div>
+        )}
+      </div>
+      <div className="bg-slate-800 border-t border-slate-700 px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setIdx(i => Math.max(0, i - 1))} disabled={idx === 0} className="p-2 hover:bg-slate-700 rounded disabled:opacity-40">◀</button>
+          <span className="text-slate-400 text-sm">{idx + 1} / {Math.max(slides.length, 1)}</span>
+          <button onClick={() => setIdx(i => Math.min(slides.length - 1, i + 1))} disabled={idx >= slides.length - 1} className="p-2 hover:bg-slate-700 rounded disabled:opacity-40">▶</button>
+        </div>
+        <span className="text-slate-500 text-sm">{presentation.project_name}</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── ROOT ─────────────────────────────────────────────────────────────────────
+export default function Presentations() {
+  const [mode, setMode] = useState(() => getUrlParams().get("mode") || "list");
+  const [presId, setPresId] = useState(() => getUrlParams().get("id"));
+  const [shareToken, setShareToken] = useState(() => getUrlParams().get("token"));
+  const [showNewDialog, setShowNewDialog] = useState(false);
+
+  useEffect(() => {
+    const handler = () => {
+      const p = getUrlParams();
+      setMode(p.get("mode") || "list");
+      setPresId(p.get("id"));
+      setShareToken(p.get("token"));
+    };
+    window.addEventListener("popstate", handler);
+    return () => window.removeEventListener("popstate", handler);
+  }, []);
+
+  const handleProjectSelected = (pres) => {
+    setShowNewDialog(false);
+    navigateTo("editor", pres.id);
+  };
+
+  if (shareToken) return <ShareView token={shareToken} />;
+  if (mode === "editor" && presId) return <PresentationEditor presId={presId} />;
+
+  return (
+    <>
+      <PresentationsList onNew={() => setShowNewDialog(true)} />
+      <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>New Presentation</DialogTitle></DialogHeader>
+          <ProjectSelector onProjectSelected={handleProjectSelected} />
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
