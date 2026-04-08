@@ -29,8 +29,6 @@ export default function EndOfDayDialog({ open, onOpenChange, currentUser }) {
     area_clean: true,
     area_notes: "",
     accomplishments: "",
-    blockers: "",
-    tomorrow_plan: "",
   });
 
   useEffect(() => {
@@ -43,8 +41,6 @@ export default function EndOfDayDialog({ open, onOpenChange, currentUser }) {
         area_clean: true,
         area_notes: "",
         accomplishments: "",
-        blockers: "",
-        tomorrow_plan: "",
       });
     }
   }, [open]);
@@ -157,28 +153,6 @@ export default function EndOfDayDialog({ open, onOpenChange, currentUser }) {
                 placeholder="Cabinets built, faces framed, sprayed..."
                 value={form.accomplishments}
                 onChange={e => setForm(f => ({ ...f, accomplishments: e.target.value }))}
-                className="resize-none h-16 text-sm"
-              />
-            </div>
-
-            {/* Blockers */}
-            <div>
-              <Label className="text-sm font-semibold text-slate-700 mb-1 block">Any blockers or issues?</Label>
-              <Textarea
-                placeholder="Missing parts, equipment issues, waiting on anything..."
-                value={form.blockers}
-                onChange={e => setForm(f => ({ ...f, blockers: e.target.value }))}
-                className="resize-none h-16 text-sm"
-              />
-            </div>
-
-            {/* Tomorrow Plan */}
-            <div>
-              <Label className="text-sm font-semibold text-slate-700 mb-1 block">Plan for tomorrow?</Label>
-              <Textarea
-                placeholder="What's on deck for tomorrow..."
-                value={form.tomorrow_plan}
-                onChange={e => setForm(f => ({ ...f, tomorrow_plan: e.target.value }))}
                 className="resize-none h-16 text-sm"
               />
             </div>
