@@ -64,9 +64,16 @@ export default function ShopProduction() {
     refetchOnWindowFocus: false,
   });
 
-  // Real-time subscription: update local cache instantly when any production item changes
+  const { data: columnMoveLogs = [] } = useQuery({
+    queryKey: ["columnMoveLogs"],
+    queryFn: () => base44.entities.ColumnMoveLog.list(),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+  });
+
+  // Real-time subscriptions
   useEffect(() => {
-    const unsub = base44.entities.ProductionItem.subscribe((event) => {
+    const unsubItems = base44.entities.ProductionItem.subscribe((event) => {
       queryClient.setQueryData(["productionItems"], (old = []) => {
         if (event.type === "create") return [...old, event.data];
         if (event.type === "update") return old.map(i => i.id === event.id ? event.data : i);
@@ -74,7 +81,13 @@ export default function ShopProduction() {
         return old;
       });
     });
-    return unsub;
+    const unsubLogs = base44.entities.ColumnMoveLog.subscribe((event) => {
+      queryClient.setQueryData(["columnMoveLogs"], (old = []) => {
+        if (event.type === "create") return [...old, event.data];
+        return old;
+      });
+    });
+    return () => { unsubItems(); unsubLogs(); };
   }, [queryClient]);
 
   const activeProjects = projects.filter(p => ACTIVE_PROJECT_STATUSES.includes(p.status) && !p.archived);
@@ -128,74 +141,76 @@ export default function ShopProduction() {
     const item = items.find(i => i.id === itemId);
     if (!item) return;
 
+    const oldStage = item.stage;
+    if (oldStage === newStage) return;
+
     const safeFiles = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts !== undefined ? Number(f.pts) : undefined, annotations: f.annotations }));
 
-    // Set completed_date when moving INTO complete
-    // pts_logged / pts_logged_date are written ONCE on first completion and never cleared
     const localDateStr = format(new Date(new Date().toLocaleString("en-US", { timeZone: "America/Denver" })), "yyyy-MM-dd");
-    let completedDate = item.completed_date;
-    if (newStage === "complete" && item.stage !== "complete") {
-      completedDate = localDateStr;
-    }
 
     // Calculate total pts for this item (file pts + card-level pts)
     const filePts = safeFiles.reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
     const cardPts = parseFloat(item.pts) || 0;
     const totalPts = filePts + cardPts;
 
-    // Log pts permanently when first moved to complete (never overwrite once set)
-    const ptsLogged = newStage === "complete" && item.stage !== "complete" && !item.pts_logged
-      ? totalPts
-      : item.pts_logged;
-    const ptsLoggedDate = newStage === "complete" && item.stage !== "complete" && !item.pts_logged_date
-      ? localDateStr
-      : item.pts_logged_date;
+    // columns_visited logic — only grows, never shrinks
+    const visited = JSON.parse(item.columns_visited || "[]");
+    const alreadyVisited = visited.includes(newStage);
+    const pointsToAdd = alreadyVisited ? 0 : totalPts;
+    if (!alreadyVisited) visited.push(newStage);
 
-    // Per-column arrival log: credit pts to the column the card is ENTERING (to_stage)
-    // Only log when moving forward (left to right), never when moving backwards
-    // Each to_stage can only be logged ONCE per card to prevent double-counting
-    const STAGE_ORDER = ["cut", "face_frame", "spray", "build", "complete"];
-    const TRACKED_STAGES = ["face_frame", "spray", "build", "complete"];
-    const oldStage = item.stage;
-    const oldStageIdx = STAGE_ORDER.indexOf(oldStage);
-    const newStageIdx = STAGE_ORDER.indexOf(newStage);
-    const isMovingForward = newStageIdx > oldStageIdx; // right-to-left moves are negative or equal
-    let stagePtsLog = item.stage_pts_log || [];
-    const alreadyLoggedForDestination = stagePtsLog.some(entry => entry.from_stage === newStage);
-    if (isMovingForward && TRACKED_STAGES.includes(newStage) && !alreadyLoggedForDestination) {
-      stagePtsLog = [...stagePtsLog, { from_stage: newStage, pts: totalPts, date: format(new Date(new Date().toLocaleString("en-US", { timeZone: "America/Denver" })), "yyyy-MM-dd") }];
+    // Set completed_date when moving INTO complete (once only)
+    let completedDate = item.completed_date;
+    if (newStage === "complete" && !completedDate) {
+      completedDate = localDateStr;
     }
+
+    // pts_logged / pts_logged_date — written ONCE on first completion
+    const ptsLogged = newStage === "complete" && !item.pts_logged ? totalPts : item.pts_logged;
+    const ptsLoggedDate = newStage === "complete" && !item.pts_logged_date ? localDateStr : item.pts_logged_date;
 
     // Stage move log — always record who moved it and when
-    const stageMoveLog = [...(item.stage_move_log || [])];
-    if (oldStage !== newStage) {
-      stageMoveLog.push({
-        from_stage: oldStage || null,
-        to_stage: newStage,
-        moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
-        timestamp: new Date().toISOString(),
-      });
-    }
+    const stageMoveLog = [...(item.stage_move_log || []), {
+      from_stage: oldStage || null,
+      to_stage: newStage,
+      moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
+      timestamp: new Date().toISOString(),
+    }];
 
     const updatePayload = {
       name: item.name, type: item.type, stage: newStage,
       project_id: item.project_id, project_name: item.project_name, room_name: item.room_name,
-      notes: item.notes, files: safeFiles,
-      pts: item.pts,
+      notes: item.notes, files: safeFiles, pts: item.pts,
+      columns_visited: JSON.stringify(visited),
+      total_points: (item.total_points || 0) + pointsToAdd,
       pts_logged: ptsLogged,
       pts_logged_date: ptsLoggedDate,
       completed_date: completedDate,
-      stage_pts_log: stagePtsLog,
-      stage_move_log: stageMoveLog
+      stage_move_log: stageMoveLog,
     };
 
     // Optimistic update immediately so UI feels instant
     queryClient.setQueryData(["productionItems"], (old = []) =>
-      old.map(i => i.id === itemId ? { ...i, stage: newStage, files: safeFiles, completed_date: completedDate, pts_logged: ptsLogged, pts_logged_date: ptsLoggedDate, stage_pts_log: stagePtsLog, stage_move_log: stageMoveLog } : i)
+      old.map(i => i.id === itemId ? { ...i, ...updatePayload } : i)
     );
 
-    await base44.entities.ProductionItem.update(itemId, updatePayload);
+    // Persist item update and create move log entry in parallel
+    await Promise.all([
+      base44.entities.ProductionItem.update(itemId, updatePayload),
+      base44.entities.ColumnMoveLog.create({
+        item_id: itemId,
+        item_name: item.name,
+        project_name: item.project_name || null,
+        from_column: oldStage || null,
+        to_column: newStage,
+        points_awarded: pointsToAdd,
+        moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
+        moved_at: new Date().toISOString(),
+      }),
+    ]);
+
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+    queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
 
     if (item?.pickup_item_id) {
       try { await base44.entities.PickupItem.update(item.pickup_item_id, { production_stage: newStage }); queryClient.invalidateQueries({ queryKey: ["pickupItems"] }); } catch (e) {}
@@ -252,46 +267,27 @@ export default function ShopProduction() {
     setAnnotatingPdf(null); setCurrentPdfUrl(null); setCurrentAnnotations([]);
   };
 
-  // PTS stats — per column (face_frame, spray, build, complete) with day/week/month tallies
-  // Use local (Denver) time so "today" matches how dates are stored (local date strings)
+  // PTS stats — read from ColumnMoveLog, summing points_awarded by to_column within time windows
   const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Denver" }));
   const todayStr = format(nowLocal, "yyyy-MM-dd");
-  const weekStart = startOfWeek(nowLocal, { weekStartsOn: 1 }); // Monday
+  const weekStart = startOfWeek(nowLocal, { weekStartsOn: 1 });
   const monthStart = startOfMonth(nowLocal);
-  const boardItems = items.filter(i => !i.is_job_info);
 
   const STAT_STAGES = ["face_frame", "spray", "build", "complete"];
   const STAT_LABELS = { face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete" };
 
-  // For each tracked stage, sum pts from stage_pts_log entries with from_stage === stage
-  // For "complete" column: use pts_logged / pts_logged_date (items rarely leave complete)
   const getColStats = (stage) => {
     let day = 0, week = 0, month = 0;
-    if (stage === "complete") {
-      for (const item of boardItems) {
-        const d = item.pts_logged_date;
-        if (!d) continue;
-        const pts = parseFloat(item.pts_logged) || 0;
-        if (pts === 0) continue;
-        const entryDate = new Date(d + "T00:00:00");
-        if (d === todayStr) day += pts;
-        if (entryDate >= weekStart) week += pts;
-        if (entryDate >= monthStart) month += pts;
-      }
-    } else {
-      for (const item of boardItems) {
-        const log = item.stage_pts_log || [];
-        for (const entry of log) {
-          if (entry.from_stage !== stage) continue;
-          const d = entry.date;
-          if (!d) continue;
-          const entryDate = new Date(d + "T00:00:00");
-          const pts = parseFloat(entry.pts) || 0;
-          if (d === todayStr) day += pts;
-          if (entryDate >= weekStart) week += pts;
-          if (entryDate >= monthStart) month += pts;
-        }
-      }
+    for (const log of columnMoveLogs) {
+      if (log.to_column !== stage) continue;
+      const pts = parseFloat(log.points_awarded) || 0;
+      if (pts === 0) continue;
+      const movedAt = new Date(log.moved_at);
+      const movedLocal = new Date(movedAt.toLocaleString("en-US", { timeZone: "America/Denver" }));
+      const dateStr = format(movedLocal, "yyyy-MM-dd");
+      if (dateStr === todayStr) day += pts;
+      if (movedLocal >= weekStart) week += pts;
+      if (movedLocal >= monthStart) month += pts;
     }
     return { day, week, month };
   };

@@ -1,0 +1,43 @@
+{
+  "name": "ColumnMoveLog",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "description": "Reference to ProductionItem ID"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Name of the production item"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for reference"
+    },
+    "from_column": {
+      "type": "string",
+      "description": "Stage the item moved from"
+    },
+    "to_column": {
+      "type": "string",
+      "description": "Stage the item moved to"
+    },
+    "points_awarded": {
+      "type": "number",
+      "description": "Points awarded for this move (0 if column was already visited)"
+    },
+    "moved_by": {
+      "type": "string",
+      "description": "Email or name of the user who moved the item"
+    },
+    "moved_at": {
+      "type": "string",
+      "description": "ISO datetime of when the move occurred"
+    }
+  },
+  "required": [
+    "item_id",
+    "to_column",
+    "moved_at"
+  ]
+}

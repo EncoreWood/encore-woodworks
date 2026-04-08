@@ -57,6 +57,16 @@
       "type": "number",
       "description": "Card-level point value (used when no files are attached, e.g. pickup items)"
     },
+    "columns_visited": {
+      "type": "string",
+      "default": "[]",
+      "description": "JSON array string of column stage names this item has already been to. Never shrinks."
+    },
+    "total_points": {
+      "type": "number",
+      "default": 0,
+      "description": "Running total of points earned by this item across all column visits"
+    },
     "pts_logged": {
       "type": "number",
       "description": "Points value recorded when first moved to complete. Never changes after first completion."
@@ -68,7 +78,7 @@
     },
     "stage_pts_log": {
       "type": "array",
-      "description": "Log of pts recorded each time a card leaves a stage (excluding cut and on_hold). Used for per-column day/week/month tallies.",
+      "description": "Legacy log of pts per stage exit. Superseded by ColumnMoveLog.",
       "items": {
         "type": "object",
         "properties": {
@@ -87,7 +97,7 @@
     },
     "stage_move_log": {
       "type": "array",
-      "description": "Timestamp log of every stage transition, recording who moved the item and when.",
+      "description": "Timestamp log of every stage transition.",
       "items": {
         "type": "object",
         "properties": {
