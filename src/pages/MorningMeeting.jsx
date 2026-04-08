@@ -713,18 +713,19 @@ export default function MorningMeeting() {
 
           {/* Compliments */}
           {(() => {
-            const todayCompliments = compliments.filter(c => c.share_in_meeting && c.date === dateString);
+            const todayCompliments = compliments.filter(c => c.date === dateString);
             const recentCompliments = compliments.filter(c => c.share_in_meeting).slice(0, 5);
             const displayCompliments = todayCompliments.length > 0 ? todayCompliments : recentCompliments;
+            const isShowingToday = todayCompliments.length > 0;
             return (
-              <SectionCard title="Well Done! 🎉" icon={Sparkles} color="amber" count={displayCompliments.length} defaultOpen={todayCompliments.length > 0}>
+              <SectionCard title="Well Done! 🎉" icon={Sparkles} color="amber" count={displayCompliments.length} defaultOpen={isShowingToday}>
                 {displayCompliments.length === 0 ? (
                   <div className="flex items-center justify-center gap-2 py-4 text-slate-400">
                     <span className="text-sm">No compliments shared for today. Give one from the Production board!</span>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {todayCompliments.length === 0 && (
+                    {!isShowingToday && (
                       <p className="text-xs text-slate-400 text-center mb-2">Showing recent compliments (none submitted for today)</p>
                     )}
                     {displayCompliments.map(c => (
