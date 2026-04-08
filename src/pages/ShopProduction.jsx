@@ -132,9 +132,10 @@ export default function ShopProduction() {
 
     // Set completed_date when moving INTO complete
     // pts_logged / pts_logged_date are written ONCE on first completion and never cleared
+    const localDateStr = format(new Date(new Date().toLocaleString("en-US", { timeZone: "America/Denver" })), "yyyy-MM-dd");
     let completedDate = item.completed_date;
     if (newStage === "complete" && item.stage !== "complete") {
-      completedDate = format(new Date(), "yyyy-MM-dd");
+      completedDate = localDateStr;
     }
 
     // Calculate total pts for this item (file pts + card-level pts)
@@ -147,17 +148,22 @@ export default function ShopProduction() {
       ? totalPts
       : item.pts_logged;
     const ptsLoggedDate = newStage === "complete" && item.stage !== "complete" && !item.pts_logged_date
-      ? format(new Date(), "yyyy-MM-dd")
+      ? localDateStr
       : item.pts_logged_date;
 
-    // Per-column stage exit log (track when pts leave face_frame, spray, build, complete columns)
-    // Each stage can only be logged ONCE per card — no duplicate points if card moves back and forth
+    // Per-column arrival log: credit pts to the column the card is ENTERING (to_stage)
+    // Only log when moving forward (left to right), never when moving backwards
+    // Each to_stage can only be logged ONCE per card to prevent double-counting
+    const STAGE_ORDER = ["cut", "face_frame", "spray", "build", "complete"];
     const TRACKED_STAGES = ["face_frame", "spray", "build", "complete"];
     const oldStage = item.stage;
+    const oldStageIdx = STAGE_ORDER.indexOf(oldStage);
+    const newStageIdx = STAGE_ORDER.indexOf(newStage);
+    const isMovingForward = newStageIdx > oldStageIdx; // right-to-left moves are negative or equal
     let stagePtsLog = item.stage_pts_log || [];
-    const alreadyLoggedForStage = stagePtsLog.some(entry => entry.from_stage === oldStage);
-    if (oldStage && TRACKED_STAGES.includes(oldStage) && oldStage !== newStage && !alreadyLoggedForStage) {
-      stagePtsLog = [...stagePtsLog, { from_stage: oldStage, pts: totalPts, date: format(new Date(), "yyyy-MM-dd") }];
+    const alreadyLoggedForDestination = stagePtsLog.some(entry => entry.from_stage === newStage);
+    if (isMovingForward && TRACKED_STAGES.includes(newStage) && !alreadyLoggedForDestination) {
+      stagePtsLog = [...stagePtsLog, { from_stage: newStage, pts: totalPts, date: format(new Date(new Date().toLocaleString("en-US", { timeZone: "America/Denver" })), "yyyy-MM-dd") }];
     }
 
     // Stage move log — always record who moved it and when
