@@ -14,13 +14,21 @@
       "type": "string",
       "description": "Slide label (e.g., 'Kitchen Island Option 1')"
     },
+    "canvas_json": {
+      "type": "string",
+      "description": "Fabric.js canvas.toJSON() state for the full slide"
+    },
+    "thumbnail_url": {
+      "type": "string",
+      "description": "Base64 data URL PNG thumbnail generated from canvas.toDataURL()"
+    },
     "image_3d_url": {
       "type": "string",
-      "description": "JSON array of image URLs (or legacy single URL string)"
+      "description": "JSON array of image URLs (legacy, superseded by canvas_json)"
     },
     "image_2d_url": {
       "type": "string",
-      "description": "2D drawing image URL"
+      "description": "2D drawing image URL (legacy)"
     },
     "notes": {
       "type": "string",

@@ -1,15 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Printer, Send, ChevronLeft, Copy, Trash2, Edit2 } from "lucide-react";
 import { format } from "date-fns";
 import ProjectSelector from "@/components/presentations/ProjectSelector";
 import SlideThumbnailStrip from "@/components/presentations/SlideThumbnailStrip";
-import SlidePreview, { parseImages, parseSpec } from "@/components/presentations/SlidePreview";
+import { parseImages, parseSpec } from "@/components/presentations/SlidePreview";
+import FabricSlideCanvas, { CANVAS_W, CANVAS_H } from "@/components/presentations/FabricSlideCanvas";
 import SendToClientModal from "@/components/presentations/SendToClientModal";
 
 const STATUS_COLORS = {
@@ -38,8 +38,7 @@ function CoverThumb({ presId }) {
     staleTime: 60000,
   });
   const first = slides[0];
-  const images = first ? parseImages(first.image_3d_url) : [];
-  const thumb = images[0]?.url || images[0];
+  const thumb = first?.thumbnail_url || (first ? (parseImages(first.image_3d_url)[0]?.url) : null);
   if (thumb) return <img src={thumb} alt="" className="w-full h-full" style={{ objectFit: "contain", background: "#f8fafc" }} />;
   return <span className="text-xs text-slate-400">{slides.length} slide{slides.length !== 1 ? "s" : ""}</span>;
 }
@@ -139,6 +138,9 @@ function PresentationEditor({ presId }) {
   const [showSend, setShowSend] = useState(false);
   const [saving, setSaving] = useState(false);
   const [autoSaveTimer, setAutoSaveTimer] = useState(null);
+  const [printDataUrls, setPrintDataUrls] = useState([]);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const editorPanelRef = useRef(null);
 
   const { data: presentation, isLoading: presLoading } = useQuery({
     queryKey: ["presentation", presId],
@@ -236,131 +238,54 @@ function PresentationEditor({ presId }) {
 
   const currentSlide = slides[selectedIdx];
 
+  // Collect all thumbnail dataURLs from slides and trigger print
+  const handleExportPDF = async () => {
+    setIsPrinting(true);
+    // Give a tick so state updates, then collect dataUrls from thumbnails stored in slides
+    // Each slide stores thumbnail_url after save; fall back to canvas_json render
+    const dataUrls = slides.map(s => s.thumbnail_url || null).filter(Boolean);
+    // If we have thumbnails use them, else just use whatever is stored
+    const urls = slides.map(s => s.thumbnail_url || "");
+    setPrintDataUrls(urls);
+    // Wait for DOM update then print
+    setTimeout(() => {
+      window.print();
+      setIsPrinting(false);
+    }, 300);
+  };
+
   return (
     <>
       <style>{`
         @media print {
           body * { visibility: hidden; }
-          nav, aside, header, .sidebar, [class*="sidebar"],
-          [class*="nav"], [class*="toolbar"], [class*="header"],
-          .no-print, button { display: none !important; }
-
+          nav, aside, header, .no-print, button { display: none !important; }
           #print-slides, #print-slides * { visibility: visible; }
-
-          #print-slides {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-          }
-
+          #print-slides { position: fixed; top: 0; left: 0; }
           .print-slide {
+            width: 11in;
+            height: 8.5in;
             page-break-after: always;
             break-after: page;
-            width: 100vw;
-            min-height: 100vh;
-            padding: 32px;
-            box-sizing: border-box;
-            display: flex;
-            flex-direction: column;
-            background: white;
+            overflow: hidden;
           }
-
-          .print-slide:last-child {
-            page-break-after: avoid;
-            break-after: avoid;
-          }
-
-          .print-slide img {
-            object-fit: contain !important;
-            max-width: 100%;
-            height: auto;
-          }
-
-          .print-slide table {
-            width: 100%;
-          }
-
-          @page {
-            size: landscape;
-            margin: 0.5in;
-          }
+          .print-slide:last-child { page-break-after: avoid; break-after: avoid; }
+          .print-slide img { width: 11in; height: 8.5in; object-fit: contain; display: block; }
+          @page { size: 11in 8.5in landscape; margin: 0; }
         }
       `}</style>
 
-      {/* Always-rendered print container — hidden on screen, shown via @media print */}
+      {/* Print-only container — uses slide thumbnail_url PNGs, one per page */}
       <div id="print-slides" style={{ position: "absolute", top: 0, left: 0, width: 0, height: 0, overflow: "hidden", visibility: "hidden" }}>
-        {slides.map((slide, i) => {
-          const images = parseImages(slide.image_3d_url);
-          const spec = parseSpec(slide.notes);
-          const count = images.length;
-          const gridCols = count === 1 ? "1fr" : count === 2 ? "1fr 1fr" : "1fr 1fr 1fr";
-          return (
-            <div key={i} className="print-slide">
-              {/* Room name header */}
-              <div style={{ borderBottom: "2px solid #1e293b", paddingBottom: "8px", marginBottom: "16px" }}>
-                <h2 style={{ fontSize: "26px", fontWeight: "bold", margin: 0, fontFamily: "Georgia, serif" }}>{slide.room_name}</h2>
-                {slide.slide_label && <p style={{ fontSize: "13px", color: "#64748b", margin: "4px 0 0" }}>{slide.slide_label}</p>}
-              </div>
-
-              {/* Image grid */}
-              {images.length > 0 && (
-                <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: "10px", marginBottom: "16px" }}>
-                  {images.map((imgItem, j) => {
-                    const src = imgItem?.url || imgItem;
-                    return (
-                      <img
-                        key={j}
-                        src={src}
-                        alt=""
-                        style={{ width: "100%", maxHeight: "380px", objectFit: "contain", background: "#f8fafc", borderRadius: "4px", display: "block" }}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Spec table */}
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px", marginBottom: "12px" }}>
-                <tbody>
-                  <tr>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px", fontWeight: "600", background: "#f8fafc", whiteSpace: "nowrap" }}>Wood Species / Finish</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px" }}>{spec.wood_species || ""}</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px", fontWeight: "600", background: "#f8fafc", whiteSpace: "nowrap" }}>Crown Type</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px" }}>{spec.crown_type || ""}</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px", fontWeight: "600", background: "#f8fafc", whiteSpace: "nowrap" }}>Ceiling Height</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px" }}>{spec.ceiling_height || ""}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px", fontWeight: "600", background: "#f8fafc" }}>Notes</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px" }} colSpan={3}>{spec.notes_bullets || ""}</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px", fontWeight: "600", background: "#f8fafc", whiteSpace: "nowrap" }}>Door Profile</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px" }}>{spec.door_profile || ""}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px", fontWeight: "600", background: "#f8fafc" }}>Finish</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px" }}>{spec.finish || ""}</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px", fontWeight: "600", background: "#f8fafc", whiteSpace: "nowrap" }}>Cab Finished to Height</td>
-                    <td style={{ border: "1px solid #cbd5e1", padding: "5px 8px" }} colSpan={3}>{spec.cab_finished_height || ""}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* 2D drawing */}
-              {slide.image_2d_url && (
-                <img
-                  src={slide.image_2d_url}
-                  alt="2D Drawing"
-                  style={{ maxWidth: "100%", maxHeight: "280px", objectFit: "contain", background: "#f8fafc", borderRadius: "4px", display: "block" }}
-                />
-              )}
-            </div>
-          );
-        })}
+        {printDataUrls.map((url, i) => (
+          <div key={i} className="print-slide">
+            {url ? <img src={url} alt={`Slide ${i + 1}`} /> : null}
+          </div>
+        ))}
       </div>
 
       {/* Editor UI */}
-      <div className="flex flex-col h-screen bg-slate-100">
+      <div className="flex flex-col h-screen bg-slate-200">
         {/* Toolbar */}
         <div className="no-print bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-3 flex-shrink-0 z-10">
           <button
@@ -387,8 +312,8 @@ function PresentationEditor({ presId }) {
             </SelectContent>
           </Select>
           <span className="text-xs text-slate-400">{saving ? "Saving..." : "Saved"}</span>
-          <Button size="sm" variant="outline" onClick={() => window.print()} className="gap-1.5">
-            <Printer className="w-3.5 h-3.5" /> Export PDF
+          <Button size="sm" variant="outline" onClick={handleExportPDF} className="gap-1.5" disabled={isPrinting}>
+            <Printer className="w-3.5 h-3.5" /> {isPrinting ? "Preparing..." : "Export PDF"}
           </Button>
           <Button size="sm" className="bg-amber-700 hover:bg-amber-800 gap-1.5" onClick={() => setShowSend(true)}>
             <Send className="w-3.5 h-3.5" /> Send to Client
@@ -398,7 +323,7 @@ function PresentationEditor({ presId }) {
         {/* Two-panel layout */}
         <div className="flex flex-1 overflow-hidden">
           {/* Left: thumbnail strip */}
-          <div className="no-print w-52 bg-white border-r border-slate-200 p-3 flex flex-col overflow-hidden flex-shrink-0 print:hidden">
+          <div className="no-print w-52 bg-white border-r border-slate-200 p-3 flex flex-col overflow-hidden flex-shrink-0">
             <SlideThumbnailStrip
               slides={slides}
               selectedIdx={selectedIdx}
@@ -408,16 +333,18 @@ function PresentationEditor({ presId }) {
             />
           </div>
 
-          {/* Right: slide editor */}
-          <div className="flex-1 overflow-y-auto p-6">
+          {/* Right: Fabric canvas slide editor */}
+          <div ref={editorPanelRef} className="flex-1 overflow-y-auto p-6 bg-slate-200">
             {currentSlide ? (
-              <div className="max-w-4xl mx-auto space-y-4">
-                <SlidePreview
+              <div className="flex flex-col items-center gap-3">
+                <FabricSlideCanvas
+                  key={currentSlide.id || selectedIdx}
                   slide={currentSlide}
                   onUpdate={(patch) => updateSlide(selectedIdx, patch)}
                   editable={true}
+                  containerWidth={editorPanelRef.current?.offsetWidth || 900}
                 />
-                <div className="flex justify-end">
+                <div className="no-print">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -429,7 +356,7 @@ function PresentationEditor({ presId }) {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400">
+              <div className="flex flex-col items-center justify-center h-full text-slate-500">
                 <p className="mb-4">No slides yet.</p>
                 <Button onClick={addSlide} className="bg-amber-700 hover:bg-amber-800 gap-2">
                   <Plus className="w-4 h-4" /> Add First Slide
@@ -488,8 +415,14 @@ function ShareView({ token }) {
             <p className="text-2xl text-slate-300">{presentation.client_name}</p>
           </div>
         ) : slide ? (
-          <div className="w-full">
-            <SlidePreview slide={slide} onUpdate={() => {}} editable={false} />
+          <div className="w-full flex justify-center">
+            <FabricSlideCanvas
+              key={slide.id}
+              slide={slide}
+              onUpdate={() => {}}
+              editable={false}
+              containerWidth={900}
+            />
           </div>
         ) : (
           <div className="text-center">

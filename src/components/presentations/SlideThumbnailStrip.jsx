@@ -1,6 +1,7 @@
 import { Plus, GripVertical } from "lucide-react";
 import { parseImages } from "./SlidePreview";
 
+
 export default function SlideThumbnailStrip({ slides, selectedIdx, onSelect, onAdd, onReorder }) {
   const handleDragStart = (e, idx) => {
     e.dataTransfer.setData("slideIdx", idx);
@@ -23,8 +24,9 @@ export default function SlideThumbnailStrip({ slides, selectedIdx, onSelect, onA
       </button>
       <div className="flex-1 overflow-y-auto space-y-2">
         {slides.map((slide, idx) => {
+          // Prefer Fabric thumbnail, fall back to first image
           const images = parseImages(slide.image_3d_url);
-          const thumb = images[0]?.url || images[0];
+          const thumb = slide.thumbnail_url || images[0]?.url || images[0];
           return (
             <div
               key={idx}
