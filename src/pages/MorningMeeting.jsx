@@ -399,26 +399,47 @@ export default function MorningMeeting() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-amber-50">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-cyan-50 to-blue-50">
+      {/* Top-left Presenter Badge */}
+      <div className="fixed top-4 left-4 z-10">
+        <div className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-600 text-white px-5 py-3 rounded-full shadow-lg">
+          <User className="w-5 h-5" />
+          <span className="font-semibold text-sm">Presenter:</span>
+          <span className="font-bold">{getPresenter()}</span>
+          {!presenterData?.presenter_name && getAutoPresenter() && (
+            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">auto</span>
+          )}
+          <Button size="icon" variant="ghost" className="h-6 w-6 ml-1 text-white hover:bg-white/20"
+            onClick={() => { setPresenterName(presenterData?.presenter_name || ""); setShowPresenterDialog(true); }}>
+            <Edit className="w-3 h-3" />
+          </Button>
+        </div>
+      </div>
+
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center gap-3 px-6 py-3 bg-white rounded-full shadow-md mb-4">
-            <Coffee className="w-6 h-6 text-amber-600" />
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+        <div className="mb-8 text-center pt-12">
+          <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/70 backdrop-blur rounded-full shadow-lg mb-4">
+            <Coffee className="w-6 h-6 text-emerald-600" />
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
               Daily Morning Meeting
             </h1>
           </div>
 
+          {/* Quote — right under title */}
+          <div className="max-w-2xl mx-auto bg-gradient-to-r from-yellow-100 via-amber-100 to-orange-100 rounded-lg p-5 shadow-md border-l-4 border-yellow-400 mb-6">
+            <p className="text-lg font-semibold text-slate-700 italic">"{getDailyQuote()}"</p>
+          </div>
+
           {/* Date Navigation */}
-          <div className="flex items-center justify-center gap-3 mb-4">
+          <div className="flex items-center justify-center gap-3 mb-6">
             <Button variant="outline" size="icon" onClick={() => setSelectedDate(subDays(selectedDate, 1))}>
               <ChevronLeft className="w-4 h-4" />
             </Button>
             <div className="flex flex-col items-center">
               <p className="text-lg text-slate-600 font-medium">{format(selectedDate, "EEEE, MMMM d, yyyy")}</p>
               {format(selectedDate, "yyyy-MM-dd") !== format(new Date(), "yyyy-MM-dd") && (
-                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(new Date())} className="text-xs text-amber-600">
+                <Button variant="ghost" size="sm" onClick={() => setSelectedDate(new Date())} className="text-xs text-emerald-600">
                   Back to Today
                 </Button>
               )}
@@ -428,29 +449,8 @@ export default function MorningMeeting() {
             </Button>
           </div>
 
-          {/* Presenter */}
-          <div className="mb-4">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-full shadow-lg">
-              <User className="w-5 h-5" />
-              <span className="font-semibold">Presenter:</span>
-              <span className="font-bold text-lg">{getPresenter()}</span>
-              {!presenterData?.presenter_name && getAutoPresenter() && (
-                <span className="text-xs bg-blue-400/50 px-2 py-0.5 rounded-full">auto</span>
-              )}
-              <Button size="icon" variant="ghost" className="h-7 w-7 ml-2 text-white hover:bg-blue-700"
-                onClick={() => { setPresenterName(presenterData?.presenter_name || ""); setShowPresenterDialog(true); }}>
-                <Edit className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Quote */}
-          <div className="max-w-2xl mx-auto bg-gradient-to-r from-amber-100 to-orange-100 rounded-lg p-5 shadow-md border-l-4 border-amber-500 mb-6">
-            <p className="text-xl font-semibold text-slate-700 italic">"{getDailyQuote()}"</p>
-          </div>
-
           <Link to={createPageUrl("StretchingRoutine")}>
-            <Button className="bg-blue-600 hover:bg-blue-700">✨ Quick Stretch Before Meeting</Button>
+            <Button className="bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-600 hover:to-cyan-700">✨ Quick Stretch Before Meeting</Button>
           </Link>
         </div>
 
