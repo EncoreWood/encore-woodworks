@@ -399,24 +399,26 @@ export default function MorningMeeting() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-cyan-50 to-blue-50">
-      {/* Top-left Presenter Badge */}
-      <div className="fixed top-4 left-4 z-10">
-        <div className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-600 text-white px-5 py-3 rounded-full shadow-lg">
-          <User className="w-5 h-5" />
-          <span className="font-semibold text-sm">Presenter:</span>
-          <span className="font-bold">{getPresenter()}</span>
-          {!presenterData?.presenter_name && getAutoPresenter() && (
-            <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">auto</span>
-          )}
-          <Button size="icon" variant="ghost" className="h-6 w-6 ml-1 text-white hover:bg-white/20"
-            onClick={() => { setPresenterName(presenterData?.presenter_name || ""); setShowPresenterDialog(true); }}>
-            <Edit className="w-3 h-3" />
-          </Button>
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-cyan-50 to-blue-50 flex flex-col">
+      {/* Fixed Header with Presenter */}
+      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-sm border-b border-emerald-100 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-600 text-white px-5 py-2 rounded-full shadow-md">
+            <User className="w-4 h-4" />
+            <span className="font-semibold text-sm">Presenter:</span>
+            <span className="font-bold">{getPresenter()}</span>
+            {!presenterData?.presenter_name && getAutoPresenter() && (
+              <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">auto</span>
+            )}
+            <Button size="icon" variant="ghost" className="h-6 w-6 ml-1 text-white hover:bg-white/20"
+              onClick={() => { setPresenterName(presenterData?.presenter_name || ""); setShowPresenterDialog(true); }}>
+              <Edit className="w-3 h-3" />
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-8 flex-1">
         {/* Header */}
         <div className="mb-8 text-center pt-12">
           <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/70 backdrop-blur rounded-full shadow-lg mb-4">
@@ -491,28 +493,28 @@ export default function MorningMeeting() {
             <div className="space-y-3 mb-4">
               {weeklyTopics.filter(t => !t.archived).length === 0 && <p className="text-slate-400 text-sm text-center py-2">No topic added for this week yet.</p>}
               {weeklyTopics.filter(t => !t.archived).map((topic) => (
-                <div key={topic.id} className="bg-green-50 rounded-lg border border-green-200 overflow-hidden">
-                  <div className="flex items-center gap-2 px-3 py-2">
-                    {topic.item_type === "file" ? <Upload className="w-4 h-4 text-green-600 flex-shrink-0" /> : <Link2 className="w-4 h-4 text-green-600 flex-shrink-0" />}
+                <div key={topic.id} className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl border-2 border-emerald-300 overflow-hidden shadow-md hover:shadow-lg transition-all">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-emerald-100 to-green-100">
+                    {topic.item_type === "file" ? <Upload className="w-5 h-5 text-emerald-700 flex-shrink-0 font-bold" /> : <Link2 className="w-5 h-5 text-emerald-700 flex-shrink-0 font-bold" />}
                     {topic.url
-                      ? <a href={topic.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-blue-600 hover:underline font-medium truncate">{topic.label}</a>
-                      : <span className="flex-1 text-sm font-medium text-slate-700">{topic.label}</span>
+                      ? <a href={topic.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-emerald-700 hover:text-emerald-900 hover:underline font-bold truncate">{topic.label}</a>
+                      : <span className="flex-1 text-sm font-bold text-emerald-900">{topic.label}</span>
                     }
-                    <button onClick={() => archiveWeeklyTopicMutation.mutate(topic.id)} className="text-slate-400 hover:text-amber-600 ml-2" title="Archive topic">
-                      <X className="w-3 h-3" />
+                    <button onClick={() => archiveWeeklyTopicMutation.mutate(topic.id)} className="text-emerald-400 hover:text-red-600 ml-2 transition-colors" title="Archive topic">
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                   {/* Notes for this topic */}
-                  <div className="px-3 pb-2">
+                  <div className="px-4 py-3">
                     <Textarea
                       placeholder="Add notes for this topic..."
                       value={topic.notes || ""}
                       onChange={e => updateWeeklyTopicMutation.mutate({ id: topic.id, data: { notes: e.target.value } })}
-                      className="text-sm min-h-[60px] bg-white border-green-200"
+                      className="text-sm min-h-[60px] bg-white border-2 border-emerald-200 rounded-lg font-medium"
                     />
                     {topic.presented_at && (
-                      <p className="text-xs text-slate-400 mt-1">
-                        Logged {format(new Date(topic.presented_at), "EEE MMM d 'at' h:mm a")}
+                      <p className="text-xs text-emerald-600 mt-2 font-semibold">
+                        📌 Logged {format(new Date(topic.presented_at), "EEE MMM d 'at' h:mm a")}
                         {topic.presented_by && ` · ${topic.presented_by}`}
                       </p>
                     )}
