@@ -351,16 +351,15 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
     scheduleSave();
   };
 
-  const handleAddImage = async (e) => {
-    const file = e.target.files?.[0];
+  // Add image from File object (shared by file picker and paste)
+  const addImageFile = useCallback(async (file) => {
     if (!file || !fabricRef.current) return;
     setUploading(true);
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      fabric.Image.fromURL(file_url, (img) => {
-        // Fit to ~400px wide maintaining aspect ratio
-        const maxW = 400;
-        const maxH = 350;
+      window.fabric.Image.fromURL(file_url, (img) => {
+        const maxW = 500;
+        const maxH = 400;
         const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
         img.scale(ratio);
         img.set({ left: 80, top: 120, selectable: true });
@@ -372,7 +371,31 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
     } finally {
       setUploading(false);
     }
+  }, [scheduleSave]);
+
+  const handleAddImage = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) await addImageFile(file);
   };
+
+  // Global paste handler — picks up Ctrl+V clipboard images
+  useEffect(() => {
+    if (!editable) return;
+    const handlePaste = async (e) => {
+      if (!fabricRef.current) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) await addImageFile(file);
+          break;
+        }
+      }
+    };
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [editable, addImageFile]);
 
   const handleUndo = () => {
     const canvas = fabricRef.current;
