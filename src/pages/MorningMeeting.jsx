@@ -493,28 +493,28 @@ export default function MorningMeeting() {
             <div className="space-y-3 mb-4">
               {weeklyTopics.filter(t => !t.archived).length === 0 && <p className="text-slate-400 text-sm text-center py-2">No topic added for this week yet.</p>}
               {weeklyTopics.filter(t => !t.archived).map((topic) => (
-                <div key={topic.id} className="bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl border-2 border-emerald-300 overflow-hidden shadow-md hover:shadow-lg transition-all">
-                  <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-emerald-100 to-green-100">
-                    {topic.item_type === "file" ? <Upload className="w-5 h-5 text-emerald-700 flex-shrink-0 font-bold" /> : <Link2 className="w-5 h-5 text-emerald-700 flex-shrink-0 font-bold" />}
+                <div key={topic.id} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border-2 border-emerald-400 overflow-hidden shadow-md">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-emerald-200 to-green-200">
+                    {topic.item_type === "file" ? <Upload className="w-4 h-4 text-emerald-800 flex-shrink-0" /> : <Link2 className="w-4 h-4 text-emerald-800 flex-shrink-0" />}
                     {topic.url
-                      ? <a href={topic.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-emerald-700 hover:text-emerald-900 hover:underline font-bold truncate">{topic.label}</a>
-                      : <span className="flex-1 text-sm font-bold text-emerald-900">{topic.label}</span>
+                      ? <a href={topic.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-emerald-900 hover:underline font-semibold truncate">{topic.label}</a>
+                      : <span className="flex-1 text-sm font-semibold text-emerald-900">{topic.label}</span>
                     }
-                    <button onClick={() => archiveWeeklyTopicMutation.mutate(topic.id)} className="text-emerald-400 hover:text-red-600 ml-2 transition-colors" title="Archive topic">
-                      <X className="w-4 h-4" />
+                    <button onClick={() => archiveWeeklyTopicMutation.mutate(topic.id)} className="text-emerald-600 hover:text-red-600" title="Archive topic">
+                      <X className="w-3 h-3" />
                     </button>
                   </div>
                   {/* Notes for this topic */}
-                  <div className="px-4 py-3">
+                  <div className="px-3 pb-2">
                     <Textarea
                       placeholder="Add notes for this topic..."
                       value={topic.notes || ""}
                       onChange={e => updateWeeklyTopicMutation.mutate({ id: topic.id, data: { notes: e.target.value } })}
-                      className="text-sm min-h-[60px] bg-white border-2 border-emerald-200 rounded-lg font-medium"
+                      className="text-sm min-h-[60px] bg-white border-emerald-300"
                     />
                     {topic.presented_at && (
-                      <p className="text-xs text-emerald-600 mt-2 font-semibold">
-                        📌 Logged {format(new Date(topic.presented_at), "EEE MMM d 'at' h:mm a")}
+                      <p className="text-xs text-slate-500 mt-1">
+                        Logged {format(new Date(topic.presented_at), "EEE MMM d 'at' h:mm a")}
                         {topic.presented_by && ` · ${topic.presented_by}`}
                       </p>
                     )}
@@ -738,20 +738,21 @@ export default function MorningMeeting() {
 
           {/* Compliments */}
           {(() => {
-            const todayCompliments = compliments.filter(c => c.date === dateString);
+            const yesterday = format(subDays(selectedDate, 1), "yyyy-MM-dd");
+            const yesterdayCompliments = compliments.filter(c => c.date === yesterday);
             const recentCompliments = compliments.filter(c => c.share_in_meeting).slice(0, 5);
-            const displayCompliments = todayCompliments.length > 0 ? todayCompliments : recentCompliments;
-            const isShowingToday = todayCompliments.length > 0;
+            const displayCompliments = yesterdayCompliments.length > 0 ? yesterdayCompliments : recentCompliments;
+            const isShowingYesterday = yesterdayCompliments.length > 0;
             return (
-              <SectionCard title="Well Done! 🎉" icon={Sparkles} color="amber" count={displayCompliments.length} defaultOpen={isShowingToday}>
+              <SectionCard title="Well Done! 🎉" icon={Sparkles} color="amber" count={displayCompliments.length} defaultOpen={isShowingYesterday}>
                 {displayCompliments.length === 0 ? (
                   <div className="flex items-center justify-center gap-2 py-4 text-slate-400">
-                    <span className="text-sm">No compliments shared for today. Give one from the Production board!</span>
+                    <span className="text-sm">No compliments shared yesterday. Give one from the Production board!</span>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {!isShowingToday && (
-                      <p className="text-xs text-slate-400 text-center mb-2">Showing recent compliments (none submitted for today)</p>
+                    {!isShowingYesterday && (
+                      <p className="text-xs text-slate-400 text-center mb-2">Showing recent compliments (none submitted yesterday)</p>
                     )}
                     {displayCompliments.map(c => (
                       <div key={c.id} className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
