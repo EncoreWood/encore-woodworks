@@ -162,11 +162,23 @@ export default function ShopProduction() {
     const cardPts = parseFloat(item.pts) || 0;
     const totalPts = filePts + cardPts;
 
-    // columns_visited logic — only grows, never shrinks
+    // Forward flow: points are earned when LEAVING a column along the forward path.
+    // Valid forward exits: face_frame→(spray|build|complete), spray→(build|complete), build→complete, cut→(face_frame|complete)
+    // Backward moves (e.g. complete→build, build→spray, anything→cut) earn zero points.
+    const FORWARD_EXITS = {
+      cut:        ["face_frame", "complete"],
+      face_frame: ["spray", "build", "complete"],
+      spray:      ["build", "complete"],
+      build:      ["complete"],
+    };
+    const isForwardMove = (FORWARD_EXITS[oldStage] || []).includes(newStage);
+
+    // columns_visited tracks which source columns have already had their points counted.
+    // Only grows; prevents double-counting if a card is moved forward, back, then forward again.
     const visited = JSON.parse(item.columns_visited || "[]");
-    const alreadyVisited = visited.includes(newStage);
-    const pointsToAdd = alreadyVisited ? 0 : totalPts;
-    if (!alreadyVisited) visited.push(newStage);
+    const alreadyExited = visited.includes(oldStage);
+    const pointsToAdd = (isForwardMove && !alreadyExited) ? totalPts : 0;
+    if (isForwardMove && !alreadyExited) visited.push(oldStage);
 
     // Set completed_date when moving INTO complete (once only)
     let completedDate = item.completed_date;
