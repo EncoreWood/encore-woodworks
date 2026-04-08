@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Clock, Plus, Trash2, CheckCircle2, Play, Square, Settings, Circle, Calendar, RefreshCw, Pencil, UtensilsCrossed, Timer, Briefcase } from "lucide-react";
+import { Clock, Plus, Trash2, CheckCircle2, Play, Square, Settings, Circle, Calendar, RefreshCw, Pencil, Timer, Briefcase } from "lucide-react";
 import { format, addDays, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
 import VacationRequestForm from "../components/team/VacationRequestForm";
 import ClockInModal from "../components/timesheet/ClockInModal";
@@ -230,21 +230,6 @@ export default function TimeSheet() {
     setClockInTime(null);
     setElapsedTime("00:00:00");
     setOpenTimeEntryId(null);
-    queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
-  };
-
-  const handleForgotLunch = async () => {
-    if (!selectedEmployee) return;
-    const todayStr = format(new Date(), "yyyy-MM-dd");
-    // Find the most recent completed entry for today and subtract 30 min
-    const todayEntries = timeEntries.filter(e => e.employee_id === selectedEmployee.id && e.date === todayStr && e.entry_type === "work" && e.clock_out);
-    if (todayEntries.length === 0) return;
-    const latest = todayEntries.sort((a, b) => (b.clock_out || "").localeCompare(a.clock_out || ""))[0];
-    const newHours = Math.max(0, (latest.hours_worked || 0) - 0.5);
-    await base44.entities.TimeEntry.update(latest.id, {
-      hours_worked: parseFloat(newHours.toFixed(2)),
-      notes: (latest.notes ? latest.notes + " " : "") + "[−30 min lunch]"
-    });
     queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
   };
 
