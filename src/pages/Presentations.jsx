@@ -39,8 +39,8 @@ function CoverThumb({ presId }) {
   });
   const first = slides[0];
   const images = first ? parseImages(first.image_3d_url) : [];
-  const thumb = images[0];
-  if (thumb) return <img src={thumb} alt="" className="w-full h-full object-cover" />;
+  const thumb = images[0]?.url || images[0];
+  if (thumb) return <img src={thumb} alt="" className="w-full h-full" style={{ objectFit: "contain", background: "#f8fafc" }} />;
   return <span className="text-xs text-slate-400">{slides.length} slide{slides.length !== 1 ? "s" : ""}</span>;
 }
 
@@ -262,8 +262,9 @@ function PresentationEditor({ presId }) {
       {/* Print-only slides */}
       <div className="print-only-slides">
         {slides.map((slide, i) => {
-          const images = parseImages(slide.image_3d_url);
+          const rawImages = parseImages(slide.image_3d_url);
           const spec = parseSpec(slide.notes);
+          const images = rawImages; // each is {url, width} or string
           const count = images.length;
           const gridStyle = count === 1 ? { gridTemplateColumns: "1fr" } : count === 2 ? { gridTemplateColumns: "1fr 1fr" } : { gridTemplateColumns: "1fr 1fr 1fr" };
           return (
@@ -274,9 +275,11 @@ function PresentationEditor({ presId }) {
               </div>
               {images.length > 0 && (
                 <div style={{ display: "grid", gap: "8px", marginBottom: "12px", ...gridStyle }}>
-                  {images.map((url, j) => (
-                    <img key={j} src={url} alt="" style={{ width: "100%", maxHeight: "320px", objectFit: "cover", borderRadius: "4px" }} />
-                  ))}
+                  {images.map((imgItem, j) => {
+                    const src = imgItem?.url || imgItem;
+                    const w = imgItem?.width;
+                    return <img key={j} src={src} alt="" style={{ width: w ? w + "px" : "100%", maxHeight: "320px", objectFit: "contain", background: "#f8fafc", borderRadius: "4px" }} />;
+                  })}
                 </div>
               )}
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>

@@ -24,7 +24,7 @@ export default function SlideThumbnailStrip({ slides, selectedIdx, onSelect, onA
       <div className="flex-1 overflow-y-auto space-y-2">
         {slides.map((slide, idx) => {
           const images = parseImages(slide.image_3d_url);
-          const thumb = images[0];
+          const thumb = images[0]?.url || images[0];
           return (
             <div
               key={idx}
@@ -42,7 +42,7 @@ export default function SlideThumbnailStrip({ slides, selectedIdx, onSelect, onA
               {/* Thumbnail image */}
               <div className="aspect-video bg-slate-100 rounded-t overflow-hidden">
                 {thumb ? (
-                  <img src={thumb} alt={slide.room_name} className="w-full h-full object-cover" />
+                  <img src={thumb} alt={slide.room_name} className="w-full h-full" style={{ objectFit: "contain", background: "#f8fafc" }} />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-300 text-xs">No image</div>
                 )}
