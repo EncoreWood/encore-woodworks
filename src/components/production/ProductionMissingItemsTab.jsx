@@ -1,25 +1,29 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, CheckCircle2, Clock } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import { appParams } from "@/lib/app-params";
+
+const UPDATE_API = "https://vivica-d92c9f97.base44.app/functions/updateMissingItemStatus";
 
 const STATUS_CONFIG = {
-  open:     { label: "Open",     color: "bg-red-100 text-red-700" },
-  ordered:  { label: "Ordered",  color: "bg-yellow-100 text-yellow-800" },
-  resolved: { label: "Resolved", color: "bg-green-100 text-green-700" },
+  Open:     { label: "Open",     color: "bg-red-100 text-red-700",       dot: "bg-red-500" },
+  Ordered:  { label: "Ordered",  color: "bg-yellow-100 text-yellow-800", dot: "bg-yellow-400" },
+  Resolved: { label: "Resolved", color: "bg-green-100 text-green-700",   dot: "bg-green-500" },
 };
 
 export default function ProductionMissingItemsTab({ currentUser }) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("open");
+  const [filterStatus, setFilterStatus] = useState("Open");
   const [filterProject, setFilterProject] = useState("all");
   const [showResolved, setShowResolved] = useState(false);
+  const [updating, setUpdating] = useState(null);
 
   const { data: missingItems = [] } = useQuery({
     queryKey: ["missingItems"],
@@ -32,37 +36,29 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     staleTime: 60_000,
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.MissingItem.update(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["missingItems"] }),
-  });
-
   const isAdmin = currentUser?.role === "admin";
 
-  const handleSetOrdered = (item) => {
-    updateMutation.mutate({
-      id: item.id,
-      data: {
-        status: "ordered",
-        ordered_by: currentUser?.full_name || currentUser?.email,
-        ordered_date: format(new Date(), "yyyy-MM-dd"),
-      }
+  const callUpdateStatus = async (itemId, status) => {
+    setUpdating(itemId);
+    const token = appParams.token;
+    const res = await fetch(UPDATE_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify({ missing_item_id: itemId, status }),
     });
-  };
-
-  const handleSetResolved = (item) => {
-    updateMutation.mutate({
-      id: item.id,
-      data: {
-        status: "resolved",
-        resolved_date: format(new Date(), "yyyy-MM-dd"),
-      }
-    });
+    const data = await res.json();
+    setUpdating(null);
+    if (data.result === "updated") {
+      toast.success(`Marked as ${status} ✓`);
+      queryClient.invalidateQueries({ queryKey: ["missingItems"] });
+    } else {
+      toast.error(data.error || "Update failed");
+    }
   };
 
   const visible = missingItems.filter(i => {
-    if (!showResolved && i.status === "resolved") return false;
     if (i.archived) return false;
+    if (!showResolved && i.status === "Resolved") return false;
     return true;
   });
 
@@ -71,22 +67,24 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     if (filterProject !== "all" && item.project_id !== filterProject) return false;
     if (search) {
       const q = search.toLowerCase();
-      if (!(item.item_description || "").toLowerCase().includes(q) &&
-          !(item.description || "").toLowerCase().includes(q) &&
-          !(item.production_item_name || "").toLowerCase().includes(q) &&
-          !(item.project_name || "").toLowerCase().includes(q) &&
-          !(item.room_name || "").toLowerCase().includes(q) &&
-          !(item.cabinet_name || "").toLowerCase().includes(q)) return false;
+      return (
+        (item.item_description || "").toLowerCase().includes(q) ||
+        (item.description || "").toLowerCase().includes(q) ||
+        (item.production_item_name || "").toLowerCase().includes(q) ||
+        (item.project_name || "").toLowerCase().includes(q) ||
+        (item.room_name || "").toLowerCase().includes(q) ||
+        (item.cabinet_name || "").toLowerCase().includes(q)
+      );
     }
     return true;
   });
 
-  const openCount = missingItems.filter(i => !i.archived && i.status === "open").length;
-  const orderedCount = missingItems.filter(i => !i.archived && i.status === "ordered").length;
+  const openCount = missingItems.filter(i => !i.archived && i.status === "Open").length;
+  const orderedCount = missingItems.filter(i => !i.archived && i.status === "Ordered").length;
 
   return (
     <div className="space-y-4">
-      {/* Summary */}
+      {/* Summary badges */}
       <div className="flex gap-3 flex-wrap">
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2 flex items-center gap-2">
           <span className="text-sm font-bold text-red-700">{openCount}</span>
@@ -108,9 +106,9 @@ export default function ProductionMissingItemsTab({ currentUser }) {
           <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="open">Open</SelectItem>
-            <SelectItem value="ordered">Ordered</SelectItem>
-            <SelectItem value="resolved">Resolved</SelectItem>
+            <SelectItem value="Open">Open</SelectItem>
+            <SelectItem value="Ordered">Ordered</SelectItem>
+            <SelectItem value="Resolved">Resolved</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filterProject} onValueChange={setFilterProject}>
@@ -139,24 +137,23 @@ export default function ProductionMissingItemsTab({ currentUser }) {
           <div className="divide-y divide-slate-50">
             {filtered.map(item => {
               const confirmed = JSON.parse(item.confirmed_by || "[]");
-              const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.open;
+              const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.Open;
               return (
-                <div key={item.id} className={`px-5 py-3.5 flex items-start gap-4 ${item.status === "resolved" ? "opacity-50" : ""}`}>
-                  {/* Status dot */}
-                  <div className={`mt-1 w-3 h-3 rounded-full flex-shrink-0 ${item.status === "open" ? "bg-red-500" : item.status === "ordered" ? "bg-yellow-400" : "bg-green-500"}`} />
+                <div key={item.id} className={`px-5 py-3.5 flex items-start gap-4 ${item.status === "Resolved" ? "opacity-50" : ""}`}>
+                  <div className={`mt-1.5 w-3 h-3 rounded-full flex-shrink-0 ${cfg.dot}`} />
 
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                      <span className="text-sm font-semibold text-slate-800">{item.item_description || item.description}</span>
+                      <span className="text-sm font-semibold text-slate-800">{item.item_description}</span>
                       <Badge className={`text-xs border-0 ${cfg.color}`}>{cfg.label}</Badge>
                     </div>
-                    <div className="text-xs text-slate-500 flex flex-wrap gap-2 mb-1">
+                    <div className="text-xs text-slate-500 flex flex-wrap gap-x-2 mb-1">
                       {item.production_item_name && <span className="font-medium text-slate-700">{item.production_item_name}</span>}
                       {item.room_name && <span>· {item.room_name}</span>}
                       {item.cabinet_name && <span>· {item.cabinet_name}</span>}
                       {item.project_name && <span className="text-slate-400">· {item.project_name}</span>}
                     </div>
-                    {item.description && item.item_description && (
+                    {item.description && (
                       <p className="text-xs text-slate-400 mb-1">{item.description}</p>
                     )}
                     <div className="flex flex-wrap gap-3 text-xs text-slate-400">
@@ -177,19 +174,21 @@ export default function ProductionMissingItemsTab({ currentUser }) {
                     </div>
                   </div>
 
-                  {isAdmin && item.status !== "resolved" && (
+                  {isAdmin && item.status !== "Resolved" && (
                     <div className="flex gap-1.5 flex-shrink-0 mt-0.5">
-                      {item.status === "open" && (
+                      {item.status === "Open" && (
                         <button
-                          onClick={() => handleSetOrdered(item)}
-                          className="text-xs px-2.5 py-1 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors"
+                          disabled={updating === item.id}
+                          onClick={() => callUpdateStatus(item.id, "Ordered")}
+                          className="text-xs px-2.5 py-1 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors disabled:opacity-50"
                         >
                           📦 Ordered
                         </button>
                       )}
                       <button
-                        onClick={() => handleSetResolved(item)}
-                        className="text-xs px-2.5 py-1 bg-green-50 border border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
+                        disabled={updating === item.id}
+                        onClick={() => callUpdateStatus(item.id, "Resolved")}
+                        className="text-xs px-2.5 py-1 bg-green-50 border border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50"
                       >
                         ✅ Resolve
                       </button>

@@ -1,10 +1,15 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import { appParams } from "@/lib/app-params";
+
+const UPDATE_API = "https://vivica-d92c9f97.base44.app/functions/updateMissingItemStatus";
 
 export default function MissingItemBadge({ itemId, currentUser }) {
   const [open, setOpen] = useState(false);
+  const [updating, setUpdating] = useState(null); // id of item being updated
   const queryClient = useQueryClient();
 
   const { data: allMissing = [] } = useQuery({
@@ -14,46 +19,32 @@ export default function MissingItemBadge({ itemId, currentUser }) {
   });
 
   const cardReports = allMissing.filter(m => m.production_item_id === itemId && !m.archived);
-  const openReports = cardReports.filter(m => m.status === "open");
-  const orderedReports = cardReports.filter(m => m.status === "ordered");
+  const openReports = cardReports.filter(m => m.status === "Open");
+  const orderedReports = cardReports.filter(m => m.status === "Ordered");
   const activeReports = [...openReports, ...orderedReports];
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.MissingItem.update(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["missingItems"] }),
-  });
 
   if (activeReports.length === 0) return null;
 
   const isAllOrdered = openReports.length === 0 && orderedReports.length > 0;
   const dotColor = isAllOrdered ? "bg-yellow-400 border-yellow-500" : "bg-red-500 border-red-600";
+  const isAdmin = currentUser?.role === "admin";
 
-  const handleConfirm = (report) => {
-    const existing = JSON.parse(report.confirmed_by || "[]");
-    const name = currentUser?.full_name || currentUser?.email || "Unknown";
-    if (existing.includes(name)) return;
-    updateMutation.mutate({ id: report.id, data: { confirmed_by: JSON.stringify([...existing, name]) } });
-  };
-
-  const handleSetOrdered = (report) => {
-    updateMutation.mutate({
-      id: report.id,
-      data: {
-        status: "ordered",
-        ordered_by: currentUser?.full_name || currentUser?.email,
-        ordered_date: format(new Date(), "yyyy-MM-dd"),
-      }
+  const callUpdateStatus = async (reportId, status) => {
+    setUpdating(reportId);
+    const token = appParams.token;
+    const res = await fetch(UPDATE_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify({ missing_item_id: reportId, status }),
     });
-  };
-
-  const handleSetResolved = (report) => {
-    updateMutation.mutate({
-      id: report.id,
-      data: {
-        status: "resolved",
-        resolved_date: format(new Date(), "yyyy-MM-dd"),
-      }
-    });
+    const data = await res.json();
+    setUpdating(null);
+    if (data.result === "updated") {
+      toast.success(`Marked as ${status} ✓`);
+      queryClient.invalidateQueries({ queryKey: ["missingItems"] });
+    } else {
+      toast.error(data.error || "Update failed");
+    }
   };
 
   return (
@@ -74,20 +65,17 @@ export default function MissingItemBadge({ itemId, currentUser }) {
             <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
               {activeReports.map(report => {
                 const confirmed = JSON.parse(report.confirmed_by || "[]");
-                const myName = currentUser?.full_name || currentUser?.email || "";
-                const alreadyConfirmed = confirmed.includes(myName);
-                const isAdmin = currentUser?.role === "admin";
                 return (
                   <div key={report.id} className="px-4 py-3">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${report.status === "ordered" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}>
-                        {report.status === "ordered" ? "🟡 Ordered" : "🔴 Open"}
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${report.status === "Ordered" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}>
+                        {report.status === "Ordered" ? "🟡 Ordered" : "🔴 Open"}
                       </span>
                       {report.room_name && <span className="text-xs text-slate-500">{report.room_name}</span>}
                       {report.cabinet_name && <span className="text-xs text-slate-400">· {report.cabinet_name}</span>}
                     </div>
-                    <p className="text-sm font-medium text-slate-800">{report.item_description || report.description}</p>
-                    {report.description && report.item_description && (
+                    <p className="text-sm font-medium text-slate-800">{report.item_description}</p>
+                    {report.description && (
                       <p className="text-xs text-slate-500 mt-0.5">{report.description}</p>
                     )}
                     <p className="text-xs text-slate-400 mt-1">
@@ -100,32 +88,26 @@ export default function MissingItemBadge({ itemId, currentUser }) {
                     {report.ordered_by && (
                       <p className="text-xs text-yellow-700 mt-0.5">Ordered by {report.ordered_by} on {report.ordered_date}</p>
                     )}
-                    <div className="flex gap-1 mt-2 flex-wrap">
-                      {!alreadyConfirmed && report.reported_by !== myName && (
+                    {isAdmin && (
+                      <div className="flex gap-1 mt-2 flex-wrap">
+                        {report.status === "Open" && (
+                          <button
+                            disabled={updating === report.id}
+                            onClick={() => callUpdateStatus(report.id, "Ordered")}
+                            className="text-xs px-2 py-1 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors disabled:opacity-50"
+                          >
+                            📦 Mark Ordered
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleConfirm(report)}
-                          className="text-xs px-2 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
-                        >
-                          👁 I also noticed this
-                        </button>
-                      )}
-                      {isAdmin && report.status === "open" && (
-                        <button
-                          onClick={() => handleSetOrdered(report)}
-                          className="text-xs px-2 py-1 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors"
-                        >
-                          📦 Mark Ordered
-                        </button>
-                      )}
-                      {isAdmin && report.status !== "resolved" && (
-                        <button
-                          onClick={() => handleSetResolved(report)}
-                          className="text-xs px-2 py-1 bg-green-50 border border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
+                          disabled={updating === report.id}
+                          onClick={() => callUpdateStatus(report.id, "Resolved")}
+                          className="text-xs px-2 py-1 bg-green-50 border border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50"
                         >
                           ✅ Resolve
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
