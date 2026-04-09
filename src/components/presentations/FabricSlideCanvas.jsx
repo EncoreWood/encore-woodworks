@@ -316,11 +316,16 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
     }, 800);
   }, [editable, onUpdate, slide.room_name]);
 
-  // Live thumbnail — updates the strip immediately on any canvas change
+  // Live thumbnail — updates the strip on canvas changes, deferred to escape Fabric's call stack
+  const liveThumbnailTimer = useRef(null);
   const updateLiveThumbnail = useCallback(() => {
     if (!fabricRef.current || !editable) return;
-    const thumbnail = fabricRef.current.toDataURL({ format: "jpeg", quality: 0.5, multiplier: 0.25 });
-    onUpdate({ thumbnail_url: thumbnail });
+    if (liveThumbnailTimer.current) clearTimeout(liveThumbnailTimer.current);
+    liveThumbnailTimer.current = setTimeout(() => {
+      if (!fabricRef.current) return;
+      const thumbnail = fabricRef.current.toDataURL({ format: "jpeg", quality: 0.5, multiplier: 0.25 });
+      onUpdate({ thumbnail_url: thumbnail });
+    }, 100);
   }, [editable, onUpdate]);
 
   // Initialize canvas
@@ -371,6 +376,7 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
 
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      if (liveThumbnailTimer.current) clearTimeout(liveThumbnailTimer.current);
       canvas.dispose();
       fabricRef.current = null;
     };
