@@ -313,8 +313,15 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
         room_name: roomName || slide.room_name,
         notes: JSON.stringify(spec),
       });
-    }, 1200);
+    }, 800);
   }, [editable, onUpdate, slide.room_name]);
+
+  // Live thumbnail — updates the strip immediately on any canvas change
+  const updateLiveThumbnail = useCallback(() => {
+    if (!fabricRef.current || !editable) return;
+    const thumbnail = fabricRef.current.toDataURL({ format: "jpeg", quality: 0.5, multiplier: 0.25 });
+    onUpdate({ thumbnail_url: thumbnail });
+  }, [editable, onUpdate]);
 
   // Initialize canvas
   useEffect(() => {
@@ -344,10 +351,11 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
     }
 
     if (editable) {
-      canvas.on("object:modified", scheduleSave);
-      canvas.on("object:added", scheduleSave);
-      canvas.on("object:removed", scheduleSave);
-      canvas.on("text:changed", scheduleSave);
+      canvas.on("object:modified", () => { updateLiveThumbnail(); scheduleSave(); });
+      canvas.on("object:added", () => { updateLiveThumbnail(); scheduleSave(); });
+      canvas.on("object:removed", () => { updateLiveThumbnail(); scheduleSave(); });
+      canvas.on("text:changed", () => { updateLiveThumbnail(); scheduleSave(); });
+      canvas.on("after:render", updateLiveThumbnail);
 
       // Double-click on image → enter crop mode
       canvas.on("mouse:dblclick", (opt) => {

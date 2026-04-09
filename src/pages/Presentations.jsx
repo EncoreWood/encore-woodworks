@@ -208,7 +208,11 @@ function PresentationEditor({ presId }) {
     const updated = slidesRef.current.map((s, i) => i === idx ? { ...s, ...patch } : s);
     slidesRef.current = updated;
     setSlides(updated);
-    scheduleAutoSave(updated, null);
+    // Only trigger a save when real content changed (not just a live thumbnail preview)
+    const isThumbnailOnly = Object.keys(patch).length === 1 && "thumbnail_url" in patch;
+    if (!isThumbnailOnly) {
+      scheduleAutoSave(updated, null);
+    }
   };
 
   const addSlide = () => {
