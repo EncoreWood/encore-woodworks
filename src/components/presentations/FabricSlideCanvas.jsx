@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
-import { Pencil, ArrowRight, Type, MousePointer, Undo2, Trash2, Image, Minus, Plus, ChevronsUp, ChevronsDown, Crop } from "lucide-react";
+import { Pencil, ArrowRight, Type, MousePointer, Undo2, Trash2, Image, Minus, Plus, ChevronsUp, ChevronsDown } from "lucide-react";
 
 // Canvas dimensions — fixed, always 11" x 8.5" at 96dpi
 export const CANVAS_W = 1056;
@@ -176,6 +176,7 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
   const [strokeWidth, setStrokeWidth] = useState(3);
   const [uploading, setUploading] = useState(false);
   const [isCropping, setIsCropping] = useState(false);
+  const cropTargetRef = useRef(null); // image being cropped
   const cropRectRef = useRef(null);
   const cropStartRef = useRef(null);
   const saveTimerRef = useRef(null);
@@ -223,6 +224,13 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
       canvas.on("object:added", scheduleSave);
       canvas.on("object:removed", scheduleSave);
       canvas.on("text:changed", scheduleSave);
+      // Double-click on image enters crop mode
+      canvas.on("mouse:dblclick", (opt) => {
+        const target = opt.target;
+        if (target && target.type === "image") {
+          enterCropMode(canvas, target);
+        }
+      });
     }
 
     return () => {
@@ -386,10 +394,14 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
     if (!editable) return;
     const handlePaste = async (e) => {
       if (!fabricRef.current) return;
+      // Don't intercept paste when a text object is being edited
+      const active = fabricRef.current.getActiveObject();
+      if (active && (active.type === "textbox" || active.type === "text") && active.isEditing) return;
       const items = e.clipboardData?.items;
       if (!items) return;
       for (const item of items) {
         if (item.type.startsWith("image/")) {
+          e.preventDefault();
           const file = item.getAsFile();
           if (file) await addImageFile(file);
           break;
@@ -435,18 +447,16 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
     if (obj) { canvas.sendBackwards(obj); canvas.renderAll(); scheduleSave(); }
   };
 
-  // Crop — draw a selection rect over a selected image, then apply clipPath
-  const startCrop = () => {
-    const canvas = fabricRef.current;
-    if (!canvas) return;
-    const active = canvas.getActiveObject();
-    if (!active || active.type !== "image") {
-      alert("Select an image first, then click Crop.");
-      return;
-    }
+  // Crop helpers — enter crop mode on dblclick, exit on mouse:down outside image
+  const enterCropMode = useCallback((canvas, img) => {
     setIsCropping(true);
+    cropTargetRef.current = img;
     canvas.isDrawingMode = false;
     canvas.selection = false;
+    // Deselect so we have a clean canvas for drawing
+    canvas.discardActiveObject();
+    canvas.renderAll();
+
     canvas.off("mouse:down");
     canvas.off("mouse:move");
     canvas.off("mouse:up");
@@ -454,6 +464,17 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
     canvas.on("mouse:down", (opt) => {
       if (!fabricRef.current) return;
       const p = canvas.getPointer(opt.e);
+
+      // If click is outside the image bounds, exit crop without applying
+      const imgBounds = img.getBoundingRect();
+      const outside =
+        p.x < imgBounds.left || p.x > imgBounds.left + imgBounds.width ||
+        p.y < imgBounds.top || p.y > imgBounds.top + imgBounds.height;
+      if (outside) {
+        exitCropMode(canvas, false);
+        return;
+      }
+
       cropStartRef.current = p;
       const rect = new window.fabric.Rect({
         left: p.x, top: p.y, width: 0, height: 0,
@@ -483,21 +504,25 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
 
     canvas.on("mouse:up", () => {
       const rect = cropRectRef.current;
-      const img = canvas.getActiveObject();
-      if (!rect || !img || img.type !== "image") {
-        if (rect) canvas.remove(rect);
-        finishCrop(canvas);
-        return;
-      }
-
+      if (!rect) return;
       const { left, top, width, height } = rect;
       if (width < 5 || height < 5) {
         canvas.remove(rect);
-        finishCrop(canvas);
+        cropRectRef.current = null;
+        cropStartRef.current = null;
         return;
       }
+      exitCropMode(canvas, true, { left, top, width, height });
+    });
+  }, []);
 
-      // Apply clipPath relative to the image's own coordinate space
+  const exitCropMode = useCallback((canvas, applyCrop, cropArea) => {
+    const img = cropTargetRef.current;
+    if (cropRectRef.current) { canvas.remove(cropRectRef.current); cropRectRef.current = null; }
+    cropStartRef.current = null;
+
+    if (applyCrop && img && cropArea) {
+      const { left, top, width, height } = cropArea;
       const clip = new window.fabric.Rect({
         left: (left - img.left) / img.scaleX,
         top: (top - img.top) / img.scaleY,
@@ -506,24 +531,17 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
         absolutePositioned: false,
       });
       img.clipPath = clip;
-      // Reposition image so it shows from crop top-left
-      img.set({ left, top });
-      canvas.remove(rect);
       canvas.renderAll();
-      finishCrop(canvas);
       scheduleSave();
-    });
-  };
+    }
 
-  const finishCrop = (canvas) => {
+    cropTargetRef.current = null;
     setIsCropping(false);
     canvas.selection = true;
-    cropRectRef.current = null;
-    cropStartRef.current = null;
     canvas.off("mouse:down");
     canvas.off("mouse:move");
     canvas.off("mouse:up");
-    // Re-apply tool
+    // Re-attach tool listeners
     if (tool === "arrow") {
       canvas.on("mouse:down", handleArrowDown);
       canvas.on("mouse:move", handleArrowMove);
@@ -531,7 +549,7 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
     } else if (tool === "text") {
       canvas.on("mouse:down", handleTextDown);
     }
-  };
+  }, [scheduleSave, tool]);
 
   const handleRemoveCrop = () => {
     const canvas = fabricRef.current;
@@ -606,14 +624,12 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
           <button onClick={handleSendBackward} title="Send backward" className="p-1.5 hover:bg-slate-100 rounded text-slate-600"><ChevronsDown className="w-3.5 h-3.5" /></button>
           <div className="w-px h-5 bg-slate-200" />
           {/* Crop */}
-          <button
-            onClick={startCrop}
-            title="Crop image (select image first, then drag)"
-            className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${isCropping ? "bg-blue-100 text-blue-700" : "hover:bg-slate-100 text-slate-600"}`}
-          >
-            <Crop className="w-3.5 h-3.5" />{isCropping ? "Draw crop…" : "Crop"}
-          </button>
-          <button onClick={handleRemoveCrop} title="Remove crop" className="px-2 py-1 hover:bg-slate-100 rounded text-xs text-slate-500">✕ Crop</button>
+          {isCropping ? (
+            <span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-700 font-medium">✂ Draw crop region… (click outside to cancel)</span>
+          ) : (
+            <span className="px-2 py-1 rounded text-xs text-slate-400 italic">dbl-click image to crop</span>
+          )}
+          <button onClick={handleRemoveCrop} title="Remove crop from selected image" className="px-2 py-1 hover:bg-slate-100 rounded text-xs text-slate-500">✕ Crop</button>
           <div className="w-px h-5 bg-slate-200" />
           {/* Undo / Delete */}
           <button onClick={handleUndo} title="Undo last" className="p-1.5 hover:bg-slate-100 rounded text-slate-600"><Undo2 className="w-3.5 h-3.5" /></button>
