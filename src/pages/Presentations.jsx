@@ -138,7 +138,6 @@ function PresentationEditor({ presId }) {
   const [presData, setPresData] = useState(null);
   const [showSend, setShowSend] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [autoSaveTimer, setAutoSaveTimer] = useState(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const editorPanelRef = useRef(null);
 
@@ -154,20 +153,30 @@ function PresentationEditor({ presId }) {
     enabled: !!presId,
   });
 
+  // Use refs so doSave always has latest data even in stale closures
+  const slidesRef = useRef([]);
+  const presDataRef = useRef(null);
+  const autoSaveTimerRef = useRef(null);
+
   useEffect(() => {
-    if (presentation) setPresData({ ...presentation });
+    if (presentation) {
+      setPresData({ ...presentation });
+      presDataRef.current = { ...presentation };
+    }
   }, [presentation]);
 
   useEffect(() => {
-    if (existingSlides.length > 0) setSlides([...existingSlides]);
+    if (existingSlides.length > 0) {
+      setSlides([...existingSlides]);
+      slidesRef.current = [...existingSlides];
+    }
   }, [existingSlides]);
 
   const scheduleAutoSave = (updatedSlides, updatedPres) => {
-    if (autoSaveTimer) clearTimeout(autoSaveTimer);
-    const slidesToSave = updatedSlides || slides;
-    const presToSave = updatedPres || presData;
-    const t = setTimeout(() => doSave(slidesToSave, presToSave), 2000);
-    setAutoSaveTimer(t);
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    if (updatedSlides) slidesRef.current = updatedSlides;
+    if (updatedPres) presDataRef.current = updatedPres;
+    autoSaveTimerRef.current = setTimeout(() => doSave(slidesRef.current, presDataRef.current), 2000);
   };
 
   const doSave = async (slidesToSave, presToSave) => {
@@ -179,29 +188,25 @@ function PresentationEditor({ presId }) {
         status: presToSave.status,
       });
     }
-    const existingIds = new Set(existingSlides.map(s => s.id));
     const updatedSlides = [...slidesToSave];
     for (let i = 0; i < updatedSlides.length; i++) {
       const slide = { ...updatedSlides[i], presentation_id: presId, sort_order: i };
-      if (slide.id && existingIds.has(slide.id)) {
-        // Always persist canvas_json and thumbnail_url so sidebar stays current
-        await base44.entities.PresentationSlide.update(slide.id, {
-          ...slide,
-          canvas_json: slide.canvas_json,
-          thumbnail_url: slide.thumbnail_url,
-        });
-      } else if (!slide.id) {
+      if (slide.id) {
+        await base44.entities.PresentationSlide.update(slide.id, slide);
+      } else {
         const created = await base44.entities.PresentationSlide.create(slide);
         updatedSlides[i] = created;
+        slidesRef.current = updatedSlides;
       }
     }
-    setSlides(updatedSlides);
+    setSlides([...updatedSlides]);
     queryClient.invalidateQueries({ queryKey: ["presentations"] });
     setSaving(false);
   };
 
   const updateSlide = (idx, patch) => {
-    const updated = slides.map((s, i) => i === idx ? { ...s, ...patch } : s);
+    const updated = slidesRef.current.map((s, i) => i === idx ? { ...s, ...patch } : s);
+    slidesRef.current = updated;
     setSlides(updated);
     scheduleAutoSave(updated, null);
   };
@@ -233,7 +238,8 @@ function PresentationEditor({ presId }) {
   };
 
   const updatePres = (patch) => {
-    const updated = { ...presData, ...patch };
+    const updated = { ...presDataRef.current, ...patch };
+    presDataRef.current = updated;
     setPresData(updated);
     scheduleAutoSave(null, updated);
   };
@@ -243,36 +249,81 @@ function PresentationEditor({ presId }) {
 
   const currentSlide = slides[selectedIdx];
 
-  // Export all slides to a landscape PDF using saved thumbnails (reliable, no CORS issues)
+  // Export all slides to a landscape PDF
   const handleExportPDF = async () => {
     setIsPrinting(true);
     try {
+      // Ensure fabric is loaded
+      const fab = await new Promise((resolve, reject) => {
+        if (window.fabric) return resolve(window.fabric);
+        const script = document.createElement("script");
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js";
+        script.onload = () => resolve(window.fabric);
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+
       const pdf = new jsPDF({ orientation: "landscape", unit: "in", format: [11, 8.5] });
 
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
+        const json = slide.canvas_json;
+        if (!json) continue;
 
-        // Use the saved thumbnail (already rendered PNG), fall back to blank white page
-        const dataUrl = slide.thumbnail_url;
-        if (!dataUrl) continue;
+        const el = document.createElement("canvas");
+        document.body.appendChild(el); // must be in DOM for some browsers
+        const canvas = new fab.Canvas(el, { width: CANVAS_W, height: CANVAS_H, backgroundColor: "#ffffff" });
+
+        await new Promise((resolve) => {
+          try {
+            const parsed = typeof json === "string" ? JSON.parse(json) : json;
+            // Load with crossOrigin so images render correctly
+            canvas.loadFromJSON(parsed, () => {
+              // Re-set crossOrigin on all image objects and reload them
+              const imgs = canvas.getObjects("image");
+              if (imgs.length === 0) {
+                canvas.renderAll();
+                return resolve();
+              }
+              let loaded = 0;
+              imgs.forEach(img => {
+                img.set({ crossOrigin: "anonymous" });
+                const src = img.getSrc();
+                img.setSrc(src, () => {
+                  loaded++;
+                  if (loaded === imgs.length) {
+                    canvas.renderAll();
+                    resolve();
+                  }
+                }, { crossOrigin: "anonymous" });
+              });
+            });
+          } catch {
+            canvas.renderAll();
+            resolve();
+          }
+        });
+
+        // Small delay to ensure render is complete
+        await new Promise(r => setTimeout(r, 200));
+
+        const dataUrl = canvas.toDataURL({ format: "png", quality: 1.0, multiplier: 1.0 });
+        canvas.dispose();
+        document.body.removeChild(el);
 
         if (i > 0) pdf.addPage([11, 8.5], "landscape");
         pdf.addImage(dataUrl, "PNG", 0, 0, 11, 8.5);
       }
 
-      // Save the PDF file
       const fileName = `${presData.project_name || "presentation"}.pdf`;
       pdf.save(fileName);
 
-      // Also open print dialog using the PDF blob
+      // Open print dialog
       const pdfBlob = pdf.output("blob");
       const blobUrl = URL.createObjectURL(pdfBlob);
       const printWin = window.open(blobUrl, "_blank");
       if (printWin) {
-        printWin.onload = () => {
-          printWin.focus();
-          printWin.print();
-        };
+        printWin.onload = () => { printWin.focus(); printWin.print(); };
       }
     } finally {
       setIsPrinting(false);

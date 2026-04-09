@@ -304,7 +304,7 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
       const canvas = fabricRef.current;
       if (!canvas) return;
       const json = JSON.stringify(canvas.toJSON(["name"]));
-      const thumbnail = canvas.toDataURL({ format: "png", quality: 1.0, multiplier: 1.0 });
+      const thumbnail = canvas.toDataURL({ format: "jpeg", quality: 0.7, multiplier: 0.5 });
       const roomName = extractRoomName(canvas);
       const spec = extractSpec(canvas);
       onUpdate({
