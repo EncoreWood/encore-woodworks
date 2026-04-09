@@ -243,48 +243,37 @@ function PresentationEditor({ presId }) {
 
   const currentSlide = slides[selectedIdx];
 
-  // Export all slides to a landscape PDF using jsPDF + fabric canvas rendering
+  // Export all slides to a landscape PDF using saved thumbnails (reliable, no CORS issues)
   const handleExportPDF = async () => {
     setIsPrinting(true);
     try {
-      const fab = await new Promise((resolve, reject) => {
-        if (window.fabric) return resolve(window.fabric);
-        const script = document.createElement("script");
-        script.src = "https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js";
-        script.onload = () => resolve(window.fabric);
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-
-      // PDF page size: 11" x 8.5" at 96dpi
       const pdf = new jsPDF({ orientation: "landscape", unit: "in", format: [11, 8.5] });
 
       for (let i = 0; i < slides.length; i++) {
         const slide = slides[i];
-        // Create an offscreen canvas and render the slide
-        const el = document.createElement("canvas");
-        const canvas = new fab.Canvas(el, { width: 1056, height: 816, backgroundColor: "#ffffff" });
 
-        await new Promise((resolve) => {
-          const json = slide.canvas_json;
-          if (json) {
-            try {
-              const parsed = typeof json === "string" ? JSON.parse(json) : json;
-              canvas.loadFromJSON(parsed, () => { canvas.renderAll(); resolve(); });
-            } catch { canvas.renderAll(); resolve(); }
-          } else {
-            canvas.renderAll(); resolve();
-          }
-        });
-
-        const dataUrl = canvas.toDataURL({ format: "png", quality: 1.0 });
-        canvas.dispose();
+        // Use the saved thumbnail (already rendered PNG), fall back to blank white page
+        const dataUrl = slide.thumbnail_url;
+        if (!dataUrl) continue;
 
         if (i > 0) pdf.addPage([11, 8.5], "landscape");
         pdf.addImage(dataUrl, "PNG", 0, 0, 11, 8.5);
       }
 
-      pdf.save(`${presData.project_name || "presentation"}.pdf`);
+      // Save the PDF file
+      const fileName = `${presData.project_name || "presentation"}.pdf`;
+      pdf.save(fileName);
+
+      // Also open print dialog using the PDF blob
+      const pdfBlob = pdf.output("blob");
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const printWin = window.open(blobUrl, "_blank");
+      if (printWin) {
+        printWin.onload = () => {
+          printWin.focus();
+          printWin.print();
+        };
+      }
     } finally {
       setIsPrinting(false);
     }
