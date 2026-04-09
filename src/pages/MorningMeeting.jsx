@@ -41,34 +41,34 @@ const motivationalQuotes = [
 function SectionCard({ title, icon: Icon, color, count, children, defaultOpen = false }) {
   const [open, setOpen] = useState(defaultOpen);
   const colors = {
-    red: { border: "border-l-red-500", header: "bg-red-50", text: "text-red-700", badge: "bg-red-100 text-red-700" },
-    amber: { border: "border-l-amber-500", header: "bg-amber-50", text: "text-amber-700", badge: "bg-amber-100 text-amber-700" },
-    blue: { border: "border-l-blue-500", header: "bg-blue-50", text: "text-blue-700", badge: "bg-blue-100 text-blue-700" },
-    green: { border: "border-l-green-500", header: "bg-green-50", text: "text-green-700", badge: "bg-green-100 text-green-700" },
-    purple: { border: "border-l-purple-500", header: "bg-purple-50", text: "text-purple-700", badge: "bg-purple-100 text-purple-700" },
-    slate: { border: "border-l-slate-500", header: "bg-slate-50", text: "text-slate-700", badge: "bg-slate-100 text-slate-700" },
-    orange: { border: "border-l-orange-500", header: "bg-orange-50", text: "text-orange-700", badge: "bg-orange-100 text-orange-700" },
+    red:    { border: "border-l-red-500",    header: "bg-gradient-to-r from-red-100 to-red-50",       text: "text-red-700",    badge: "bg-red-500 text-white",    icon: "text-red-600" },
+    amber:  { border: "border-l-amber-500",  header: "bg-gradient-to-r from-amber-100 to-yellow-50",  text: "text-amber-800",  badge: "bg-amber-500 text-white",  icon: "text-amber-600" },
+    blue:   { border: "border-l-blue-500",   header: "bg-gradient-to-r from-blue-100 to-sky-50",      text: "text-blue-800",   badge: "bg-blue-500 text-white",   icon: "text-blue-600" },
+    green:  { border: "border-l-green-500",  header: "bg-gradient-to-r from-green-100 to-emerald-50", text: "text-green-800",  badge: "bg-green-500 text-white",  icon: "text-green-600" },
+    purple: { border: "border-l-purple-500", header: "bg-gradient-to-r from-purple-100 to-violet-50", text: "text-purple-800", badge: "bg-purple-500 text-white", icon: "text-purple-600" },
+    slate:  { border: "border-l-slate-500",  header: "bg-gradient-to-r from-slate-200 to-slate-100",  text: "text-slate-700",  badge: "bg-slate-500 text-white",  icon: "text-slate-600" },
+    orange: { border: "border-l-orange-500", header: "bg-gradient-to-r from-orange-100 to-amber-50",  text: "text-orange-800", badge: "bg-orange-500 text-white", icon: "text-orange-600" },
   };
   const c = colors[color] || colors.slate;
 
   return (
-    <Card className={`overflow-hidden border-l-4 ${c.border} shadow-md`}>
+    <Card className={`overflow-hidden border-l-[6px] ${c.border} shadow-xl`}>
       <button
-        className={`w-full flex items-center justify-between px-5 py-4 ${c.header} hover:brightness-95 transition-all`}
+        className={`w-full flex items-center justify-between px-6 py-5 ${c.header} hover:brightness-95 transition-all`}
         onClick={() => setOpen(o => !o)}
       >
         <div className="flex items-center gap-3">
-          <Icon className={`w-5 h-5 ${c.text}`} />
-          <span className={`text-lg font-bold ${c.text}`}>{title}</span>
+          <Icon className={`w-6 h-6 ${c.icon}`} />
+          <span className={`text-xl font-extrabold ${c.text}`}>{title}</span>
         </div>
         <div className="flex items-center gap-3">
           {count !== undefined && (
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${c.badge}`}>{count}</span>
+            <span className={`text-sm font-bold px-3 py-1 rounded-full shadow-sm ${c.badge}`}>{count}</span>
           )}
-          <ChevronDown className={`w-4 h-4 ${c.text} transition-transform ${open ? "rotate-180" : ""}`} />
+          <ChevronDown className={`w-5 h-5 ${c.text} transition-transform ${open ? "rotate-180" : ""}`} />
         </div>
       </button>
-      {open && <div className="p-4">{children}</div>}
+      {open && <div className="p-5">{children}</div>}
     </Card>
   );
 }
@@ -399,10 +399,10 @@ export default function MorningMeeting() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-cyan-50 to-blue-50 flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#374151" }}>
       {/* Fixed Header with Presenter */}
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-sm border-b border-emerald-100 shadow-sm">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="sticky top-0 z-20 border-b border-gray-600 shadow-md" style={{ backgroundColor: "#2d3748" }}>
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-cyan-600 text-white px-5 py-2 rounded-full shadow-md">
             <User className="w-4 h-4" />
             <span className="font-semibold text-sm">Presenter:</span>
@@ -418,7 +418,7 @@ export default function MorningMeeting() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8 flex-1">
+      <div className="max-w-5xl mx-auto px-4 py-8 flex-1 w-full">
         {/* Header */}
         <div className="mb-8 text-center pt-12">
           <div className="inline-flex items-center gap-3 px-6 py-3 bg-white/70 backdrop-blur rounded-full shadow-lg mb-4">
