@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Printer, Send, ChevronLeft, Copy, Trash2, Edit2 } from "lucide-react";
+import jsPDF from "jspdf";
 import { format } from "date-fns";
 import ProjectSelector from "@/components/presentations/ProjectSelector";
 import SlideThumbnailStrip from "@/components/presentations/SlideThumbnailStrip";
@@ -138,7 +139,6 @@ function PresentationEditor({ presId }) {
   const [showSend, setShowSend] = useState(false);
   const [saving, setSaving] = useState(false);
   const [autoSaveTimer, setAutoSaveTimer] = useState(null);
-  const [printDataUrls, setPrintDataUrls] = useState([]);
   const [isPrinting, setIsPrinting] = useState(false);
   const editorPanelRef = useRef(null);
 
@@ -238,52 +238,55 @@ function PresentationEditor({ presId }) {
 
   const currentSlide = slides[selectedIdx];
 
-  // Collect all thumbnail dataURLs from slides and trigger print
+  // Export all slides to a landscape PDF using jsPDF + fabric canvas rendering
   const handleExportPDF = async () => {
     setIsPrinting(true);
-    // Give a tick so state updates, then collect dataUrls from thumbnails stored in slides
-    // Each slide stores thumbnail_url after save; fall back to canvas_json render
-    const dataUrls = slides.map(s => s.thumbnail_url || null).filter(Boolean);
-    // If we have thumbnails use them, else just use whatever is stored
-    const urls = slides.map(s => s.thumbnail_url || "");
-    setPrintDataUrls(urls);
-    // Wait for DOM update then print
-    setTimeout(() => {
-      window.print();
+    try {
+      const fab = await new Promise((resolve, reject) => {
+        if (window.fabric) return resolve(window.fabric);
+        const script = document.createElement("script");
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js";
+        script.onload = () => resolve(window.fabric);
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+
+      // PDF page size: 11" x 8.5" at 96dpi
+      const pdf = new jsPDF({ orientation: "landscape", unit: "in", format: [11, 8.5] });
+
+      for (let i = 0; i < slides.length; i++) {
+        const slide = slides[i];
+        // Create an offscreen canvas and render the slide
+        const el = document.createElement("canvas");
+        const canvas = new fab.Canvas(el, { width: 1056, height: 816, backgroundColor: "#ffffff" });
+
+        await new Promise((resolve) => {
+          const json = slide.canvas_json;
+          if (json) {
+            try {
+              const parsed = typeof json === "string" ? JSON.parse(json) : json;
+              canvas.loadFromJSON(parsed, () => { canvas.renderAll(); resolve(); });
+            } catch { canvas.renderAll(); resolve(); }
+          } else {
+            canvas.renderAll(); resolve();
+          }
+        });
+
+        const dataUrl = canvas.toDataURL({ format: "png", quality: 1.0 });
+        canvas.dispose();
+
+        if (i > 0) pdf.addPage([11, 8.5], "landscape");
+        pdf.addImage(dataUrl, "PNG", 0, 0, 11, 8.5);
+      }
+
+      pdf.save(`${presData.project_name || "presentation"}.pdf`);
+    } finally {
       setIsPrinting(false);
-    }, 300);
+    }
   };
 
   return (
     <>
-      <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          nav, aside, header, .no-print, button { display: none !important; }
-          #print-slides, #print-slides * { visibility: visible; }
-          #print-slides { position: fixed; top: 0; left: 0; }
-          .print-slide {
-            width: 11in;
-            height: 8.5in;
-            page-break-after: always;
-            break-after: page;
-            overflow: hidden;
-          }
-          .print-slide:last-child { page-break-after: avoid; break-after: avoid; }
-          .print-slide img { width: 11in; height: 8.5in; object-fit: contain; display: block; }
-          @page { size: 11in 8.5in landscape; margin: 0; }
-        }
-      `}</style>
-
-      {/* Print-only container — uses slide thumbnail_url PNGs, one per page */}
-      <div id="print-slides" style={{ position: "absolute", top: 0, left: 0, width: 0, height: 0, overflow: "hidden", visibility: "hidden" }}>
-        {printDataUrls.map((url, i) => (
-          <div key={i} className="print-slide">
-            {url ? <img src={url} alt={`Slide ${i + 1}`} /> : null}
-          </div>
-        ))}
-      </div>
-
       {/* Editor UI */}
       <div className="flex flex-col h-screen bg-slate-200">
         {/* Toolbar */}
@@ -342,7 +345,7 @@ function PresentationEditor({ presId }) {
                   slide={currentSlide}
                   onUpdate={(patch) => updateSlide(selectedIdx, patch)}
                   editable={true}
-                  containerWidth={editorPanelRef.current?.offsetWidth || 900}
+                  containerWidth={editorPanelRef.current?.offsetWidth || 1100}
                 />
                 <div className="no-print">
                   <Button

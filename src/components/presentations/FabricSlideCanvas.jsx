@@ -180,8 +180,8 @@ export default function FabricSlideCanvas({ slide, onUpdate, editable = true, co
   const arrowLineRef = useRef(null);
   const [isDrawingArrow, setIsDrawingArrow] = useState(false);
 
-  // Scale to fit container
-  const scale = Math.min(1, (containerWidth - 32) / CANVAS_W);
+  // Scale to fit container — use full width for landscape display
+  const scale = Math.min(1, (containerWidth - 16) / CANVAS_W);
 
   useEffect(() => {
     loadFabric().then(f => setFabric(f));
