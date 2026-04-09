@@ -184,7 +184,12 @@ function PresentationEditor({ presId }) {
     for (let i = 0; i < updatedSlides.length; i++) {
       const slide = { ...updatedSlides[i], presentation_id: presId, sort_order: i };
       if (slide.id && existingIds.has(slide.id)) {
-        await base44.entities.PresentationSlide.update(slide.id, slide);
+        // Always persist canvas_json and thumbnail_url so sidebar stays current
+        await base44.entities.PresentationSlide.update(slide.id, {
+          ...slide,
+          canvas_json: slide.canvas_json,
+          thumbnail_url: slide.thumbnail_url,
+        });
       } else if (!slide.id) {
         const created = await base44.entities.PresentationSlide.create(slide);
         updatedSlides[i] = created;
