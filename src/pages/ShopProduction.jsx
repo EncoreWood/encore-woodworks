@@ -165,10 +165,13 @@ export default function ShopProduction() {
     // Forward flow: points are earned when LEAVING a column along the forward path.
     // Valid forward exits: face_frame→(spray|build|complete), spray→(build|complete), build→complete, cut→(face_frame|complete)
     // Backward moves (e.g. complete→build, build→spray, anything→cut) earn zero points.
+    // Points are only awarded when a card exits a column toward "complete".
+    // Moving anything INTO build (without going to complete) does NOT award points.
+    // Build's only valid point-earning exit is "complete".
     const FORWARD_EXITS = {
       cut:        ["face_frame", "complete"],
-      face_frame: ["spray", "build", "complete"],
-      spray:      ["build", "complete"],
+      face_frame: ["spray", "complete"],
+      spray:      ["complete"],
       build:      ["complete"],
     };
     const isForwardMove = (FORWARD_EXITS[oldStage] || []).includes(newStage);

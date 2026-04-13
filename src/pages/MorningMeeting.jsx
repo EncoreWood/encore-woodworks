@@ -946,6 +946,11 @@ export default function MorningMeeting() {
           <SectionCard title="Today's Focus" icon={Crosshair} color="orange" count={todaysFocusProjects.length + todayDesignMeetings.length + todayInstalls.length + todayDeliveries.length}>
             <div className="space-y-4">
 
+              {/* Calendar link */}
+              <Link to={createPageUrl("Calendar")} className="flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-800 underline underline-offset-2">
+                📅 View Full Calendar (Deliveries, Installs & Appointments)
+              </Link>
+
               {/* Design Meetings */}
               {todayDesignMeetings.length > 0 && (
                 <div>
