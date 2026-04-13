@@ -863,10 +863,28 @@ export default function CalendarPage() {
                 {viewType === "year" && format(currentMonth, "yyyy")}
               </h3>
             </div>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 items-center">
               <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}><ChevronLeft className="w-3.5 h-3.5" /></Button>
               <Button variant="outline" size="sm" className="h-7 text-xs px-2" onClick={() => setCurrentMonth(new Date())}>Today</Button>
               <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}><ChevronRight className="w-3.5 h-3.5" /></Button>
+              <div className="w-px h-5 bg-slate-200 mx-1" />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" className="h-8 px-3 bg-amber-600 hover:bg-amber-700 text-white font-bold gap-1.5">
+                    <Plus className="w-4 h-4" /> Add
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleOpenAdd("presenter")}><User className="w-4 h-4 mr-2" />Meeting Presenter</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleOpenAdd("task")}><CheckCircle2 className="w-4 h-4 mr-2" />Task</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleOpenAdd("project")}><Briefcase className="w-4 h-4 mr-2" />New Project</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleOpenAdd("designMeeting")}><Users className="w-4 h-4 mr-2" />Design Meeting</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleOpenAdd("bathroomCleaning")}><Sparkles className="w-4 h-4 mr-2" />Bathroom Cleaning</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleOpenAdd("vacation")}><CalendarIcon className="w-4 h-4 mr-2" />Vacation</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleOpenAdd("generalMeeting")}><CalendarIcon className="w-4 h-4 mr-2 text-rose-500" />General Meeting</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setShowGenerateDialog(true); setGenWeekStart(selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")); }}><Sparkles className="w-4 h-4 mr-2 text-teal-600" />Cleaning Schedule</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 
