@@ -302,7 +302,10 @@ export default function ShopProduction() {
   const getColStats = (stage) => {
     let day = 0, week = 0, month = 0;
     for (const log of columnMoveLogs) {
-      if (log.to_column !== stage) continue;
+      // Points are earned when leaving a column (from_column), not when arriving.
+      // "complete" is the final destination so we count arrivals there (to_column).
+      const matchCol = stage === "complete" ? log.to_column : log.from_column;
+      if (matchCol !== stage) continue;
       const pts = parseFloat(log.points_awarded) || 0;
       if (pts === 0) continue;
       const movedAt = new Date(log.moved_at);
