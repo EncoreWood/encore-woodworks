@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { startOfWeek } from "date-fns";
 import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
 import WeeklyTopicPopup from "@/components/meeting/WeeklyTopicPopup";
+import TodaysScheduleDropdown from "@/components/meeting/TodaysScheduleDropdown";
 import { format, addDays, subDays } from "date-fns";
 
 const motivationalQuotes = [
@@ -946,62 +947,12 @@ export default function MorningMeeting() {
           <SectionCard title="Today's Focus" icon={Crosshair} color="orange" count={todaysFocusProjects.length + todayDesignMeetings.length + todayInstalls.length + todayDeliveries.length}>
             <div className="space-y-4">
 
-              {/* Calendar link */}
-              <Link to={createPageUrl("Calendar")} className="flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-800 underline underline-offset-2">
-                📅 View Full Calendar (Deliveries, Installs & Appointments)
-              </Link>
-
-              {/* Design Meetings */}
-              {todayDesignMeetings.length > 0 && (
-                <div>
-                  <p className="text-xs font-bold text-violet-600 uppercase tracking-wide mb-2">🎨 Design Meetings</p>
-                  <div className="space-y-1.5">
-                    {todayDesignMeetings.map(m => (
-                      <div key={m.id} className="bg-violet-50 border border-violet-200 rounded-lg px-3 py-2.5">
-                        <p className="font-semibold text-violet-800 text-sm">{m.client_name}</p>
-                        {m.project_name && <p className="text-xs text-violet-600">{m.project_name}</p>}
-                        {m.time && <p className="text-xs text-slate-500">🕐 {m.time}</p>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Installs */}
-              {todayInstalls.length > 0 && (
-                <div>
-                  <p className="text-xs font-bold text-orange-600 uppercase tracking-wide mb-2">🔨 Installs</p>
-                  <div className="space-y-1.5">
-                    {todayInstalls.map(a => (
-                      <div key={a.id} className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2.5">
-                        <p className="font-semibold text-orange-800 text-sm">{a.project_name}</p>
-                        {a.client_name && <p className="text-xs text-orange-600">{a.client_name}</p>}
-                        {a.address && <p className="text-xs text-slate-500">📍 {a.address}</p>}
-                        {a.crew?.length > 0 && <p className="text-xs text-slate-500">👷 {a.crew.join(", ")}</p>}
-                        {a.time && <p className="text-xs text-slate-500">🕐 {a.time}</p>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Deliveries */}
-              {todayDeliveries.length > 0 && (
-                <div>
-                  <p className="text-xs font-bold text-teal-600 uppercase tracking-wide mb-2">🚚 Deliveries</p>
-                  <div className="space-y-1.5">
-                    {todayDeliveries.map(a => (
-                      <div key={a.id} className="bg-teal-50 border border-teal-200 rounded-lg px-3 py-2.5">
-                        <p className="font-semibold text-teal-800 text-sm">{a.project_name}</p>
-                        {a.client_name && <p className="text-xs text-teal-600">{a.client_name}</p>}
-                        {a.address && <p className="text-xs text-slate-500">📍 {a.address}</p>}
-                        {a.driver && <p className="text-xs text-slate-500">🚚 {a.driver}</p>}
-                        {a.time && <p className="text-xs text-slate-500">🕐 {a.time}</p>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Today's Schedule — collapsible dropdown */}
+              <TodaysScheduleDropdown
+                designMeetings={todayDesignMeetings}
+                installs={todayInstalls}
+                deliveries={todayDeliveries}
+              />
 
               {/* In-Production Projects */}
               {todaysFocusProjects.length > 0 && (
