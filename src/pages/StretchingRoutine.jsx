@@ -218,7 +218,7 @@ export default function StretchingRoutine() {
           <iframe
             width="560"
             height="315"
-            src="https://www.youtube.com/embed/QEWV6fiYaDU?si=qEb2IommcvSXi2Rc&start=10"
+            src="https://www.youtube.com/embed/QEWV6fiYaDU?si=qEb2IommcvSXi2Rc&start=10&autoplay=1&mute=1"
             title="YouTube video player"
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
