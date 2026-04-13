@@ -13,6 +13,7 @@ import VacationRequestForm from "../components/team/VacationRequestForm";
 import ClockInModal from "../components/timesheet/ClockInModal";
 import TimeDataTab from "../components/timesheet/TimeDataTab";
 import DayLogView from "../components/timesheet/DayLogView";
+import PayPeriodsView from "../components/timesheet/PayPeriodsView";
 
 export default function TimeSheet() {
   const [weekOffset, setWeekOffset] = useState(0);
@@ -526,15 +527,26 @@ export default function TimeSheet() {
                         </div>
                       )}
 
-                      {/* Day log view */}
-                      <DayLogView
-                        employeeEntries={employeeEntries}
-                        currentUser={currentUser}
-                        weekOffset={weekOffset}
-                        onWeekChange={setWeekOffset}
-                        onEdit={handleOpenEdit}
-                        onDelete={(id) => deleteEntryMutation.mutate(id)}
-                      />
+                      {/* Time Card Sub-tabs */}
+                      <Tabs defaultValue="weekly" className="w-full">
+                        <TabsList className="grid grid-cols-2 w-full max-w-xs mb-4">
+                          <TabsTrigger value="weekly">Weekly View</TabsTrigger>
+                          <TabsTrigger value="pay_periods">Pay Periods</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="weekly">
+                          <DayLogView
+                            employeeEntries={employeeEntries}
+                            currentUser={currentUser}
+                            weekOffset={weekOffset}
+                            onWeekChange={setWeekOffset}
+                            onEdit={handleOpenEdit}
+                            onDelete={(id) => deleteEntryMutation.mutate(id)}
+                          />
+                        </TabsContent>
+                        <TabsContent value="pay_periods">
+                          <PayPeriodsView employeeEntries={employeeEntries} />
+                        </TabsContent>
+                      </Tabs>
                     </>
                   ) : (
                     <div className="text-center py-16 bg-white border border-slate-200 rounded-xl">
