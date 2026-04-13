@@ -19,6 +19,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { startOfWeek } from "date-fns";
 import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
+import WeeklyTopicPopup from "@/components/meeting/WeeklyTopicPopup";
 import { format, addDays, subDays } from "date-fns";
 
 const motivationalQuotes = [
@@ -90,6 +91,7 @@ export default function MorningMeeting() {
   const [expandedStruggle, setExpandedStruggle] = useState(null);
   const [struggleNotesDraft, setStruggleNotesDraft] = useState({});
   const [generatingTopic, setGeneratingTopic] = useState(false);
+  const [topicPopup, setTopicPopup] = useState(null); // topic object to show in popup
 
   const dateString = format(selectedDate, "yyyy-MM-dd");
   const queryClient = useQueryClient();
@@ -527,105 +529,81 @@ export default function MorningMeeting() {
             </div>
           </SectionCard>
 
-          {/* 2. Weekly Topic — persisted per week, logged to admin */}
+          {/* 2. Weekly Topic — cards that open a full popup */}
           <SectionCard title="Weekly Topic" icon={BookOpen} color="green" count={weeklyTopics.filter(t => !t.archived).length}>
-            {/* Existing topics for this week */}
-            <div className="space-y-3 mb-4">
+            <div className="space-y-3">
               {generatingTopic && (
-                <div className="flex items-center gap-2 py-3 px-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-                  <Sparkles className="w-4 h-4 animate-pulse" />
-                  Generating this week's topic with AI...
+                <div className="flex items-center gap-3 py-4 px-5 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl text-sm text-emerald-700 shadow-sm">
+                  <Sparkles className="w-5 h-5 animate-pulse text-emerald-500" />
+                  <span className="font-medium">Generating this week's AI topic…</span>
                 </div>
               )}
               {!generatingTopic && weeklyTopics.filter(t => !t.archived).length === 0 && (
-                <p className="text-slate-400 text-sm text-center py-2">No topic added for this week yet.</p>
+                <p className="text-slate-400 text-sm text-center py-3">No topic added for this week yet.</p>
               )}
+
+              {/* Topic summary cards — click to open popup */}
               {weeklyTopics.filter(t => !t.archived).map((topic) => {
-                // Parse daily slices if available
                 let dailySlices = [];
                 try { dailySlices = JSON.parse(topic.daily_slices || "[]"); } catch (e) {}
-                // Find today's slice based on day of week
-                const todayDayName = format(selectedDate, "EEEE"); // e.g. "Monday"
+                const todayDayName = format(selectedDate, "EEEE");
                 const todaySlice = dailySlices.find(s => s.day === todayDayName);
-
                 return (
-                  <div key={topic.id} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border-2 border-emerald-400 overflow-hidden shadow-md">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-emerald-200 to-green-200">
-                      {topic.auto_generated ? <Sparkles className="w-4 h-4 text-emerald-800 flex-shrink-0" /> : topic.item_type === "file" ? <Upload className="w-4 h-4 text-emerald-800 flex-shrink-0" /> : <Link2 className="w-4 h-4 text-emerald-800 flex-shrink-0" />}
-                      {topic.url
-                        ? <a href={topic.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-emerald-900 hover:underline font-semibold truncate">{topic.label}</a>
-                        : <span className="flex-1 text-sm font-semibold text-emerald-900">{topic.label}</span>
-                      }
-                      {topic.auto_generated && <span className="text-xs bg-emerald-300 text-emerald-900 px-2 py-0.5 rounded-full font-semibold">AI</span>}
-                      <button onClick={() => archiveWeeklyTopicMutation.mutate(topic.id)} className="text-emerald-600 hover:text-red-600" title="Archive topic">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-
-                    {/* Today's daily slice */}
-                    {todaySlice && (
-                      <div className="mx-3 mt-3 bg-emerald-100 border border-emerald-300 rounded-lg px-3 py-2.5">
-                        <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-1">📅 Today — {todaySlice.title}</p>
-                        <p className="text-sm text-emerald-900 leading-relaxed">{todaySlice.content}</p>
-                      </div>
-                    )}
-
-                    {/* All daily slices collapsed */}
-                    {dailySlices.length > 0 && (
-                      <details className="mx-3 mt-2">
-                        <summary className="text-xs font-semibold text-emerald-700 cursor-pointer hover:text-emerald-900 py-1">View all daily slices ▸</summary>
-                        <div className="mt-2 space-y-2 pb-2">
-                          {dailySlices.map((s, i) => (
-                            <div key={i} className={`rounded-lg px-3 py-2 text-sm border ${s.day === todayDayName ? "bg-emerald-100 border-emerald-300" : "bg-white border-slate-200"}`}>
-                              <p className="font-semibold text-emerald-800 text-xs">{s.day} — {s.title}</p>
-                              <p className="text-slate-700 text-xs mt-0.5">{s.content}</p>
-                            </div>
-                          ))}
+                  <button
+                    key={topic.id}
+                    onClick={() => setTopicPopup(topic)}
+                    className="w-full text-left group"
+                  >
+                    <div className="relative overflow-hidden rounded-2xl border-2 border-emerald-300 shadow-lg hover:shadow-xl hover:border-emerald-400 transition-all duration-200 bg-gradient-to-br from-emerald-600 to-teal-700">
+                      {/* Background pattern */}
+                      <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "radial-gradient(circle at 80% 20%, white 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+                      <div className="relative px-5 py-4">
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-2">
+                            {topic.auto_generated
+                              ? <span className="flex items-center gap-1 text-xs font-bold bg-white/20 text-white px-2.5 py-1 rounded-full"><Sparkles className="w-3 h-3" /> AI Generated</span>
+                              : <span className="flex items-center gap-1 text-xs font-bold bg-white/20 text-white px-2.5 py-1 rounded-full"><BookOpen className="w-3 h-3" /> Manual</span>
+                            }
+                          </div>
+                          <span className="text-emerald-200 text-xs font-medium opacity-80 group-hover:opacity-100 transition-opacity">Tap to expand →</span>
                         </div>
-                      </details>
-                    )}
-
-                    {/* Notes for this topic */}
-                    <div className="px-3 pb-3 mt-2">
-                      <Textarea
-                        placeholder="Add meeting notes for this topic..."
-                        value={topic.notes || ""}
-                        onChange={e => updateWeeklyTopicMutation.mutate({ id: topic.id, data: { notes: e.target.value } })}
-                        className="text-sm min-h-[60px] bg-white border-emerald-300"
-                      />
-                      {topic.presented_at && (
-                        <p className="text-xs text-slate-500 mt-1">
-                          Logged {format(new Date(topic.presented_at), "EEE MMM d 'at' h:mm a")}
-                          {topic.presented_by && ` · ${topic.presented_by}`}
-                        </p>
-                      )}
+                        <h3 className="text-white font-bold text-lg leading-tight mb-2">{topic.label}</h3>
+                        {todaySlice ? (
+                          <div className="bg-white/15 rounded-xl px-3.5 py-2.5 mt-1">
+                            <p className="text-emerald-100 text-xs font-semibold uppercase tracking-wider mb-1">📅 Today · {todaySlice.title}</p>
+                            <p className="text-white text-sm leading-relaxed line-clamp-2">{todaySlice.content}</p>
+                          </div>
+                        ) : topic.notes ? (
+                          <p className="text-emerald-100 text-sm line-clamp-2 mt-1">{topic.notes}</p>
+                        ) : (
+                          <p className="text-emerald-200 text-sm italic mt-1">Click to view all daily slices & add notes…</p>
+                        )}
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/20">
+                          <span className="text-emerald-200 text-xs">{dailySlices.length > 0 ? `${dailySlices.length} daily slices` : "No daily slices"}</span>
+                          {topic.notes && <span className="text-emerald-200 text-xs">📝 Notes added</span>}
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  </button>
                 );
               })}
-            </div>
 
-            {/* Add new topic */}
-            <div className="border-t border-green-100 pt-3 space-y-2">
-              <div className="flex gap-2">
-                <Input placeholder="Topic label..." value={weeklyTopicLabel} onChange={e => setWeeklyTopicLabel(e.target.value)} className="flex-1 text-sm" />
-                <Input placeholder="URL (optional)" value={weeklyTopicUrl} onChange={e => setWeeklyTopicUrl(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddWeeklyTopic()} className="flex-1 text-sm" />
-                <Button size="sm" onClick={handleAddWeeklyTopic} disabled={!weeklyTopicLabel.trim() || addWeeklyTopicMutation.isPending} className="bg-green-600 hover:bg-green-700">
-                  <Plus className="w-4 h-4" />
-                </Button>
+              {/* Add new topic */}
+              <div className="border-t border-green-100 pt-3 space-y-2">
+                <div className="flex gap-2">
+                  <Input placeholder="Topic label..." value={weeklyTopicLabel} onChange={e => setWeeklyTopicLabel(e.target.value)} className="flex-1 text-sm" />
+                  <Input placeholder="URL (optional)" value={weeklyTopicUrl} onChange={e => setWeeklyTopicUrl(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddWeeklyTopic()} className="flex-1 text-sm" />
+                  <Button size="sm" onClick={handleAddWeeklyTopic} disabled={!weeklyTopicLabel.trim() || addWeeklyTopicMutation.isPending} className="bg-green-600 hover:bg-green-700">
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                <label className="cursor-pointer">
+                  <input type="file" className="hidden" onChange={handleWeeklyTopicFileUpload} />
+                  <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-green-300 text-green-700 text-sm hover:bg-green-50 transition ${weeklyTopicUploading ? "opacity-50 pointer-events-none" : ""}`}>
+                    <Upload className="w-4 h-4" /> {weeklyTopicUploading ? "Uploading..." : "Upload File"}
+                  </span>
+                </label>
               </div>
-              <Textarea
-                placeholder="Pre-add notes (optional)..."
-                value={weeklyTopicNotes}
-                onChange={e => setWeeklyTopicNotes(e.target.value)}
-                className="text-sm min-h-[60px] border-green-200"
-              />
-              <label className="cursor-pointer">
-                <input type="file" className="hidden" onChange={handleWeeklyTopicFileUpload} />
-                <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-green-300 text-green-700 text-sm hover:bg-green-50 transition ${weeklyTopicUploading ? "opacity-50 pointer-events-none" : ""}`}>
-                  <Upload className="w-4 h-4" /> {weeklyTopicUploading ? "Uploading..." : "Upload File"}
-                </span>
-              </label>
             </div>
           </SectionCard>
 
@@ -1184,6 +1162,18 @@ export default function MorningMeeting() {
 
         </div>
       </div>
+
+      {/* Weekly Topic Full-Page Popup */}
+      {topicPopup && (
+        <WeeklyTopicPopup
+          topic={topicPopup}
+          selectedDate={selectedDate}
+          onClose={() => setTopicPopup(null)}
+          onArchive={() => { archiveWeeklyTopicMutation.mutate(topicPopup.id); setTopicPopup(null); }}
+          onSaveNotes={(id, notes) => updateWeeklyTopicMutation.mutate({ id, data: { notes } })}
+          isSaving={updateWeeklyTopicMutation.isPending}
+        />
+      )}
 
       {/* Presenter Dialog */}
       <Dialog open={showPresenterDialog} onOpenChange={setShowPresenterDialog}>
