@@ -200,7 +200,7 @@ export default function StretchingRoutine() {
         <div className="w-full max-w-4xl">
           <div className="w-full rounded-2xl overflow-hidden shadow-2xl">
             <iframe
-              src="https://www.youtube.com/embed/TrGY7fneUKM?si=aTBf0yssbEj_KLlJ&start=89&autoplay=1&mute=1"
+              src="https://www.youtube.com/embed/Aj6jyIEmZzs?start=30&autoplay=1&mute=1"
               title="Stretching video"
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
