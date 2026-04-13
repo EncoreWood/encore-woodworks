@@ -39,6 +39,15 @@
       "type": "boolean",
       "default": false,
       "description": "Whether this topic has been archived"
+    },
+    "auto_generated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this topic was AI-generated"
+    },
+    "daily_slices": {
+      "type": "string",
+      "description": "JSON string array of daily teachable slices [{day, title, content}]"
     }
   },
   "required": [

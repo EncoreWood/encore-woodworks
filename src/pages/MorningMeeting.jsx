@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -87,6 +87,9 @@ export default function MorningMeeting() {
   const [weeklyTopicUrl, setWeeklyTopicUrl] = useState("");
   const [weeklyTopicNotes, setWeeklyTopicNotes] = useState("");
   const [weeklyTopicUploading, setWeeklyTopicUploading] = useState(false);
+  const [expandedStruggle, setExpandedStruggle] = useState(null);
+  const [struggleNotesDraft, setStruggleNotesDraft] = useState({});
+  const [generatingTopic, setGeneratingTopic] = useState(false);
 
   const dateString = format(selectedDate, "yyyy-MM-dd");
   const queryClient = useQueryClient();
@@ -214,6 +217,26 @@ export default function MorningMeeting() {
     mutationFn: ({ id, data }) => base44.entities.WeeklyTopic.update(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["weeklyTopics", weekStartStr] })
   });
+
+  const updateStruggleMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Struggle.update(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["struggles"] })
+  });
+
+  // Auto-generate weekly topic on Mondays if none exists yet
+  const autoGenerateTopic = async () => {
+    const hasAutoTopic = weeklyTopics.some(t => t.auto_generated);
+    if (hasAutoTopic || generatingTopic) return;
+    // Only auto-generate if we're viewing the current week
+    const todayWeekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+    if (weekStartStr !== todayWeekStart) return;
+    setGeneratingTopic(true);
+    try {
+      await base44.functions.invoke("generateWeeklyTopic", { week_start: weekStartStr });
+      queryClient.invalidateQueries({ queryKey: ["weeklyTopics", weekStartStr] });
+    } catch (e) {}
+    setGeneratingTopic(false);
+  };
 
   const archiveWeeklyTopicMutation = useMutation({
     mutationFn: (id) => base44.entities.WeeklyTopic.update(id, { archived: true }),
@@ -385,6 +408,23 @@ export default function MorningMeeting() {
     setWeeklyTopicUploading(false);
   };
 
+  // Auto-generate topic effect
+  const autoGenRef = useRef(false);
+  useEffect(() => {
+    if (autoGenRef.current) return;
+    const todayWeekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+    if (weekStartStr !== todayWeekStart) return;
+    if (weeklyTopics.length === 0) return; // still loading or no query run yet — wait
+    const hasAutoTopic = weeklyTopics.some(t => t.auto_generated);
+    if (hasAutoTopic) return;
+    autoGenRef.current = true;
+    setGeneratingTopic(true);
+    base44.functions.invoke("generateWeeklyTopic", { week_start: weekStartStr })
+      .then(() => queryClient.invalidateQueries({ queryKey: ["weeklyTopics", weekStartStr] }))
+      .catch(() => {})
+      .finally(() => setGeneratingTopic(false));
+  }, [weeklyTopics, weekStartStr]);
+
   const handleAddTask = () => {
     if (newTask.trim()) {
       createTaskMutation.mutate({
@@ -491,36 +531,78 @@ export default function MorningMeeting() {
           <SectionCard title="Weekly Topic" icon={BookOpen} color="green" count={weeklyTopics.filter(t => !t.archived).length}>
             {/* Existing topics for this week */}
             <div className="space-y-3 mb-4">
-              {weeklyTopics.filter(t => !t.archived).length === 0 && <p className="text-slate-400 text-sm text-center py-2">No topic added for this week yet.</p>}
-              {weeklyTopics.filter(t => !t.archived).map((topic) => (
-                <div key={topic.id} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border-2 border-emerald-400 overflow-hidden shadow-md">
-                  <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-emerald-200 to-green-200">
-                    {topic.item_type === "file" ? <Upload className="w-4 h-4 text-emerald-800 flex-shrink-0" /> : <Link2 className="w-4 h-4 text-emerald-800 flex-shrink-0" />}
-                    {topic.url
-                      ? <a href={topic.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-emerald-900 hover:underline font-semibold truncate">{topic.label}</a>
-                      : <span className="flex-1 text-sm font-semibold text-emerald-900">{topic.label}</span>
-                    }
-                    <button onClick={() => archiveWeeklyTopicMutation.mutate(topic.id)} className="text-emerald-600 hover:text-red-600" title="Archive topic">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                  {/* Notes for this topic */}
-                  <div className="px-3 pb-2">
-                    <Textarea
-                      placeholder="Add notes for this topic..."
-                      value={topic.notes || ""}
-                      onChange={e => updateWeeklyTopicMutation.mutate({ id: topic.id, data: { notes: e.target.value } })}
-                      className="text-sm min-h-[60px] bg-white border-emerald-300"
-                    />
-                    {topic.presented_at && (
-                      <p className="text-xs text-slate-500 mt-1">
-                        Logged {format(new Date(topic.presented_at), "EEE MMM d 'at' h:mm a")}
-                        {topic.presented_by && ` · ${topic.presented_by}`}
-                      </p>
-                    )}
-                  </div>
+              {generatingTopic && (
+                <div className="flex items-center gap-2 py-3 px-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+                  <Sparkles className="w-4 h-4 animate-pulse" />
+                  Generating this week's topic with AI...
                 </div>
-              ))}
+              )}
+              {!generatingTopic && weeklyTopics.filter(t => !t.archived).length === 0 && (
+                <p className="text-slate-400 text-sm text-center py-2">No topic added for this week yet.</p>
+              )}
+              {weeklyTopics.filter(t => !t.archived).map((topic) => {
+                // Parse daily slices if available
+                let dailySlices = [];
+                try { dailySlices = JSON.parse(topic.daily_slices || "[]"); } catch (e) {}
+                // Find today's slice based on day of week
+                const todayDayName = format(selectedDate, "EEEE"); // e.g. "Monday"
+                const todaySlice = dailySlices.find(s => s.day === todayDayName);
+
+                return (
+                  <div key={topic.id} className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg border-2 border-emerald-400 overflow-hidden shadow-md">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-emerald-200 to-green-200">
+                      {topic.auto_generated ? <Sparkles className="w-4 h-4 text-emerald-800 flex-shrink-0" /> : topic.item_type === "file" ? <Upload className="w-4 h-4 text-emerald-800 flex-shrink-0" /> : <Link2 className="w-4 h-4 text-emerald-800 flex-shrink-0" />}
+                      {topic.url
+                        ? <a href={topic.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-emerald-900 hover:underline font-semibold truncate">{topic.label}</a>
+                        : <span className="flex-1 text-sm font-semibold text-emerald-900">{topic.label}</span>
+                      }
+                      {topic.auto_generated && <span className="text-xs bg-emerald-300 text-emerald-900 px-2 py-0.5 rounded-full font-semibold">AI</span>}
+                      <button onClick={() => archiveWeeklyTopicMutation.mutate(topic.id)} className="text-emerald-600 hover:text-red-600" title="Archive topic">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+
+                    {/* Today's daily slice */}
+                    {todaySlice && (
+                      <div className="mx-3 mt-3 bg-emerald-100 border border-emerald-300 rounded-lg px-3 py-2.5">
+                        <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide mb-1">📅 Today — {todaySlice.title}</p>
+                        <p className="text-sm text-emerald-900 leading-relaxed">{todaySlice.content}</p>
+                      </div>
+                    )}
+
+                    {/* All daily slices collapsed */}
+                    {dailySlices.length > 0 && (
+                      <details className="mx-3 mt-2">
+                        <summary className="text-xs font-semibold text-emerald-700 cursor-pointer hover:text-emerald-900 py-1">View all daily slices ▸</summary>
+                        <div className="mt-2 space-y-2 pb-2">
+                          {dailySlices.map((s, i) => (
+                            <div key={i} className={`rounded-lg px-3 py-2 text-sm border ${s.day === todayDayName ? "bg-emerald-100 border-emerald-300" : "bg-white border-slate-200"}`}>
+                              <p className="font-semibold text-emerald-800 text-xs">{s.day} — {s.title}</p>
+                              <p className="text-slate-700 text-xs mt-0.5">{s.content}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+
+                    {/* Notes for this topic */}
+                    <div className="px-3 pb-3 mt-2">
+                      <Textarea
+                        placeholder="Add meeting notes for this topic..."
+                        value={topic.notes || ""}
+                        onChange={e => updateWeeklyTopicMutation.mutate({ id: topic.id, data: { notes: e.target.value } })}
+                        className="text-sm min-h-[60px] bg-white border-emerald-300"
+                      />
+                      {topic.presented_at && (
+                        <p className="text-xs text-slate-500 mt-1">
+                          Logged {format(new Date(topic.presented_at), "EEE MMM d 'at' h:mm a")}
+                          {topic.presented_by && ` · ${topic.presented_by}`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Add new topic */}
@@ -782,26 +864,100 @@ export default function MorningMeeting() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {openStruggles.slice(0, 8).map(s => (
-                      <div key={s.id} className="flex items-start gap-3 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                        <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-red-800 truncate">{s.problem}</p>
-                          <p className="text-xs text-slate-500">
-                            {s.reported_by && <span>{s.reported_by} · </span>}
-                            {s.production_item_name && <span>{s.production_item_name} · </span>}
-                            {s.created_date && format(new Date(s.created_date), "MMM d")}
-                          </p>
-                          {s.solution && <p className="text-xs text-green-700 mt-0.5">✅ {s.solution}</p>}
-                          {(s.comments || []).length > 0 && (
-                            <p className="text-xs text-slate-400 mt-0.5">💬 {s.comments.length} comment{s.comments.length !== 1 ? "s" : ""}</p>
+                    {openStruggles.slice(0, 10).map(s => {
+                      const isExpanded = expandedStruggle === s.id;
+                      const noteDraft = struggleNotesDraft[s.id] ?? (s.solution || "");
+                      return (
+                        <div key={s.id} className={`border rounded-lg overflow-hidden transition-all ${isExpanded ? "border-red-300 shadow-md" : "border-red-100"}`}>
+                          {/* Header row — always visible, click to expand */}
+                          <button
+                            className="w-full flex items-start gap-3 bg-red-50 hover:bg-red-100 px-3 py-2.5 text-left transition-colors"
+                            onClick={() => {
+                              setExpandedStruggle(isExpanded ? null : s.id);
+                              if (!isExpanded) setStruggleNotesDraft(prev => ({ ...prev, [s.id]: s.solution || "" }));
+                            }}
+                          >
+                            <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-red-800">{s.problem}</p>
+                              <p className="text-xs text-slate-500">
+                                {s.reported_by && <span>{s.reported_by} · </span>}
+                                {s.production_item_name && <span>{s.production_item_name} · </span>}
+                                {s.created_date && format(new Date(s.created_date), "MMM d")}
+                              </p>
+                              {!isExpanded && s.solution && <p className="text-xs text-green-700 mt-0.5">✅ {s.solution}</p>}
+                              {(s.comments || []).length > 0 && !isExpanded && (
+                                <p className="text-xs text-slate-400 mt-0.5">💬 {s.comments.length} comment{s.comments.length !== 1 ? "s" : ""}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${s.status === "in_progress" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>
+                                {s.status?.replace("_", " ") || "open"}
+                              </span>
+                              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                            </div>
+                          </button>
+
+                          {/* Expanded panel */}
+                          {isExpanded && (
+                            <div className="bg-white px-4 py-3 border-t border-red-100 space-y-3">
+                              {/* Status change */}
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-slate-600">Status:</span>
+                                <Select value={s.status || "open"} onValueChange={val => updateStruggleMutation.mutate({ id: s.id, data: { status: val } })}>
+                                  <SelectTrigger className="h-7 w-36 text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="open">Open</SelectItem>
+                                    <SelectItem value="in_progress">In Progress</SelectItem>
+                                    <SelectItem value="resolved">Resolved</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {/* Solution / Notes */}
+                              <div>
+                                <p className="text-xs font-semibold text-slate-600 mb-1">Solution / Notes:</p>
+                                <Textarea
+                                  placeholder="Add solution, notes, or next steps..."
+                                  value={noteDraft}
+                                  onChange={e => setStruggleNotesDraft(prev => ({ ...prev, [s.id]: e.target.value }))}
+                                  className="text-sm min-h-[80px] border-slate-300"
+                                />
+                                <div className="flex justify-end mt-2">
+                                  <Button
+                                    size="sm"
+                                    className="bg-red-600 hover:bg-red-700 h-7 text-xs"
+                                    onClick={() => {
+                                      updateStruggleMutation.mutate({ id: s.id, data: { solution: noteDraft } });
+                                      setExpandedStruggle(null);
+                                    }}
+                                    disabled={updateStruggleMutation.isPending}
+                                  >
+                                    Save Notes
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {/* Existing comments */}
+                              {(s.comments || []).length > 0 && (
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-600 mb-1">Comments ({s.comments.length}):</p>
+                                  <div className="space-y-1.5">
+                                    {s.comments.map((c, i) => (
+                                      <div key={i} className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2">
+                                        <span className="font-semibold text-slate-700">{c.author}: </span>
+                                        <span className="text-slate-600">{c.text}</span>
+                                        {c.timestamp && <span className="text-slate-400 ml-1">· {format(new Date(c.timestamp), "MMM d")}</span>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${s.status === "in_progress" ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"}`}>
-                          {s.status?.replace("_", " ") || "open"}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </SectionCard>
