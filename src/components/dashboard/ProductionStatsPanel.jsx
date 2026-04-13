@@ -1,117 +1,54 @@
-import { useState } from "react";
-import { format, subDays, parseISO, eachDayOfInterval, startOfDay } from "date-fns";
-import { ChevronLeft, ChevronRight, Factory } from "lucide-react";
+import { format, startOfWeek, startOfMonth } from "date-fns";
+import { Factory } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 
 const STAGES = [
-  { id: "face_frame", label: "Face Frame", color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-200" },
-  { id: "spray",      label: "Spray",      color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200" },
-  { id: "build",      label: "Build",      color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" },
-  { id: "complete",   label: "Complete",   color: "text-green-700", bg: "bg-green-50", border: "border-green-200" },
+  { id: "face_frame", label: "Face Frame", color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-200", numColor: "text-green-600" },
+  { id: "spray",      label: "Spray",      color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200", numColor: "text-green-600" },
+  { id: "build",      label: "Build",      color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200", numColor: "text-green-600" },
+  { id: "complete",   label: "Complete",   color: "text-green-700", bg: "bg-green-50", border: "border-green-200", numColor: "text-green-600" },
 ];
 
-// Returns the "effective" stage a card was in just before moving to the next one.
-// Since we only stamp completed_date when a card reaches "complete", we approximate:
-// For non-complete stages, we use updated_date as the day that stage was last active.
-// PTS earned by a stage = sum of pts for cards that have passed THROUGH that stage
-// (they're now in a later stage). We track this by looking at cards whose current stage
-// index is GREATER than the stage in question.
-const stageIndex = (stageId) => STAGES.findIndex(s => s.id === stageId);
+// Get pts earned by a stage using stage_move_log entries
+// A stage earns pts when the item moves FROM that stage to the next one.
+// We look at stage_move_log for moves where from_stage === stageId, and use the timestamp date.
+function getPtsForStageInRange(items, stageId, fromDate) {
+  let total = 0;
+  const fromMs = fromDate ? fromDate.getTime() : 0;
 
-function getPtsForStageOnDay(items, stageId, dateStr) {
-  // A card "earns" pts for a stage when it moves to the NEXT stage.
-  // For complete stage specifically we use completed_date.
-  // For others we use updated_date (the day it moved past that stage).
-  const thisIdx = stageIndex(stageId);
+  for (const item of items) {
+    const log = item.stage_move_log;
+    if (!Array.isArray(log) || log.length === 0) continue;
 
-  return items.reduce((sum, item) => {
-    const itemStageIdx = stageIndex(item.stage);
-    if (itemStageIdx <= thisIdx) return sum; // hasn't passed this stage yet
-
-    let effectiveDate = null;
-    if (item.stage === "complete") {
-      // completed_date is stamped when moving to complete
-      effectiveDate = item.completed_date;
-    } else {
-      // Use updated_date as proxy
-      effectiveDate = item.updated_date ? format(new Date(item.updated_date), "yyyy-MM-dd") : null;
+    // Find move(s) FROM this stage
+    const moves = log.filter(l => l.from_stage === stageId && l.timestamp);
+    for (const move of moves) {
+      const moveDate = new Date(move.timestamp);
+      if (moveDate.getTime() >= fromMs) {
+        // Sum pts from files on this item at the time (use pts_logged as the canonical value, fall back to files)
+        const pts = item.pts_logged != null
+          ? item.pts_logged
+          : (item.pts != null ? item.pts : (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0));
+        total += pts;
+        break; // Only count once per item per stage
+      }
     }
-
-    if (effectiveDate === dateStr) {
-      return sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
-    }
-    return sum;
-  }, 0);
-}
-
-function getCompletedPtsOnDay(items, dateStr) {
-  // Only complete stage, use completed_date
-  return items
-    .filter(i => i.stage === "complete" && i.completed_date === dateStr)
-    .reduce((sum, item) => sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0), 0);
-}
-
-function getAvgPtsPerDay(items, stageId) {
-  // Collect all unique dates that have pts for this stage
-  const dateCounts = {};
-  items.forEach(item => {
-    const itemStageIdx = stageIndex(item.stage);
-    const thisIdx = stageIndex(stageId);
-    if (itemStageIdx <= thisIdx) return;
-
-    let dateStr = null;
-    if (item.stage === "complete") {
-      dateStr = item.completed_date;
-    } else {
-      dateStr = item.updated_date ? format(new Date(item.updated_date), "yyyy-MM-dd") : null;
-    }
-    if (!dateStr) return;
-    const pts = (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
-    if (!dateCounts[dateStr]) dateCounts[dateStr] = 0;
-    dateCounts[dateStr] += pts;
-  });
-
-  const days = Object.keys(dateCounts);
-  if (days.length === 0) return 0;
-  const total = Object.values(dateCounts).reduce((a, b) => a + b, 0);
-  return Math.round(total / days.length);
-}
-
-function getCompleteAvgPtsPerDay(items) {
-  const dateCounts = {};
-  items
-    .filter(i => i.stage === "complete" && i.completed_date)
-    .forEach(item => {
-      const d = item.completed_date;
-      const pts = (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
-      if (!dateCounts[d]) dateCounts[d] = 0;
-      dateCounts[d] += pts;
-    });
-  const days = Object.keys(dateCounts);
-  if (days.length === 0) return 0;
-  return Math.round(Object.values(dateCounts).reduce((a, b) => a + b, 0) / days.length);
+  }
+  return total;
 }
 
 export default function ProductionStatsPanel({ items = [] }) {
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const MST_TZ = "America/Denver";
+  const nowUtc = new Date();
+  const now = new Date(nowUtc.toLocaleString("en-US", { timeZone: MST_TZ }));
 
-  const goBack = () => {
-    const d = parseISO(selectedDate);
-    setSelectedDate(format(subDays(d, 1), "yyyy-MM-dd"));
-  };
-
-  const goForward = () => {
-    const d = parseISO(selectedDate);
-    const next = subDays(d, -1);
-    if (next <= new Date()) setSelectedDate(format(next, "yyyy-MM-dd"));
-  };
-
-  const isToday = selectedDate === format(new Date(), "yyyy-MM-dd");
-
-  // Total completed pts for selected day
-  const totalDayPts = getCompletedPtsOnDay(items, selectedDate);
+  const todayStr = format(now, "yyyy-MM-dd");
+  // Start of today in local time
+  const todayStart = new Date(todayStr + "T00:00:00");
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const monthStart = startOfMonth(now);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-5">
@@ -124,43 +61,27 @@ export default function ProductionStatsPanel({ items = [] }) {
         </Link>
       </div>
 
-      {/* Date navigator */}
-      <div className="flex items-center justify-between px-6 py-3 bg-slate-50 border-b border-slate-100">
-        <Button variant="ghost" size="sm" onClick={goBack} className="h-8 w-8 p-0">
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-        <div className="text-center">
-          <p className="text-sm font-semibold text-slate-700">
-            {isToday ? "Today — " : ""}{format(parseISO(selectedDate), "EEEE, MMM do yyyy")}
-          </p>
-          <p className="text-xs text-slate-400">Total completed: <span className="font-bold text-green-700">{totalDayPts} PTS</span></p>
-        </div>
-        <Button variant="ghost" size="sm" onClick={goForward} disabled={isToday} className="h-8 w-8 p-0">
-          <ChevronRight className="w-4 h-4" />
-        </Button>
-      </div>
-
-      {/* Stage rows */}
-      <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="p-5 grid grid-cols-2 lg:grid-cols-4 gap-4">
         {STAGES.map(stage => {
-          const dayPts = stage.id === "complete"
-            ? getCompletedPtsOnDay(items, selectedDate)
-            : getPtsForStageOnDay(items, stage.id, selectedDate);
-          const avgPts = stage.id === "complete"
-            ? getCompleteAvgPtsPerDay(items)
-            : getAvgPtsPerDay(items, stage.id);
+          const dayPts = getPtsForStageInRange(items, stage.id, todayStart);
+          const weekPts = getPtsForStageInRange(items, stage.id, weekStart);
+          const monthPts = getPtsForStageInRange(items, stage.id, monthStart);
 
           return (
-            <div key={stage.id} className={`rounded-xl border ${stage.border} ${stage.bg} p-4 flex flex-col gap-2`}>
-              <p className={`text-xs font-bold uppercase tracking-wide ${stage.color}`}>{stage.label}</p>
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-3xl font-bold text-slate-800">{dayPts}</p>
-                  <p className="text-xs text-slate-500">pts this day</p>
+            <div key={stage.id} className={`rounded-xl border ${stage.border} ${stage.bg} p-4`}>
+              <p className={`text-xs font-bold uppercase tracking-wide mb-3 ${stage.color}`}>{stage.label}</p>
+              <div className="flex gap-4">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 font-medium">Day</span>
+                  <span className={`text-xl font-bold ${stage.numColor}`}>{dayPts}p</span>
                 </div>
-                <div className="text-right">
-                  <p className="text-lg font-semibold text-slate-600">{avgPts}</p>
-                  <p className="text-xs text-slate-400">avg / day</p>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 font-medium">Week</span>
+                  <span className={`text-xl font-bold ${stage.numColor}`}>{weekPts}p</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 font-medium">Month</span>
+                  <span className={`text-xl font-bold ${stage.numColor}`}>{monthPts}p</span>
                 </div>
               </div>
             </div>
