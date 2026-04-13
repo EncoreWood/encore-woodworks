@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   User, AlertCircle, Coffee, Target, CheckCircle2,
   ChevronLeft, ChevronRight, Edit, Plus, Trash2, ChevronDown,
-  Megaphone, BookOpen, ClipboardList, Zap, Crosshair, Link2, Upload, X, Sparkles, AlertTriangle
+  Megaphone, BookOpen, ClipboardList, Zap, Crosshair, Link2, Upload, X, Sparkles, AlertTriangle, PauseCircle, FileText
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { startOfWeek } from "date-fns";
@@ -898,6 +898,52 @@ export default function MorningMeeting() {
               )}
             </div>
           </SectionCard>
+
+          {/* On Hold */}
+          {(() => {
+            const onHoldItems = productionItems.filter(p => p.stage === "on_hold" && !p.is_job_info);
+            return (
+              <SectionCard title="On Hold" icon={PauseCircle} color="slate" count={onHoldItems.length}>
+                {onHoldItems.length === 0 ? (
+                  <p className="text-slate-400 text-sm text-center py-3">No items on hold.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {onHoldItems.map(item => {
+                      const pdfFiles = (item.files || []).filter(f => f.url?.match(/\.pdf$/i));
+                      return (
+                        <div key={item.id} className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-800 truncate">{item.name}</p>
+                            <p className="text-xs text-slate-500 truncate">
+                              {item.project_name}{item.room_name ? ` · ${item.room_name}` : ""}
+                            </p>
+                          </div>
+                          {pdfFiles.length > 0 && (
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {pdfFiles.map((f, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => window.open(f.url, "_blank", "noopener,noreferrer")}
+                                  className="flex items-center gap-1 text-xs text-red-600 hover:text-red-800 bg-red-50 border border-red-200 rounded px-2 py-1 hover:bg-red-100 transition-colors"
+                                  title={f.name}
+                                >
+                                  <FileText className="w-3 h-3" />
+                                  <span className="max-w-[80px] truncate">{f.name || "PDF"}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          {item.notes && (
+                            <span className="text-xs text-slate-400 italic max-w-[100px] truncate flex-shrink-0" title={item.notes}>{item.notes}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </SectionCard>
+            );
+          })()}
 
           {/* Cleaning Schedule */}
           <SectionCard title="Cleaning Schedule — This Week" icon={Sparkles} color="slate" defaultOpen={true}>
