@@ -148,7 +148,7 @@ export default function EmployeeDashboard() {
         </div>
 
         {/* Production Stage Breakdown */}
-        <ProductionStatsPanel items={productionItems} />
+        <ProductionStatsPanel />
 
         {/* Project Orders Status */}
         <ProjectOrdersPanel inProductionProjects={inProductionProjects} />

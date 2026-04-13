@@ -3,52 +3,50 @@ import { Factory } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 
-const STAGES = [
-  { id: "face_frame", label: "Face Frame", color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-200", numColor: "text-green-600" },
-  { id: "spray",      label: "Spray",      color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200", numColor: "text-green-600" },
-  { id: "build",      label: "Build",      color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200", numColor: "text-green-600" },
-  { id: "complete",   label: "Complete",   color: "text-green-700", bg: "bg-green-50", border: "border-green-200", numColor: "text-green-600" },
-];
+const STAT_STAGES = ["face_frame", "spray", "build", "complete"];
+const STAT_LABELS = { face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete" };
+const STAGE_COLORS = {
+  face_frame: { color: "text-blue-700", bg: "bg-blue-50", border: "border-blue-200" },
+  spray:      { color: "text-purple-700", bg: "bg-purple-50", border: "border-purple-200" },
+  build:      { color: "text-amber-700", bg: "bg-amber-50", border: "border-amber-200" },
+  complete:   { color: "text-green-700", bg: "bg-green-50", border: "border-green-200" },
+};
 
-// Get pts earned by a stage using stage_move_log entries
-// A stage earns pts when the item moves FROM that stage to the next one.
-// We look at stage_move_log for moves where from_stage === stageId, and use the timestamp date.
-function getPtsForStageInRange(items, stageId, fromDate) {
-  let total = 0;
-  const fromMs = fromDate ? fromDate.getTime() : 0;
+export default function ProductionStatsPanel() {
+  const { data: columnMoveLogs = [] } = useQuery({
+    queryKey: ["columnMoveLogs"],
+    queryFn: () => base44.entities.ColumnMoveLog.list(),
+    staleTime: 30_000,
+  });
 
-  for (const item of items) {
-    const log = item.stage_move_log;
-    if (!Array.isArray(log) || log.length === 0) continue;
+  const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Denver" }));
+  const todayStr = format(nowLocal, "yyyy-MM-dd");
+  const weekStart = startOfWeek(nowLocal, { weekStartsOn: 1 });
+  const monthStart = startOfMonth(nowLocal);
 
-    // Find move(s) FROM this stage
-    const moves = log.filter(l => l.from_stage === stageId && l.timestamp);
-    for (const move of moves) {
-      const moveDate = new Date(move.timestamp);
-      if (moveDate.getTime() >= fromMs) {
-        // Sum pts from files on this item at the time (use pts_logged as the canonical value, fall back to files)
-        const pts = item.pts_logged != null
-          ? item.pts_logged
-          : (item.pts != null ? item.pts : (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0));
-        total += pts;
-        break; // Only count once per item per stage
-      }
+  const getColStats = (stage) => {
+    let day = 0, week = 0, month = 0;
+    for (const log of columnMoveLogs) {
+      // Same logic as ShopProduction: points earned when LEAVING a column (from_column),
+      // except "complete" which counts arrivals (to_column).
+      const matchCol = stage === "complete" ? log.to_column : log.from_column;
+      if (matchCol !== stage) continue;
+      const pts = parseFloat(log.points_awarded) || 0;
+      if (pts === 0) continue;
+      const movedAt = new Date(log.moved_at);
+      const movedLocal = new Date(movedAt.toLocaleString("en-US", { timeZone: "America/Denver" }));
+      const dateStr = format(movedLocal, "yyyy-MM-dd");
+      if (dateStr === todayStr) day += pts;
+      if (movedLocal >= weekStart) week += pts;
+      if (movedLocal >= monthStart) month += pts;
     }
-  }
-  return total;
-}
+    return { day, week, month };
+  };
 
-export default function ProductionStatsPanel({ items = [] }) {
-  const MST_TZ = "America/Denver";
-  const nowUtc = new Date();
-  const now = new Date(nowUtc.toLocaleString("en-US", { timeZone: MST_TZ }));
-
-  const todayStr = format(now, "yyyy-MM-dd");
-  // Start of today in local time
-  const todayStart = new Date(todayStr + "T00:00:00");
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-  const monthStart = startOfMonth(now);
+  const colStats = Object.fromEntries(STAT_STAGES.map(s => [s, getColStats(s)]));
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-5">
@@ -62,27 +60,19 @@ export default function ProductionStatsPanel({ items = [] }) {
       </div>
 
       <div className="p-5 grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {STAGES.map(stage => {
-          const dayPts = getPtsForStageInRange(items, stage.id, todayStart);
-          const weekPts = getPtsForStageInRange(items, stage.id, weekStart);
-          const monthPts = getPtsForStageInRange(items, stage.id, monthStart);
-
+        {STAT_STAGES.map(stage => {
+          const s = colStats[stage];
+          const { color, bg, border } = STAGE_COLORS[stage];
           return (
-            <div key={stage.id} className={`rounded-xl border ${stage.border} ${stage.bg} p-4`}>
-              <p className={`text-xs font-bold uppercase tracking-wide mb-3 ${stage.color}`}>{stage.label}</p>
-              <div className="flex gap-4">
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-medium">Day</span>
-                  <span className={`text-xl font-bold ${stage.numColor}`}>{dayPts}p</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-medium">Week</span>
-                  <span className={`text-xl font-bold ${stage.numColor}`}>{weekPts}p</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-400 font-medium">Month</span>
-                  <span className={`text-xl font-bold ${stage.numColor}`}>{monthPts}p</span>
-                </div>
+            <div key={stage} className={`rounded-xl border ${border} ${bg} p-4`}>
+              <p className={`text-xs font-bold uppercase tracking-wide mb-3 ${color}`}>{STAT_LABELS[stage]}</p>
+              <div className="flex gap-3">
+                {[{ label: "Day", val: s.day }, { label: "Week", val: s.week }, { label: "Month", val: s.month }].map(({ label, val }) => (
+                  <div key={label} className="flex flex-col">
+                    <span className="text-[10px] text-slate-400 font-medium">{label}</span>
+                    <span className="text-xl font-bold text-green-600">{val}<span className="text-xs font-medium opacity-70 ml-0.5">p</span></span>
+                  </div>
+                ))}
               </div>
             </div>
           );
