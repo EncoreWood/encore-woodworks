@@ -1,0 +1,38 @@
+{
+  "name": "GeneralMeeting",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Meeting title"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Meeting date"
+    },
+    "time": {
+      "type": "string",
+      "description": "Meeting time"
+    },
+    "description": {
+      "type": "string",
+      "description": "Meeting description or agenda"
+    },
+    "attendees": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of attendees"
+    },
+    "location": {
+      "type": "string",
+      "description": "Meeting location"
+    }
+  },
+  "required": [
+    "title",
+    "date"
+  ]
+}

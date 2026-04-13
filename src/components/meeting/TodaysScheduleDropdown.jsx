@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-export default function TodaysScheduleDropdown({ designMeetings, installs, deliveries }) {
-  const total = designMeetings.length + installs.length + deliveries.length;
+export default function TodaysScheduleDropdown({ designMeetings, installs, deliveries, generalMeetings = [] }) {
+  const total = designMeetings.length + installs.length + deliveries.length + generalMeetings.length;
   const [open, setOpen] = useState(total > 0);
 
   return (
@@ -53,6 +53,23 @@ export default function TodaysScheduleDropdown({ designMeetings, installs, deliv
                     {a.address && <p className="text-xs text-slate-500">📍 {a.address}</p>}
                     {a.crew?.length > 0 && <p className="text-xs text-slate-500">👷 {a.crew.join(", ")}</p>}
                     {a.time && <p className="text-xs text-slate-500">🕐 {a.time}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {generalMeetings.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-rose-600 uppercase tracking-wide mb-2">📋 General Meetings</p>
+              <div className="space-y-1.5">
+                {generalMeetings.map(m => (
+                  <div key={m.id} className="bg-rose-50 border border-rose-200 rounded-lg px-3 py-2.5">
+                    <p className="font-semibold text-rose-800 text-sm">{m.title}</p>
+                    {m.time && <p className="text-xs text-slate-500">🕐 {m.time}</p>}
+                    {m.location && <p className="text-xs text-slate-500">📍 {m.location}</p>}
+                    {m.attendees?.length > 0 && <p className="text-xs text-slate-500">👥 {m.attendees.join(", ")}</p>}
+                    {m.description && <p className="text-xs text-slate-500 mt-0.5">{m.description}</p>}
                   </div>
                 ))}
               </div>

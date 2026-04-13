@@ -93,6 +93,7 @@ export default function CalendarPage() {
   const { data: installAppointments = [] } = useQuery({ queryKey: ["InstallAppointment"], queryFn: () => base44.entities.InstallAppointment.list("date", 500) });
   const { data: deliveryAppointments = [] } = useQuery({ queryKey: ["DeliveryAppointment"], queryFn: () => base44.entities.DeliveryAppointment.list("date", 500) });
   const { data: assignedTasks = [] } = useQuery({ queryKey: ["assignmentTasks"], queryFn: () => base44.entities.Task.list("-created_date", 200) });
+  const { data: generalMeetings = [] } = useQuery({ queryKey: ["generalMeetings"], queryFn: () => base44.entities.GeneralMeeting.list("date", 500) });
 
   const [currentUser, setCurrentUser] = useState(null);
   useEffect(() => { base44.auth.me().then(setCurrentUser); }, []);
@@ -137,6 +138,16 @@ export default function CalendarPage() {
   const createVacationMutation = useMutation({
     mutationFn: (data) => base44.entities.Vacation.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["vacations"] }); setShowAddDialog(false); setFormData({}); }
+  });
+
+  const createGeneralMeetingMutation = useMutation({
+    mutationFn: (data) => base44.entities.GeneralMeeting.create(data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["generalMeetings"] }); setShowAddDialog(false); setFormData({}); }
+  });
+
+  const deleteGeneralMeetingMutation = useMutation({
+    mutationFn: (id) => base44.entities.GeneralMeeting.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["generalMeetings"] })
   });
 
   const createCleaningScheduleMutation = useMutation({
@@ -258,6 +269,8 @@ export default function CalendarPage() {
     else if (addType === "vacation" && formData.employee_id && formData.start_date && formData.end_date) {
       const employee = employees.find(e => e.id === formData.employee_id);
       createVacationMutation.mutate({ employee_id: formData.employee_id, employee_name: employee?.full_name || "", start_date: formData.start_date, end_date: formData.end_date, status: "approved", notes: formData.notes || undefined });
+    } else if (addType === "generalMeeting" && formData.title && formData.date) {
+      createGeneralMeetingMutation.mutate({ title: formData.title, date: formData.date, time: formData.time || undefined, description: formData.description || undefined, location: formData.location || undefined, attendees: formData.attendees || [] });
     } else if (addType === "task" && formData.task) {
       createTaskMutation.mutate({ task: formData.task, date: formData.date, assignee: formData.assignee || undefined, completed: false });
       setShowAddDialog(false); setFormData({});
@@ -282,6 +295,7 @@ export default function CalendarPage() {
   const getTasksForDate = (date) => tasks.filter(t => t.date === format(date, "yyyy-MM-dd"));
   const getInstallsForDate = (date) => installAppointments.filter(a => a.date === format(date, "yyyy-MM-dd") && a.status !== "cancelled" && a.status !== "completed");
   const getDeliveriesForDate = (date) => deliveryAppointments.filter(a => a.date === format(date, "yyyy-MM-dd") && a.status !== "cancelled" && a.status !== "delivered");
+  const getGeneralMeetingsForDate = (date) => generalMeetings.filter(m => m.date === format(date, "yyyy-MM-dd"));
   const getAssignedTasksForDate = (date) => {
     const dateStr = format(date, "yyyy-MM-dd");
     const isAdmin = currentUser?.role === "admin";
@@ -419,6 +433,7 @@ export default function CalendarPage() {
     const installApptCount = getInstallsForDate(date).length;
     const deliveryCount = getDeliveriesForDate(date).length;
     const assignedTaskCount = getAssignedTasksForDate(date).filter(t => t.status !== "completed").length;
+    const generalMeetingCount = getGeneralMeetingsForDate(date).length;
 
     return (
       <div className="w-full flex flex-col gap-0.5 p-1.5" style={{ minHeight: "140px" }}>
@@ -472,6 +487,9 @@ export default function CalendarPage() {
           {assignedTaskCount > 0 && (activeFilter === "all" || activeFilter === "tasks") && (
             <div className="text-[9px] px-1 py-0.5 bg-indigo-500 text-white rounded font-medium">{assignedTaskCount}A</div>
           )}
+          {generalMeetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
+            <div className="text-[9px] px-1 py-0.5 bg-rose-500 text-white rounded font-medium">{generalMeetingCount}G</div>
+          )}
         </div>
       </div>
     );
@@ -489,6 +507,7 @@ export default function CalendarPage() {
         <DropdownMenuItem onClick={() => handleOpenAdd("designMeeting")}><Users className="w-4 h-4 mr-2" />Design Meeting</DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleOpenAdd("bathroomCleaning")}><Sparkles className="w-4 h-4 mr-2" />Bathroom Cleaning</DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleOpenAdd("vacation")}><CalendarIcon className="w-4 h-4 mr-2" />Vacation</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleOpenAdd("generalMeeting")}><CalendarIcon className="w-4 h-4 mr-2 text-rose-500" />General Meeting</DropdownMenuItem>
         <DropdownMenuItem onClick={() => { setShowGenerateDialog(true); setGenWeekStart(selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd")); }}><Sparkles className="w-4 h-4 mr-2 text-teal-600" />Cleaning Schedule</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -601,7 +620,8 @@ export default function CalendarPage() {
               const installs = getInstallsForDate(date);
               const deliveries = getDeliveriesForDate(date);
               const myAssignedTasks = getAssignedTasksForDate(date);
-              const isEmpty = !presenter && activeProjects.length === 0 && meetings.length === 0 && cleanings.length === 0 && vacs.length === 0 && dayTasks.length === 0 && weeklyCleanings.length === 0 && installs.length === 0 && deliveries.length === 0 && myAssignedTasks.length === 0;
+              const generalMeetingsDay = getGeneralMeetingsForDate(date);
+              const isEmpty = !presenter && activeProjects.length === 0 && meetings.length === 0 && cleanings.length === 0 && vacs.length === 0 && dayTasks.length === 0 && weeklyCleanings.length === 0 && installs.length === 0 && deliveries.length === 0 && myAssignedTasks.length === 0 && generalMeetingsDay.length === 0;
               
 
               return (
@@ -776,6 +796,22 @@ export default function CalendarPage() {
                     </div>
                   )}
 
+                  {/* General Meetings */}
+                  {(activeFilter === "all" || activeFilter === "meetings") && generalMeetingsDay.map((m) => (
+                    <div key={m.id} className="p-2.5 bg-rose-50 rounded-lg border border-rose-200 text-sm">
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-rose-900 mb-0.5">
+                          <CalendarIcon className="w-3 h-3" />{m.title}
+                        </div>
+                        <button onClick={() => deleteGeneralMeetingMutation.mutate(m.id)} className="text-rose-300 hover:text-red-500 text-[10px]">✕</button>
+                      </div>
+                      {m.time && <p className="text-[10px] text-rose-600">🕐 {m.time}</p>}
+                      {m.location && <p className="text-[10px] text-rose-600 truncate">📍 {m.location}</p>}
+                      {m.description && <p className="text-[10px] text-slate-500 truncate">{m.description}</p>}
+                      {m.attendees?.length > 0 && <p className="text-[10px] text-slate-500 truncate">👥 {m.attendees.join(", ")}</p>}
+                    </div>
+                  ))}
+
                   {isEmpty && <p className="text-xs text-slate-400 text-center py-4 italic">No items scheduled</p>}
                 </>
               );
@@ -861,6 +897,7 @@ export default function CalendarPage() {
                 {addType === "task" && "Add Task"}
                 {addType === "bathroomCleaning" && "Add Bathroom Cleaning"}
                 {addType === "vacation" && "Add Vacation"}
+                {addType === "generalMeeting" && "Add General Meeting"}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -909,6 +946,32 @@ export default function CalendarPage() {
                 </>
               )}
 
+              {addType === "generalMeeting" && (
+                <>
+                  <div><Label>Title *</Label><Input value={formData.title || ""} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="Meeting title" /></div>
+                  <div><Label>Time</Label><Input type="time" value={formData.time || ""} onChange={(e) => setFormData({ ...formData, time: e.target.value })} /></div>
+                  <div><Label>Location</Label><Input value={formData.location || ""} onChange={(e) => setFormData({ ...formData, location: e.target.value })} placeholder="e.g. Conference Room, Zoom" /></div>
+                  <div>
+                    <Label>Attendees</Label>
+                    <div className="flex flex-wrap gap-1.5 mt-2 border rounded-lg p-2 bg-slate-50 max-h-40 overflow-y-auto">
+                      {employees.map(emp => {
+                        const selected = (formData.attendees || []).includes(emp.full_name);
+                        return (
+                          <button key={emp.id} type="button"
+                            onClick={() => {
+                              const cur = formData.attendees || [];
+                              setFormData({ ...formData, attendees: selected ? cur.filter(n => n !== emp.full_name) : [...cur, emp.full_name] });
+                            }}
+                            className={`px-2.5 py-1 rounded-full text-xs border transition-all ${selected ? "bg-rose-500 text-white border-rose-500" : "bg-white text-slate-600 border-slate-300 hover:border-rose-400"}`}
+                          >{emp.full_name}</button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div><Label>Notes / Agenda</Label><Textarea value={formData.description || ""} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Agenda or meeting notes..." /></div>
+                </>
+              )}
+
               {addType === "bathroomCleaning" && (
                 <>
                   <div>
@@ -952,7 +1015,8 @@ export default function CalendarPage() {
                   (addType === "designMeeting" && !formData.client_name) ||
                   (addType === "task" && !formData.task) ||
                   (addType === "bathroomCleaning" && (!formData.assigned_to || formData.assigned_to.length === 0)) ||
-                  (addType === "vacation" && (!formData.employee_id || !formData.start_date || !formData.end_date))
+                  (addType === "vacation" && (!formData.employee_id || !formData.start_date || !formData.end_date)) ||
+                  (addType === "generalMeeting" && !formData.title)
                 }>Add</Button>
               </div>
             </div>

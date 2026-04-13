@@ -118,6 +118,7 @@ export default function MorningMeeting() {
   });
 
   // All global tasks (from Task entity, not date-bound) that are not completed
+  // Only show tasks assigned to non-admin/regular users (exclude admin-only tasks)
   const { data: allTasks = [] } = useQuery({
     queryKey: ["allTasks"],
     queryFn: () => base44.entities.Task.filter({ status: "todo" })
@@ -125,6 +126,10 @@ export default function MorningMeeting() {
   const { data: inProgressTasks = [] } = useQuery({
     queryKey: ["inProgressTasks"],
     queryFn: () => base44.entities.Task.filter({ status: "in_progress" })
+  });
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ["allUsers"],
+    queryFn: () => base44.entities.User.list()
   });
 
   const { data: teamMembers = [] } = useQuery({
@@ -353,9 +358,17 @@ export default function MorningMeeting() {
       return all.filter(a => a.date === dateString && a.status !== "cancelled" && a.status !== "delivered");
     }
   });
+  const { data: todayGeneralMeetings = [] } = useQuery({
+    queryKey: ["generalMeetingsDate", dateString],
+    queryFn: () => base44.entities.GeneralMeeting.filter({ date: dateString })
+  });
 
   // Combined tasks: meeting tasks for this date + all global tasks not completed
-  const globalActiveTasks = [...allTasks, ...inProgressTasks];
+  // Filter out tasks assigned to admin users — only show user-level tasks
+  const adminEmails = new Set(allUsers.filter(u => u.role === "admin").map(u => u.email));
+  const globalActiveTasks = [...allTasks, ...inProgressTasks].filter(t =>
+    !t.assigned_to_email || !adminEmails.has(t.assigned_to_email)
+  );
 
   const handleAddAnnouncement = () => {
     if (newAnnouncement.trim()) {
@@ -944,7 +957,7 @@ export default function MorningMeeting() {
           })()}
 
           {/* 5. Today's Focus */}
-          <SectionCard title="Today's Focus" icon={Crosshair} color="orange" count={todaysFocusProjects.length + todayDesignMeetings.length + todayInstalls.length + todayDeliveries.length}>
+          <SectionCard title="Today's Focus" icon={Crosshair} color="orange" count={todaysFocusProjects.length + todayDesignMeetings.length + todayInstalls.length + todayDeliveries.length + todayGeneralMeetings.length}>
             <div className="space-y-4">
 
               {/* Today's Schedule — collapsible dropdown */}
@@ -952,6 +965,7 @@ export default function MorningMeeting() {
                 designMeetings={todayDesignMeetings}
                 installs={todayInstalls}
                 deliveries={todayDeliveries}
+                generalMeetings={todayGeneralMeetings}
               />
 
               {/* In-Production Projects */}
@@ -983,7 +997,7 @@ export default function MorningMeeting() {
                 </div>
               )}
 
-              {todaysFocusProjects.length === 0 && todayDesignMeetings.length === 0 && todayInstalls.length === 0 && todayDeliveries.length === 0 && (
+              {todaysFocusProjects.length === 0 && todayDesignMeetings.length === 0 && todayInstalls.length === 0 && todayDeliveries.length === 0 && todayGeneralMeetings.length === 0 && (
                 <p className="text-slate-400 text-sm text-center py-2">Nothing scheduled for today.</p>
               )}
             </div>
