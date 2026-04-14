@@ -57,12 +57,10 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   // Pan handlers (mouse & single-touch drag)
   const handlePanPointerDown = (e) => {
     if (tool !== "pan") return;
-    e.preventDefault();
     panStartRef.current = { x: e.clientX, y: e.clientY, scrollLeft: scrollContainerRef.current?.scrollLeft || 0, scrollTop: scrollContainerRef.current?.scrollTop || 0 };
   };
   const handlePanPointerMove = (e) => {
     if (tool !== "pan" || !panStartRef.current) return;
-    e.preventDefault();
     const dx = e.clientX - panStartRef.current.x;
     const dy = e.clientY - panStartRef.current.y;
     if (scrollContainerRef.current) {
@@ -448,10 +446,10 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         <div
           ref={scrollContainerRef}
           className="flex-1 overflow-auto bg-slate-100 rounded-lg select-none"
-          onPointerDown={tool === "pan" ? handlePanPointerDown : undefined}
-          onPointerMove={tool === "pan" ? handlePanPointerMove : undefined}
-          onPointerUp={tool === "pan" ? handlePanPointerUp : undefined}
-          onPointerLeave={tool === "pan" ? handlePanPointerUp : undefined}
+          onPointerDown={handlePanPointerDown}
+          onPointerMove={handlePanPointerMove}
+          onPointerUp={handlePanPointerUp}
+          onPointerLeave={handlePanPointerUp}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
