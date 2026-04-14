@@ -707,7 +707,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
         setEditDim({ w: "", h: "", len: "", angle: "", symW: "", offset: p.offsetIn ?? getWallOffset(p), elevation: p.elevationIn ?? 48, offsetFromEnd: p.offsetFromEnd || "left" });
       } else if (p?.type === "symbol" && p.symbolKey === "rollout") {
         // Rollout/insert item
-        setEditDim({ w: "", h: "", len: "", angle: "", symW: "", offset: "", elevation: "", label: p.label || "", targetX: p.targetX, targetY: p.targetY });
+        setEditDim({ w: "", h: "", len: "", angle: "", symW: "", offset: "", elevation: "", label: p.label || "" });
       } else {
         setEditDim({ w: "", h: "", len: "", angle: "", symW: "", offset: "", elevation: "", offsetFromEnd: "left" });
       }
@@ -739,9 +739,10 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
     if (toolRef.current === "eraser") { eraseAt(raw); return; }
     if (placeRolloutModeRef.current && activeRolloutRef.current) {
       const rollout = activeRolloutRef.current;
-      const newSym = { type: "symbol", symbolKey: "rollout", x: pos.x, y: pos.y, label: rollout.name, targetX: undefined, targetY: undefined };
+      const newSym = { type: "symbol", symbolKey: "rollout", x: pos.x, y: pos.y, label: rollout.name, targetX: pos.x, targetY: pos.y + 40 };
       commitPaths([...localPaths.current, newSym]);
       isDrawing.current = false;
+      // Keep mode active for multiple placements
       return;
     }
     if (toolRef.current === "symbol") {
@@ -792,18 +793,10 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
       let updated = [...localPaths.current];
       const p = origPath;
       if (p.type === "symbol" && p.symbolKey === "rollout") {
-        // Check if dragging arrow endpoint or label
-        const endX = p.targetX ?? p.x;
-        const endY = p.targetY ?? (p.y + 40);
-        const distToEnd = Math.hypot(raw.x - endX, raw.y - endY);
-        const distToLabel = Math.hypot(raw.x - p.x, raw.y - p.y);
-        if (distToEnd < distToLabel) {
-          // Dragging arrow endpoint
-          updated[idx] = { ...p, targetX: snapToGrid(endX + dx), targetY: snapToGrid(endY + dy) };
-        } else {
-          // Dragging label
-          updated[idx] = { ...p, x: p.x + dx, y: p.y + dy, targetX: (p.targetX ?? p.x) + dx, targetY: (p.targetY ?? (p.y + 40)) + dy };
-        }
+        // Always drag the endpoint, label stays fixed
+        const endX = p.targetX || p.x;
+        const endY = p.targetY || (p.y + 40);
+        updated[idx] = { ...p, targetX: endX + dx, targetY: endY + dy };
       } else if (p.type === "highlight") {
         if (p.wallAngle !== undefined) {
           // Use current raw cursor position to find nearest wall — allows dragging to a different wall
