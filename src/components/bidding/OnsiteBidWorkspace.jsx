@@ -642,24 +642,25 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
                    ceilingHeight={room.ceiling_height || ""}
                    onCeilingHeightChange={val => updateRoom(room.id, { ceiling_height: val })}
                    onPathsChange={paths => {
-                     // Extract rollout items from paths and add to items
-                     const rollouts = paths.filter(p => p.type === "symbol" && p.symbolKey === "rollout");
-                     const rolloutItemIds = new Set(rollouts.map(r => `rollout_${r.id}`));
-                     const existingNonRolloutItems = (room.items || []).filter(i => !i.id?.startsWith("rollout_"));
-                     const newRolloutItems = rollouts.map(r => ({
-                       id: `rollout_${r.id}`,
-                       name: r.label || "Rollout Insert",
-                       cabinet_category: "roll_out_inserts",
-                       measure_type: "qty",
-                       quantity: 1,
-                       unit_price: catalogItems.find(c => c.cabinet_category === "roll_out_inserts")?.default_price || 0,
-                       notes: "From sketch",
-                       sketch_symbol_id: r.id
+                     // Always save sketch_paths to room
+                     setRooms(prev => prev.map(rr => {
+                       if (rr.id !== room.id) return rr;
+
+                       // Extract rollout items from paths
+                       const rollouts = paths.filter(p => p.type === "symbol" && p.symbolKey === "rollout");
+                       const existingNonRolloutItems = (rr.items || []).filter(i => !i.id?.startsWith("rollout_"));
+                       const newRolloutItems = rollouts.map(r => ({
+                         id: `rollout_${r.id}`,
+                         name: r.label || "Rollout Insert",
+                         cabinet_category: "roll_out_inserts",
+                         measure_type: "qty",
+                         quantity: 1,
+                         unit_price: catalogItems.find(c => c.cabinet_category === "roll_out_inserts")?.default_price || 0,
+                         notes: "From sketch",
+                         sketch_symbol_id: r.id
+                       }));
+                       return { ...rr, sketch_paths: paths, items: [...existingNonRolloutItems, ...newRolloutItems] };
                      }));
-                     setRooms(prev => prev.map(rr => rr.id === room.id
-                       ? { ...rr, sketch_paths: paths, items: [...existingNonRolloutItems, ...newRolloutItems] }
-                       : rr
-                     ));
                    }}
                    catalogItems={catalogItems}
                     onHighlightsChange={highlights => {
