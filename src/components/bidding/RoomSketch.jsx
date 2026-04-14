@@ -177,9 +177,12 @@ function drawHighlight(ctx, path, isSelected, zoom) {
   const wPx = (widthIn / 12) * BASE_PX_PER_FOOT;
   const dPx = (depthIn / 12) * BASE_PX_PER_FOOT;
   const ax = Math.cos(wallAngle), ay = Math.sin(wallAngle);
-  // wallSide: 1 = cabinet goes in positive normal direction, -1 = negative
-  // Cabinet is on the ROOM side (opposite from where user tapped relative to wall)
-  const nx = -Math.sin(wallAngle) * wallSide, ny = Math.cos(wallAngle) * wallSide;
+  // Cabinet extends AWAY from the measurement label side.
+  // Measurements are drawn on the negative-normal side of the wall.
+  // So cabinet must extend on the positive-normal side relative to wallSide.
+  // wallSide = which side of the wall the user tapped from (the room interior).
+  // We negate so the cabinet goes INTO the room (opposite from the outside/measurement side).
+  const nx = Math.sin(wallAngle) * wallSide, ny = -Math.cos(wallAngle) * wallSide;
   const c0 = { x: anchorX, y: anchorY };
   const c1 = { x: anchorX + ax * wPx, y: anchorY + ay * wPx };
   const c2 = { x: anchorX + ax * wPx + nx * dPx, y: anchorY + ay * wPx + ny * dPx };
@@ -218,7 +221,7 @@ function getSnapCandidates(paths) {
         const { anchorX, anchorY, widthIn, depthIn, wallAngle, wallSide } = p;
         const wPx = (widthIn / 12) * BASE_PX_PER_FOOT, dPx = (depthIn / 12) * BASE_PX_PER_FOOT;
         const ax = Math.cos(wallAngle), ay = Math.sin(wallAngle);
-        const nx = -Math.sin(wallAngle) * wallSide, ny = Math.cos(wallAngle) * wallSide;
+        const nx = Math.sin(wallAngle) * wallSide, ny = -Math.cos(wallAngle) * wallSide;
         pts.push({ x: anchorX, y: anchorY }, { x: anchorX + ax * wPx, y: anchorY + ay * wPx },
           { x: anchorX + ax * wPx + nx * dPx, y: anchorY + ay * wPx + ny * dPx },
           { x: anchorX + nx * dPx, y: anchorY + ny * dPx });
@@ -385,9 +388,12 @@ function hitTestHighlight(pos, path) {
   const { anchorX, anchorY, widthIn, depthIn, wallAngle, wallSide } = path;
   const wPx = (widthIn / 12) * BASE_PX_PER_FOOT, dPx = (depthIn / 12) * BASE_PX_PER_FOOT;
   const dx = pos.x - anchorX, dy = pos.y - anchorY;
-  const lx = dx * Math.cos(-wallAngle) - dy * Math.sin(-wallAngle);
-  const ly = dx * Math.sin(-wallAngle) + dy * Math.cos(-wallAngle);
-  return lx >= -4 && lx <= wPx + 4 && ly * wallSide >= -4 && ly * wallSide <= dPx + 4;
+  // Along-wall component
+  const lx = dx * Math.cos(wallAngle) + dy * Math.sin(wallAngle);
+  // Cross-wall component in cabinet's depth direction (using corrected normal)
+  const nx = Math.sin(wallAngle) * wallSide, ny = -Math.cos(wallAngle) * wallSide;
+  const ly = dx * nx + dy * ny;
+  return lx >= -4 && lx <= wPx + 4 && ly >= -4 && ly <= dPx + 4;
 }
 
 function hitTestWallSymbol(pos, sym) {
@@ -685,7 +691,8 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
       const p = origPath;
       if (p.type === "highlight") {
         if (p.wallAngle !== undefined) {
-          const wallSnap = findNearestWallForPoint(p.anchorX + dx, p.anchorY + dy, localPaths.current, Infinity);
+          // Use current raw cursor position to find nearest wall — allows dragging to a different wall
+          const wallSnap = findNearestWallForPoint(raw.x, raw.y, localPaths.current, 80);
           updated[idx] = wallSnap
             ? { ...p, anchorX: wallSnap.projX, anchorY: wallSnap.projY, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side }
             : { ...p, anchorX: p.anchorX + dx, anchorY: p.anchorY + dy };
