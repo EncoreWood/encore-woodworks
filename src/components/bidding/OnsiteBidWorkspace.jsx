@@ -524,19 +524,26 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
                     paths={room.sketch_paths || []}
                     onPathsChange={paths => updateRoom(room.id, { sketch_paths: paths })}
                     onHighlightsChange={highlights => {
-                      // Build items from sketch highlights, merging with any existing custom items
+                      // Combine highlights with the same cabKey, summing their LF
+                      const grouped = {};
+                      highlights.forEach(hl => {
+                        if (!grouped[hl.cabKey]) grouped[hl.cabKey] = { ...hl, quantity: 0, count: 0 };
+                        grouped[hl.cabKey].quantity += hl.quantity;
+                        grouped[hl.cabKey].count += 1;
+                      });
                       const sketchItemIds = new Set((room.sketch_items || []).map(i => i.id));
                       const existingCustomItems = (room.items || []).filter(i => !sketchItemIds.has(i.id));
-                      const newSketchItems = highlights.map(hl => {
+                      const newSketchItems = Object.values(grouped).map(hl => {
                         const price = getPriceForCategory(hl.cabKey);
+                        const label = hl.cabKey.charAt(0).toUpperCase() + hl.cabKey.slice(1);
                         return {
-                          id: `sketch_${hl.cabKey}_${Math.random().toString(36).slice(2,7)}`,
-                          name: `${hl.cabKey.charAt(0).toUpperCase() + hl.cabKey.slice(1)} Cabinets (sketch)`,
+                          id: `sketch_${hl.cabKey}`,
+                          name: `${label} Cabinets (sketch)`,
                           cabinet_category: hl.cabKey,
                           measure_type: "lf",
-                          quantity: hl.quantity,
+                          quantity: Math.round(hl.quantity * 100) / 100,
                           unit_price: price,
-                          notes: `From sketch: ${hl.wFt}' × ${hl.hFt}'`,
+                          notes: `From sketch: ${hl.count} section${hl.count > 1 ? "s" : ""} · ${hl.quantity.toFixed(2)} LF total`,
                         };
                       });
                       setRooms(prev => prev.map(r => r.id === room.id
