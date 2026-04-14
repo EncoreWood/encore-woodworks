@@ -596,12 +596,45 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
 
     let updated = [...localPaths.current];
     if (p.type === "highlight") {
-      // editDim.w and editDim.h are in inches
+      // editDim.w = width along wall (LF), editDim.h = depth from wall — both in inches
       const wPx = (parseFloat(editDim.w) / 12) * BASE_PX_PER_FOOT;
       const hPx = (parseFloat(editDim.h) / 12) * BASE_PX_PER_FOOT;
       if (isNaN(wPx) || isNaN(hPx) || wPx <= 0 || hPx <= 0) return;
-      const rx = Math.min(p.x1, p.x2), ry = Math.min(p.y1, p.y2);
-      updated[selectedIdx] = { ...p, x1: rx, y1: ry, x2: rx + wPx, y2: ry + hPx };
+
+      const wall = findNearestWall(p, localPaths.current);
+      if (wall) {
+        // Resize relative to wall orientation
+        const [w1, w2] = wall.points;
+        const wallAngle = Math.atan2(w2.y - w1.y, w2.x - w1.x);
+        const nx = -Math.sin(wallAngle), ny = Math.cos(wallAngle);
+        // Find which side of wall the cabinet is on
+        const hlCx = (p.x1 + p.x2) / 2, hlCy = (p.y1 + p.y2) / 2;
+        const side = ((hlCx - w1.x) * nx + (hlCy - w1.y) * ny) >= 0 ? 1 : -1;
+        // Project current center onto wall to preserve position along wall
+        const proj = projectPointOntoLine(hlCx, hlCy, w1.x, w1.y, w2.x, w2.y);
+        // New center: same along-wall projection, depth away from wall = hPx/2
+        const newCx = proj.x + nx * side * (hPx / 2);
+        const newCy = proj.y + ny * side * (hPx / 2);
+        // Build axis-aligned bounding box from wall-relative dimensions
+        // along-wall axis unit vector
+        const ax = Math.cos(wallAngle), ay = Math.sin(wallAngle);
+        // Four corners
+        const corners = [
+          { x: newCx + ax * wPx/2 + nx * hPx/2, y: newCy + ay * wPx/2 + ny * hPx/2 },
+          { x: newCx - ax * wPx/2 + nx * hPx/2, y: newCy - ay * wPx/2 + ny * hPx/2 },
+          { x: newCx + ax * wPx/2 - nx * hPx/2, y: newCy + ay * wPx/2 - ny * hPx/2 },
+          { x: newCx - ax * wPx/2 - nx * hPx/2, y: newCy - ay * wPx/2 - ny * hPx/2 },
+        ];
+        const xs = corners.map(c => c.x), ys = corners.map(c => c.y);
+        updated[selectedIdx] = { ...p,
+          x1: Math.round(Math.min(...xs)), y1: Math.round(Math.min(...ys)),
+          x2: Math.round(Math.max(...xs)), y2: Math.round(Math.max(...ys)),
+        };
+      } else {
+        // No wall — fall back to raw axis-aligned resize
+        const rx = Math.min(p.x1, p.x2), ry = Math.min(p.y1, p.y2);
+        updated[selectedIdx] = { ...p, x1: rx, y1: ry, x2: rx + wPx, y2: ry + hPx };
+      }
     } else if (p.type === "line") {
       // editDim.len is in inches, editDim.angle in degrees
       const newLen = (parseFloat(editDim.len) / 12) * BASE_PX_PER_FOOT;
@@ -733,7 +766,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border-b border-amber-200 flex-wrap">
           <Edit3 className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
           <span className="text-xs font-semibold text-amber-800">Cabinet Box:</span>
-          <label className="text-xs text-slate-600">Width (in)</label>
+          <label className="text-xs text-slate-600">Width/LF (in)</label>
           <input type="number" step="0.5"
             className="w-16 h-7 text-xs border border-amber-300 rounded-lg px-2 bg-white"
             value={editDim.w}
@@ -745,27 +778,22 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
             onChange={e => setEditDim(prev => ({ ...prev, h: e.target.value }))} />
           <button onClick={applyDimEdit} className="px-3 h-7 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg">Apply</button>
           <span className="text-xs text-slate-500">
-            {(() => { const wIn = parseFloat(editDim.w)||0; const totalIn = wIn; return `= ${totalIn}" (${(totalIn/12).toFixed(2)} LF)`; })()}
+            {(() => { const wIn = parseFloat(editDim.w)||0; return `= ${wIn}" (${(wIn/12).toFixed(2)} LF)`; })()}
           </span>
-          {/* Wall align — only show if there's a wall to snap to */}
-          {localPaths.current.some(p => p.type === "line") && (
-            <>
-              <div className="w-px h-5 bg-amber-300 mx-0.5" />
-              <span className="text-xs text-slate-500 font-medium">Align to Wall:</span>
-              <button onClick={() => alignToWall("left")} title="Left edge to wall"
-                className="px-2.5 h-7 text-xs font-semibold bg-white hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-lg">
-                ◀ Left
-              </button>
-              <button onClick={() => alignToWall("center")} title="Center on wall"
-                className="px-2.5 h-7 text-xs font-semibold bg-white hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-lg">
-                ◈ Center
-              </button>
-              <button onClick={() => alignToWall("right")} title="Right edge to wall"
-                className="px-2.5 h-7 text-xs font-semibold bg-white hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-lg">
-                Right ▶
-              </button>
-            </>
-          )}
+          <div className="w-px h-5 bg-amber-300 mx-0.5" />
+          <span className="text-xs text-slate-500 font-medium">Align to Wall:</span>
+          <button onClick={() => alignToWall("left")} title="Left edge to wall"
+            className="px-2.5 h-7 text-xs font-semibold bg-white hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-lg">
+            ◀ Left
+          </button>
+          <button onClick={() => alignToWall("center")} title="Center on wall"
+            className="px-2.5 h-7 text-xs font-semibold bg-white hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-lg">
+            ◈ Center
+          </button>
+          <button onClick={() => alignToWall("right")} title="Right edge to wall"
+            className="px-2.5 h-7 text-xs font-semibold bg-white hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-lg">
+            Right ▶
+          </button>
           <button onClick={deleteSelected} className="ml-auto px-3 h-7 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
           <button onClick={() => selectItem(null)} className="px-2 h-7 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-100">✕</button>
         </div>
