@@ -14,6 +14,17 @@
       "type": "string",
       "description": "Name of the room"
     },
+    "phase": {
+      "type": "string",
+      "enum": [
+        "template",
+        "phase_1",
+        "phase_2",
+        "phase_3"
+      ],
+      "default": "phase_1",
+      "description": "Project phase or template designation"
+    },
     "status": {
       "type": "string",
       "enum": [

@@ -6,7 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, Plus, CheckCircle2, Clock, AlertCircle, Truck, Home, Zap } from "lucide-react";
+import { ChevronLeft, Plus, CheckCircle2, Clock, AlertCircle, Truck, Home, Zap, GripVertical, X } from "lucide-react";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+
+const PHASE_CONFIG = {
+  template: { label: "Template", color: "bg-gray-200 text-gray-700" },
+  phase_1: { label: "Phase 1", color: "bg-blue-200 text-blue-700" },
+  phase_2: { label: "Phase 2", color: "bg-purple-200 text-purple-700" },
+  phase_3: { label: "Phase 3", color: "bg-pink-200 text-pink-700" },
+};
 
 const STATUS_CONFIG = {
   planned: { label: "Planned", color: "bg-slate-100 text-slate-700", icon: Home },
@@ -30,6 +38,7 @@ const STATUS_WORKFLOW = [
 
 export default function ProductionPlanning() {
   const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [expandedRoomId, setExpandedRoomId] = useState(null);
   const [editingRoomId, setEditingRoomId] = useState(null);
   const [editingNotes, setEditingNotes] = useState("");
   const queryClient = useQueryClient();
@@ -44,6 +53,24 @@ export default function ProductionPlanning() {
     queryFn: () =>
       selectedProjectId
         ? base44.entities.RoomProductionPlanning.filter({ project_id: selectedProjectId })
+        : Promise.resolve([]),
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: jobPackets = [] } = useQuery({
+    queryKey: ["job_packets", selectedProjectId],
+    queryFn: () =>
+      selectedProjectId
+        ? base44.entities.JobPacket.filter({ project_id: selectedProjectId })
+        : Promise.resolve([]),
+    enabled: !!selectedProjectId,
+  });
+
+  const { data: productionItems = [] } = useQuery({
+    queryKey: ["production_items", selectedProjectId],
+    queryFn: () =>
+      selectedProjectId
+        ? base44.entities.ProductionItem.filter({ project_id: selectedProjectId })
         : Promise.resolve([]),
     enabled: !!selectedProjectId,
   });
@@ -69,6 +96,7 @@ export default function ProductionPlanning() {
               project_id: selectedProject.id,
               project_name: selectedProject.project_name,
               room_name: room.room_name,
+              phase: "phase_1",
               status: "planned",
               planned_points: 0,
               completed_points: 0,
@@ -83,6 +111,14 @@ export default function ProductionPlanning() {
 
     initRooms();
   }, [selectedProject]);
+
+  const handlePhaseChange = async (roomPlanning, newPhase) => {
+    await base44.entities.RoomProductionPlanning.update(roomPlanning.id, {
+      phase: newPhase,
+      updated_at: new Date().toISOString(),
+    });
+    queryClient.invalidateQueries({ queryKey: ["room_planning", selectedProjectId] });
+  };
 
   const handleStatusChange = async (roomPlanning, newStatus) => {
     await base44.entities.RoomProductionPlanning.update(roomPlanning.id, {
@@ -209,15 +245,32 @@ export default function ProductionPlanning() {
             const StatusIcon = STATUS_CONFIG[room.status]?.icon || Home;
             const isEditing = editingRoomId === room.id;
 
+            const packet = jobPackets.find((p) => p.room_id === room.id);
+            const isExpanded = expandedRoomId === room.id;
+            const packetItems = packet?.production_item_ids || [];
+            const packetProgress = packet
+              ? Math.round((packet.sent_to_production_count / packet.total_count) * 100) || 0
+              : 0;
+
             return (
               <Card key={room.id} className="p-4 border-l-4 border-l-slate-300">
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="font-semibold text-slate-900">{room.room_name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-slate-900">{room.room_name}</h3>
+                      <span className={`px-2 py-0.5 rounded text-xs font-semibold ${PHASE_CONFIG[room.phase]?.color}`}>
+                        {PHASE_CONFIG[room.phase]?.label}
+                      </span>
+                    </div>
                     {room.planned_points > 0 && (
                       <div className="flex items-center gap-1 mt-1 text-xs text-slate-500">
                         <Zap className="w-3 h-3" />
                         {room.completed_points} / {room.planned_points} pts
+                      </div>
+                    )}
+                    {packet && packet.total_count > 0 && (
+                      <div className="flex items-center gap-1 mt-1 text-xs text-slate-500">
+                        📦 {packet.sent_to_production_count} / {packet.total_count} cards
                       </div>
                     )}
                   </div>
@@ -228,6 +281,20 @@ export default function ProductionPlanning() {
                     </div>
                   </div>
                 </div>
+
+                {/* Phase Selector */}
+                <Select value={room.phase} onValueChange={(val) => handlePhaseChange(room, val)}>
+                  <SelectTrigger className="mb-2 h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(PHASE_CONFIG).map(([phase, config]) => (
+                      <SelectItem key={phase} value={phase}>
+                        {config.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
                 {/* Status Selector */}
                 <Select value={room.status} onValueChange={(val) => handleStatusChange(room, val)}>
@@ -242,6 +309,34 @@ export default function ProductionPlanning() {
                     ))}
                   </SelectContent>
                 </Select>
+
+                {/* Job Packet Section */}
+                {packet && packet.total_count > 0 && (
+                  <div className="mb-3 p-2 bg-slate-50 rounded border border-slate-200">
+                    <button
+                      onClick={() => setExpandedRoomId(isExpanded ? null : room.id)}
+                      className="w-full flex items-center justify-between text-left text-xs font-semibold text-slate-700 hover:text-slate-900"
+                    >
+                      <span>Job Packet ({packetProgress}% sent to production)</span>
+                      <span>{isExpanded ? "▼" : "▶"}</span>
+                    </button>
+                    {isExpanded && (
+                      <div className="mt-2 bg-white rounded border border-slate-200 max-h-48 overflow-y-auto">
+                        <div className="space-y-1 p-2">
+                          {packetItems.map((item, idx) => {
+                            const prodItem = productionItems.find((p) => p.id === item.id);
+                            return (
+                              <div key={item.id} className="flex items-center gap-2 text-xs p-2 bg-slate-50 rounded">
+                                <GripVertical className="w-3 h-3 text-slate-400" />
+                                <span className="flex-1 truncate">{prodItem?.name || "Unknown"}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Notes */}
                 {isEditing ? (
