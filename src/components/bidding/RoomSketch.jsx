@@ -71,12 +71,10 @@ function calcRectFt(x1, y1, x2, y2) {
   const hFt = (Math.abs(y2 - y1) / BASE_PX_PER_FOOT).toFixed(2);
   return { wFt, hFt, lf: (parseFloat(wFt) + parseFloat(hFt)).toFixed(2) };
 }
-/** Convert a decimal feet value to e.g. 3'6" */
+/** Convert a decimal feet value to total inches e.g. 114" */
 function ftToFtIn(decFt) {
   const totalIn = Math.round(parseFloat(decFt) * 12);
-  const ft = Math.floor(totalIn / 12);
-  const inches = totalIn % 12;
-  return inches === 0 ? `${ft}'` : `${ft}'${inches}"`;
+  return `${totalIn}"`;
 }
 
 // ── Draw helpers ──────────────────────────────────────────────────────────────
