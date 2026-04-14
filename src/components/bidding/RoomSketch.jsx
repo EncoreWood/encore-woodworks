@@ -25,6 +25,10 @@ const SYMBOLS = [
   { key: "window",   label: "Window",  hasSizing: true },
 ];
 
+// Door swing: hingeLeft/Right × swingIn/Out
+// In local space: wall is along X, room-side is -Y (wallSide adjusts sign)
+// hingeLeft = hinge at left end of opening; swingIn = arc goes toward room interior
+
 // ── Mini canvas icons ─────────────────────────────────────────────────────────
 function SymbolIcon({ symbolKey, size = 24 }) {
   const canvasRef = useRef(null);
@@ -68,72 +72,121 @@ function SymbolIcon({ symbolKey, size = 24 }) {
   return <canvas ref={canvasRef} width={size} height={size} style={{ display: "block" }} />;
 }
 
+// ── Draw door (wall-oriented) ─────────────────────────────────────────────────
+// anchorX/Y = left end of opening on wall
+// widthPx = opening width in px
+// wallSide: 1 = room is in +normal direction, -1 = room is in -normal direction
+// hingeLeft: true = hinge on left/start end of opening
+// swingIn: true = door swings into room, false = swings out (away from room)
+function drawDoorSymbol(ctx, sym, lw) {
+  const { widthPx, wallSide = 1, hingeLeft = true, swingIn = true } = sym;
+  const wt = 5 * lw;
+  const w = widthPx;
+
+  // Wall caps
+  ctx.fillStyle = "#1e293b";
+  ctx.fillRect(0, -wt * 1.5, wt * 2, wt * 3);
+  ctx.fillRect(w - wt * 2, -wt * 1.5, wt * 2, wt * 3);
+  // White opening gap
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(wt * 2, -wt * 2, w - wt * 4, wt * 4);
+
+  // Hinge X: left or right end of opening
+  const hingeX = hingeLeft ? wt * 2 : w - wt * 2;
+  // Swing direction: into room (negative normal) or out (positive normal)
+  // In local space normal is -Y. wallSide flips which side is "in".
+  // swingIn=true means arc goes toward -Y*wallSide
+  const swingDir = swingIn ? -wallSide : wallSide;
+  const leafEndX = hingeLeft ? hingeX + w * 0.9 : hingeX - w * 0.9;
+
+  ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 2 * lw;
+  // Door leaf
+  ctx.beginPath();
+  ctx.moveTo(hingeX, 0);
+  ctx.lineTo(hingeX, swingDir * w * 0.9);
+  ctx.stroke();
+  // Arc
+  const startAngle = Math.atan2(0, (hingeLeft ? 1 : -1));
+  const endAngle = Math.atan2(swingDir * w * 0.9, (hingeLeft ? w * 0.9 : -w * 0.9));
+  ctx.beginPath();
+  ctx.arc(hingeX, 0, w * 0.9, startAngle, endAngle, swingDir < 0 ? false : true);
+  ctx.stroke();
+
+  // Size label
+  const wIn = Math.round((w / BASE_PX_PER_FOOT) * 12);
+  ctx.fillStyle = "#7c3aed"; ctx.font = `bold ${10 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+  ctx.fillText(`${wIn}"`, w / 2, swingDir < 0 ? -w * 0.92 : -wt * 2);
+}
+
+// ── Draw window (wall-oriented) ───────────────────────────────────────────────
+function drawWindowSymbol(ctx, sym, lw) {
+  const { widthPx } = sym;
+  const wt = 5 * lw;
+  const w = widthPx;
+  // Wall caps
+  ctx.fillStyle = "#1e293b";
+  ctx.fillRect(0, -wt * 1.5, wt * 2, wt * 3);
+  ctx.fillRect(w - wt * 2, -wt * 1.5, wt * 2, wt * 3);
+  // Glass pane
+  ctx.fillStyle = "rgba(186,230,253,0.5)"; ctx.strokeStyle = "#0ea5e9"; ctx.lineWidth = 2 * lw;
+  const gx = wt * 2, gw = w - wt * 4;
+  ctx.fillRect(gx, -wt * 1.2, gw, wt * 2.4);
+  ctx.strokeRect(gx, -wt * 1.2, gw, wt * 2.4);
+  for (let i = -1; i <= 1; i++) {
+    ctx.beginPath(); ctx.moveTo(gx, i * wt * 0.35); ctx.lineTo(gx + gw, i * wt * 0.35); ctx.stroke();
+  }
+  const wIn = Math.round((w / BASE_PX_PER_FOOT) * 12);
+  ctx.fillStyle = "#0ea5e9"; ctx.font = `bold ${10 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+  ctx.fillText(`${wIn}"`, w / 2, -wt * 2.5);
+}
+
 // ── Draw symbol on main canvas ────────────────────────────────────────────────
 function drawSymbol(ctx, sym, zoom) {
   const lw = 1 / zoom;
-  const { x, y, symbolKey, widthPx = BASE_PX_PER_FOOT * 2, wallAngle = 0 } = sym;
   ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(wallAngle);
-  const half = widthPx / 2;
-  if (symbolKey === "outlet") {
+
+  if (sym.symbolKey === "door" || sym.symbolKey === "window") {
+    // Wall-oriented: anchorX/Y is the left end of opening on wall
+    const { anchorX, anchorY, wallAngle = 0 } = sym;
+    ctx.translate(anchorX, anchorY);
+    ctx.rotate(wallAngle);
+    if (sym.symbolKey === "door") drawDoorSymbol(ctx, sym, lw);
+    else drawWindowSymbol(ctx, sym, lw);
+  } else {
+    // Free-placed symbols (outlet, switch, plumbing)
+    const { x, y, wallAngle = 0 } = sym;
+    ctx.translate(x, y);
+    ctx.rotate(wallAngle);
     const s = 14 * lw;
-    ctx.strokeStyle = "#1e40af"; ctx.lineWidth = 2 * lw; ctx.fillStyle = "#dbeafe";
-    ctx.beginPath(); ctx.rect(-s, -s, s * 2, s * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(-s * 0.3, 0, s * 0.22, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(s * 0.3, 0, s * 0.22, 0, Math.PI * 2); ctx.stroke();
-  } else if (symbolKey === "switch") {
-    const s = 14 * lw;
-    ctx.strokeStyle = "#065f46"; ctx.lineWidth = 2 * lw; ctx.fillStyle = "#d1fae5";
-    ctx.beginPath(); ctx.rect(-s, -s, s * 2, s * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "#065f46"; ctx.font = `bold ${s * 1.1}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("S", 0, 0);
-  } else if (symbolKey === "plumbing") {
-    const s = 14 * lw;
-    ctx.strokeStyle = "#1d4ed8"; ctx.lineWidth = 2 * lw; ctx.fillStyle = "#eff6ff";
-    ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0, -s * 0.65); ctx.lineTo(0, s * 0.65); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-s * 0.65, 0); ctx.lineTo(s * 0.65, 0); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, 0, s * 0.25, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  } else if (symbolKey === "door") {
-    const wt = 5 * lw;
-    ctx.fillStyle = "#1e293b";
-    ctx.fillRect(-half, -wt * 1.5, wt * 2, wt * 3);
-    ctx.fillRect(half - wt * 2, -wt * 1.5, wt * 2, wt * 3);
-    ctx.fillStyle = "#ffffff"; ctx.fillRect(-half + wt * 2, -wt * 2.5, widthPx - wt * 4, wt * 5);
-    const hingeX = -half + wt * 2;
-    ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 2 * lw;
-    ctx.beginPath(); ctx.moveTo(hingeX, 0); ctx.lineTo(hingeX, -widthPx * 0.9); ctx.stroke();
-    ctx.beginPath(); ctx.arc(hingeX, 0, widthPx * 0.9, -Math.PI / 2, 0); ctx.stroke();
-    const wIn = Math.round((widthPx / BASE_PX_PER_FOOT) * 12);
-    ctx.fillStyle = "#7c3aed"; ctx.font = `bold ${10 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-    ctx.fillText(`${wIn}"`, 0, -widthPx * 0.92);
-  } else if (symbolKey === "window") {
-    const wt = 5 * lw;
-    ctx.fillStyle = "#1e293b";
-    ctx.fillRect(-half, -wt * 1.5, wt * 2, wt * 3);
-    ctx.fillRect(half - wt * 2, -wt * 1.5, wt * 2, wt * 3);
-    ctx.fillStyle = "rgba(186,230,253,0.5)"; ctx.strokeStyle = "#0ea5e9"; ctx.lineWidth = 2 * lw;
-    const gx = -half + wt * 2, gw = widthPx - wt * 4;
-    ctx.fillRect(gx, -wt * 1.2, gw, wt * 2.4); ctx.strokeRect(gx, -wt * 1.2, gw, wt * 2.4);
-    for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(gx, i * wt * 0.35); ctx.lineTo(gx + gw, i * wt * 0.35); ctx.stroke(); }
-    const wIn = Math.round((widthPx / BASE_PX_PER_FOOT) * 12);
-    ctx.fillStyle = "#0ea5e9"; ctx.font = `bold ${10 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-    ctx.fillText(`${wIn}"`, 0, -wt * 2.5);
+    if (sym.symbolKey === "outlet") {
+      ctx.strokeStyle = "#1e40af"; ctx.lineWidth = 2 * lw; ctx.fillStyle = "#dbeafe";
+      ctx.beginPath(); ctx.rect(-s, -s, s * 2, s * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.arc(-s * 0.3, 0, s * 0.22, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(s * 0.3, 0, s * 0.22, 0, Math.PI * 2); ctx.stroke();
+    } else if (sym.symbolKey === "switch") {
+      ctx.strokeStyle = "#065f46"; ctx.lineWidth = 2 * lw; ctx.fillStyle = "#d1fae5";
+      ctx.beginPath(); ctx.rect(-s, -s, s * 2, s * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#065f46"; ctx.font = `bold ${s * 1.1}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("S", 0, 0);
+    } else if (sym.symbolKey === "plumbing") {
+      ctx.strokeStyle = "#1d4ed8"; ctx.lineWidth = 2 * lw; ctx.fillStyle = "#eff6ff";
+      ctx.beginPath(); ctx.arc(0, 0, s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, -s * 0.65); ctx.lineTo(0, s * 0.65); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-s * 0.65, 0); ctx.lineTo(s * 0.65, 0); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, s * 0.25, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
   }
   ctx.restore();
 }
 
 // ── Draw highlight cabinet ─────────────────────────────────────────────────────
-// Highlights store: x1,y1 = anchor corner on wall, widthIn = width along wall,
-// depthIn = depth away from wall, wallAngle (radians), wallSide (+1/-1)
 function drawHighlight(ctx, path, isSelected, zoom) {
   const hl = CAB_HIGHLIGHTS.find(h => h.key === path.cabKey);
   if (!hl) return;
   const lw = 1 / zoom;
 
-  // Legacy axis-aligned boxes still supported
   if (path.wallAngle === undefined) {
+    // Legacy axis-aligned
     const { x1, y1, x2, y2 } = path;
     const rx = Math.min(x1, x2), ry = Math.min(y1, y2), rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
     ctx.save();
@@ -153,14 +206,11 @@ function drawHighlight(ctx, path, isSelected, zoom) {
     return;
   }
 
-  // Wall-oriented cabinet
   const { anchorX, anchorY, widthIn, depthIn, wallAngle, wallSide } = path;
   const wPx = (widthIn / 12) * BASE_PX_PER_FOOT;
   const dPx = (depthIn / 12) * BASE_PX_PER_FOOT;
   const ax = Math.cos(wallAngle), ay = Math.sin(wallAngle);
   const nx = -Math.sin(wallAngle) * wallSide, ny = Math.cos(wallAngle) * wallSide;
-
-  // Four corners of cabinet (along wall × depth away)
   const c0 = { x: anchorX, y: anchorY };
   const c1 = { x: anchorX + ax * wPx, y: anchorY + ay * wPx };
   const c2 = { x: anchorX + ax * wPx + nx * dPx, y: anchorY + ay * wPx + ny * dPx };
@@ -172,20 +222,13 @@ function drawHighlight(ctx, path, isSelected, zoom) {
   ctx.closePath();
   ctx.fillStyle = hl.fillColor; ctx.strokeStyle = hl.color; ctx.lineWidth = 2 * lw;
   ctx.fill(); ctx.stroke();
-
-  // Label at center
-  const cx = (c0.x + c1.x + c2.x + c3.x) / 4;
-  const cy2 = (c0.y + c1.y + c2.y + c3.y) / 4;
-  ctx.save();
-  ctx.translate(cx, cy2);
-  ctx.rotate(wallAngle);
+  const ccx = (c0.x + c1.x + c2.x + c3.x) / 4, ccy = (c0.y + c1.y + c2.y + c3.y) / 4;
+  ctx.save(); ctx.translate(ccx, ccy); ctx.rotate(wallAngle);
   ctx.fillStyle = hl.color; ctx.font = `bold ${12 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText(`${hl.label} ${widthIn}" × ${depthIn}"`, 0, 0);
-  // Width annotation above
   ctx.font = `${10 * lw}px sans-serif`; ctx.fillStyle = "#475569";
   ctx.textBaseline = "bottom"; ctx.fillText(`${widthIn}" (${(widthIn/12).toFixed(2)} LF)`, 0, -dPx / 2 - 2 * lw);
   ctx.restore();
-
   if (isSelected) {
     ctx.beginPath();
     ctx.moveTo(c0.x, c0.y); ctx.lineTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(c3.x, c3.y);
@@ -205,10 +248,8 @@ function getSnapCandidates(paths) {
     if (p.type === "line" && p.points) { pts.push(p.points[0], p.points[1]); }
     if (p.type === "highlight") {
       if (p.wallAngle !== undefined) {
-        // Wall-oriented: use anchor + far corner
         const { anchorX, anchorY, widthIn, depthIn, wallAngle, wallSide } = p;
-        const wPx = (widthIn / 12) * BASE_PX_PER_FOOT;
-        const dPx = (depthIn / 12) * BASE_PX_PER_FOOT;
+        const wPx = (widthIn / 12) * BASE_PX_PER_FOOT, dPx = (depthIn / 12) * BASE_PX_PER_FOOT;
         const ax = Math.cos(wallAngle), ay = Math.sin(wallAngle);
         const nx = -Math.sin(wallAngle) * wallSide, ny = Math.cos(wallAngle) * wallSide;
         pts.push(
@@ -241,7 +282,6 @@ function smartSnap(rawX, rawY, paths, isFirstPoint, forHighlight = false) {
   return { x: snapToGrid(rawX), y: snapToGrid(rawY), snapped: false };
 }
 
-// ── Angle snap ────────────────────────────────────────────────────────────────
 const SNAP_ANGLES = [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, -157.5, -135, -112.5, -90, -67.5, -45, -22.5];
 const ANGLE_SNAP_THRESHOLD = 8;
 function snapAngle(x1, y1, x2, y2) {
@@ -254,7 +294,6 @@ function snapAngle(x1, y1, x2, y2) {
   return { x: Math.round(x1 + Math.cos(rad) * len), y: Math.round(y1 + Math.sin(rad) * len), snappedAngle: best };
 }
 
-// ── Math helpers ──────────────────────────────────────────────────────────────
 function calcAngle(x1, y1, x2, y2) { return Math.round(Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI); }
 function calcLineFt(x1, y1, x2, y2) { return (Math.hypot(x2 - x1, y2 - y1) / BASE_PX_PER_FOOT).toFixed(2); }
 function calcRectFt(x1, y1, x2, y2) {
@@ -264,7 +303,6 @@ function calcRectFt(x1, y1, x2, y2) {
 }
 function ftToFtIn(decFt) { return `${Math.round(parseFloat(decFt) * 12)}"`; }
 
-// ── Wall nearest helpers ──────────────────────────────────────────────────────
 function findNearestWallForPoint(x, y, paths, maxDist = 80) {
   const walls = paths.filter(p => p.type === "line" && p.points?.length === 2);
   if (!walls.length) return null;
@@ -282,42 +320,10 @@ function findNearestWallForPoint(x, y, paths, maxDist = 80) {
   const [p1, p2] = best.wall.points;
   const wallAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
   const nx = -Math.sin(wallAngle), ny = Math.cos(wallAngle);
-  const side = ((y - p1.y) * nx - (x - p1.x) * ny) >= 0 ? 1 : -1; // which side of wall
-  return {
-    projX: best.projX, projY: best.projY,
-    wallAngle, side,
-    wall: best.wall,
-    t: best.t,
-    wallLen: Math.hypot(p2.x - p1.x, p2.y - p1.y),
-  };
+  const side = ((y - p1.y) * nx - (x - p1.x) * ny) >= 0 ? 1 : -1;
+  return { projX: best.projX, projY: best.projY, wallAngle, side, wall: best.wall, t: best.t, wallLen: Math.hypot(p2.x - p1.x, p2.y - p1.y) };
 }
 
-function projectPointOntoLine(px, py, x1, y1, x2, y2) {
-  const dx = x2 - x1, dy = y2 - y1;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return { x: x1, y: y1 };
-  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
-  return { x: x1 + t * dx, y: y1 + t * dy };
-}
-
-// ── Offset cabinet along wall from wall start (p1) ───────────────────────────
-function positionCabinetOnWall(cabinet, wall, offsetIn) {
-  const [p1, p2] = wall.points;
-  const wallAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-  const nx = -Math.sin(wallAngle), ny = Math.cos(wallAngle);
-  const { widthIn, depthIn, wallSide } = cabinet;
-  const offsetPx = (offsetIn / 12) * BASE_PX_PER_FOOT;
-  const ax = Math.cos(wallAngle), ay = Math.sin(wallAngle);
-  return {
-    ...cabinet,
-    anchorX: p1.x + ax * offsetPx,
-    anchorY: p1.y + ay * offsetPx,
-    wallAngle,
-    wallSide: wallSide ?? 1,
-  };
-}
-
-// ── Draw grid ─────────────────────────────────────────────────────────────────
 function drawGrid(ctx, w, h) {
   const gs = GRID_SIZE;
   ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 0.5;
@@ -334,11 +340,20 @@ function drawOnePath(ctx, path, isSelected, zoom) {
   const lw = 1 / zoom;
   if (path.type === "symbol") {
     drawSymbol(ctx, path, zoom);
+    // Selection highlight
     if (isSelected) {
-      ctx.save(); ctx.translate(path.x, path.y); ctx.rotate(path.wallAngle || 0);
-      const half = (path.widthPx || BASE_PX_PER_FOOT * 2) / 2 + 6 * lw, hh = 20 * lw;
-      ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2 * lw; ctx.setLineDash([4 * lw, 3 * lw]);
-      ctx.strokeRect(-half, -hh, half * 2, hh * 2); ctx.setLineDash([]);
+      ctx.save();
+      if (path.symbolKey === "door" || path.symbolKey === "window") {
+        ctx.translate(path.anchorX, path.anchorY); ctx.rotate(path.wallAngle || 0);
+        const w = path.widthPx, hh = 25 * lw;
+        ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2 * lw; ctx.setLineDash([4 * lw, 3 * lw]);
+        ctx.strokeRect(-4 * lw, -hh, w + 8 * lw, hh * 2); ctx.setLineDash([]);
+      } else {
+        ctx.translate(path.x, path.y); ctx.rotate(path.wallAngle || 0);
+        const s = 18 * lw;
+        ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2 * lw; ctx.setLineDash([4 * lw, 3 * lw]);
+        ctx.strokeRect(-s, -s, s * 2, s * 2); ctx.setLineDash([]);
+      }
       ctx.restore();
     }
     return;
@@ -349,8 +364,7 @@ function drawOnePath(ctx, path, isSelected, zoom) {
     ctx.strokeStyle = isSelected ? "#f59e0b" : path.color;
     ctx.lineWidth = (path.lineWidth || 2) * lw; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
-    const ft = calcLineFt(p1.x, p1.y, p2.x, p2.y);
-    const angle = calcAngle(p1.x, p1.y, p2.x, p2.y);
+    const ft = calcLineFt(p1.x, p1.y, p2.x, p2.y), angle = calcAngle(p1.x, p1.y, p2.x, p2.y);
     const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
     ctx.save(); ctx.translate(mx, my); ctx.rotate(Math.atan2(p2.y - p1.y, p2.x - p1.x));
     ctx.fillStyle = "#1e293b"; ctx.font = `bold ${11 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
@@ -365,22 +379,26 @@ function drawOnePath(ctx, path, isSelected, zoom) {
   }
 }
 
-// ── Hit test for wall-oriented cabinet ───────────────────────────────────────
 function hitTestHighlight(pos, path) {
   if (path.wallAngle === undefined) {
-    // legacy axis-aligned
     const rx = Math.min(path.x1, path.x2), ry = Math.min(path.y1, path.y2);
     const rw = Math.abs(path.x2 - path.x1), rh = Math.abs(path.y2 - path.y1);
     return pos.x >= rx && pos.x <= rx + rw && pos.y >= ry && pos.y <= ry + rh;
   }
-  // Rotate pos into wall-local space, check bounding rect
   const { anchorX, anchorY, widthIn, depthIn, wallAngle, wallSide } = path;
   const wPx = (widthIn / 12) * BASE_PX_PER_FOOT, dPx = (depthIn / 12) * BASE_PX_PER_FOOT;
   const dx = pos.x - anchorX, dy = pos.y - anchorY;
   const lx = dx * Math.cos(-wallAngle) - dy * Math.sin(-wallAngle);
   const ly = dx * Math.sin(-wallAngle) + dy * Math.cos(-wallAngle);
-  const lyAdjusted = ly * wallSide;
-  return lx >= -2 && lx <= wPx + 2 && lyAdjusted >= -2 && lyAdjusted <= dPx + 2;
+  return lx >= -4 && lx <= wPx + 4 && ly * wallSide >= -4 && ly * wallSide <= dPx + 4;
+}
+
+function hitTestWallSymbol(pos, sym) {
+  const { anchorX, anchorY, wallAngle = 0, widthPx } = sym;
+  const dx = pos.x - anchorX, dy = pos.y - anchorY;
+  const lx = dx * Math.cos(-wallAngle) - dy * Math.sin(-wallAngle);
+  const ly = dx * Math.sin(-wallAngle) + dy * Math.cos(-wallAngle);
+  return lx >= -8 && lx <= widthPx + 8 && Math.abs(ly) < 30;
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -399,7 +417,6 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
   const [editDim, setEditDim] = useState({ w: "", h: "", len: "", angle: "", symW: "", offset: "" });
   const [liveAngle, setLiveAngle] = useState(null);
 
-  // History for undo/redo
   const history = useRef([[]]);
   const historyIdx = useRef(0);
 
@@ -430,9 +447,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   useEffect(() => { localPaths.current = paths || []; scheduleRedraw(); }, [paths]);
 
-  // ── History helpers ────────────────────────────────────────────────────────
   const pushHistory = (newPaths) => {
-    // Truncate redo stack
     history.current = history.current.slice(0, historyIdx.current + 1);
     history.current.push(JSON.parse(JSON.stringify(newPaths)));
     historyIdx.current = history.current.length - 1;
@@ -450,25 +465,16 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     if (historyIdx.current <= 0) return;
     historyIdx.current--;
     const prev = history.current[historyIdx.current];
-    localPaths.current = prev;
-    onPathsChange(prev);
-    notifyHighlights(prev);
-    selectItem(null);
-    scheduleRedraw();
+    localPaths.current = prev; onPathsChange(prev); notifyHighlights(prev); selectItem(null); scheduleRedraw();
   };
 
   const redo = () => {
     if (historyIdx.current >= history.current.length - 1) return;
     historyIdx.current++;
     const next = history.current[historyIdx.current];
-    localPaths.current = next;
-    onPathsChange(next);
-    notifyHighlights(next);
-    selectItem(null);
-    scheduleRedraw();
+    localPaths.current = next; onPathsChange(next); notifyHighlights(next); selectItem(null); scheduleRedraw();
   };
 
-  // ── Redraw ────────────────────────────────────────────────────────────────
   const scheduleRedraw = useCallback(() => {
     if (rafId.current) return;
     rafId.current = requestAnimationFrame(() => { rafId.current = null; redrawCanvas(); });
@@ -482,9 +488,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawGrid(ctx, CANVAS_W, CANVAS_H);
-
     localPaths.current.forEach((path, idx) => drawOnePath(ctx, path, idx === selectedIdxRef.current, 1));
-
     if (preview) {
       const { type, x1, y1, x2, y2 } = preview;
       ctx.save();
@@ -509,7 +513,6 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       }
       ctx.restore();
     }
-
     if (snapIndicator.current) {
       const { x, y, snapped } = snapIndicator.current;
       ctx.save(); ctx.beginPath(); ctx.arc(x, y, snapped ? 7 : 4, 0, Math.PI * 2);
@@ -517,7 +520,6 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     }
   }, []);
 
-  // ── Pointer helpers ───────────────────────────────────────────────────────
   const getRawPos = (e) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -533,7 +535,6 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     return smartSnap(raw.x, raw.y, localPaths.current, isFirst, forHighlight);
   };
 
-  // ── Hit testing ───────────────────────────────────────────────────────────
   const findHitIdx = (pos) => {
     for (let i = localPaths.current.length - 1; i >= 0; i--) {
       const p = localPaths.current[i];
@@ -548,36 +549,46 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         if (d < 14 && inBounds) return i;
       }
       if (p.type === "symbol") {
-        const half = (p.widthPx || 40) / 2 + 10;
-        const angle = -(p.wallAngle || 0);
-        const dx = pos.x - p.x, dy = pos.y - p.y;
-        const lx = dx * Math.cos(angle) - dy * Math.sin(angle);
-        const ly = dx * Math.sin(angle) + dy * Math.cos(angle);
-        if (Math.abs(lx) < half && Math.abs(ly) < 24) return i;
+        if ((p.symbolKey === "door" || p.symbolKey === "window") && p.anchorX !== undefined) {
+          if (hitTestWallSymbol(pos, p)) return i;
+        } else {
+          const cx = p.x, cy = p.y;
+          if (Math.hypot(pos.x - cx, pos.y - cy) < 28) return i;
+        }
       }
     }
     return null;
   };
 
-  // ── Erase ─────────────────────────────────────────────────────────────────
   const eraseAt = (pos) => {
-    const t = 18;
     const updated = localPaths.current.filter(p => {
-      if (p.type === "symbol") return Math.hypot(p.x - pos.x, p.y - pos.y) > 28;
-      if (p.type === "highlight") return !hitTestHighlight({ x: pos.x, y: pos.y }, p);
-      return !p.points?.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) < t);
+      if (p.type === "symbol") {
+        if ((p.symbolKey === "door" || p.symbolKey === "window") && p.anchorX !== undefined)
+          return !hitTestWallSymbol(pos, p);
+        return Math.hypot(p.x - pos.x, p.y - pos.y) > 28;
+      }
+      if (p.type === "highlight") return !hitTestHighlight(pos, p);
+      return !p.points?.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) < 18);
     });
     commitPaths(updated);
   };
 
-  // ── Cabinet LF for a highlight ────────────────────────────────────────────
   const getHighlightLf = (p) => {
-    if (p.wallAngle !== undefined) return (p.widthIn / 12);
+    if (p.wallAngle !== undefined) return p.widthIn / 12;
     const { wFt } = calcRectFt(p.x1, p.y1, p.x2, p.y2);
     return parseFloat(wFt);
   };
 
-  // ── Select + populate edit dims ───────────────────────────────────────────
+  // Compute offset of door/window from wall start
+  const getWallOffset = (sym) => {
+    if (!sym.anchorX) return 0;
+    const wallSnap = findNearestWallForPoint(sym.anchorX, sym.anchorY, localPaths.current, Infinity);
+    if (!wallSnap?.wall) return 0;
+    const p1 = wallSnap.wall.points[0];
+    const offsetPx = Math.hypot(sym.anchorX - p1.x, sym.anchorY - p1.y);
+    return Math.round((offsetPx / BASE_PX_PER_FOOT) * 12);
+  };
+
   const selectItem = (idx) => {
     setSelectedIdx(idx);
     selectedIdxRef.current = idx;
@@ -585,10 +596,9 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       const p = localPaths.current[idx];
       if (p?.type === "highlight") {
         if (p.wallAngle !== undefined) {
-          // Wall-oriented — compute offset from wall p1
-          const wall = p._wall ?? findNearestWallForPoint(p.anchorX, p.anchorY, localPaths.current, Infinity);
+          const wall = findNearestWallForPoint(p.anchorX, p.anchorY, localPaths.current, Infinity);
           let offsetIn = 0;
-          if (wall) {
+          if (wall?.wall) {
             const offsetPx = Math.hypot(p.anchorX - wall.wall.points[0].x, p.anchorY - wall.wall.points[0].y);
             offsetIn = Math.round((offsetPx / BASE_PX_PER_FOOT) * 12);
           }
@@ -603,7 +613,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         setEditDim({ w: "", h: "", len: Math.round(parseFloat(lenFt) * 12), angle: ang, symW: "", offset: "" });
       } else if (p?.type === "symbol" && (p.symbolKey === "door" || p.symbolKey === "window")) {
         const wIn = Math.round((p.widthPx / BASE_PX_PER_FOOT) * 12);
-        setEditDim({ w: "", h: "", len: "", angle: "", symW: wIn, offset: "" });
+        setEditDim({ w: "", h: "", len: "", angle: "", symW: wIn, offset: getWallOffset(p) });
       } else {
         setEditDim({ w: "", h: "", len: "", angle: "", symW: "", offset: "" });
       }
@@ -611,7 +621,6 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     scheduleRedraw();
   };
 
-  // ── Pointer events ────────────────────────────────────────────────────────
   const onPointerDown = (e) => {
     e.preventDefault();
     e.target.setPointerCapture?.(e.pointerId);
@@ -638,17 +647,21 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     if (toolRef.current === "symbol") {
       const sym = activeSymbolRef.current;
       if (sym) {
-        const hasSizing = sym === "door" || sym === "window";
-        const widthIn = hasSizing ? (symbolSizesRef.current[sym] || 32) : null;
+        const isWallSym = sym === "door" || sym === "window";
+        const widthIn = isWallSym ? (symbolSizesRef.current[sym] || 32) : null;
         const widthPx = widthIn ? (widthIn / 12) * BASE_PX_PER_FOOT : null;
-        const wallSnap = hasSizing ? findNearestWallForPoint(pos.x, pos.y, localPaths.current) : null;
-        const newSym = {
-          type: "symbol", symbolKey: sym,
-          x: wallSnap ? wallSnap.projX : pos.x,
-          y: wallSnap ? wallSnap.projY : pos.y,
-          wallAngle: wallSnap ? wallSnap.wallAngle : 0,
-          widthPx,
-        };
+        const wallSnap = isWallSym ? findNearestWallForPoint(pos.x, pos.y, localPaths.current) : null;
+        let newSym;
+        if (isWallSym && wallSnap) {
+          newSym = {
+            type: "symbol", symbolKey: sym,
+            anchorX: wallSnap.projX, anchorY: wallSnap.projY,
+            wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side,
+            widthPx, hingeLeft: true, swingIn: true,
+          };
+        } else {
+          newSym = { type: "symbol", symbolKey: sym, x: pos.x, y: pos.y, wallAngle: 0, widthPx };
+        }
         commitPaths([...localPaths.current, newSym]);
       }
       isDrawing.current = false; return;
@@ -671,13 +684,10 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       const p = origPath;
       if (p.type === "highlight") {
         if (p.wallAngle !== undefined) {
-          // Move along wall
           const wallSnap = findNearestWallForPoint(p.anchorX + dx, p.anchorY + dy, localPaths.current, Infinity);
-          if (wallSnap) {
-            updated[idx] = { ...p, anchorX: wallSnap.projX, anchorY: wallSnap.projY, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side };
-          } else {
-            updated[idx] = { ...p, anchorX: p.anchorX + dx, anchorY: p.anchorY + dy };
-          }
+          updated[idx] = wallSnap
+            ? { ...p, anchorX: wallSnap.projX, anchorY: wallSnap.projY, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side }
+            : { ...p, anchorX: p.anchorX + dx, anchorY: p.anchorY + dy };
         } else {
           const sdx = snapToGrid(p.x1 + dx) - p.x1, sdy = snapToGrid(p.y1 + dy) - p.y1;
           updated[idx] = { ...p, x1: p.x1 + sdx, y1: p.y1 + sdy, x2: p.x2 + sdx, y2: p.y2 + sdy };
@@ -687,13 +697,14 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         const sdy = snapToGrid(p.points[0].y + dy) - p.points[0].y;
         updated[idx] = { ...p, points: [{ x: p.points[0].x + sdx, y: p.points[0].y + sdy }, { x: p.points[1].x + sdx, y: p.points[1].y + sdy }] };
       } else if (p.type === "symbol") {
-        const nx = snapToGrid(p.x + dx), ny = snapToGrid(p.y + dy);
-        const hasSizing = p.symbolKey === "door" || p.symbolKey === "window";
-        if (hasSizing) {
-          const wallSnap = findNearestWallForPoint(nx, ny, localPaths.current);
-          updated[idx] = wallSnap ? { ...p, x: wallSnap.projX, y: wallSnap.projY, wallAngle: wallSnap.wallAngle } : { ...p, x: nx, y: ny };
+        const isWallSym = p.symbolKey === "door" || p.symbolKey === "window";
+        if (isWallSym && p.anchorX !== undefined) {
+          const wallSnap = findNearestWallForPoint(p.anchorX + dx, p.anchorY + dy, localPaths.current, Infinity);
+          updated[idx] = wallSnap
+            ? { ...p, anchorX: wallSnap.projX, anchorY: wallSnap.projY, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side }
+            : { ...p, anchorX: p.anchorX + dx, anchorY: p.anchorY + dy };
         } else {
-          updated[idx] = { ...p, x: nx, y: ny };
+          updated[idx] = { ...p, x: snapToGrid(p.x + dx), y: snapToGrid(p.y + dy) };
         }
       }
       localPaths.current = updated; redrawCanvas(); return;
@@ -701,11 +712,9 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
 
     if (!isDrawing.current) return;
     if (toolRef.current === "eraser") { eraseAt(raw); return; }
-
     const isHL = toolRef.current === "highlight";
     const snapped = getSnappedPos(e, false, isHL);
     snapIndicator.current = { ...snapped, snapped: snapped.snapped };
-
     if ((toolRef.current === "line" || toolRef.current === "highlight") && dragStart.current) {
       let ex = snapped.x, ey = snapped.y, snappedAngle = null;
       if (toolRef.current === "line") {
@@ -725,7 +734,6 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
 
   const onPointerUp = (e) => {
     snapIndicator.current = null; previewRef.current = null; setLiveAngle(null);
-
     if (toolRef.current === "select" && moveState.current) {
       isDrawing.current = false;
       const updated = [...localPaths.current];
@@ -734,14 +742,14 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       if (p?.type === "highlight") {
         if (p.wallAngle !== undefined) setEditDim(prev => ({ ...prev, w: p.widthIn, h: p.depthIn }));
         else { const { wFt, hFt } = calcRectFt(p.x1, p.y1, p.x2, p.y2); setEditDim(prev => ({ ...prev, w: Math.round(parseFloat(wFt)*12), h: Math.round(parseFloat(hFt)*12) })); }
+      } else if (p?.type === "symbol" && (p.symbolKey === "door" || p.symbolKey === "window")) {
+        setEditDim(prev => ({ ...prev, offset: getWallOffset(p) }));
       }
       moveState.current = null; scheduleRedraw(); return;
     }
-
     if (!isDrawing.current) return;
     isDrawing.current = false;
     const snapped = getSnappedPos(e, false, toolRef.current === "highlight");
-
     if ((toolRef.current === "line" || toolRef.current === "highlight") && dragStart.current) {
       const start = dragStart.current; dragStart.current = null;
       if (Math.hypot(snapped.x - start.x, snapped.y - start.y) < 4) { scheduleRedraw(); return; }
@@ -752,20 +760,12 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       } else {
         const hl = CAB_HIGHLIGHTS.find(h => h.key === activeHighlightRef.current);
         const defaultDepthIn = activeHighlightRef.current === "base" ? 24 : activeHighlightRef.current === "upper" ? 14 : 12;
-        // Try to snap to nearest wall for wall-oriented cabinet
         const wallSnap = findNearestWallForPoint(start.x, start.y, localPaths.current, 80);
         if (wallSnap) {
           const wPx = Math.hypot(snapped.x - start.x, snapped.y - start.y) || BASE_PX_PER_FOOT * 2;
           const widthIn = Math.round((wPx / BASE_PX_PER_FOOT) * 12);
-          const newHL = {
-            type: "highlight", cabKey: activeHighlightRef.current, color: hl?.color,
-            anchorX: wallSnap.projX, anchorY: wallSnap.projY,
-            widthIn: widthIn > 0 ? widthIn : 24, depthIn: defaultDepthIn,
-            wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side,
-          };
-          commitPaths([...localPaths.current, newHL]);
+          commitPaths([...localPaths.current, { type: "highlight", cabKey: activeHighlightRef.current, color: hl?.color, anchorX: wallSnap.projX, anchorY: wallSnap.projY, widthIn: widthIn > 0 ? widthIn : 24, depthIn: defaultDepthIn, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side }]);
         } else {
-          // No wall — fallback axis-aligned
           const depthPx = (defaultDepthIn / 12) * BASE_PX_PER_FOOT;
           commitPaths([...localPaths.current, { type: "highlight", cabKey: activeHighlightRef.current, color: hl?.color, x1: start.x, y1: start.y, x2: snapped.x, y2: start.y + depthPx }]);
         }
@@ -775,7 +775,6 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     if (toolRef.current === "pen") { commitPaths([...localPaths.current]); }
   };
 
-  // ── Notify parent ─────────────────────────────────────────────────────────
   const notifyHighlights = (allPaths) => {
     if (!onHighlightsChange) return;
     const highlights = allPaths.filter(p => p.type === "highlight").map(p => {
@@ -786,7 +785,6 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     onHighlightsChange(highlights);
   };
 
-  // ── Apply dimension edits ─────────────────────────────────────────────────
   const applyDimEdit = () => {
     if (selectedIdx === null) return;
     const p = localPaths.current[selectedIdx];
@@ -797,9 +795,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       const wIn = parseFloat(editDim.w), hIn = parseFloat(editDim.h);
       if (isNaN(wIn) || isNaN(hIn) || wIn <= 0 || hIn <= 0) return;
       if (p.wallAngle !== undefined) {
-        // Wall-oriented resize, keep anchor
         updated[selectedIdx] = { ...p, widthIn: wIn, depthIn: hIn };
-        // Apply offset if set
         const offsetIn = parseFloat(editDim.offset);
         if (!isNaN(offsetIn) && offsetIn >= 0) {
           const wallSnap = findNearestWallForPoint(p.anchorX, p.anchorY, localPaths.current, Infinity);
@@ -811,7 +807,6 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
           }
         }
       } else {
-        // Legacy axis-aligned: resize
         const wPx = (wIn / 12) * BASE_PX_PER_FOOT, hPx = (hIn / 12) * BASE_PX_PER_FOOT;
         const rx = Math.min(p.x1, p.x2), ry = Math.min(p.y1, p.y2);
         updated[selectedIdx] = { ...p, x1: rx, y1: ry, x2: rx + wPx, y2: ry + hPx };
@@ -820,16 +815,36 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       const newLen = (parseFloat(editDim.len) / 12) * BASE_PX_PER_FOOT;
       if (!newLen || newLen <= 0) return;
       const [p1, p2] = p.points;
-      const currentAngleDeg = parseFloat(editDim.angle);
-      const angleDeg = !isNaN(currentAngleDeg) ? currentAngleDeg : calcAngle(p1.x, p1.y, p2.x, p2.y);
+      const angleDeg = !isNaN(parseFloat(editDim.angle)) ? parseFloat(editDim.angle) : calcAngle(p1.x, p1.y, p2.x, p2.y);
       const angleRad = angleDeg * Math.PI / 180;
-      const newP2 = { x: Math.round(p1.x + Math.cos(angleRad) * newLen), y: Math.round(p1.y + Math.sin(angleRad) * newLen) };
-      updated[selectedIdx] = { ...p, points: [p1, newP2] };
+      updated[selectedIdx] = { ...p, points: [p1, { x: Math.round(p1.x + Math.cos(angleRad) * newLen), y: Math.round(p1.y + Math.sin(angleRad) * newLen) }] };
     } else if (p.type === "symbol" && (p.symbolKey === "door" || p.symbolKey === "window")) {
       const wIn = parseFloat(editDim.symW);
       if (isNaN(wIn) || wIn <= 0) return;
-      updated[selectedIdx] = { ...p, widthPx: (wIn / 12) * BASE_PX_PER_FOOT };
+      let sym = { ...p, widthPx: (wIn / 12) * BASE_PX_PER_FOOT };
+      // Apply offset
+      const offsetIn = parseFloat(editDim.offset);
+      if (!isNaN(offsetIn) && offsetIn >= 0 && p.anchorX !== undefined) {
+        const wallSnap = findNearestWallForPoint(p.anchorX, p.anchorY, localPaths.current, Infinity);
+        if (wallSnap?.wall) {
+          const [pw1] = wallSnap.wall.points;
+          const ax = Math.cos(p.wallAngle), ay = Math.sin(p.wallAngle);
+          const offsetPx = (offsetIn / 12) * BASE_PX_PER_FOOT;
+          sym = { ...sym, anchorX: pw1.x + ax * offsetPx, anchorY: pw1.y + ay * offsetPx };
+        }
+      }
+      updated[selectedIdx] = sym;
     }
+    commitPaths(updated);
+  };
+
+  // Toggle door property
+  const toggleDoorProp = (prop) => {
+    if (selectedIdx === null) return;
+    const p = localPaths.current[selectedIdx];
+    if (p?.type !== "symbol" || p.symbolKey !== "door") return;
+    const updated = [...localPaths.current];
+    updated[selectedIdx] = { ...p, [prop]: !p[prop] };
     commitPaths(updated);
   };
 
@@ -841,8 +856,9 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
 
   const selectedPath = selectedIdx !== null ? localPaths.current[selectedIdx] : null;
   const selectedHasWall = selectedPath?.type === "highlight" && selectedPath.wallAngle !== undefined;
+  const selectedIsDoor = selectedPath?.type === "symbol" && selectedPath.symbolKey === "door";
+  const selectedIsWallSym = selectedPath?.type === "symbol" && (selectedPath.symbolKey === "door" || selectedPath.symbolKey === "window") && selectedPath.anchorX !== undefined;
 
-  // ── Zoom ──────────────────────────────────────────────────────────────────
   const changeZoom = (delta) => {
     setZoom(prev => {
       const nz = Math.min(3, Math.max(0.3, prev + delta));
@@ -852,7 +868,6 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     });
   };
 
-  // iPad pinch-to-zoom
   const lastPinchDist = useRef(null);
   const onTouchStart = (e) => {
     if (e.touches.length === 2) lastPinchDist.current = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
@@ -871,6 +886,13 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     <button onPointerDown={(e) => { e.stopPropagation(); setTool(t); }}
       className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border transition-all touch-manipulation ${tool === t ? `${activeColor} text-white border-transparent` : "bg-white text-slate-600 border-slate-200"}`}>
       {icon}{label}
+    </button>
+  );
+
+  const swingBtn = (label, active, onClick) => (
+    <button onClick={onClick}
+      className={`px-2.5 h-8 text-xs font-semibold rounded-lg border touch-manipulation transition-all ${active ? "bg-violet-500 text-white border-violet-500" : "bg-white text-slate-600 border-slate-300 hover:bg-violet-50"}`}>
+      {label}
     </button>
   );
 
@@ -933,46 +955,28 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
           ))}
         </div>
         <div className="ml-auto flex gap-1.5">
-          <button onPointerDown={(e) => { e.stopPropagation(); undo(); }}
-            className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-500 touch-manipulation" title="Undo">
-            <Undo2 className="w-4 h-4" />
-          </button>
-          <button onPointerDown={(e) => { e.stopPropagation(); redo(); }}
-            className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-500 touch-manipulation" title="Redo">
-            <Redo2 className="w-4 h-4" />
-          </button>
-          <button onPointerDown={(e) => { e.stopPropagation(); commitPaths([]); selectItem(null); }}
-            className="w-9 h-9 flex items-center justify-center bg-red-50 border border-red-200 rounded-lg text-red-500 touch-manipulation" title="Clear all">
-            <Trash2 className="w-4 h-4" />
-          </button>
+          <button onPointerDown={(e) => { e.stopPropagation(); undo(); }} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-500 touch-manipulation" title="Undo"><Undo2 className="w-4 h-4" /></button>
+          <button onPointerDown={(e) => { e.stopPropagation(); redo(); }} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-500 touch-manipulation" title="Redo"><Redo2 className="w-4 h-4" /></button>
+          <button onPointerDown={(e) => { e.stopPropagation(); commitPaths([]); selectItem(null); }} className="w-9 h-9 flex items-center justify-center bg-red-50 border border-red-200 rounded-lg text-red-500 touch-manipulation" title="Clear all"><Trash2 className="w-4 h-4" /></button>
         </div>
       </div>
 
-      {/* Edit bar — highlight selected */}
+      {/* Edit bar — highlight */}
       {selectedPath?.type === "highlight" && (
         <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border-b border-amber-200 flex-wrap">
           <Edit3 className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
           <span className="text-xs font-semibold text-amber-800">Cabinet:</span>
           <label className="text-xs text-slate-600">Width (in)</label>
-          <input type="number" step="0.5" inputMode="decimal"
-            className="w-16 h-8 text-sm border border-amber-300 rounded-lg px-2 bg-white"
-            value={editDim.w}
-            onChange={e => setEditDim(prev => ({ ...prev, w: e.target.value }))}
-            onPointerDown={e => e.stopPropagation()} />
+          <input type="number" step="0.5" inputMode="decimal" className="w-16 h-8 text-sm border border-amber-300 rounded-lg px-2 bg-white"
+            value={editDim.w} onChange={e => setEditDim(prev => ({ ...prev, w: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
           <label className="text-xs text-slate-600">Depth (in)</label>
-          <input type="number" step="0.5" inputMode="decimal"
-            className="w-16 h-8 text-sm border border-amber-300 rounded-lg px-2 bg-white"
-            value={editDim.h}
-            onChange={e => setEditDim(prev => ({ ...prev, h: e.target.value }))}
-            onPointerDown={e => e.stopPropagation()} />
+          <input type="number" step="0.5" inputMode="decimal" className="w-16 h-8 text-sm border border-amber-300 rounded-lg px-2 bg-white"
+            value={editDim.h} onChange={e => setEditDim(prev => ({ ...prev, h: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
           {selectedHasWall && (
             <>
-              <label className="text-xs text-slate-600">Offset from wall start (in)</label>
-              <input type="number" step="0.5" inputMode="decimal"
-                className="w-16 h-8 text-sm border border-amber-300 rounded-lg px-2 bg-white"
-                value={editDim.offset}
-                onChange={e => setEditDim(prev => ({ ...prev, offset: e.target.value }))}
-                onPointerDown={e => e.stopPropagation()} />
+              <label className="text-xs text-slate-600">Offset (in)</label>
+              <input type="number" step="0.5" inputMode="decimal" className="w-16 h-8 text-sm border border-amber-300 rounded-lg px-2 bg-white"
+                value={editDim.offset} onChange={e => setEditDim(prev => ({ ...prev, offset: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
             </>
           )}
           <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg touch-manipulation">Apply</button>
@@ -982,23 +986,17 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         </div>
       )}
 
-      {/* Edit bar — wall selected */}
+      {/* Edit bar — wall */}
       {selectedPath?.type === "line" && (
         <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border-b border-blue-200 flex-wrap">
           <Edit3 className="w-3.5 h-3.5 text-blue-700 flex-shrink-0" />
           <span className="text-xs font-semibold text-blue-800">Wall:</span>
           <label className="text-xs text-slate-600">Length (in)</label>
-          <input type="number" step="1" inputMode="decimal"
-            className="w-20 h-8 text-sm border border-blue-300 rounded-lg px-2 bg-white"
-            value={editDim.len}
-            onChange={e => setEditDim(prev => ({ ...prev, len: e.target.value }))}
-            onPointerDown={e => e.stopPropagation()} />
+          <input type="number" step="1" inputMode="decimal" className="w-20 h-8 text-sm border border-blue-300 rounded-lg px-2 bg-white"
+            value={editDim.len} onChange={e => setEditDim(prev => ({ ...prev, len: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
           <label className="text-xs text-slate-600">Angle (°)</label>
-          <input type="number" step="1" inputMode="decimal"
-            className="w-16 h-8 text-sm border border-blue-300 rounded-lg px-2 bg-white"
-            value={editDim.angle}
-            onChange={e => setEditDim(prev => ({ ...prev, angle: e.target.value }))}
-            onPointerDown={e => e.stopPropagation()} />
+          <input type="number" step="1" inputMode="decimal" className="w-16 h-8 text-sm border border-blue-300 rounded-lg px-2 bg-white"
+            value={editDim.angle} onChange={e => setEditDim(prev => ({ ...prev, angle: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
           <span className="text-xs text-slate-500">{editDim.len}" = {((parseFloat(editDim.len)||0)/12).toFixed(2)} LF</span>
           <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white rounded-lg touch-manipulation">Apply</button>
           <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg touch-manipulation">Delete</button>
@@ -1006,18 +1004,51 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         </div>
       )}
 
-      {/* Edit bar — door/window selected */}
-      {selectedPath?.type === "symbol" && (selectedPath.symbolKey === "door" || selectedPath.symbolKey === "window") && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 border-b border-indigo-200 flex-wrap">
-          <Edit3 className="w-3.5 h-3.5 text-indigo-700 flex-shrink-0" />
-          <span className="text-xs font-semibold text-indigo-800 capitalize">{selectedPath.symbolKey}:</span>
+      {/* Edit bar — door */}
+      {selectedIsDoor && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-violet-50 border-b border-violet-200 flex-wrap">
+          <Edit3 className="w-3.5 h-3.5 text-violet-700 flex-shrink-0" />
+          <span className="text-xs font-semibold text-violet-800">Door:</span>
           <label className="text-xs text-slate-600">Width (in)</label>
-          <input type="number" step="1" inputMode="decimal"
-            className="w-16 h-8 text-sm border border-indigo-300 rounded-lg px-2 bg-white"
-            value={editDim.symW}
-            onChange={e => setEditDim(prev => ({ ...prev, symW: e.target.value }))}
-            onPointerDown={e => e.stopPropagation()} />
-          <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg touch-manipulation">Apply</button>
+          <input type="number" step="1" inputMode="decimal" className="w-16 h-8 text-sm border border-violet-300 rounded-lg px-2 bg-white"
+            value={editDim.symW} onChange={e => setEditDim(prev => ({ ...prev, symW: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
+          {selectedIsWallSym && (
+            <>
+              <label className="text-xs text-slate-600">Offset (in)</label>
+              <input type="number" step="0.5" inputMode="decimal" className="w-16 h-8 text-sm border border-violet-300 rounded-lg px-2 bg-white"
+                value={editDim.offset} onChange={e => setEditDim(prev => ({ ...prev, offset: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
+            </>
+          )}
+          <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-violet-500 hover:bg-violet-600 text-white rounded-lg touch-manipulation">Apply</button>
+          <div className="w-px h-5 bg-violet-300 mx-0.5" />
+          <span className="text-xs text-slate-600 font-medium">Hinge:</span>
+          {swingBtn("◀ Left",  selectedPath.hingeLeft === true,  () => { const u=[...localPaths.current]; u[selectedIdx]={...selectedPath,hingeLeft:true}; commitPaths(u); })}
+          {swingBtn("Right ▶", selectedPath.hingeLeft === false, () => { const u=[...localPaths.current]; u[selectedIdx]={...selectedPath,hingeLeft:false}; commitPaths(u); })}
+          <div className="w-px h-5 bg-violet-300 mx-0.5" />
+          <span className="text-xs text-slate-600 font-medium">Swing:</span>
+          {swingBtn("Into Room",   selectedPath.swingIn === true,  () => { const u=[...localPaths.current]; u[selectedIdx]={...selectedPath,swingIn:true}; commitPaths(u); })}
+          {swingBtn("Out of Room", selectedPath.swingIn === false, () => { const u=[...localPaths.current]; u[selectedIdx]={...selectedPath,swingIn:false}; commitPaths(u); })}
+          <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg touch-manipulation">Delete</button>
+          <button onClick={() => selectItem(null)} className="px-2 h-8 text-xs text-slate-500 border border-slate-200 rounded-lg touch-manipulation">✕</button>
+        </div>
+      )}
+
+      {/* Edit bar — window */}
+      {selectedPath?.type === "symbol" && selectedPath.symbolKey === "window" && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-sky-50 border-b border-sky-200 flex-wrap">
+          <Edit3 className="w-3.5 h-3.5 text-sky-700 flex-shrink-0" />
+          <span className="text-xs font-semibold text-sky-800">Window:</span>
+          <label className="text-xs text-slate-600">Width (in)</label>
+          <input type="number" step="1" inputMode="decimal" className="w-16 h-8 text-sm border border-sky-300 rounded-lg px-2 bg-white"
+            value={editDim.symW} onChange={e => setEditDim(prev => ({ ...prev, symW: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
+          {selectedIsWallSym && (
+            <>
+              <label className="text-xs text-slate-600">Offset (in)</label>
+              <input type="number" step="0.5" inputMode="decimal" className="w-16 h-8 text-sm border border-sky-300 rounded-lg px-2 bg-white"
+                value={editDim.offset} onChange={e => setEditDim(prev => ({ ...prev, offset: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
+            </>
+          )}
+          <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-sky-500 hover:bg-sky-600 text-white rounded-lg touch-manipulation">Apply</button>
           <span className="text-xs text-slate-500">{editDim.symW}" = {((parseFloat(editDim.symW)||0)/12).toFixed(2)} ft</span>
           <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg touch-manipulation">Delete</button>
           <button onClick={() => selectItem(null)} className="px-2 h-8 text-xs text-slate-500 border border-slate-200 rounded-lg touch-manipulation">✕</button>
@@ -1035,12 +1066,8 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <div style={{ width: CANVAS_W * zoom, height: CANVAS_H * zoom, position: "relative", flexShrink: 0 }}>
           <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H}
-            style={{
-              cursor: tool === "eraser" ? "cell" : tool === "symbol" ? "copy" : tool === "select" ? "pointer" : "crosshair",
-              touchAction: "none", display: "block", width: CANVAS_W * zoom, height: CANVAS_H * zoom,
-            }}
-            onPointerDown={onPointerDown} onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
+            style={{ cursor: tool === "eraser" ? "cell" : tool === "symbol" ? "copy" : tool === "select" ? "pointer" : "crosshair", touchAction: "none", display: "block", width: CANVAS_W * zoom, height: CANVAS_H * zoom }}
+            onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
           />
         </div>
       </div>
