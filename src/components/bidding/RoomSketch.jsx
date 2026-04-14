@@ -51,7 +51,7 @@ function getSnapCandidates(paths) {
 
 /** Smart snap: prefer snapping to existing objects, fall back to grid */
 function smartSnap(rawX, rawY, paths, isFirstPoint) {
-  if (!isFirstPoint && paths.length > 0) {
+  if (paths.length > 0) {
     const candidates = getSnapCandidates(paths);
     let best = null, bestDist = SNAP_OBJECT_RADIUS;
     candidates.forEach(c => {
