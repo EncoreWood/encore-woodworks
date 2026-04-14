@@ -120,8 +120,8 @@ function drawSymbol(ctx, sym, zoom) {
   const lw = 1 / zoom;
   ctx.save();
   if (sym.symbolKey === "rollout") {
-    // Draw rollout/insert with arrow pointing downward
-    const { x, y, label } = sym;
+    // Draw rollout/insert with arrow pointing to target
+    const { x, y, label, targetX, targetY } = sym;
     const fontSize = 11 * lw;
     ctx.font = `bold ${fontSize}px sans-serif`;
     ctx.textAlign = "center";
@@ -141,24 +141,32 @@ function drawSymbol(ctx, sym, zoom) {
     ctx.fillStyle = "#d97706";
     ctx.fillText(label || "Rollout", x, y);
     
-    // Draw arrow pointing downward to indicate placement location
+    // Draw arrow to target or default downward
     const arrowStartY = y + boxH / 2 + 4 * lw;
-    const arrowLen = 30 * lw;
+    const endX = targetX ?? x;
+    const endY = targetY ?? (arrowStartY + 30 * lw);
+    const dx = endX - x;
+    const dy = endY - arrowStartY;
+    const dist = Math.hypot(dx, dy);
     const arrowHeadLen = 12 * lw;
+    
     ctx.strokeStyle = "#d97706";
     ctx.lineWidth = 2 * lw;
     ctx.beginPath();
     ctx.moveTo(x, arrowStartY);
-    ctx.lineTo(x, arrowStartY + arrowLen);
+    ctx.lineTo(endX, endY);
     ctx.stroke();
     
     // Arrowhead
-    ctx.beginPath();
-    ctx.moveTo(x, arrowStartY + arrowLen);
-    ctx.lineTo(x - arrowHeadLen * 0.35, arrowStartY + arrowLen - arrowHeadLen * 0.7);
-    ctx.moveTo(x, arrowStartY + arrowLen);
-    ctx.lineTo(x + arrowHeadLen * 0.35, arrowStartY + arrowLen - arrowHeadLen * 0.7);
-    ctx.stroke();
+    if (dist > 0) {
+      const angle = Math.atan2(dy, dx);
+      ctx.beginPath();
+      ctx.moveTo(endX, endY);
+      ctx.lineTo(endX - arrowHeadLen * Math.cos(angle - Math.PI / 6), endY - arrowHeadLen * Math.sin(angle - Math.PI / 6));
+      ctx.moveTo(endX, endY);
+      ctx.lineTo(endX - arrowHeadLen * Math.cos(angle + Math.PI / 6), endY - arrowHeadLen * Math.sin(angle + Math.PI / 6));
+      ctx.stroke();
+    }
   } else if (sym.symbolKey === "door" || sym.symbolKey === "window") {
     const { anchorX, anchorY, wallAngle = 0 } = sym;
     ctx.translate(anchorX, anchorY);
@@ -625,13 +633,19 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
         if (d < 14 && inBounds) return i;
       }
       if (p.type === "symbol") {
-        if (p.anchorX !== undefined) {
-          if ((p.symbolKey === "door" || p.symbolKey === "window") ? hitTestWallSymbol(pos, p) : Math.hypot(pos.x - p.anchorX, pos.y - p.anchorY) < 28)
-            return i;
-        } else if (p.x !== undefined) {
-          if (Math.hypot(pos.x - p.x, pos.y - p.y) < 28) return i;
-        }
-      }
+         if (p.anchorX !== undefined) {
+           if ((p.symbolKey === "door" || p.symbolKey === "window") ? hitTestWallSymbol(pos, p) : Math.hypot(pos.x - p.anchorX, pos.y - p.anchorY) < 28)
+             return i;
+         } else if (p.x !== undefined) {
+           if (Math.hypot(pos.x - p.x, pos.y - p.y) < 28) return i;
+           // Check if clicking on rollout arrow endpoint
+           if (p.symbolKey === "rollout") {
+             const endX = p.targetX ?? p.x;
+             const endY = p.targetY ?? (p.y + 40);
+             if (Math.hypot(pos.x - endX, pos.y - endY) < 20) return i;
+           }
+         }
+       }
     }
     return null;
   };
@@ -778,8 +792,18 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
       let updated = [...localPaths.current];
       const p = origPath;
       if (p.type === "symbol" && p.symbolKey === "rollout") {
-        // Moving rollout label - drag to update target point or label position
-        updated[idx] = { ...p, x: p.x + dx, y: p.y + dy };
+        // Check if dragging arrow endpoint or label
+        const endX = p.targetX ?? p.x;
+        const endY = p.targetY ?? (p.y + 40);
+        const distToEnd = Math.hypot(raw.x - endX, raw.y - endY);
+        const distToLabel = Math.hypot(raw.x - p.x, raw.y - p.y);
+        if (distToEnd < distToLabel) {
+          // Dragging arrow endpoint
+          updated[idx] = { ...p, targetX: snapToGrid(endX + dx), targetY: snapToGrid(endY + dy) };
+        } else {
+          // Dragging label
+          updated[idx] = { ...p, x: p.x + dx, y: p.y + dy, targetX: (p.targetX ?? p.x) + dx, targetY: (p.targetY ?? (p.y + 40)) + dy };
+        }
       } else if (p.type === "highlight") {
         if (p.wallAngle !== undefined) {
           // Use current raw cursor position to find nearest wall — allows dragging to a different wall
