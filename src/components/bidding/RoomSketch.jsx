@@ -625,7 +625,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
             onChange={e => setEditDim(prev => ({ ...prev, h: e.target.value }))} />
           <button onClick={applyDimEdit} className="px-3 h-7 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg">Apply</button>
           <span className="text-xs text-slate-500">
-            {(() => { const wIn = parseFloat(editDim.w)||0; const hIn = parseFloat(editDim.h)||0; const totalIn = wIn*2+hIn*2; return `= ${totalIn}" total (${(totalIn/12).toFixed(2)} LF)`; })()}
+            {(() => { const wIn = parseFloat(editDim.w)||0; const totalIn = wIn; return `= ${totalIn}" (${(totalIn/12).toFixed(2)} LF)`; })()}
           </span>
           <button onClick={deleteSelected} className="ml-auto px-3 h-7 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
           <button onClick={() => selectItem(null)} className="px-2 h-7 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-100">✕</button>
