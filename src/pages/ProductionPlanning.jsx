@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, Plus, CheckCircle2, Clock, AlertCircle, Truck, Home, Zap, GripVertical, X } from "lucide-react";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { ChevronLeft, CheckCircle2, Clock, AlertCircle, Truck, Home, Zap, GripVertical } from "lucide-react";
 
 const PHASE_CONFIG = {
   template: { label: "Template", color: "bg-gray-200 text-gray-700" },
@@ -57,14 +56,7 @@ export default function ProductionPlanning() {
     enabled: !!selectedProjectId,
   });
 
-  const { data: jobPackets = [] } = useQuery({
-    queryKey: ["job_packets", selectedProjectId],
-    queryFn: () =>
-      selectedProjectId
-        ? base44.entities.JobPacket.filter({ project_id: selectedProjectId })
-        : Promise.resolve([]),
-    enabled: !!selectedProjectId,
-  });
+
 
   const { data: productionItems = [] } = useQuery({
     queryKey: ["production_items", selectedProjectId],
@@ -245,12 +237,10 @@ export default function ProductionPlanning() {
             const StatusIcon = STATUS_CONFIG[room.status]?.icon || Home;
             const isEditing = editingRoomId === room.id;
 
-            const packet = jobPackets.find((p) => p.room_id === room.id);
             const isExpanded = expandedRoomId === room.id;
-            const packetItems = packet?.production_item_ids || [];
-            const packetProgress = packet
-              ? Math.round((packet.sent_to_production_count / packet.total_count) * 100) || 0
-              : 0;
+            const roomCards = productionItems.filter((item) => item.room_name === room.room_name);
+            const cardsInProduction = roomCards.filter((item) => item.stage !== "complete").length;
+            const cardProgress = roomCards.length > 0 ? Math.round((cardsInProduction / roomCards.length) * 100) : 0;
 
             return (
               <Card key={room.id} className="p-4 border-l-4 border-l-slate-300">
@@ -268,9 +258,9 @@ export default function ProductionPlanning() {
                         {room.completed_points} / {room.planned_points} pts
                       </div>
                     )}
-                    {packet && packet.total_count > 0 && (
+                    {roomCards.length > 0 && (
                       <div className="flex items-center gap-1 mt-1 text-xs text-slate-500">
-                        📦 {packet.sent_to_production_count} / {packet.total_count} cards
+                        📦 {cardsInProduction} / {roomCards.length} cards sent to production
                       </div>
                     )}
                   </div>
@@ -310,28 +300,28 @@ export default function ProductionPlanning() {
                   </SelectContent>
                 </Select>
 
-                {/* Job Packet Section */}
-                {packet && packet.total_count > 0 && (
+                {/* Production Cards Section */}
+                {roomCards.length > 0 && (
                   <div className="mb-3 p-2 bg-slate-50 rounded border border-slate-200">
                     <button
                       onClick={() => setExpandedRoomId(isExpanded ? null : room.id)}
                       className="w-full flex items-center justify-between text-left text-xs font-semibold text-slate-700 hover:text-slate-900"
                     >
-                      <span>Job Packet ({packetProgress}% sent to production)</span>
+                      <span>Job Cards ({cardProgress}% in production)</span>
                       <span>{isExpanded ? "▼" : "▶"}</span>
                     </button>
                     {isExpanded && (
                       <div className="mt-2 bg-white rounded border border-slate-200 max-h-48 overflow-y-auto">
                         <div className="space-y-1 p-2">
-                          {packetItems.map((item, idx) => {
-                            const prodItem = productionItems.find((p) => p.id === item.id);
-                            return (
-                              <div key={item.id} className="flex items-center gap-2 text-xs p-2 bg-slate-50 rounded">
+                          {roomCards.map((card) => (
+                            <div key={card.id} className="flex items-center gap-2 text-xs p-2 bg-slate-50 rounded justify-between">
+                              <div className="flex items-center gap-2 flex-1">
                                 <GripVertical className="w-3 h-3 text-slate-400" />
-                                <span className="flex-1 truncate">{prodItem?.name || "Unknown"}</span>
+                                <span className="flex-1 truncate">{card.name}</span>
                               </div>
-                            );
-                          })}
+                              <span className="text-slate-500">{card.stage}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
