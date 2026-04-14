@@ -1,10 +1,15 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Printer, X } from "lucide-react";
+import { Printer, X, Mail, Loader2 } from "lucide-react";
+import { base44 } from "@/api/base44Client";
 
 export default function BidClientView({ open, onClose, bid, bidType }) {
   const printRef = useRef();
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [emailTo, setEmailTo] = useState("");
 
   if (!bid) return null;
 
@@ -12,6 +17,29 @@ export default function BidClientView({ open, onClose, bid, bidType }) {
   const grandTotal = rooms.reduce((s, room) =>
     s + (room.items || []).reduce((rs, item) => rs + (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0), 0), 0
   );
+
+  const handleSendEmail = async () => {
+    if (!emailTo) return;
+    setSendingEmail(true);
+    const content = printRef.current.innerHTML;
+    const emailBody = `
+      <html><head><style>
+        body { font-family: Georgia, serif; color: #1e1e1e; background: white; padding: 40px; max-width: 800px; margin: 0 auto; }
+        table { width: 100%; border-collapse: collapse; }
+        td, th { padding: 8px 14px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+        th { background: #f8fafc; font-weight: 600; color: #64748b; font-size: 11px; text-transform: uppercase; }
+      </style></head><body>${content}</body></html>
+    `;
+    await base44.integrations.Core.SendEmail({
+      to: emailTo,
+      subject: `Cabinet Estimate — ${bid.project_name || "Your Project"}`,
+      body: emailBody,
+    });
+    setSendingEmail(false);
+    setEmailSent(true);
+    setShowEmailInput(false);
+    setTimeout(() => setEmailSent(false), 3000);
+  };
 
   const handlePrint = () => {
     const content = printRef.current.innerHTML;
@@ -73,9 +101,31 @@ export default function BidClientView({ open, onClose, bid, bidType }) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0">
         {/* Toolbar */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 bg-slate-50 sticky top-0 z-10 flex-wrap gap-2">
           <span className="font-semibold text-slate-800">Client Bid Preview</span>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center flex-wrap">
+            {showEmailInput ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="email"
+                  value={emailTo}
+                  onChange={e => setEmailTo(e.target.value)}
+                  placeholder="client@email.com"
+                  className="h-9 px-3 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 w-52"
+                  autoFocus
+                  onKeyDown={e => e.key === "Enter" && handleSendEmail()}
+                />
+                <Button onClick={handleSendEmail} disabled={sendingEmail || !emailTo} className="bg-blue-600 hover:bg-blue-700 h-9">
+                  {sendingEmail ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Mail className="w-4 h-4 mr-1" />}
+                  Send
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowEmailInput(false)} className="h-9">Cancel</Button>
+              </div>
+            ) : (
+              <Button onClick={() => setShowEmailInput(true)} variant="outline" className="h-9 border-blue-300 text-blue-700 hover:bg-blue-50">
+                {emailSent ? <><Mail className="w-4 h-4 mr-1" /> Sent!</> : <><Mail className="w-4 h-4 mr-1.5" /> Send via Email</>}
+              </Button>
+            )}
             <Button onClick={handlePrint} className="bg-amber-600 hover:bg-amber-700 h-9">
               <Printer className="w-4 h-4 mr-1.5" /> Print / Save PDF
             </Button>

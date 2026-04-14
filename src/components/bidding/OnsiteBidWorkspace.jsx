@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Check, Plus, Trash2, X, Send, Settings2, Link2, Search, Camera, ChevronDown, ChevronUp, PenLine } from "lucide-react";
+import { ArrowLeft, Save, Check, Plus, Trash2, X, Send, Settings2, Link2, Search, Camera, ChevronDown, ChevronUp, PenLine, Paperclip, FileText, ExternalLink, Loader2 } from "lucide-react";
 import PhotoAnnotator from "./PhotoAnnotator";
 import { createPageUrl } from "@/utils";
 import BidPricingSettings from "./BidPricingSettings";
@@ -182,6 +182,9 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
   const [allProjects, setAllProjects] = useState([]);
   const [uploadingRoomId, setUploadingRoomId] = useState(null);
   const [annotatingPhoto, setAnnotatingPhoto] = useState(null); // { roomId, photoIdx, photo }
+  const [bidFiles, setBidFiles] = useState([]);
+  const [uploadingBidFile, setUploadingBidFile] = useState(false);
+  const [creatingProject, setCreatingProject] = useState(false);
   const [estimatedBy, setEstimatedBy] = useState("");
   const [employees, setEmployees] = useState([]);
 
@@ -214,6 +217,31 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
       setLinkedProjectId(linkedProject.id);
     }
   }, [linkedProject, bidId]);
+
+  const handleBidFileUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    setUploadingBidFile(true);
+    const uploaded = await Promise.all(files.map(f => base44.integrations.Core.UploadFile({ file: f })));
+    setBidFiles(prev => [...prev, ...uploaded.map((r, i) => ({ url: r.file_url, name: files[i].name, type: files[i].type }))]);
+    setUploadingBidFile(false);
+  };
+
+  const handleCreateProjectFromBid = async () => {
+    setCreatingProject(true);
+    const newProject = await base44.entities.Project.create({
+      project_name: projectName || "New Project from Bid",
+      client_name: clientName,
+      address,
+      status: "inquiry",
+      project_type: "kitchen",
+      notes: notes,
+    });
+    setLinkedProjectId(newProject.id);
+    setShowLinkProjectDialog(false);
+    setCreatingProject(false);
+    if (bidId) await base44.entities.Bid.update(bidId, { project_id: newProject.id });
+  };
 
   useEffect(() => {
     // First try to restore from localStorage draft (crash protection)
@@ -446,6 +474,32 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
           </div>
         </Card>
 
+        {/* Bid Attachments */}
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-slate-900 flex items-center gap-2"><Paperclip className="w-4 h-4" /> Attachments</h2>
+            <label className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border cursor-pointer transition-colors ${uploadingBidFile ? "border-amber-300 bg-amber-50 text-amber-700" : "border-slate-300 text-slate-600 hover:bg-slate-50"}`}>
+              <Paperclip className="w-3.5 h-3.5" />
+              {uploadingBidFile ? "Uploading..." : "Attach File"}
+              <input type="file" multiple accept="*/*" onChange={handleBidFileUpload} className="hidden" disabled={uploadingBidFile} />
+            </label>
+          </div>
+          {bidFiles.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-3 border border-dashed border-slate-200 rounded-lg">No attachments yet — add recordings, PDFs, drawings, etc.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {bidFiles.map((f, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
+                  <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                  <span className="text-sm text-slate-700 flex-1 truncate">{f.name}</span>
+                  <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-amber-600 hover:text-amber-700"><ExternalLink className="w-3.5 h-3.5" /></a>
+                  <button onClick={() => setBidFiles(prev => prev.filter((_, j) => j !== i))} className="text-slate-400 hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
         {/* Cabinet Style */}
         <Card className="p-4 sm:p-5">
           <div className="flex items-center justify-between mb-3">
@@ -582,6 +636,8 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
                   <RoomSketch
                    sketchId={`${autoSaveKey}_room_${room.id}`}
                    paths={room.sketch_paths || []}
+                   ceilingHeight={room.ceiling_height || ""}
+                   onCeilingHeightChange={val => updateRoom(room.id, { ceiling_height: val })}
                    onPathsChange={paths => updateRoom(room.id, { sketch_paths: paths })}
                     onHighlightsChange={highlights => {
                       // Combine highlights with the same cabKey, summing their LF
@@ -660,11 +716,15 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
       <Dialog open={showLinkProjectDialog} onOpenChange={setShowLinkProjectDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Link to Project</DialogTitle></DialogHeader>
+          <button onClick={handleCreateProjectFromBid} disabled={creatingProject}
+            className="w-full flex items-center gap-2 px-3 py-2.5 mb-3 rounded-lg border-2 border-dashed border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-sm transition-all">
+            {creatingProject ? <><Loader2 className="w-4 h-4 animate-spin" /> Creating...</> : <><Plus className="w-4 h-4" /> Create New Project from this Bid</>}
+          </button>
           <div className="relative mb-3">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="Search projects..." value={projectSearch} onChange={e => setProjectSearch(e.target.value)} autoFocus />
+            <input className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" placeholder="Search existing projects..." value={projectSearch} onChange={e => setProjectSearch(e.target.value)} autoFocus />
           </div>
-          <div className="max-h-72 overflow-y-auto space-y-1">
+          <div className="max-h-60 overflow-y-auto space-y-1">
             {allProjects.filter(p => !projectSearch || p.project_name?.toLowerCase().includes(projectSearch.toLowerCase()) || p.client_name?.toLowerCase().includes(projectSearch.toLowerCase())).map(p => (
               <button key={p.id} onClick={() => handleLinkProject(p)} className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-50 border border-transparent hover:border-amber-200">
                 <div className="font-medium text-sm text-slate-800">{p.project_name}</div>

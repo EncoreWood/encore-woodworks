@@ -423,7 +423,7 @@ function hitTestWallSymbol(pos, sym) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, sketchId }) {
+export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, sketchId, ceilingHeight, onCeilingHeightChange }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -1159,7 +1159,20 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
             </span>
           );
         })}
-        <span className="text-xs text-slate-400 ml-auto">🟡 snap &nbsp;⚫ grid</span>
+        {/* Ceiling Height */}
+        <div className="flex items-center gap-1.5 ml-auto">
+          <span className="text-xs font-semibold text-slate-600">CLG Height:</span>
+          <input
+            type="number" step="1" min="60" max="240"
+            value={ceilingHeight || ""}
+            onChange={e => onCeilingHeightChange?.(e.target.value)}
+            placeholder="96"
+            className="w-14 h-7 text-xs border border-slate-300 rounded-lg px-2 bg-white text-center"
+            onPointerDown={e => e.stopPropagation()}
+          />
+          <span className="text-xs text-slate-400">in</span>
+          {ceilingHeight && <span className="text-xs text-slate-500">({(ceilingHeight/12).toFixed(1)} ft)</span>}
+        </div>
       </div>
     </div>
   );
