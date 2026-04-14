@@ -1,0 +1,54 @@
+{
+  "name": "RoomProductionPlanning",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for reference"
+    },
+    "room_name": {
+      "type": "string",
+      "description": "Name of the room"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "in_progress",
+        "on_hold",
+        "ready_for_delivery",
+        "installed",
+        "complete"
+      ],
+      "default": "planned",
+      "description": "Current status of room production"
+    },
+    "planned_points": {
+      "type": "number",
+      "default": 0,
+      "description": "Total points allocated for this room (sum of ProductionItems)"
+    },
+    "completed_points": {
+      "type": "number",
+      "default": 0,
+      "description": "Points already completed in this room"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Status notes or blockers"
+    },
+    "updated_at": {
+      "type": "string",
+      "description": "Last update timestamp"
+    }
+  },
+  "required": [
+    "project_id",
+    "project_name",
+    "room_name"
+  ]
+}
