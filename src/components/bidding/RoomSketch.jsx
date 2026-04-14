@@ -717,7 +717,8 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
 
   // ── Pointer events ────────────────────────────────────────────────────────
   const onPointerDown = (e) => {
-    e.preventDefault();
+    // Don't prevent default on select/dropdown interactions
+    if (e.target.tagName !== "SELECT") e.preventDefault();
     e.target.setPointerCapture?.(e.pointerId);
     isDrawing.current = true;
     const raw = getRawPos(e);

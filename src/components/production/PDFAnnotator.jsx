@@ -57,10 +57,12 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   // Pan handlers (mouse & single-touch drag)
   const handlePanPointerDown = (e) => {
     if (tool !== "pan") return;
+    e.preventDefault();
     panStartRef.current = { x: e.clientX, y: e.clientY, scrollLeft: scrollContainerRef.current?.scrollLeft || 0, scrollTop: scrollContainerRef.current?.scrollTop || 0 };
   };
   const handlePanPointerMove = (e) => {
     if (tool !== "pan" || !panStartRef.current) return;
+    e.preventDefault();
     const dx = e.clientX - panStartRef.current.x;
     const dy = e.clientY - panStartRef.current.y;
     if (scrollContainerRef.current) {
