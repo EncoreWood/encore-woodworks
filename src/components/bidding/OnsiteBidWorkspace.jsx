@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -7,12 +7,13 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Check, Plus, Trash2, Pencil, Eraser, Undo2, X, Send, Settings2, Link2, Search, Camera, ChevronDown, ChevronUp, Minus } from "lucide-react";
+import { ArrowLeft, Save, Check, Plus, Trash2, X, Send, Settings2, Link2, Search, Camera, ChevronDown, ChevronUp } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import BidPricingSettings from "./BidPricingSettings";
 import BidClientView from "./BidClientView";
 import BidCatalogEditor from "./BidCatalogEditor";
 import { getCategoryStyle } from "./BidCatalogEditor";
+import RoomSketch from "./RoomSketch";
 
 // Aliases for use inside RoomItemsEditor to avoid naming conflicts
 const UISelect = Select, UISelectContent = SelectContent, UISelectItem = SelectItem, UISelectTrigger = SelectTrigger, UISelectValue = SelectValue;
@@ -25,297 +26,7 @@ const BID_STYLES = [
   { key: "high_end_face_frame", label: "Tier 3 Face Frame" },
 ];
 
-const COLORS = ["#1e1e1e", "#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6"];
-const THICKNESS = { thin: 1.5, medium: 3.5, thick: 7 };
 
-// Cabinet type highlight colors for the sketch toolbar
-const CAB_HIGHLIGHTS = [
-  { key: "base",  label: "Base",  color: "#bfdbfe" },
-  { key: "upper", label: "Upper", color: "#bbf7d0" },
-  { key: "tall",  label: "Tall",  color: "#fde68a" },
-  { key: "misc",  label: "Misc",  color: "#e9d5ff" },
-];
-
-// Symbols that can be stamped onto the canvas
-const SYMBOLS = [
-  { key: "outlet",  label: "Outlet",  draw: (ctx, x, y, s) => {
-    ctx.strokeStyle = "#1e40af"; ctx.lineWidth = 2; ctx.fillStyle = "#dbeafe";
-    ctx.beginPath(); ctx.rect(x - s, y - s, s * 2, s * 2); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(x - s * 0.3, y, s * 0.25, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(x + s * 0.3, y, s * 0.25, 0, Math.PI * 2); ctx.stroke();
-  }},
-  { key: "switch", label: "Switch", draw: (ctx, x, y, s) => {
-    ctx.strokeStyle = "#065f46"; ctx.lineWidth = 2; ctx.fillStyle = "#d1fae5";
-    ctx.beginPath(); ctx.rect(x - s, y - s, s * 2, s * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "#065f46";
-    ctx.beginPath(); ctx.rect(x - s * 0.3, y - s * 0.55, s * 0.6, s * 0.7); ctx.fill();
-    // S label
-    ctx.fillStyle = "#065f46"; ctx.font = `bold ${s * 0.7}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("S", x, y + s * 0.3);
-  }},
-  { key: "plumbing", label: "Plumbing", draw: (ctx, x, y, s) => {
-    ctx.strokeStyle = "#1d4ed8"; ctx.lineWidth = 2.5; ctx.fillStyle = "#eff6ff";
-    ctx.beginPath(); ctx.arc(x, y, s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    // pipe cross
-    ctx.beginPath(); ctx.moveTo(x, y - s * 0.6); ctx.lineTo(x, y + s * 0.6); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x - s * 0.6, y); ctx.lineTo(x + s * 0.6, y); ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, y, s * 0.25, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  }},
-];
-
-// ── Room Sketch Canvas ──────────────────────────────────────────────────────────
-function RoomSketch({ paths, onPathsChange }) {
-  const canvasRef = useRef(null);
-  const [tool, setTool] = useState("pen"); // pen | eraser | line | highlight | symbol
-  const [color, setColor] = useState("#1e1e1e");
-  const [thickness, setThickness] = useState("medium");
-  const [activeHighlight, setActiveHighlight] = useState(null); // key of CAB_HIGHLIGHTS
-  const [activeSymbol, setActiveSymbol] = useState(null); // key of SYMBOLS
-
-  const toolRef = useRef("pen");
-  const colorRef = useRef("#1e1e1e");
-  const thicknessRef = useRef("medium");
-  const activeHighlightRef = useRef(null);
-  const activeSymbolRef = useRef(null);
-  const isDrawing = useRef(false);
-  const lineStart = useRef(null);
-  const currentPath = useRef([]);
-  const localPaths = useRef(paths || []);
-  const rafScheduled = useRef(false);
-
-  useEffect(() => { toolRef.current = tool; }, [tool]);
-  useEffect(() => { colorRef.current = color; }, [color]);
-  useEffect(() => { thicknessRef.current = thickness; }, [thickness]);
-  useEffect(() => { activeHighlightRef.current = activeHighlight; }, [activeHighlight]);
-  useEffect(() => { activeSymbolRef.current = activeSymbol; }, [activeSymbol]);
-  useEffect(() => { localPaths.current = paths || []; scheduleRedraw(); }, [paths]);
-
-  const scheduleRedraw = () => {
-    if (rafScheduled.current) return;
-    rafScheduled.current = true;
-    requestAnimationFrame(() => { rafScheduled.current = false; redrawCanvas(); });
-  };
-
-  const drawSymbolOnCtx = (ctx, sym, x, y, size = 18) => {
-    ctx.save();
-    sym.draw(ctx, x, y, size);
-    ctx.restore();
-  };
-
-  const redrawCanvas = (previewLine) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // Grid
-    ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 0.5;
-    for (let x = 0; x < canvas.width; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
-    for (let y = 0; y < canvas.height; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
-    // Draw all saved paths/shapes
-    localPaths.current.forEach(path => {
-      if (path.type === "symbol") {
-        const sym = SYMBOLS.find(s => s.key === path.symbolKey);
-        if (sym) drawSymbolOnCtx(ctx, sym, path.x, path.y, path.size || 18);
-        return;
-      }
-      if (path.type === "highlight") {
-        if (path.points.length < 2) return;
-        ctx.save();
-        ctx.globalAlpha = 0.35;
-        ctx.strokeStyle = path.color; ctx.lineWidth = 22; ctx.lineCap = "square"; ctx.lineJoin = "round";
-        ctx.beginPath();
-        path.points.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
-        ctx.stroke();
-        ctx.restore();
-        return;
-      }
-      if (path.points.length < 2) return;
-      ctx.strokeStyle = path.color; ctx.lineWidth = path.lineWidth; ctx.lineCap = "round"; ctx.lineJoin = "round";
-      ctx.beginPath();
-      path.points.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
-      ctx.stroke();
-    });
-    // Draw current freehand path preview
-    if (currentPath.current.length > 1) {
-      const t = toolRef.current;
-      if (t === "highlight") {
-        ctx.save(); ctx.globalAlpha = 0.35;
-        ctx.strokeStyle = CAB_HIGHLIGHTS.find(h => h.key === activeHighlightRef.current)?.color || "#fde68a";
-        ctx.lineWidth = 22; ctx.lineCap = "square"; ctx.lineJoin = "round";
-        ctx.beginPath();
-        currentPath.current.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
-        ctx.stroke(); ctx.restore();
-      } else {
-        ctx.strokeStyle = colorRef.current; ctx.lineWidth = THICKNESS[thicknessRef.current]; ctx.lineCap = "round"; ctx.lineJoin = "round";
-        ctx.beginPath();
-        currentPath.current.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
-        ctx.stroke();
-      }
-    }
-    // Line tool preview
-    if (previewLine && toolRef.current === "line") {
-      ctx.strokeStyle = colorRef.current; ctx.lineWidth = THICKNESS[thicknessRef.current]; ctx.lineCap = "round";
-      ctx.setLineDash([6, 4]);
-      ctx.beginPath(); ctx.moveTo(previewLine.x1, previewLine.y1); ctx.lineTo(previewLine.x2, previewLine.y2); ctx.stroke();
-      ctx.setLineDash([]);
-    }
-  };
-
-  const getPos = (e) => {
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
-    const sx = canvas.width / rect.width;
-    const sy = canvas.height / rect.height;
-    const clientX = e.clientX ?? e.touches?.[0]?.clientX;
-    const clientY = e.clientY ?? e.touches?.[0]?.clientY;
-    return { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
-  };
-
-  const eraseAt = (pos) => {
-    const t = THICKNESS[thicknessRef.current] * 10;
-    const updated = localPaths.current.filter(p => {
-      if (p.type === "symbol") return Math.hypot(p.x - pos.x, p.y - pos.y) > (p.size || 18) + 5;
-      return !p.points?.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) < t);
-    });
-    localPaths.current = updated;
-    onPathsChange(updated);
-    scheduleRedraw();
-  };
-
-  const onPointerDown = (e) => {
-    e.preventDefault();
-    e.target.setPointerCapture?.(e.pointerId);
-    isDrawing.current = true;
-    const pos = getPos(e);
-    if (toolRef.current === "eraser") { eraseAt(pos); return; }
-    if (toolRef.current === "symbol") {
-      const sym = SYMBOLS.find(s => s.key === activeSymbolRef.current);
-      if (sym) {
-        const updated = [...localPaths.current, { type: "symbol", symbolKey: sym.key, x: pos.x, y: pos.y, size: 18 }];
-        localPaths.current = updated;
-        onPathsChange(updated);
-        scheduleRedraw();
-      }
-      isDrawing.current = false;
-      return;
-    }
-    if (toolRef.current === "line") { lineStart.current = pos; return; }
-    currentPath.current = [pos];
-    scheduleRedraw();
-  };
-
-  const onPointerMove = (e) => {
-    if (!isDrawing.current) return;
-    e.preventDefault();
-    const pos = getPos(e);
-    if (toolRef.current === "eraser") { eraseAt(pos); return; }
-    if (toolRef.current === "line") {
-      if (lineStart.current) redrawCanvas({ x1: lineStart.current.x, y1: lineStart.current.y, x2: pos.x, y2: pos.y });
-      return;
-    }
-    currentPath.current = [...currentPath.current, pos];
-    scheduleRedraw();
-  };
-
-  const onPointerUp = (e) => {
-    if (!isDrawing.current) return;
-    isDrawing.current = false;
-    const pos = getPos(e);
-    if (toolRef.current === "line" && lineStart.current) {
-      const updated = [...localPaths.current, { type: "line", points: [lineStart.current, pos], color: colorRef.current, lineWidth: THICKNESS[thicknessRef.current] }];
-      localPaths.current = updated;
-      onPathsChange(updated);
-      lineStart.current = null;
-      scheduleRedraw();
-      return;
-    }
-    if ((toolRef.current === "pen" || toolRef.current === "highlight") && currentPath.current.length > 0) {
-      const isHL = toolRef.current === "highlight";
-      const hlColor = CAB_HIGHLIGHTS.find(h => h.key === activeHighlightRef.current)?.color || "#fde68a";
-      const updated = [...localPaths.current, { type: isHL ? "highlight" : "pen", points: currentPath.current, color: isHL ? hlColor : colorRef.current, lineWidth: THICKNESS[thicknessRef.current] }];
-      localPaths.current = updated;
-      onPathsChange(updated);
-      currentPath.current = [];
-      scheduleRedraw();
-    }
-  };
-
-  const getCursor = () => {
-    if (tool === "eraser") return "cell";
-    if (tool === "symbol") return "copy";
-    return "crosshair";
-  };
-
-  return (
-    <div className="border border-slate-200 rounded-xl overflow-hidden">
-      {/* Toolbar Row 1 — tools */}
-      <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 border-b border-slate-200 flex-wrap">
-        <button onClick={() => setTool("pen")} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${tool === "pen" ? "bg-amber-500 text-white" : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"}`}>
-          <Pencil className="w-3.5 h-3.5" /> Pen
-        </button>
-        <button onClick={() => { setTool("line"); }} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${tool === "line" ? "bg-blue-500 text-white" : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"}`}>
-          <Minus className="w-3.5 h-3.5" /> Line
-        </button>
-        <button onClick={() => setTool("eraser")} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${tool === "eraser" ? "bg-slate-700 text-white" : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"}`}>
-          <Eraser className="w-3.5 h-3.5" /> Eraser
-        </button>
-        {/* Cabinet Highlighters */}
-        {CAB_HIGHLIGHTS.map(h => (
-          <button key={h.key} onClick={() => { setTool("highlight"); setActiveHighlight(h.key); }}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${tool === "highlight" && activeHighlight === h.key ? "border-slate-500 ring-2 ring-slate-400" : "border-slate-200"}`}
-            style={{ backgroundColor: h.color, color: "#1e293b" }}>
-            {h.label}
-          </button>
-        ))}
-        {/* Symbol stamps */}
-        {SYMBOLS.map(sym => (
-          <button key={sym.key} onClick={() => { setTool("symbol"); setActiveSymbol(sym.key); }}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${tool === "symbol" && activeSymbol === sym.key ? "bg-indigo-500 text-white border-indigo-500" : "bg-white text-slate-600 hover:bg-slate-100 border-slate-200"}`}>
-            {sym.key === "outlet" ? "⚡" : sym.key === "switch" ? "🔲" : "💧"} {sym.label}
-          </button>
-        ))}
-      </div>
-      {/* Toolbar Row 2 — thickness + colors + undo/clear */}
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border-b border-slate-100 flex-wrap">
-        <div className="flex gap-1.5 items-center">
-          {Object.entries(THICKNESS).map(([key, val]) => (
-            <button key={key} onClick={() => setThickness(key)} className={`flex items-center justify-center w-7 h-7 rounded-lg border transition-all ${thickness === key ? "border-amber-500 bg-amber-50" : "border-slate-200 bg-white"}`} title={key}>
-              <div className="rounded-full bg-slate-700" style={{ width: Math.min(val * 2.5, 14), height: Math.min(val * 2.5, 14) }} />
-            </button>
-          ))}
-        </div>
-        <div className="flex items-center gap-1.5">
-          {COLORS.map(c => (
-            <button key={c} onClick={() => { setColor(c); if (tool !== "eraser" && tool !== "highlight" && tool !== "symbol") setTool("pen"); }}
-              className="rounded-full transition-all" style={{ backgroundColor: c, width: 20, height: 20, border: `3px solid ${color === c ? "#f59e0b" : "transparent"}`, boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
-          ))}
-        </div>
-        <div className="ml-auto flex gap-1.5">
-          <button onClick={() => { const updated = localPaths.current.slice(0, -1); localPaths.current = updated; onPathsChange(updated); scheduleRedraw(); }}
-            className="w-7 h-7 flex items-center justify-center bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-500">
-            <Undo2 className="w-3.5 h-3.5" />
-          </button>
-          <button onClick={() => { localPaths.current = []; onPathsChange([]); scheduleRedraw(); }}
-            className="w-7 h-7 flex items-center justify-center bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg text-red-500">
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-      <canvas
-        ref={canvasRef}
-        width={1600}
-        height={900}
-        className="w-full"
-        style={{ cursor: getCursor(), touchAction: "none", display: "block", height: 300 }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-      />
-    </div>
-  );
-}
 
 // ── Room Items Editor ───────────────────────────────────────────────────────────
 function RoomItemsEditor({ room, catalogItems, categories, pricingConfigs, bidType, onChange }) {
@@ -812,6 +523,27 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
                   <RoomSketch
                     paths={room.sketch_paths || []}
                     onPathsChange={paths => updateRoom(room.id, { sketch_paths: paths })}
+                    onHighlightsChange={highlights => {
+                      // Build items from sketch highlights, merging with any existing custom items
+                      const sketchItemIds = new Set((room.sketch_items || []).map(i => i.id));
+                      const existingCustomItems = (room.items || []).filter(i => !sketchItemIds.has(i.id));
+                      const newSketchItems = highlights.map(hl => {
+                        const price = getPriceForCategory(hl.cabKey);
+                        return {
+                          id: `sketch_${hl.cabKey}_${Math.random().toString(36).slice(2,7)}`,
+                          name: `${hl.cabKey.charAt(0).toUpperCase() + hl.cabKey.slice(1)} Cabinets (sketch)`,
+                          cabinet_category: hl.cabKey,
+                          measure_type: "lf",
+                          quantity: hl.quantity,
+                          unit_price: price,
+                          notes: `From sketch: ${hl.wFt}' × ${hl.hFt}'`,
+                        };
+                      });
+                      setRooms(prev => prev.map(r => r.id === room.id
+                        ? { ...r, sketch_paths: r.sketch_paths, sketch_items: newSketchItems, items: [...existingCustomItems, ...newSketchItems] }
+                        : r
+                      ));
+                    }}
                   />
                 </div>
 
