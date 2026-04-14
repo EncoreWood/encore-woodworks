@@ -599,7 +599,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       // editDim.w and editDim.h are in inches
       const wPx = (parseFloat(editDim.w) / 12) * BASE_PX_PER_FOOT;
       const hPx = (parseFloat(editDim.h) / 12) * BASE_PX_PER_FOOT;
-      if (!wPx || !hPx) return;
+      if (isNaN(wPx) || isNaN(hPx) || wPx <= 0 || hPx <= 0) return;
       const rx = Math.min(p.x1, p.x2), ry = Math.min(p.y1, p.y2);
       updated[selectedIdx] = { ...p, x1: rx, y1: ry, x2: rx + wPx, y2: ry + hPx };
     } else if (p.type === "line") {
@@ -734,12 +734,12 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
           <Edit3 className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
           <span className="text-xs font-semibold text-amber-800">Cabinet Box:</span>
           <label className="text-xs text-slate-600">Width (in)</label>
-          <input type="number" step="1" min="1"
+          <input type="number" step="0.5"
             className="w-16 h-7 text-xs border border-amber-300 rounded-lg px-2 bg-white"
             value={editDim.w}
             onChange={e => setEditDim(prev => ({ ...prev, w: e.target.value }))} />
           <label className="text-xs text-slate-600">Depth (in)</label>
-          <input type="number" step="1" min="1"
+          <input type="number" step="0.5"
             className="w-16 h-7 text-xs border border-amber-300 rounded-lg px-2 bg-white"
             value={editDim.h}
             onChange={e => setEditDim(prev => ({ ...prev, h: e.target.value }))} />
