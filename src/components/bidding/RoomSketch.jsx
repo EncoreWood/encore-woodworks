@@ -323,9 +323,11 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       const p = localPaths.current[idx];
       if (p?.type === "highlight") {
         const { wFt, hFt } = calcRectFt(p.x1, p.y1, p.x2, p.y2);
-        setEditDim({ w: wFt, h: hFt, len: "" });
+        // Store in inches for editing
+        setEditDim({ w: Math.round(parseFloat(wFt) * 12), h: Math.round(parseFloat(hFt) * 12), len: "" });
       } else if (p?.type === "line") {
-        setEditDim({ w: "", h: "", len: calcLineFt(p.points[0].x, p.points[0].y, p.points[1].x, p.points[1].y) });
+        const lenFt = calcLineFt(p.points[0].x, p.points[0].y, p.points[1].x, p.points[1].y);
+        setEditDim({ w: "", h: "", len: Math.round(parseFloat(lenFt) * 12) });
       } else {
         setEditDim({ w: "", h: "", len: "" });
       }
@@ -435,7 +437,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       const p = updated[moveState.current.idx];
       if (p?.type === "highlight") {
         const { wFt, hFt } = calcRectFt(p.x1, p.y1, p.x2, p.y2);
-        setEditDim({ w: wFt, h: hFt, len: "" });
+        setEditDim({ w: Math.round(parseFloat(wFt) * 12), h: Math.round(parseFloat(hFt) * 12), len: "" });
       }
       moveState.current = null;
       scheduleRedraw(); return;
@@ -454,7 +456,15 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         localPaths.current = updated; onPathsChange(updated);
       } else {
         const hl = CAB_HIGHLIGHTS.find(h => h.key === activeHighlightRef.current);
-        const updated = [...localPaths.current, { type: "highlight", cabKey: activeHighlightRef.current, color: hl?.color, x1: start.x, y1: start.y, x2: snapped.x, y2: snapped.y }];
+        // Auto-default depth: base=24", upper=14"
+        const defaultDepthIn = activeHighlightRef.current === "base" ? 24 : activeHighlightRef.current === "upper" ? 14 : null;
+        let nx2 = snapped.x, ny2 = snapped.y;
+        if (defaultDepthIn !== null) {
+          const depthPx = (defaultDepthIn / 12) * BASE_PX_PER_FOOT;
+          ny2 = start.y + depthPx;
+        }
+        const newHL = { type: "highlight", cabKey: activeHighlightRef.current, color: hl?.color, x1: start.x, y1: start.y, x2: nx2, y2: ny2 };
+        const updated = [...localPaths.current, newHL];
         localPaths.current = updated; onPathsChange(updated); notifyHighlights(updated);
       }
       scheduleRedraw(); return;
@@ -484,14 +494,15 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
 
     let updated = [...localPaths.current];
     if (p.type === "highlight") {
-      const wPx = parseFloat(editDim.w) * BASE_PX_PER_FOOT;
-      const hPx = parseFloat(editDim.h) * BASE_PX_PER_FOOT;
+      // editDim.w and editDim.h are in inches
+      const wPx = (parseFloat(editDim.w) / 12) * BASE_PX_PER_FOOT;
+      const hPx = (parseFloat(editDim.h) / 12) * BASE_PX_PER_FOOT;
       if (!wPx || !hPx) return;
       const rx = Math.min(p.x1, p.x2), ry = Math.min(p.y1, p.y2);
       updated[selectedIdx] = { ...p, x1: rx, y1: ry, x2: rx + wPx, y2: ry + hPx };
-      setEditDim(prev => ({ ...prev, w: editDim.w, h: editDim.h }));
     } else if (p.type === "line") {
-      const newLen = parseFloat(editDim.len) * BASE_PX_PER_FOOT;
+      // editDim.len is in inches
+      const newLen = (parseFloat(editDim.len) / 12) * BASE_PX_PER_FOOT;
       if (!newLen) return;
       const [p1, p2] = p.points;
       const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
@@ -602,19 +613,19 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border-b border-amber-200 flex-wrap">
           <Edit3 className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
           <span className="text-xs font-semibold text-amber-800">Cabinet Box:</span>
-          <label className="text-xs text-slate-600">Width (ft)</label>
-          <input type="number" step="0.5" min="0.5"
+          <label className="text-xs text-slate-600">Width (in)</label>
+          <input type="number" step="1" min="1"
             className="w-16 h-7 text-xs border border-amber-300 rounded-lg px-2 bg-white"
             value={editDim.w}
             onChange={e => setEditDim(prev => ({ ...prev, w: e.target.value }))} />
-          <label className="text-xs text-slate-600">Depth (ft)</label>
-          <input type="number" step="0.5" min="0.5"
+          <label className="text-xs text-slate-600">Depth (in)</label>
+          <input type="number" step="1" min="1"
             className="w-16 h-7 text-xs border border-amber-300 rounded-lg px-2 bg-white"
             value={editDim.h}
             onChange={e => setEditDim(prev => ({ ...prev, h: e.target.value }))} />
           <button onClick={applyDimEdit} className="px-3 h-7 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg">Apply</button>
           <span className="text-xs text-slate-500">
-            = {ftToFtIn(((parseFloat(editDim.w) || 0) * 2 + (parseFloat(editDim.h) || 0) * 2).toFixed(2))} LF ({((parseFloat(editDim.w) || 0) * 2 + (parseFloat(editDim.h) || 0) * 2).toFixed(1)} ft)
+            {(() => { const wIn = parseFloat(editDim.w)||0; const hIn = parseFloat(editDim.h)||0; const totalIn = wIn*2+hIn*2; return `= ${totalIn}" total (${(totalIn/12).toFixed(2)} LF)`; })()}
           </span>
           <button onClick={deleteSelected} className="ml-auto px-3 h-7 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
           <button onClick={() => selectItem(null)} className="px-2 h-7 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-100">✕</button>
@@ -624,13 +635,13 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border-b border-blue-200 flex-wrap">
           <Edit3 className="w-3.5 h-3.5 text-blue-700 flex-shrink-0" />
           <span className="text-xs font-semibold text-blue-800">Line:</span>
-          <label className="text-xs text-slate-600">Length (ft)</label>
-          <input type="number" step="0.5" min="0.5"
+          <label className="text-xs text-slate-600">Length (in)</label>
+          <input type="number" step="1" min="1"
             className="w-20 h-7 text-xs border border-blue-300 rounded-lg px-2 bg-white"
             value={editDim.len}
             onChange={e => setEditDim(prev => ({ ...prev, len: e.target.value }))} />
           <span className="text-xs text-slate-500">
-            = {ftToFtIn(editDim.len)} &nbsp;at {calcAngle(selectedPath.points[0].x, selectedPath.points[0].y, selectedPath.points[1].x, selectedPath.points[1].y)}°
+            = {editDim.len}" ({((parseFloat(editDim.len)||0)/12).toFixed(2)} LF) &nbsp;at {calcAngle(selectedPath.points[0].x, selectedPath.points[0].y, selectedPath.points[1].x, selectedPath.points[1].y)}°
           </span>
           <button onClick={applyDimEdit} className="px-3 h-7 text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white rounded-lg">Apply</button>
           <button onClick={deleteSelected} className="ml-auto px-3 h-7 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
