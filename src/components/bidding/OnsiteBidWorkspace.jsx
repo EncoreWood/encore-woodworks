@@ -480,7 +480,7 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
         {/* Bid Attachments */}
         <Card className="p-4">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-slate-900 flex items-center gap-2"><Paperclip className="w-4 h-4" /> Attachments</h2>
+            <h2 className="font-bold text-slate-900 flex items-center gap-2"><Paperclip className="w-4 h-4" /> Meeting Audio Recording</h2>
             <label className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border cursor-pointer transition-colors ${uploadingBidFile ? "border-amber-300 bg-amber-50 text-amber-700" : "border-slate-300 text-slate-600 hover:bg-slate-50"}`}>
               <Paperclip className="w-3.5 h-3.5" />
               {uploadingBidFile ? "Uploading..." : "Attach File"}
