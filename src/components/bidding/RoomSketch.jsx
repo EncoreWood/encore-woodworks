@@ -63,6 +63,23 @@ function smartSnap(rawX, rawY, paths, isFirstPoint) {
   return { x: snapToGrid(rawX), y: snapToGrid(rawY), snapped: false };
 }
 
+// ── Angle snap ────────────────────────────────────────────────────────────────
+const SNAP_ANGLES = [0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, -157.5, -135, -112.5, -90, -67.5, -45, -22.5];
+const ANGLE_SNAP_THRESHOLD = 8; // degrees
+
+function snapAngle(x1, y1, x2, y2) {
+  const rawAngle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+  const len = Math.hypot(x2 - x1, y2 - y1);
+  let best = null, bestDiff = ANGLE_SNAP_THRESHOLD;
+  SNAP_ANGLES.forEach(a => {
+    const diff = Math.abs(rawAngle - a);
+    if (diff < bestDiff) { bestDiff = diff; best = a; }
+  });
+  if (best === null) return { x: x2, y: y2, snappedAngle: null };
+  const rad = best * Math.PI / 180;
+  return { x: Math.round(x1 + Math.cos(rad) * len), y: Math.round(y1 + Math.sin(rad) * len), snappedAngle: best };
+}
+
 // ── Math helpers ──────────────────────────────────────────────────────────────
 function calcAngle(x1, y1, x2, y2) { return Math.round(Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI); }
 function calcLineFt(x1, y1, x2, y2) { return (Math.hypot(x2 - x1, y2 - y1) / BASE_PX_PER_FOOT).toFixed(2); }
@@ -172,7 +189,8 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
   const [activeSymbol, setActiveSymbol] = useState(null);
   const [selectedIdx, setSelectedIdx] = useState(null);
   const [zoom, setZoom] = useState(1);
-  const [editDim, setEditDim] = useState({ w: "", h: "", len: "" });
+  const [editDim, setEditDim] = useState({ w: "", h: "", len: "", angle: "" });
+  const [liveAngle, setLiveAngle] = useState(null);
 
   // Refs for event handlers (avoid stale closures)
   const toolRef = useRef(tool);
@@ -327,9 +345,10 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         setEditDim({ w: Math.round(parseFloat(wFt) * 12), h: Math.round(parseFloat(hFt) * 12), len: "" });
       } else if (p?.type === "line") {
         const lenFt = calcLineFt(p.points[0].x, p.points[0].y, p.points[1].x, p.points[1].y);
-        setEditDim({ w: "", h: "", len: Math.round(parseFloat(lenFt) * 12) });
+        const ang = calcAngle(p.points[0].x, p.points[0].y, p.points[1].x, p.points[1].y);
+        setEditDim({ w: "", h: "", len: Math.round(parseFloat(lenFt) * 12), angle: ang });
       } else {
-        setEditDim({ w: "", h: "", len: "" });
+        setEditDim({ w: "", h: "", len: "", angle: "" });
       }
     }
     scheduleRedraw();
@@ -414,7 +433,14 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     snapIndicator.current = { ...snapped, snapped: snapped.snapped };
 
     if ((toolRef.current === "line" || toolRef.current === "highlight") && dragStart.current) {
-      previewRef.current = { type: toolRef.current, x1: dragStart.current.x, y1: dragStart.current.y, x2: snapped.x, y2: snapped.y };
+      let ex = snapped.x, ey = snapped.y;
+      let snappedAngle = null;
+      if (toolRef.current === "line") {
+        const as = snapAngle(dragStart.current.x, dragStart.current.y, snapped.x, snapped.y);
+        ex = as.x; ey = as.y; snappedAngle = as.snappedAngle;
+      }
+      setLiveAngle(snappedAngle);
+      previewRef.current = { type: toolRef.current, x1: dragStart.current.x, y1: dragStart.current.y, x2: ex, y2: ey };
       redrawCanvas(previewRef.current);
       return;
     }
@@ -428,6 +454,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
   const onPointerUp = (e) => {
     snapIndicator.current = null;
     previewRef.current = null;
+    setLiveAngle(null);
 
     if (toolRef.current === "select" && moveState.current) {
       isDrawing.current = false;
@@ -452,7 +479,9 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       const start = dragStart.current; dragStart.current = null;
       if (Math.hypot(snapped.x - start.x, snapped.y - start.y) < 4) { scheduleRedraw(); return; }
       if (toolRef.current === "line") {
-        const updated = [...localPaths.current, { type: "line", points: [start, { x: snapped.x, y: snapped.y }], color: colorRef.current, lineWidth: THICKNESS[thicknessRef.current] }];
+        const as = snapAngle(start.x, start.y, snapped.x, snapped.y);
+        const end = as.snappedAngle !== null ? { x: as.x, y: as.y } : { x: snapped.x, y: snapped.y };
+        const updated = [...localPaths.current, { type: "line", points: [start, end], color: colorRef.current, lineWidth: THICKNESS[thicknessRef.current] }];
         localPaths.current = updated; onPathsChange(updated);
       } else {
         const hl = CAB_HIGHLIGHTS.find(h => h.key === activeHighlightRef.current);
@@ -501,12 +530,14 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       const rx = Math.min(p.x1, p.x2), ry = Math.min(p.y1, p.y2);
       updated[selectedIdx] = { ...p, x1: rx, y1: ry, x2: rx + wPx, y2: ry + hPx };
     } else if (p.type === "line") {
-      // editDim.len is in inches
+      // editDim.len is in inches, editDim.angle in degrees
       const newLen = (parseFloat(editDim.len) / 12) * BASE_PX_PER_FOOT;
       if (!newLen) return;
       const [p1, p2] = p.points;
-      const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
-      const newP2 = { x: Math.round(p1.x + Math.cos(angle) * newLen), y: Math.round(p1.y + Math.sin(angle) * newLen) };
+      const currentAngleDeg = parseFloat(editDim.angle);
+      const angleDeg = !isNaN(currentAngleDeg) ? currentAngleDeg : calcAngle(p1.x, p1.y, p2.x, p2.y);
+      const angleRad = angleDeg * Math.PI / 180;
+      const newP2 = { x: Math.round(p1.x + Math.cos(angleRad) * newLen), y: Math.round(p1.y + Math.sin(angleRad) * newLen) };
       updated[selectedIdx] = { ...p, points: [p1, newP2] };
     }
     localPaths.current = updated; onPathsChange(updated); notifyHighlights(updated); scheduleRedraw();
@@ -640,12 +671,22 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
             className="w-20 h-7 text-xs border border-blue-300 rounded-lg px-2 bg-white"
             value={editDim.len}
             onChange={e => setEditDim(prev => ({ ...prev, len: e.target.value }))} />
+          <label className="text-xs text-slate-600">Angle (°)</label>
+          <input type="number" step="22.5" min="-180" max="180"
+            className="w-20 h-7 text-xs border border-blue-300 rounded-lg px-2 bg-white"
+            value={editDim.angle}
+            onChange={e => setEditDim(prev => ({ ...prev, angle: e.target.value }))} />
           <span className="text-xs text-slate-500">
-            = {editDim.len}" ({((parseFloat(editDim.len)||0)/12).toFixed(2)} LF) &nbsp;at {calcAngle(selectedPath.points[0].x, selectedPath.points[0].y, selectedPath.points[1].x, selectedPath.points[1].y)}°
+            = {editDim.len}" ({((parseFloat(editDim.len)||0)/12).toFixed(2)} LF)
           </span>
           <button onClick={applyDimEdit} className="px-3 h-7 text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white rounded-lg">Apply</button>
           <button onClick={deleteSelected} className="ml-auto px-3 h-7 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
           <button onClick={() => selectItem(null)} className="px-2 h-7 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-100">✕</button>
+        </div>
+      )}
+      {liveAngle !== null && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 border-b border-blue-200">
+          <span className="text-xs font-semibold text-blue-700">⟳ Snapped to {liveAngle}°</span>
         </div>
       )}
 
