@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Check, Plus, Trash2, X, Send, Settings2, Link2, Search, Camera, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Save, Check, Plus, Trash2, X, Send, Settings2, Link2, Search, Camera, ChevronDown, ChevronUp, PenLine } from "lucide-react";
+import PhotoAnnotator from "./PhotoAnnotator";
 import { createPageUrl } from "@/utils";
 import BidPricingSettings from "./BidPricingSettings";
 import BidClientView from "./BidClientView";
@@ -180,6 +181,7 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
   const [projectSearch, setProjectSearch] = useState("");
   const [allProjects, setAllProjects] = useState([]);
   const [uploadingRoomId, setUploadingRoomId] = useState(null);
+  const [annotatingPhoto, setAnnotatingPhoto] = useState(null); // { roomId, photoIdx, photo }
   const [estimatedBy, setEstimatedBy] = useState("");
   const [employees, setEmployees] = useState([]);
 
@@ -556,9 +558,16 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
                       {(room.photos || []).map((photo, idx) => (
                         <div key={idx} className="relative aspect-square rounded-lg overflow-hidden group border border-slate-200">
                           <img src={photo.url} alt={photo.name} className="w-full h-full object-cover" />
-                          <button onClick={() => removePhoto(room.id, idx)} className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <X className="w-3 h-3" />
-                          </button>
+                          <div className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/30">
+                            <button onClick={() => setAnnotatingPhoto({ roomId: room.id, photoIdx: idx, photo })}
+                              className="w-7 h-7 bg-amber-500 text-white rounded-full flex items-center justify-center shadow" title="Annotate">
+                              <PenLine className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => removePhoto(room.id, idx)}
+                              className="w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center shadow" title="Delete">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -665,6 +674,20 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
           </div>
         </DialogContent>
       </Dialog>
+
+      {annotatingPhoto && (
+        <PhotoAnnotator
+          photo={annotatingPhoto.photo}
+          onClose={() => setAnnotatingPhoto(null)}
+          onSave={(updatedPhoto) => {
+            setRooms(prev => prev.map(r => r.id === annotatingPhoto.roomId
+              ? { ...r, photos: r.photos.map((p, i) => i === annotatingPhoto.photoIdx ? updatedPhoto : p) }
+              : r
+            ));
+            setAnnotatingPhoto(null);
+          }}
+        />
+      )}
 
       <BidPricingSettings open={showPricingSettings} onClose={() => setShowPricingSettings(false)} onPricingUpdated={loadPricing} />
       <BidCatalogEditor open={showCatalogEditor} onClose={() => setShowCatalogEditor(false)} onSaved={() => { loadCatalog(); loadCategories(); }} />

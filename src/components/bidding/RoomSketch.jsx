@@ -125,10 +125,15 @@ function drawSymbol(ctx, sym, zoom) {
     if (sym.symbolKey === "door") drawDoorSymbol(ctx, sym, lw);
     else drawWindowSymbol(ctx, sym, lw);
   } else {
-    const { x, y, wallAngle = 0 } = sym;
-    ctx.translate(x, y);
+    // Outlet / switch / plumbing — may be wall-mounted (anchorX) or free-standing (x, y)
+    const isWallMounted = sym.anchorX !== undefined;
+    const px = isWallMounted ? sym.anchorX : sym.x;
+    const py = isWallMounted ? sym.anchorY : sym.y;
+    const wallAngle = sym.wallAngle || 0;
+    ctx.translate(px, py);
     ctx.rotate(wallAngle);
     const s = 14 * lw;
+
     if (sym.symbolKey === "outlet") {
       ctx.strokeStyle = "#1e40af"; ctx.lineWidth = 2 * lw; ctx.fillStyle = "#dbeafe";
       ctx.beginPath(); ctx.rect(-s, -s, s * 2, s * 2); ctx.fill(); ctx.stroke();
@@ -145,6 +150,19 @@ function drawSymbol(ctx, sym, zoom) {
       ctx.beginPath(); ctx.moveTo(0, -s * 0.65); ctx.lineTo(0, s * 0.65); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(-s * 0.65, 0); ctx.lineTo(s * 0.65, 0); ctx.stroke();
       ctx.beginPath(); ctx.arc(0, 0, s * 0.25, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    }
+
+    // If wall-mounted: draw a small stem to the wall and show elevation/offset labels
+    if (isWallMounted) {
+      ctx.strokeStyle = "#64748b"; ctx.lineWidth = 1.5 * lw; ctx.setLineDash([3 * lw, 2 * lw]);
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, s * 1.4); ctx.stroke(); ctx.setLineDash([]);
+      // Labels below the icon (in rotated space, positive Y = toward room)
+      const labelY = s * 2.4;
+      ctx.fillStyle = "#334155"; ctx.font = `${9 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "top";
+      const parts = [];
+      if (sym.elevationIn) parts.push(`↕${sym.elevationIn}"`);
+      if (sym.offsetIn !== undefined) parts.push(`${sym.offsetFromEnd === "right" ? "←" : "→"}${sym.offsetIn}"`);
+      if (parts.length) ctx.fillText(parts.join("  "), 0, labelY);
     }
   }
   ctx.restore();
@@ -417,7 +435,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
   const [symbolSizes, setSymbolSizes] = useState({ door: 32, window: 36 });
   const [selectedIdx, setSelectedIdx] = useState(null);
   const [zoom, setZoom] = useState(1);
-  const [editDim, setEditDim] = useState({ w: "", h: "", len: "", angle: "", symW: "", offset: "" });
+  const [editDim, setEditDim] = useState({ w: "", h: "", len: "", angle: "", symW: "", offset: "", elevation: "", offsetFromEnd: "left" });
   const [liveAngle, setLiveAngle] = useState(null);
 
   const history = useRef([[]]);
@@ -560,8 +578,9 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
         if (d < 14 && inBounds) return i;
       }
       if (p.type === "symbol") {
-        if ((p.symbolKey === "door" || p.symbolKey === "window") && p.anchorX !== undefined) {
-          if (hitTestWallSymbol(pos, p)) return i;
+        if (p.anchorX !== undefined) {
+          if ((p.symbolKey === "door" || p.symbolKey === "window") ? hitTestWallSymbol(pos, p) : Math.hypot(pos.x - p.anchorX, pos.y - p.anchorY) < 28)
+            return i;
         } else if (p.x !== undefined) {
           if (Math.hypot(pos.x - p.x, pos.y - p.y) < 28) return i;
         }
@@ -621,9 +640,12 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
         setEditDim({ w: "", h: "", len: Math.round(parseFloat(lenFt)*12), angle: ang, symW: "", offset: "" });
       } else if (p?.type === "symbol" && (p.symbolKey === "door" || p.symbolKey === "window")) {
         const wIn = Math.round((p.widthPx / BASE_PX_PER_FOOT) * 12);
-        setEditDim({ w: "", h: "", len: "", angle: "", symW: wIn, offset: getWallOffset(p) });
+        setEditDim({ w: "", h: "", len: "", angle: "", symW: wIn, offset: getWallOffset(p), elevation: "", offsetFromEnd: "left" });
+      } else if (p?.type === "symbol" && p.anchorX !== undefined) {
+        // Wall-mounted outlet/switch/plumbing
+        setEditDim({ w: "", h: "", len: "", angle: "", symW: "", offset: p.offsetIn ?? getWallOffset(p), elevation: p.elevationIn ?? 48, offsetFromEnd: p.offsetFromEnd || "left" });
       } else {
-        setEditDim({ w: "", h: "", len: "", angle: "", symW: "", offset: "" });
+        setEditDim({ w: "", h: "", len: "", angle: "", symW: "", offset: "", elevation: "", offsetFromEnd: "left" });
       }
     }
     scheduleRedraw();
@@ -657,10 +679,16 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
         const isWallSym = sym === "door" || sym === "window";
         const widthIn = isWallSym ? (symbolSizesRef.current[sym] || 32) : null;
         const widthPx = widthIn ? (widthIn / 12) * BASE_PX_PER_FOOT : null;
-        const wallSnap = isWallSym ? findNearestWallForPoint(pos.x, pos.y, localPaths.current) : null;
+        const wallSnap = findNearestWallForPoint(pos.x, pos.y, localPaths.current);
         let newSym;
         if (isWallSym && wallSnap) {
           newSym = { type: "symbol", symbolKey: sym, anchorX: wallSnap.projX, anchorY: wallSnap.projY, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side, widthPx };
+        } else if (!isWallSym && wallSnap) {
+          // Snap outlet/switch/plumbing to wall too
+          const wallLen = wallSnap.wallLen;
+          const offsetPx = wallSnap.t * wallLen;
+          const offsetIn = Math.round((offsetPx / BASE_PX_PER_FOOT) * 12);
+          newSym = { type: "symbol", symbolKey: sym, anchorX: wallSnap.projX, anchorY: wallSnap.projY, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side, offsetIn, offsetFromEnd: "left", elevationIn: 48 };
         } else {
           newSym = { type: "symbol", symbolKey: sym, x: pos.x, y: pos.y, wallAngle: 0, widthPx };
         }
@@ -705,10 +733,16 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
         const sdy = snapToGrid(p.points[0].y + dy) - p.points[0].y;
         updated[idx] = { ...p, points: [{ x: p.points[0].x + sdx, y: p.points[0].y + sdy }, { x: p.points[1].x + sdx, y: p.points[1].y + sdy }] };
       } else if (p.type === "symbol") {
-        const isWallSym = p.symbolKey === "door" || p.symbolKey === "window";
-        if (isWallSym && p.anchorX !== undefined) {
-          const wallSnap = findNearestWallForPoint(p.anchorX + dx, p.anchorY + dy, localPaths.current, Infinity);
-          updated[idx] = wallSnap ? { ...p, anchorX: wallSnap.projX, anchorY: wallSnap.projY, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side } : { ...p, anchorX: p.anchorX + dx, anchorY: p.anchorY + dy };
+        if (p.anchorX !== undefined) {
+          // Wall-mounted symbol (doors, windows, outlets, switches, plumbing)
+          const wallSnap = findNearestWallForPoint(raw.x, raw.y, localPaths.current, 80);
+          if (wallSnap) {
+            const offsetPx = wallSnap.t * wallSnap.wallLen;
+            const offsetIn = Math.round((offsetPx / BASE_PX_PER_FOOT) * 12);
+            updated[idx] = { ...p, anchorX: wallSnap.projX, anchorY: wallSnap.projY, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side, ...(p.offsetIn !== undefined ? { offsetIn } : {}) };
+          } else {
+            updated[idx] = { ...p, anchorX: p.anchorX + dx, anchorY: p.anchorY + dy };
+          }
         } else {
           updated[idx] = { ...p, x: snapToGrid(p.x + dx), y: snapToGrid(p.y + dy) };
         }
@@ -836,9 +870,33 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
       if (!isNaN(offsetIn) && offsetIn >= 0 && p.anchorX !== undefined) {
         const wallSnap = findNearestWallForPoint(p.anchorX, p.anchorY, localPaths.current, Infinity);
         if (wallSnap?.wall) {
-          const [pw1] = wallSnap.wall.points;
+          const [pw1, pw2] = wallSnap.wall.points;
+          const wallLen = Math.hypot(pw2.x - pw1.x, pw2.y - pw1.y);
           const ax = Math.cos(p.wallAngle), ay = Math.sin(p.wallAngle);
-          sym = { ...sym, anchorX: pw1.x + ax * (offsetIn / 12) * BASE_PX_PER_FOOT, anchorY: pw1.y + ay * (offsetIn / 12) * BASE_PX_PER_FOOT };
+          const offsetPx = editDim.offsetFromEnd === "right"
+            ? wallLen - (offsetIn / 12) * BASE_PX_PER_FOOT
+            : (offsetIn / 12) * BASE_PX_PER_FOOT;
+          sym = { ...sym, anchorX: pw1.x + ax * offsetPx, anchorY: pw1.y + ay * offsetPx, offsetFromEnd: editDim.offsetFromEnd };
+        }
+      }
+      updated[selectedIdx] = sym;
+    } else if (p.type === "symbol" && p.anchorX !== undefined) {
+      // Wall-mounted outlet/switch/plumbing
+      const offsetIn = parseFloat(editDim.offset);
+      const elevationIn = parseFloat(editDim.elevation);
+      let sym = { ...p, offsetFromEnd: editDim.offsetFromEnd };
+      if (!isNaN(elevationIn) && elevationIn >= 0) sym = { ...sym, elevationIn };
+      if (!isNaN(offsetIn) && offsetIn >= 0) {
+        sym = { ...sym, offsetIn };
+        const wallSnap = findNearestWallForPoint(p.anchorX, p.anchorY, localPaths.current, Infinity);
+        if (wallSnap?.wall) {
+          const [pw1, pw2] = wallSnap.wall.points;
+          const wallLen = Math.hypot(pw2.x - pw1.x, pw2.y - pw1.y);
+          const ax = Math.cos(p.wallAngle), ay = Math.sin(p.wallAngle);
+          const offsetPx = editDim.offsetFromEnd === "right"
+            ? wallLen - (offsetIn / 12) * BASE_PX_PER_FOOT
+            : (offsetIn / 12) * BASE_PX_PER_FOOT;
+          sym = { ...sym, anchorX: pw1.x + ax * offsetPx, anchorY: pw1.y + ay * offsetPx };
         }
       }
       updated[selectedIdx] = sym;
@@ -1040,6 +1098,33 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
           )}
           <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-sky-500 hover:bg-sky-600 text-white rounded-lg">Apply</button>
           <span className="text-xs text-slate-500">{editDim.symW}" = {((parseFloat(editDim.symW)||0)/12).toFixed(2)} ft</span>
+          <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 text-white rounded-lg">Delete</button>
+          <button onClick={() => selectItem(null)} className="px-2 h-8 text-xs text-slate-500 border border-slate-200 rounded-lg">✕</button>
+        </div>
+      )}
+
+      {/* Edit bar — wall-mounted outlet/switch/plumbing */}
+      {selectedPath?.type === "symbol" && ["outlet","switch","plumbing"].includes(selectedPath.symbolKey) && selectedPath.anchorX !== undefined && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border-b border-slate-200 flex-wrap">
+          <Edit3 className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
+          <span className="text-xs font-semibold text-slate-700 capitalize">{selectedPath.symbolKey}:</span>
+          <label className="text-xs text-slate-500">Elevation (in)</label>
+          <input type="number" step="1" inputMode="decimal" className="w-16 h-8 text-sm border border-slate-300 rounded-lg px-2 bg-white"
+            value={editDim.elevation} onChange={e => setEditDim(prev => ({ ...prev, elevation: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
+          <label className="text-xs text-slate-500">Offset (in)</label>
+          <input type="number" step="1" inputMode="decimal" className="w-16 h-8 text-sm border border-slate-300 rounded-lg px-2 bg-white"
+            value={editDim.offset} onChange={e => setEditDim(prev => ({ ...prev, offset: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
+          <span className="text-xs text-slate-500">from</span>
+          <div className="flex rounded-lg overflow-hidden border border-slate-300">
+            {["left","right"].map(side => (
+              <button key={side} onClick={() => setEditDim(prev => ({ ...prev, offsetFromEnd: side }))}
+                className={`px-2.5 h-8 text-xs font-semibold transition-all ${editDim.offsetFromEnd === side ? "bg-slate-700 text-white" : "bg-white text-slate-600"}`}>
+                {side === "left" ? "← Left" : "Right →"}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs text-slate-400">of wall</span>
+          <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-slate-700 hover:bg-slate-800 text-white rounded-lg">Apply</button>
           <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 text-white rounded-lg">Delete</button>
           <button onClick={() => selectItem(null)} className="px-2 h-8 text-xs text-slate-500 border border-slate-200 rounded-lg">✕</button>
         </div>
