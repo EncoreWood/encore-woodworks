@@ -49,17 +49,21 @@ function getSnapCandidates(paths) {
   return pts;
 }
 
-/** Smart snap: prefer snapping to existing objects, fall back to grid */
-function smartSnap(rawX, rawY, paths, isFirstPoint) {
-  if (paths.length > 0) {
-    const candidates = getSnapCandidates(paths);
+/** Smart snap: prefer snapping to existing objects, fall back to grid.
+ *  forHighlight=true → only snap to objects; fall back to raw (no grid) if objects exist but none nearby */
+function smartSnap(rawX, rawY, paths, isFirstPoint, forHighlight = false) {
+  const candidates = getSnapCandidates(paths);
+  if (candidates.length > 0) {
     let best = null, bestDist = SNAP_OBJECT_RADIUS;
     candidates.forEach(c => {
       const d = Math.hypot(c.x - rawX, c.y - rawY);
       if (d < bestDist) { bestDist = d; best = c; }
     });
     if (best) return { x: best.x, y: best.y, snapped: true };
+    // There are objects but none close — highlights stay raw (free), lines fall back to grid
+    if (forHighlight) return { x: rawX, y: rawY, snapped: false };
   }
+  // No objects at all → snap to grid for everyone
   return { x: snapToGrid(rawX), y: snapToGrid(rawY), snapped: false };
 }
 
@@ -288,9 +292,9 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     };
   };
 
-  const getSnappedPos = (e, isFirst) => {
+  const getSnappedPos = (e, isFirst, forHighlight = false) => {
     const raw = getRawPos(e);
-    return smartSnap(raw.x, raw.y, localPaths.current, isFirst);
+    return smartSnap(raw.x, raw.y, localPaths.current, isFirst, forHighlight);
   };
 
   // ── Hit testing ───────────────────────────────────────────────────────────
@@ -360,7 +364,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     e.target.setPointerCapture?.(e.pointerId);
     isDrawing.current = true;
     const raw = getRawPos(e);
-    const pos = getSnappedPos(e, true);
+    const pos = getSnappedPos(e, true, false);
 
     if (toolRef.current === "select") {
       const idx = findHitIdx(raw);
@@ -393,8 +397,9 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       isDrawing.current = false; return;
     }
 
-    dragStart.current = pos;
-    snapIndicator.current = { ...pos, snapped: pos.snapped };
+    const isHL = toolRef.current === "highlight";
+    dragStart.current = isHL ? getSnappedPos(e, true, true) : pos;
+    snapIndicator.current = { ...dragStart.current, snapped: dragStart.current.snapped };
     scheduleRedraw();
   };
 
@@ -429,7 +434,8 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     if (!isDrawing.current) return;
     if (toolRef.current === "eraser") { eraseAt(raw); return; }
 
-    const snapped = getSnappedPos(e, false);
+    const isHL = toolRef.current === "highlight";
+    const snapped = getSnappedPos(e, false, isHL);
     snapIndicator.current = { ...snapped, snapped: snapped.snapped };
 
     if ((toolRef.current === "line" || toolRef.current === "highlight") && dragStart.current) {
@@ -473,7 +479,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     if (!isDrawing.current) return;
     isDrawing.current = false;
 
-    const snapped = getSnappedPos(e, false);
+    const snapped = getSnappedPos(e, false, toolRef.current === "highlight");
 
     if ((toolRef.current === "line" || toolRef.current === "highlight") && dragStart.current) {
       const start = dragStart.current; dragStart.current = null;
