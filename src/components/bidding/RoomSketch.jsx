@@ -181,6 +181,73 @@ function drawOnePath(ctx, path, isSelected, zoom) {
   }
 }
 
+// ── Wall alignment helpers ────────────────────────────────────────────────────
+/** Find the closest wall (line) to a highlight box. Returns the wall or null. */
+function findNearestWall(hl, paths) {
+  const walls = paths.filter(p => p.type === "line" && p.points?.length === 2);
+  if (!walls.length) return null;
+  const hlCx = (hl.x1 + hl.x2) / 2, hlCy = (hl.y1 + hl.y2) / 2;
+  let best = null, bestDist = Infinity;
+  walls.forEach(w => {
+    const mx = (w.points[0].x + w.points[1].x) / 2;
+    const my = (w.points[0].y + w.points[1].y) / 2;
+    const d = Math.hypot(mx - hlCx, my - hlCy);
+    if (d < bestDist) { bestDist = d; best = w; }
+  });
+  return best;
+}
+
+/** Project a point onto a line segment, returning the closest point on the line. */
+function projectPointOntoLine(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return { x: x1, y: y1 };
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / lenSq));
+  return { x: x1 + t * dx, y: y1 + t * dy };
+}
+
+/** Align highlight to nearest wall: position = "left" | "center" | "right"
+ *  The highlight slides along the wall so its left edge, center, or right edge
+ *  aligns with the projected center of the highlight onto the wall.
+ *  The highlight is also pushed flush against the wall (perpendicular snapped). */
+function alignHighlightToWall(hl, wall, position) {
+  const [w1, w2] = wall.points;
+  const wallAngle = Math.atan2(w2.y - w1.y, w2.x - w1.x);
+  const wallLen = Math.hypot(w2.x - w1.x, w2.y - w1.y);
+
+  const hlCx = (hl.x1 + hl.x2) / 2, hlCy = (hl.y1 + hl.y2) / 2;
+  const hlW = Math.abs(hl.x2 - hl.x1), hlH = Math.abs(hl.y2 - hl.y1);
+
+  // Project highlight center onto wall to get "along-wall" coordinate
+  const proj = projectPointOntoLine(hlCx, hlCy, w1.x, w1.y, w2.x, w2.y);
+  const tAlong = Math.hypot(proj.x - w1.x, proj.y - w1.y) / (wallLen || 1);
+
+  // Perpendicular normal (pointing away from wall toward highlight)
+  const nx = -Math.sin(wallAngle), ny = Math.cos(wallAngle);
+  // Determine which side of wall the highlight is on
+  const side = ((hlCx - w1.x) * nx + (hlCy - w1.y) * ny) >= 0 ? 1 : -1;
+
+  // Half-sizes along and across wall
+  const halfAlong = hlW / 2, halfAcross = hlH / 2;
+
+  // Along-wall offset based on position
+  let alongOffset = 0; // center
+  if (position === "left")  alongOffset = halfAlong;
+  if (position === "right") alongOffset = -halfAlong;
+
+  // New center: flush against wall + centered/offset along wall
+  const newCx = proj.x + nx * side * halfAcross + Math.cos(wallAngle) * alongOffset;
+  const newCy = proj.y + ny * side * halfAcross + Math.sin(wallAngle) * alongOffset;
+
+  return {
+    ...hl,
+    x1: Math.round(newCx - hlW / 2),
+    y1: Math.round(newCy - hlH / 2),
+    x2: Math.round(newCx + hlW / 2),
+    y2: Math.round(newCy + hlH / 2),
+  };
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function RoomSketch({ paths, onPathsChange, onHighlightsChange }) {
   const canvasRef = useRef(null);
@@ -549,6 +616,22 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     localPaths.current = updated; onPathsChange(updated); notifyHighlights(updated); scheduleRedraw();
   };
 
+  const alignToWall = (position) => {
+    if (selectedIdx === null) return;
+    const p = localPaths.current[selectedIdx];
+    if (p?.type !== "highlight") return;
+    const wall = findNearestWall(p, localPaths.current);
+    if (!wall) return;
+    const aligned = alignHighlightToWall(p, wall, position);
+    const updated = [...localPaths.current];
+    updated[selectedIdx] = aligned;
+    localPaths.current = updated; onPathsChange(updated); notifyHighlights(updated);
+    // refresh editDim
+    const { wFt, hFt } = calcRectFt(aligned.x1, aligned.y1, aligned.x2, aligned.y2);
+    setEditDim({ w: Math.round(parseFloat(wFt) * 12), h: Math.round(parseFloat(hFt) * 12), len: "" });
+    scheduleRedraw();
+  };
+
   const deleteSelected = () => {
     if (selectedIdx === null) return;
     const updated = localPaths.current.filter((_, i) => i !== selectedIdx);
@@ -580,7 +663,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       {/* Toolbar Row 1 */}
       <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 border-b border-slate-200 flex-wrap">
         {toolBtn("select", "Select/Move", <Move className="w-3.5 h-3.5" />, "bg-amber-500")}
-        {toolBtn("line",   "Line",        <Minus className="w-3.5 h-3.5" />, "bg-blue-500")}
+        {toolBtn("line",   "Wall",        <Minus className="w-3.5 h-3.5" />, "bg-blue-500")}
         {toolBtn("pen",    "Pen",         <Pencil className="w-3.5 h-3.5" />, "bg-slate-700")}
         {toolBtn("eraser", "Erase",       <Eraser className="w-3.5 h-3.5" />, "bg-red-500")}
 
@@ -664,6 +747,25 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
           <span className="text-xs text-slate-500">
             {(() => { const wIn = parseFloat(editDim.w)||0; const totalIn = wIn; return `= ${totalIn}" (${(totalIn/12).toFixed(2)} LF)`; })()}
           </span>
+          {/* Wall align — only show if there's a wall to snap to */}
+          {localPaths.current.some(p => p.type === "line") && (
+            <>
+              <div className="w-px h-5 bg-amber-300 mx-0.5" />
+              <span className="text-xs text-slate-500 font-medium">Align to Wall:</span>
+              <button onClick={() => alignToWall("left")} title="Left edge to wall"
+                className="px-2.5 h-7 text-xs font-semibold bg-white hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-lg">
+                ◀ Left
+              </button>
+              <button onClick={() => alignToWall("center")} title="Center on wall"
+                className="px-2.5 h-7 text-xs font-semibold bg-white hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-lg">
+                ◈ Center
+              </button>
+              <button onClick={() => alignToWall("right")} title="Right edge to wall"
+                className="px-2.5 h-7 text-xs font-semibold bg-white hover:bg-amber-100 border border-amber-300 text-amber-800 rounded-lg">
+                Right ▶
+              </button>
+            </>
+          )}
           <button onClick={deleteSelected} className="ml-auto px-3 h-7 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
           <button onClick={() => selectItem(null)} className="px-2 h-7 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-100">✕</button>
         </div>
@@ -671,7 +773,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       {selectedPath?.type === "line" && (
         <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border-b border-blue-200 flex-wrap">
           <Edit3 className="w-3.5 h-3.5 text-blue-700 flex-shrink-0" />
-          <span className="text-xs font-semibold text-blue-800">Line:</span>
+          <span className="text-xs font-semibold text-blue-800">Wall:</span>
           <label className="text-xs text-slate-600">Length (in)</label>
           <input type="number" step="1" min="1"
             className="w-20 h-7 text-xs border border-blue-300 rounded-lg px-2 bg-white"
