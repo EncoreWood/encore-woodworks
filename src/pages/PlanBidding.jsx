@@ -3,10 +3,11 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Plus, FileText, Trash2, ChevronRight, Link2 } from "lucide-react";
+import { Plus, FileText, Trash2, ChevronRight, Link2, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { createPageUrl } from "@/utils";
 import BidWorkspace from "@/components/bidding/BidWorkspace";
+import OnsiteBidWorkspace from "@/components/bidding/OnsiteBidWorkspace";
 
 export default function PlanBidding() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -14,8 +15,9 @@ export default function PlanBidding() {
   const urlBidId = urlParams.get("bid_id");
 
   const [activeBidId, setActiveBidId] = useState(urlBidId || null);
-  // If launched from a project card, start in creating mode immediately
   const [isCreating, setIsCreating] = useState(!!urlProjectId);
+  const [isCreatingOnsite, setIsCreatingOnsite] = useState(false);
+  const [activeOnsiteBidId, setActiveOnsiteBidId] = useState(null);
   const queryClient = useQueryClient();
 
   // Load the project if coming from a project card link
@@ -49,6 +51,16 @@ export default function PlanBidding() {
     );
   }
 
+  if (activeOnsiteBidId || isCreatingOnsite) {
+    return (
+      <OnsiteBidWorkspace
+        bidId={activeOnsiteBidId}
+        onClose={() => { setActiveOnsiteBidId(null); setIsCreatingOnsite(false); }}
+        onSaved={handleSaved}
+      />
+    );
+  }
+
   const statusColors = {
     draft: "bg-amber-100 text-amber-700",
     finalized: "bg-green-100 text-green-700",
@@ -62,9 +74,14 @@ export default function PlanBidding() {
           <h1 className="text-2xl font-bold text-slate-900">Plan Bidding</h1>
           <p className="text-sm text-slate-500 mt-1">Upload architect plans — AI identifies cabinet areas &amp; bids by linear foot</p>
         </div>
-        <Button onClick={() => setIsCreating(true)} className="bg-amber-600 hover:bg-amber-700">
-          <Plus className="w-4 h-4 mr-1" /> New Bid
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => setIsCreatingOnsite(true)} variant="outline" className="border-green-300 text-green-700 hover:bg-green-50">
+            <MapPin className="w-4 h-4 mr-1" /> New Onsite Bid
+          </Button>
+          <Button onClick={() => setIsCreating(true)} className="bg-amber-600 hover:bg-amber-700">
+            <Plus className="w-4 h-4 mr-1" /> New Plan Bid
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -84,12 +101,15 @@ export default function PlanBidding() {
             <Card
               key={bid.id}
               className="p-4 hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => setActiveBidId(bid.id)}
+              onClick={() => bid.bid_mode === "onsite" ? setActiveOnsiteBidId(bid.id) : setActiveBidId(bid.id)}
             >
               <div className="flex items-center gap-4">
                 <FileText className="w-9 h-9 text-amber-600 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-slate-900">{bid.project_name}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-900">{bid.project_name}</span>
+                    {bid.bid_mode === "onsite" && <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">ONSITE</span>}
+                  </div>
                   <div className="text-sm text-slate-500 truncate">{bid.client_name || bid.address || "No details"}</div>
                   <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
                     <span>{bid.rooms?.length || 0} cabinet areas · {bid.total_lf ? `${bid.total_lf} LF · ` : ""}{format(new Date(bid.created_date), "MMM d, yyyy")}</span>
