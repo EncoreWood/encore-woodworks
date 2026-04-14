@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Pencil, Eraser, Undo2, Trash2, Minus, Move, Edit3 } from "lucide-react";
+import { Pencil, Eraser, Undo2, Trash2, Minus, Move, Edit3, ZoomIn, ZoomOut } from "lucide-react";
 
-// 12 inches = 1 grid square. We pick a pixel size for one foot.
-const PX_PER_FOOT = 40; // 40px = 1 foot = 12"
-const GRID_SIZE = PX_PER_FOOT; // one grid cell = 1 foot
+const BASE_PX_PER_FOOT = 40;
+const GRID_SIZE = BASE_PX_PER_FOOT;
+const CANVAS_W = 2000;
+const CANVAS_H = 1200;
+const SNAP_OBJECT_RADIUS = 16; // px – snap to existing object endpoints/edges
 
 const COLORS = ["#1e1e1e", "#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6"];
 const THICKNESS = { thin: 1.5, medium: 3, thick: 6 };
 
 const CAB_HIGHLIGHTS = [
-  { key: "base",  label: "Base",  color: "#3b82f6", fillColor: "rgba(59,130,246,0.25)" },
-  { key: "upper", label: "Upper", color: "#22c55e", fillColor: "rgba(34,197,94,0.25)" },
-  { key: "tall",  label: "Tall",  color: "#f59e0b", fillColor: "rgba(245,158,11,0.25)" },
-  { key: "misc",  label: "Misc",  color: "#8b5cf6", fillColor: "rgba(139,92,246,0.25)" },
+  { key: "base",  label: "Base",  color: "#3b82f6", fillColor: "rgba(59,130,246,0.22)" },
+  { key: "upper", label: "Upper", color: "#22c55e", fillColor: "rgba(34,197,94,0.22)" },
+  { key: "tall",  label: "Tall",  color: "#f59e0b", fillColor: "rgba(245,158,11,0.22)" },
+  { key: "misc",  label: "Misc",  color: "#8b5cf6", fillColor: "rgba(139,92,246,0.22)" },
 ];
 
 const SYMBOLS = [
@@ -21,30 +23,56 @@ const SYMBOLS = [
   { key: "plumbing", label: "💧 Plumbing" },
 ];
 
-function snapToGrid(val) {
-  return Math.round(val / GRID_SIZE) * GRID_SIZE;
+// ── Snap helpers ──────────────────────────────────────────────────────────────
+function snapToGrid(val) { return Math.round(val / GRID_SIZE) * GRID_SIZE; }
+
+/** Collect all "snap candidate" points from existing paths */
+function getSnapCandidates(paths) {
+  const pts = [];
+  paths.forEach(p => {
+    if (p.type === "line" && p.points) {
+      pts.push(p.points[0], p.points[1]);
+    }
+    if (p.type === "highlight") {
+      const { x1, y1, x2, y2 } = p;
+      const rx = Math.min(x1, x2), ry = Math.min(y1, y2);
+      const rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
+      // corners + mid-edges
+      pts.push(
+        { x: rx, y: ry }, { x: rx + rw, y: ry },
+        { x: rx, y: ry + rh }, { x: rx + rw, y: ry + rh },
+        { x: rx + rw / 2, y: ry }, { x: rx + rw / 2, y: ry + rh },
+        { x: rx, y: ry + rh / 2 }, { x: rx + rw, y: ry + rh / 2 },
+      );
+    }
+  });
+  return pts;
 }
 
-function snapPoint(x, y) {
-  return { x: snapToGrid(x), y: snapToGrid(y) };
+/** Smart snap: prefer snapping to existing objects, fall back to grid */
+function smartSnap(rawX, rawY, paths, isFirstPoint) {
+  if (!isFirstPoint && paths.length > 0) {
+    const candidates = getSnapCandidates(paths);
+    let best = null, bestDist = SNAP_OBJECT_RADIUS;
+    candidates.forEach(c => {
+      const d = Math.hypot(c.x - rawX, c.y - rawY);
+      if (d < bestDist) { bestDist = d; best = c; }
+    });
+    if (best) return { x: best.x, y: best.y, snapped: true };
+  }
+  return { x: snapToGrid(rawX), y: snapToGrid(rawY), snapped: false };
 }
 
-function calcAngle(x1, y1, x2, y2) {
-  return Math.round(Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI);
-}
-
-function calcLineFt(x1, y1, x2, y2) {
-  const pxLen = Math.hypot(x2 - x1, y2 - y1);
-  return (pxLen / PX_PER_FOOT).toFixed(1);
-}
-
+// ── Math helpers ──────────────────────────────────────────────────────────────
+function calcAngle(x1, y1, x2, y2) { return Math.round(Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI); }
+function calcLineFt(x1, y1, x2, y2) { return (Math.hypot(x2 - x1, y2 - y1) / BASE_PX_PER_FOOT).toFixed(2); }
 function calcRectFt(x1, y1, x2, y2) {
-  const wFt = (Math.abs(x2 - x1) / PX_PER_FOOT).toFixed(1);
-  const hFt = (Math.abs(y2 - y1) / PX_PER_FOOT).toFixed(1);
-  const lf = (parseFloat(wFt) * 2 + parseFloat(hFt) * 2).toFixed(1); // perimeter
-  return { wFt, hFt, lf };
+  const wFt = (Math.abs(x2 - x1) / BASE_PX_PER_FOOT).toFixed(2);
+  const hFt = (Math.abs(y2 - y1) / BASE_PX_PER_FOOT).toFixed(2);
+  return { wFt, hFt, lf: (parseFloat(wFt) + parseFloat(hFt)).toFixed(2) };
 }
 
+// ── Draw helpers ──────────────────────────────────────────────────────────────
 function drawSymbol(ctx, key, x, y, size = 18) {
   ctx.save();
   if (key === "outlet") {
@@ -67,132 +95,124 @@ function drawSymbol(ctx, key, x, y, size = 18) {
   ctx.restore();
 }
 
-function drawGrid(ctx, w, h) {
-  // Minor grid (1ft)
-  ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 0.5;
-  for (let x = 0; x <= w; x += GRID_SIZE) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
-  for (let y = 0; y <= h; y += GRID_SIZE) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
-  // Major grid (5ft)
-  ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1;
-  for (let x = 0; x <= w; x += GRID_SIZE * 5) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
-  for (let y = 0; y <= h; y += GRID_SIZE * 5) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
-  // Scale label
-  ctx.fillStyle = "#94a3b8"; ctx.font = "10px sans-serif"; ctx.textBaseline = "top"; ctx.textAlign = "left";
-  ctx.fillText("1 square = 1 ft", 6, 4);
+function drawGrid(ctx, w, h, zoom) {
+  const gs = GRID_SIZE;
+  ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 0.5 / zoom;
+  for (let x = 0; x <= w; x += gs) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+  for (let y = 0; y <= h; y += gs) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+  ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1 / zoom;
+  for (let x = 0; x <= w; x += gs * 5) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+  for (let y = 0; y <= h; y += gs * 5) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+  ctx.fillStyle = "#94a3b8"; ctx.font = `${11 / zoom}px sans-serif`; ctx.textBaseline = "top"; ctx.textAlign = "left";
+  ctx.fillText("1 sq = 1 ft", 6 / zoom, 4 / zoom);
 }
 
-function drawPath(ctx, path) {
+function drawOnePath(ctx, path, isSelected, zoom) {
+  const lw = 1 / zoom;
   if (path.type === "symbol") {
-    drawSymbol(ctx, path.symbolKey, path.x, path.y, 18);
+    drawSymbol(ctx, path.symbolKey, path.x, path.y, 18 / zoom);
     return;
   }
   if (path.type === "highlight") {
     const hl = CAB_HIGHLIGHTS.find(h => h.key === path.cabKey);
     if (!hl) return;
     const { x1, y1, x2, y2 } = path;
+    const rx = Math.min(x1, x2), ry = Math.min(y1, y2), rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
     ctx.save();
-    ctx.fillStyle = hl.fillColor;
-    ctx.strokeStyle = hl.color;
-    ctx.lineWidth = 2;
-    const rx = Math.min(x1, x2), ry = Math.min(y1, y2);
-    const rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
-    ctx.fillRect(rx, ry, rw, rh);
-    ctx.strokeRect(rx, ry, rw, rh);
-    // Label
-    const { wFt, hFt, lf } = calcRectFt(x1, y1, x2, y2);
-    ctx.fillStyle = hl.color;
-    ctx.font = `bold 11px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(`${hl.label} ${wFt}'×${hFt}'`, rx + rw / 2, ry + rh / 2);
-    // Dimension labels on edges
-    ctx.font = "10px sans-serif"; ctx.fillStyle = "#475569";
-    ctx.textBaseline = "bottom"; ctx.textAlign = "center";
-    ctx.fillText(`${wFt}'`, rx + rw / 2, ry - 2);
-    ctx.textBaseline = "middle"; ctx.textAlign = "right";
-    ctx.fillText(`${hFt}'`, rx - 4, ry + rh / 2);
+    ctx.fillStyle = hl.fillColor; ctx.strokeStyle = hl.color; ctx.lineWidth = 2 * lw;
+    ctx.fillRect(rx, ry, rw, rh); ctx.strokeRect(rx, ry, rw, rh);
+    const { wFt, hFt } = calcRectFt(x1, y1, x2, y2);
+    ctx.fillStyle = hl.color; ctx.font = `bold ${12 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    if (rw > 30 * lw && rh > 14 * lw) ctx.fillText(`${hl.label} ${wFt}'×${hFt}'`, rx + rw / 2, ry + rh / 2);
+    ctx.font = `${10 * lw}px sans-serif`; ctx.fillStyle = "#475569";
+    ctx.textBaseline = "bottom"; ctx.textAlign = "center"; ctx.fillText(`${wFt}'`, rx + rw / 2, ry - 2 * lw);
+    ctx.textBaseline = "middle"; ctx.textAlign = "right"; ctx.fillText(`${hFt}'`, rx - 4 * lw, ry + rh / 2);
+    if (isSelected) {
+      ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2.5 * lw; ctx.setLineDash([5 * lw, 3 * lw]);
+      ctx.strokeRect(rx - 2 * lw, ry - 2 * lw, rw + 4 * lw, rh + 4 * lw); ctx.setLineDash([]);
+    }
     ctx.restore();
     return;
   }
   if (path.type === "line" && path.points?.length === 2) {
     const [p1, p2] = path.points;
-    ctx.strokeStyle = path.color; ctx.lineWidth = path.lineWidth; ctx.lineCap = "round";
+    ctx.strokeStyle = isSelected ? "#f59e0b" : path.color;
+    ctx.lineWidth = (path.lineWidth || 2) * lw; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
-    // Dimension label
     const ft = calcLineFt(p1.x, p1.y, p2.x, p2.y);
     const angle = calcAngle(p1.x, p1.y, p2.x, p2.y);
     const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
-    ctx.save();
-    ctx.translate(mx, my);
-    ctx.rotate(Math.atan2(p2.y - p1.y, p2.x - p1.x));
-    ctx.fillStyle = "#1e293b"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-    ctx.fillText(`${ft}' (${angle}°)`, 0, -4);
-    ctx.restore();
+    ctx.save(); ctx.translate(mx, my); ctx.rotate(Math.atan2(p2.y - p1.y, p2.x - p1.x));
+    ctx.fillStyle = "#1e293b"; ctx.font = `bold ${11 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+    ctx.fillText(`${ft}' (${angle}°)`, 0, -4 * lw); ctx.restore();
     return;
   }
   if (path.type === "pen" && path.points?.length > 1) {
-    ctx.strokeStyle = path.color; ctx.lineWidth = path.lineWidth; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = path.color; ctx.lineWidth = (path.lineWidth || 2) * lw; ctx.lineCap = "round"; ctx.lineJoin = "round";
     ctx.beginPath();
     path.points.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
     ctx.stroke();
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main RoomSketch Component
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function RoomSketch({ paths, onPathsChange, onHighlightsChange }) {
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
+
   const [tool, setTool] = useState("line");
   const [color, setColor] = useState("#1e1e1e");
   const [thickness, setThickness] = useState("medium");
   const [activeHighlight, setActiveHighlight] = useState("base");
   const [activeSymbol, setActiveSymbol] = useState(null);
-  const [selectedIdx, setSelectedIdx] = useState(null); // for editing highlights/lines
+  const [selectedIdx, setSelectedIdx] = useState(null);
+  const [zoom, setZoom] = useState(1);
+  const [editDim, setEditDim] = useState({ w: "", h: "", len: "" });
 
-  // Editing state for selected item
-  const [editDim, setEditDim] = useState({ w: "", h: "" });
-
+  // Refs for event handlers (avoid stale closures)
   const toolRef = useRef(tool);
   const colorRef = useRef(color);
   const thicknessRef = useRef(thickness);
   const activeHighlightRef = useRef(activeHighlight);
-  const activeSymbolRef = useRef(null);
+  const activeSymbolRef = useRef(activeSymbol);
+  const selectedIdxRef = useRef(selectedIdx);
+  const zoomRef = useRef(zoom);
+
   const isDrawing = useRef(false);
-  const dragStart = useRef(null);
-  const currentPath = useRef([]);
+  const dragStart = useRef(null);       // for drawing line/highlight
+  const moveState = useRef(null);       // { idx, offsetX, offsetY, origPath }
   const localPaths = useRef(paths || []);
-  const rafScheduled = useRef(false);
   const previewRef = useRef(null);
+  const snapIndicator = useRef(null);   // { x, y } canvas coords
+  const rafId = useRef(null);
 
   useEffect(() => { toolRef.current = tool; }, [tool]);
   useEffect(() => { colorRef.current = color; }, [color]);
   useEffect(() => { thicknessRef.current = thickness; }, [thickness]);
   useEffect(() => { activeHighlightRef.current = activeHighlight; }, [activeHighlight]);
   useEffect(() => { activeSymbolRef.current = activeSymbol; }, [activeSymbol]);
+  useEffect(() => { selectedIdxRef.current = selectedIdx; }, [selectedIdx]);
+  useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   useEffect(() => { localPaths.current = paths || []; scheduleRedraw(); }, [paths]);
 
-  const scheduleRedraw = () => {
-    if (rafScheduled.current) return;
-    rafScheduled.current = true;
-    requestAnimationFrame(() => { rafScheduled.current = false; redrawCanvas(); });
-  };
+  // ── Redraw ────────────────────────────────────────────────────────────────
+  const scheduleRedraw = useCallback(() => {
+    if (rafId.current) return;
+    rafId.current = requestAnimationFrame(() => { rafId.current = null; redrawCanvas(); });
+  });
 
   const redrawCanvas = useCallback((preview) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
+    // Canvas always renders at native resolution; CSS zoom handles display scaling
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    drawGrid(ctx, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    drawGrid(ctx, CANVAS_W, CANVAS_H, 1);
+
     localPaths.current.forEach((path, idx) => {
-      drawPath(ctx, path);
-      // Selection outline
-      if (idx === selectedIdx && path.type === "highlight") {
-        const { x1, y1, x2, y2 } = path;
-        const rx = Math.min(x1, x2), ry = Math.min(y1, y2), rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
-        ctx.save(); ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2.5; ctx.setLineDash([5, 3]);
-        ctx.strokeRect(rx - 2, ry - 2, rw + 4, rh + 4); ctx.setLineDash([]); ctx.restore();
-      }
+      drawOnePath(ctx, path, idx === selectedIdxRef.current, 1);
     });
 
     // Preview while drawing
@@ -203,12 +223,8 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         ctx.strokeStyle = colorRef.current; ctx.lineWidth = THICKNESS[thicknessRef.current]; ctx.lineCap = "round";
         ctx.setLineDash([6, 4]);
         ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]);
-        // Dimension preview
-        const ft = calcLineFt(x1, y1, x2, y2);
-        const angle = calcAngle(x1, y1, x2, y2);
-        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-        ctx.translate(mx, my);
-        ctx.rotate(Math.atan2(y2 - y1, x2 - x1));
+        const ft = calcLineFt(x1, y1, x2, y2), angle = calcAngle(x1, y1, x2, y2);
+        ctx.translate((x1 + x2) / 2, (y1 + y2) / 2); ctx.rotate(Math.atan2(y2 - y1, x2 - x1));
         ctx.fillStyle = "#1e293b"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
         ctx.fillText(`${ft}' (${angle}°)`, 0, -4);
       } else if (type === "highlight") {
@@ -219,42 +235,43 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
           ctx.fillRect(rx, ry, rw, rh); ctx.strokeRect(rx, ry, rw, rh); ctx.setLineDash([]);
           const { wFt, hFt } = calcRectFt(x1, y1, x2, y2);
           ctx.font = "bold 11px sans-serif"; ctx.fillStyle = hl.color; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          ctx.fillText(`${hl.label} ${wFt}'×${hFt}'`, rx + rw / 2, ry + rh / 2);
+          ctx.fillText(`${wFt}'×${hFt}'`, rx + rw / 2, ry + rh / 2);
         }
       }
       ctx.restore();
     }
-  }, [selectedIdx]);
 
-  const getPos = (e) => {
+    // Snap indicator dot
+    if (snapIndicator.current) {
+      const { x, y, snapped } = snapIndicator.current;
+      ctx.save();
+      ctx.beginPath(); ctx.arc(x, y, snapped ? 7 : 4, 0, Math.PI * 2);
+      ctx.fillStyle = snapped ? "#f59e0b" : "#94a3b8"; ctx.fill();
+      ctx.restore();
+    }
+  }, []);
+
+  // ── Pointer helpers ───────────────────────────────────────────────────────
+  const getRawPos = (e) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const sx = canvas.width / rect.width;
-    const sy = canvas.height / rect.height;
     const clientX = e.clientX ?? e.touches?.[0]?.clientX;
     const clientY = e.clientY ?? e.touches?.[0]?.clientY;
-    const raw = { x: (clientX - rect.left) * sx, y: (clientY - rect.top) * sy };
-    return snapPoint(raw.x, raw.y);
+    // rect dimensions = canvas px * zoom (CSS scale), so divide by zoom to get canvas coords
+    const z = zoomRef.current;
+    return {
+      x: (clientX - rect.left) / z,
+      y: (clientY - rect.top) / z,
+    };
   };
 
-  const eraseAt = (pos) => {
-    const t = 20;
-    const updated = localPaths.current.filter(p => {
-      if (p.type === "symbol") return Math.hypot(p.x - pos.x, p.y - pos.y) > 22;
-      if (p.type === "highlight") {
-        const rx = Math.min(p.x1, p.x2), ry = Math.min(p.y1, p.y2);
-        const rw = Math.abs(p.x2 - p.x1), rh = Math.abs(p.y2 - p.y1);
-        return !(pos.x >= rx - t && pos.x <= rx + rw + t && pos.y >= ry - t && pos.y <= ry + rh + t);
-      }
-      return !p.points?.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) < t);
-    });
-    localPaths.current = updated;
-    onPathsChange(updated);
-    scheduleRedraw();
+  const getSnappedPos = (e, isFirst) => {
+    const raw = getRawPos(e);
+    return smartSnap(raw.x, raw.y, localPaths.current, isFirst);
   };
 
-  // Try to find clicked object for selection
-  const findClickedIdx = (pos) => {
+  // ── Hit testing ───────────────────────────────────────────────────────────
+  const findHitIdx = (pos) => {
     for (let i = localPaths.current.length - 1; i >= 0; i--) {
       const p = localPaths.current[i];
       if (p.type === "highlight") {
@@ -264,35 +281,83 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       }
       if (p.type === "line") {
         const [p1, p2] = p.points;
-        const d = Math.abs((p2.y - p1.y) * pos.x - (p2.x - p1.x) * pos.y + p2.x * p1.y - p2.y * p1.x) /
-          Math.hypot(p2.y - p1.y, p2.x - p1.x);
-        const mx = (Math.min(p1.x, p2.x) - 10), Mx = (Math.max(p1.x, p2.x) + 10);
-        const my = (Math.min(p1.y, p2.y) - 10), My = (Math.max(p1.y, p2.y) + 10);
-        if (d < 10 && pos.x >= mx && pos.x <= Mx && pos.y >= my && pos.y <= My) return i;
+        const len = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        if (len === 0) continue;
+        const d = Math.abs((p2.y - p1.y) * pos.x - (p2.x - p1.x) * pos.y + p2.x * p1.y - p2.y * p1.x) / len;
+        const inBounds = pos.x >= Math.min(p1.x, p2.x) - 10 && pos.x <= Math.max(p1.x, p2.x) + 10
+          && pos.y >= Math.min(p1.y, p2.y) - 10 && pos.y <= Math.max(p1.y, p2.y) + 10;
+        if (d < 10 && inBounds) return i;
+      }
+      if (p.type === "symbol") {
+        if (Math.hypot(p.x - pos.x, p.y - pos.y) < 22) return i;
       }
     }
     return null;
   };
 
+  // ── Erase ─────────────────────────────────────────────────────────────────
+  const eraseAt = (pos) => {
+    const t = 18;
+    const updated = localPaths.current.filter(p => {
+      if (p.type === "symbol") return Math.hypot(p.x - pos.x, p.y - pos.y) > 22;
+      if (p.type === "highlight") {
+        const rx = Math.min(p.x1, p.x2), ry = Math.min(p.y1, p.y2);
+        const rw = Math.abs(p.x2 - p.x1), rh = Math.abs(p.y2 - p.y1);
+        return !(pos.x >= rx - t && pos.x <= rx + rw + t && pos.y >= ry - t && pos.y <= ry + rh + t);
+      }
+      return !p.points?.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) < t);
+    });
+    localPaths.current = updated; onPathsChange(updated); notifyHighlights(updated); scheduleRedraw();
+  };
+
+  // ── Select + move state ───────────────────────────────────────────────────
+  const selectItem = (idx) => {
+    setSelectedIdx(idx);
+    selectedIdxRef.current = idx;
+    if (idx !== null) {
+      const p = localPaths.current[idx];
+      if (p?.type === "highlight") {
+        const { wFt, hFt } = calcRectFt(p.x1, p.y1, p.x2, p.y2);
+        setEditDim({ w: wFt, h: hFt, len: "" });
+      } else if (p?.type === "line") {
+        setEditDim({ w: "", h: "", len: calcLineFt(p.points[0].x, p.points[0].y, p.points[1].x, p.points[1].y) });
+      } else {
+        setEditDim({ w: "", h: "", len: "" });
+      }
+    }
+    scheduleRedraw();
+  };
+
+  // ── Pointer events ────────────────────────────────────────────────────────
   const onPointerDown = (e) => {
     e.preventDefault();
     e.target.setPointerCapture?.(e.pointerId);
     isDrawing.current = true;
-    const pos = getPos(e);
+    const raw = getRawPos(e);
+    const pos = getSnappedPos(e, true);
 
     if (toolRef.current === "select") {
-      const idx = findClickedIdx(pos);
-      setSelectedIdx(idx);
-      if (idx !== null && localPaths.current[idx]?.type === "highlight") {
+      const idx = findHitIdx(raw);
+      if (idx !== null) {
+        selectItem(idx);
         const p = localPaths.current[idx];
-        const { wFt, hFt } = calcRectFt(p.x1, p.y1, p.x2, p.y2);
-        setEditDim({ w: wFt, h: hFt });
+        // Set up move state
+        if (p.type === "highlight") {
+          moveState.current = { idx, origPath: { ...p }, startX: raw.x, startY: raw.y };
+        } else if (p.type === "line") {
+          moveState.current = { idx, origPath: { ...p, points: [...p.points] }, startX: raw.x, startY: raw.y };
+        } else if (p.type === "symbol") {
+          moveState.current = { idx, origPath: { ...p }, startX: raw.x, startY: raw.y };
+        }
+      } else {
+        selectItem(null);
+        moveState.current = null;
       }
-      scheduleRedraw();
-      isDrawing.current = false;
       return;
     }
-    if (toolRef.current === "eraser") { eraseAt(pos); return; }
+
+    if (toolRef.current === "eraser") { eraseAt(raw); return; }
+
     if (toolRef.current === "symbol") {
       const sym = activeSymbolRef.current;
       if (sym) {
@@ -301,137 +366,205 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       }
       isDrawing.current = false; return;
     }
+
     dragStart.current = pos;
-    currentPath.current = [pos];
+    snapIndicator.current = { ...pos, snapped: pos.snapped };
+    scheduleRedraw();
   };
 
   const onPointerMove = (e) => {
-    if (!isDrawing.current) return;
     e.preventDefault();
-    const pos = getPos(e);
-    if (toolRef.current === "eraser") { eraseAt(pos); return; }
+    const raw = getRawPos(e);
+
+    // Moving selected item
+    if (isDrawing.current && toolRef.current === "select" && moveState.current) {
+      const { idx, origPath, startX, startY } = moveState.current;
+      const dx = raw.x - startX, dy = raw.y - startY;
+      const snappedDx = snapToGrid(origPath.x1 !== undefined ? origPath.x1 + dx : 0) - (origPath.x1 || 0);
+      const snappedDy = snapToGrid(origPath.y1 !== undefined ? origPath.y1 + dy : 0) - (origPath.y1 || 0);
+
+      let updated = [...localPaths.current];
+      const p = origPath;
+      if (p.type === "highlight") {
+        const sdx = snapToGrid(p.x1 + dx) - p.x1, sdy = snapToGrid(p.y1 + dy) - p.y1;
+        updated[idx] = { ...p, x1: p.x1 + sdx, y1: p.y1 + sdy, x2: p.x2 + sdx, y2: p.y2 + sdy };
+      } else if (p.type === "line") {
+        const sdx = snapToGrid(p.points[0].x + dx) - p.points[0].x;
+        const sdy = snapToGrid(p.points[0].y + dy) - p.points[0].y;
+        updated[idx] = { ...p, points: [{ x: p.points[0].x + sdx, y: p.points[0].y + sdy }, { x: p.points[1].x + sdx, y: p.points[1].y + sdy }] };
+      } else if (p.type === "symbol") {
+        updated[idx] = { ...p, x: snapToGrid(p.x + dx), y: snapToGrid(p.y + dy) };
+      }
+      localPaths.current = updated;
+      redrawCanvas();
+      return;
+    }
+
+    if (!isDrawing.current) return;
+    if (toolRef.current === "eraser") { eraseAt(raw); return; }
+
+    const snapped = getSnappedPos(e, false);
+    snapIndicator.current = { ...snapped, snapped: snapped.snapped };
+
     if ((toolRef.current === "line" || toolRef.current === "highlight") && dragStart.current) {
-      previewRef.current = { type: toolRef.current, x1: dragStart.current.x, y1: dragStart.current.y, x2: pos.x, y2: pos.y };
+      previewRef.current = { type: toolRef.current, x1: dragStart.current.x, y1: dragStart.current.y, x2: snapped.x, y2: snapped.y };
       redrawCanvas(previewRef.current);
       return;
     }
     if (toolRef.current === "pen") {
-      currentPath.current = [...currentPath.current, pos];
+      localPaths.current[localPaths.current.length - 1]?.points?.push(snapped) ||
+        (localPaths.current = [...localPaths.current, { type: "pen", points: [dragStart.current, snapped], color: colorRef.current, lineWidth: THICKNESS[thicknessRef.current] }]);
       scheduleRedraw();
     }
   };
 
   const onPointerUp = (e) => {
+    snapIndicator.current = null;
+    previewRef.current = null;
+
+    if (toolRef.current === "select" && moveState.current) {
+      isDrawing.current = false;
+      const updated = [...localPaths.current];
+      onPathsChange(updated); notifyHighlights(updated);
+      // refresh edit dims
+      const p = updated[moveState.current.idx];
+      if (p?.type === "highlight") {
+        const { wFt, hFt } = calcRectFt(p.x1, p.y1, p.x2, p.y2);
+        setEditDim({ w: wFt, h: hFt, len: "" });
+      }
+      moveState.current = null;
+      scheduleRedraw(); return;
+    }
+
     if (!isDrawing.current) return;
     isDrawing.current = false;
-    previewRef.current = null;
-    const pos = getPos(e);
+
+    const snapped = getSnappedPos(e, false);
 
     if ((toolRef.current === "line" || toolRef.current === "highlight") && dragStart.current) {
-      const start = dragStart.current;
-      dragStart.current = null;
-      if (Math.hypot(pos.x - start.x, pos.y - start.y) < 5) { redrawCanvas(); return; }
-
+      const start = dragStart.current; dragStart.current = null;
+      if (Math.hypot(snapped.x - start.x, snapped.y - start.y) < 4) { scheduleRedraw(); return; }
       if (toolRef.current === "line") {
-        const updated = [...localPaths.current, { type: "line", points: [start, pos], color: colorRef.current, lineWidth: THICKNESS[thicknessRef.current] }];
+        const updated = [...localPaths.current, { type: "line", points: [start, { x: snapped.x, y: snapped.y }], color: colorRef.current, lineWidth: THICKNESS[thicknessRef.current] }];
         localPaths.current = updated; onPathsChange(updated);
       } else {
         const hl = CAB_HIGHLIGHTS.find(h => h.key === activeHighlightRef.current);
-        const updated = [...localPaths.current, { type: "highlight", cabKey: activeHighlightRef.current, color: hl?.color, x1: start.x, y1: start.y, x2: pos.x, y2: pos.y }];
-        localPaths.current = updated; onPathsChange(updated);
-        // Notify parent about cabinet measurements
-        notifyHighlights(updated);
+        const updated = [...localPaths.current, { type: "highlight", cabKey: activeHighlightRef.current, color: hl?.color, x1: start.x, y1: start.y, x2: snapped.x, y2: snapped.y }];
+        localPaths.current = updated; onPathsChange(updated); notifyHighlights(updated);
       }
-      scheduleRedraw();
-      return;
+      scheduleRedraw(); return;
     }
 
-    if (toolRef.current === "pen" && currentPath.current.length > 1) {
-      const updated = [...localPaths.current, { type: "pen", points: currentPath.current, color: colorRef.current, lineWidth: THICKNESS[thicknessRef.current] }];
-      localPaths.current = updated; onPathsChange(updated);
-      currentPath.current = [];
+    if (toolRef.current === "pen") {
+      onPathsChange([...localPaths.current]);
       scheduleRedraw();
     }
   };
 
+  // ── Notify parent ─────────────────────────────────────────────────────────
   const notifyHighlights = (allPaths) => {
     if (!onHighlightsChange) return;
     const highlights = allPaths.filter(p => p.type === "highlight").map(p => {
       const { wFt, hFt, lf } = calcRectFt(p.x1, p.y1, p.x2, p.y2);
-      const widthFt = parseFloat(wFt);
-      return { cabKey: p.cabKey, wFt: parseFloat(wFt), hFt: parseFloat(hFt), lf: parseFloat(lf), measureType: "lf", quantity: widthFt };
+      return { cabKey: p.cabKey, wFt: parseFloat(wFt), hFt: parseFloat(hFt), lf: parseFloat(lf), measureType: "lf", quantity: parseFloat(wFt) };
     });
     onHighlightsChange(highlights);
   };
 
-  // Dim editing for selected highlight
+  // ── Edit dimensions ───────────────────────────────────────────────────────
   const applyDimEdit = () => {
     if (selectedIdx === null) return;
     const p = localPaths.current[selectedIdx];
-    if (p?.type !== "highlight") return;
-    const wPx = parseFloat(editDim.w) * PX_PER_FOOT;
-    const hPx = parseFloat(editDim.h) * PX_PER_FOOT;
-    if (!wPx || !hPx) return;
-    const rx = Math.min(p.x1, p.x2), ry = Math.min(p.y1, p.y2);
-    const updated = localPaths.current.map((item, i) => i === selectedIdx
-      ? { ...item, x1: rx, y1: ry, x2: rx + wPx, y2: ry + hPx }
-      : item
-    );
+    if (!p) return;
+
+    let updated = [...localPaths.current];
+    if (p.type === "highlight") {
+      const wPx = parseFloat(editDim.w) * BASE_PX_PER_FOOT;
+      const hPx = parseFloat(editDim.h) * BASE_PX_PER_FOOT;
+      if (!wPx || !hPx) return;
+      const rx = Math.min(p.x1, p.x2), ry = Math.min(p.y1, p.y2);
+      updated[selectedIdx] = { ...p, x1: rx, y1: ry, x2: rx + wPx, y2: ry + hPx };
+      setEditDim(prev => ({ ...prev, w: editDim.w, h: editDim.h }));
+    } else if (p.type === "line") {
+      const newLen = parseFloat(editDim.len) * BASE_PX_PER_FOOT;
+      if (!newLen) return;
+      const [p1, p2] = p.points;
+      const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+      const newP2 = { x: Math.round(p1.x + Math.cos(angle) * newLen), y: Math.round(p1.y + Math.sin(angle) * newLen) };
+      updated[selectedIdx] = { ...p, points: [p1, newP2] };
+    }
     localPaths.current = updated; onPathsChange(updated); notifyHighlights(updated); scheduleRedraw();
   };
 
   const deleteSelected = () => {
     if (selectedIdx === null) return;
     const updated = localPaths.current.filter((_, i) => i !== selectedIdx);
-    localPaths.current = updated; onPathsChange(updated); notifyHighlights(updated); setSelectedIdx(null); scheduleRedraw();
+    localPaths.current = updated; onPathsChange(updated); notifyHighlights(updated);
+    selectItem(null); scheduleRedraw();
   };
 
   const selectedPath = selectedIdx !== null ? localPaths.current[selectedIdx] : null;
 
+  // ── Zoom ──────────────────────────────────────────────────────────────────
+  const changeZoom = (delta) => {
+    setZoom(prev => {
+      const nz = Math.min(3, Math.max(0.4, prev + delta));
+      zoomRef.current = nz;
+      requestAnimationFrame(() => redrawCanvas());
+      return nz;
+    });
+  };
+
+  const toolBtn = (t, label, icon, activeColor) => (
+    <button onClick={() => setTool(t)}
+      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${tool === t ? `${activeColor} text-white border-transparent` : "bg-white text-slate-600 hover:bg-slate-100 border-slate-200"}`}>
+      {icon}{label}
+    </button>
+  );
+
   return (
-    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+    <div className="border border-slate-200 rounded-xl overflow-hidden bg-white select-none">
       {/* Toolbar Row 1 */}
       <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 border-b border-slate-200 flex-wrap">
-        <button onClick={() => setTool("select")} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${tool === "select" ? "bg-amber-500 text-white border-amber-500" : "bg-white text-slate-600 hover:bg-slate-100 border-slate-200"}`}>
-          <Move className="w-3.5 h-3.5" /> Select
-        </button>
-        <button onClick={() => setTool("line")} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${tool === "line" ? "bg-blue-500 text-white border-blue-500" : "bg-white text-slate-600 hover:bg-slate-100 border-slate-200"}`}>
-          <Minus className="w-3.5 h-3.5" /> Line
-        </button>
-        <button onClick={() => setTool("pen")} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${tool === "pen" ? "bg-slate-700 text-white border-slate-700" : "bg-white text-slate-600 hover:bg-slate-100 border-slate-200"}`}>
-          <Pencil className="w-3.5 h-3.5" /> Pen
-        </button>
-        <button onClick={() => setTool("eraser")} className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${tool === "eraser" ? "bg-red-500 text-white border-red-500" : "bg-white text-slate-600 hover:bg-slate-100 border-slate-200"}`}>
-          <Eraser className="w-3.5 h-3.5" /> Erase
-        </button>
+        {toolBtn("select", "Select/Move", <Move className="w-3.5 h-3.5" />, "bg-amber-500")}
+        {toolBtn("line",   "Line",        <Minus className="w-3.5 h-3.5" />, "bg-blue-500")}
+        {toolBtn("pen",    "Pen",         <Pencil className="w-3.5 h-3.5" />, "bg-slate-700")}
+        {toolBtn("eraser", "Erase",       <Eraser className="w-3.5 h-3.5" />, "bg-red-500")}
 
         <div className="w-px h-5 bg-slate-300 mx-0.5" />
 
-        {/* Cabinet box highlighters */}
         {CAB_HIGHLIGHTS.map(h => (
           <button key={h.key}
             onClick={() => { setTool("highlight"); setActiveHighlight(h.key); }}
             className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border-2 transition-all ${tool === "highlight" && activeHighlight === h.key ? "border-slate-700 shadow-md" : "border-transparent hover:border-slate-300"}`}
-            style={{ backgroundColor: h.fillColor, color: h.color, outline: tool === "highlight" && activeHighlight === h.key ? `2px solid ${h.color}` : "none" }}
-          >
+            style={{ backgroundColor: h.fillColor, color: h.color, outline: tool === "highlight" && activeHighlight === h.key ? `2px solid ${h.color}` : "none" }}>
             {h.label}
           </button>
         ))}
 
         <div className="w-px h-5 bg-slate-300 mx-0.5" />
 
-        {/* Symbols */}
         {SYMBOLS.map(sym => (
           <button key={sym.key}
             onClick={() => { setTool("symbol"); setActiveSymbol(sym.key); }}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${tool === "symbol" && activeSymbol === sym.key ? "bg-indigo-500 text-white border-indigo-500" : "bg-white text-slate-600 hover:bg-slate-100 border-slate-200"}`}
-          >
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${tool === "symbol" && activeSymbol === sym.key ? "bg-indigo-500 text-white border-indigo-500" : "bg-white text-slate-600 hover:bg-slate-100 border-slate-200"}`}>
             {sym.label}
           </button>
         ))}
+
+        <div className="w-px h-5 bg-slate-300 mx-0.5 ml-auto" />
+
+        {/* Zoom */}
+        <button onClick={() => changeZoom(0.2)} className="w-7 h-7 flex items-center justify-center bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-600" title="Zoom In">
+          <ZoomIn className="w-3.5 h-3.5" />
+        </button>
+        <span className="text-xs font-mono text-slate-500 w-10 text-center">{Math.round(zoom * 100)}%</span>
+        <button onClick={() => changeZoom(-0.2)} className="w-7 h-7 flex items-center justify-center bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-600" title="Zoom Out">
+          <ZoomOut className="w-3.5 h-3.5" />
+        </button>
       </div>
 
-      {/* Toolbar Row 2 — thickness + colors + actions */}
+      {/* Toolbar Row 2 — thickness + colors + undo/clear */}
       <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border-b border-slate-100 flex-wrap">
         <div className="flex gap-1.5 items-center">
           {Object.entries(THICKNESS).map(([key, val]) => (
@@ -443,7 +576,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         </div>
         <div className="flex items-center gap-1.5">
           {COLORS.map(c => (
-            <button key={c} onClick={() => { setColor(c); if (tool !== "eraser" && tool !== "highlight" && tool !== "symbol") setTool("line"); }}
+            <button key={c} onClick={() => { setColor(c); if (!["eraser","highlight","symbol"].includes(tool)) setTool("line"); }}
               className="rounded-full transition-all" style={{ backgroundColor: c, width: 20, height: 20, border: `3px solid ${color === c ? "#f59e0b" : "transparent"}`, boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
           ))}
         </div>
@@ -452,61 +585,82 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
             className="w-7 h-7 flex items-center justify-center bg-white hover:bg-slate-100 border border-slate-200 rounded-lg text-slate-500" title="Undo">
             <Undo2 className="w-3.5 h-3.5" />
           </button>
-          <button onClick={() => { localPaths.current = []; onPathsChange([]); notifyHighlights([]); scheduleRedraw(); }}
+          <button onClick={() => { localPaths.current = []; onPathsChange([]); notifyHighlights([]); selectItem(null); scheduleRedraw(); }}
             className="w-7 h-7 flex items-center justify-center bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg text-red-500" title="Clear all">
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Selected item editor */}
+      {/* Edit bar — shows when item is selected */}
       {selectedPath?.type === "highlight" && (
         <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border-b border-amber-200 flex-wrap">
           <Edit3 className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
-          <span className="text-xs font-semibold text-amber-800">Edit Box:</span>
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-600">W (ft)</span>
-            <input type="number" step="0.5" className="w-16 h-7 text-xs border border-amber-300 rounded-lg px-2 bg-white"
-              value={editDim.w} onChange={e => setEditDim(prev => ({ ...prev, w: e.target.value }))} />
-            <span className="text-xs text-slate-600">H (ft)</span>
-            <input type="number" step="0.5" className="w-16 h-7 text-xs border border-amber-300 rounded-lg px-2 bg-white"
-              value={editDim.h} onChange={e => setEditDim(prev => ({ ...prev, h: e.target.value }))} />
-            <button onClick={applyDimEdit} className="px-3 h-7 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg">Apply</button>
-            <button onClick={deleteSelected} className="px-3 h-7 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
-            <button onClick={() => { setSelectedIdx(null); scheduleRedraw(); }} className="px-3 h-7 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-100">✕</button>
-          </div>
-          <span className="text-xs text-slate-500 ml-1">
-            = {(parseFloat(editDim.w) * 2 + parseFloat(editDim.h) * 2).toFixed(1)} LF perimeter
+          <span className="text-xs font-semibold text-amber-800">Cabinet Box:</span>
+          <label className="text-xs text-slate-600">Width (ft)</label>
+          <input type="number" step="0.5" min="0.5"
+            className="w-16 h-7 text-xs border border-amber-300 rounded-lg px-2 bg-white"
+            value={editDim.w}
+            onChange={e => setEditDim(prev => ({ ...prev, w: e.target.value }))} />
+          <label className="text-xs text-slate-600">Depth (ft)</label>
+          <input type="number" step="0.5" min="0.5"
+            className="w-16 h-7 text-xs border border-amber-300 rounded-lg px-2 bg-white"
+            value={editDim.h}
+            onChange={e => setEditDim(prev => ({ ...prev, h: e.target.value }))} />
+          <button onClick={applyDimEdit} className="px-3 h-7 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg">Apply</button>
+          <span className="text-xs text-slate-500">
+            = {((parseFloat(editDim.w) || 0) * 2 + (parseFloat(editDim.h) || 0) * 2).toFixed(1)} LF
           </span>
+          <button onClick={deleteSelected} className="ml-auto px-3 h-7 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
+          <button onClick={() => selectItem(null)} className="px-2 h-7 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-100">✕</button>
         </div>
       )}
       {selectedPath?.type === "line" && (
         <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border-b border-blue-200 flex-wrap">
           <Edit3 className="w-3.5 h-3.5 text-blue-700 flex-shrink-0" />
-          <span className="text-xs font-semibold text-blue-800">
-            Line: {calcLineFt(selectedPath.points[0].x, selectedPath.points[0].y, selectedPath.points[1].x, selectedPath.points[1].y)}' at {calcAngle(selectedPath.points[0].x, selectedPath.points[0].y, selectedPath.points[1].x, selectedPath.points[1].y)}°
+          <span className="text-xs font-semibold text-blue-800">Line:</span>
+          <label className="text-xs text-slate-600">Length (ft)</label>
+          <input type="number" step="0.5" min="0.5"
+            className="w-20 h-7 text-xs border border-blue-300 rounded-lg px-2 bg-white"
+            value={editDim.len}
+            onChange={e => setEditDim(prev => ({ ...prev, len: e.target.value }))} />
+          <span className="text-xs text-slate-500">
+            at {calcAngle(selectedPath.points[0].x, selectedPath.points[0].y, selectedPath.points[1].x, selectedPath.points[1].y)}°
           </span>
+          <button onClick={applyDimEdit} className="px-3 h-7 text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white rounded-lg">Apply</button>
           <button onClick={deleteSelected} className="ml-auto px-3 h-7 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
-          <button onClick={() => { setSelectedIdx(null); scheduleRedraw(); }} className="px-3 h-7 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-100">✕</button>
+          <button onClick={() => selectItem(null)} className="px-2 h-7 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-100">✕</button>
         </div>
       )}
 
-      <canvas
-        ref={canvasRef}
-        width={1600}
-        height={900}
-        className="w-full"
-        style={{ cursor: tool === "eraser" ? "cell" : tool === "symbol" ? "copy" : tool === "select" ? "default" : "crosshair", touchAction: "none", display: "block", height: 340 }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-      />
-      <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-2">
+      {/* Canvas — fixed resolution, CSS zoom for display */}
+      <div ref={containerRef} className="overflow-auto bg-white" style={{ maxHeight: 420 }}>
+        <div style={{ width: CANVAS_W * zoom, height: CANVAS_H * zoom, position: "relative", flexShrink: 0 }}>
+          <canvas
+            ref={canvasRef}
+            width={CANVAS_W}
+            height={CANVAS_H}
+            style={{
+              cursor: tool === "eraser" ? "cell" : tool === "symbol" ? "copy" : tool === "select" ? (moveState.current ? "grabbing" : "pointer") : "crosshair",
+              touchAction: "none", display: "block",
+              width: CANVAS_W * zoom,
+              height: CANVAS_H * zoom,
+              transformOrigin: "top left",
+            }}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+          />
+        </div>
+      </div>
+
+      {/* Summary bar */}
+      <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-100 flex flex-wrap gap-2 items-center">
         {CAB_HIGHLIGHTS.map(h => {
-          const hlPaths = (paths || []).filter(p => p.type === "highlight" && p.cabKey === h.key);
-          if (!hlPaths.length) return null;
-          const totalLf = hlPaths.reduce((s, p) => s + parseFloat(calcRectFt(p.x1, p.y1, p.x2, p.y2).wFt), 0);
+          const hls = (paths || []).filter(p => p.type === "highlight" && p.cabKey === h.key);
+          if (!hls.length) return null;
+          const totalLf = hls.reduce((s, p) => s + parseFloat(calcRectFt(p.x1, p.y1, p.x2, p.y2).wFt), 0);
           return (
             <span key={h.key} className="text-xs font-semibold rounded-full px-2 py-0.5"
               style={{ backgroundColor: h.fillColor, color: h.color }}>
@@ -514,11 +668,9 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
             </span>
           );
         })}
-        {(paths || []).filter(p => p.type === "line").length > 0 && (
-          <span className="text-xs text-slate-500">
-            {(paths || []).filter(p => p.type === "line").length} line(s) · {(paths || []).filter(p => p.type === "line").reduce((s, p) => s + parseFloat(calcLineFt(p.points[0].x, p.points[0].y, p.points[1].x, p.points[1].y)), 0).toFixed(1)} total LF
-          </span>
-        )}
+        <span className="text-xs text-slate-400 ml-auto">
+          🟡 = snap to object &nbsp;⚫ = grid snap
+        </span>
       </div>
     </div>
   );
