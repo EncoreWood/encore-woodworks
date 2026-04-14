@@ -1,0 +1,150 @@
+{
+  "name": "Bid",
+  "type": "object",
+  "properties": {
+    "project_name": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Linked Project ID"
+    },
+    "bid_type": {
+      "type": "string",
+      "enum": [
+        "basic_euro",
+        "high_end_euro",
+        "basic_face_frame",
+        "mid_face_frame",
+        "high_end_face_frame"
+      ]
+    },
+    "bid_mode": {
+      "type": "string",
+      "enum": [
+        "plan",
+        "onsite"
+      ],
+      "default": "plan",
+      "description": "Whether this is a plan-based or onsite bid"
+    },
+    "plan_file_url": {
+      "type": "string"
+    },
+    "plan_file_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "finalized",
+        "sent"
+      ],
+      "default": "draft"
+    },
+    "estimated_by": {
+      "type": "string",
+      "description": "Name of the team member who provided the estimate"
+    },
+    "wood_species": {
+      "type": "string"
+    },
+    "door_style": {
+      "type": "string"
+    },
+    "handles": {
+      "type": "string"
+    },
+    "drawerbox": {
+      "type": "string"
+    },
+    "drawer_glides": {
+      "type": "string"
+    },
+    "hinges": {
+      "type": "string"
+    },
+    "rooms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "room_name": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "cabinet_category": {
+                  "type": "string",
+                  "enum": [
+                    "base",
+                    "upper",
+                    "tall",
+                    "misc"
+                  ]
+                },
+                "measure_type": {
+                  "type": "string",
+                  "enum": [
+                    "lf",
+                    "qty"
+                  ]
+                },
+                "quantity": {
+                  "type": "number"
+                },
+                "unit_price": {
+                  "type": "number"
+                },
+                "notes": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "total": {
+      "type": "number"
+    },
+    "total_lf": {
+      "type": "number"
+    },
+    "ai_notes": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "plan_annotations": {
+      "type": "array",
+      "description": "Saved drawing annotations on the plan",
+      "items": {
+        "type": "object"
+      }
+    }
+  },
+  "required": [
+    "project_name"
+  ]
+}
