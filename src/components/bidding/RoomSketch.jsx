@@ -120,11 +120,10 @@ function drawSymbol(ctx, sym, zoom) {
   const lw = 1 / zoom;
   ctx.save();
   if (sym.symbolKey === "rollout") {
-    // Draw rollout/insert with arrow pointing to location
-    const { x, y, label, targetX, targetY } = sym;
+    // Draw rollout/insert with arrow pointing downward
+    const { x, y, label } = sym;
     const fontSize = 11 * lw;
     ctx.font = `bold ${fontSize}px sans-serif`;
-    ctx.fillStyle = "#d97706";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     
@@ -142,35 +141,24 @@ function drawSymbol(ctx, sym, zoom) {
     ctx.fillStyle = "#d97706";
     ctx.fillText(label || "Rollout", x, y);
     
-    // Draw arrow to target location if specified
-    if (targetX !== undefined && targetY !== undefined) {
-      const arrowStartX = x;
-      const arrowStartY = y + boxH / 2 + 4 * lw;
-      const arrowHeadLen = 12 * lw;
-      const dx = targetX - arrowStartX;
-      const dy = targetY - arrowStartY;
-      const dist = Math.hypot(dx, dy);
-      if (dist > 20) {
-        const arrowEndX = arrowStartX + (dx / dist) * (dist - arrowHeadLen);
-        const arrowEndY = arrowStartY + (dy / dist) * (dist - arrowHeadLen);
-        const angle = Math.atan2(dy, dx);
-        
-        ctx.strokeStyle = "#d97706";
-        ctx.lineWidth = 2 * lw;
-        ctx.beginPath();
-        ctx.moveTo(arrowStartX, arrowStartY);
-        ctx.lineTo(arrowEndX, arrowEndY);
-        ctx.stroke();
-        
-        // Arrowhead
-        ctx.beginPath();
-        ctx.moveTo(arrowEndX, arrowEndY);
-        ctx.lineTo(arrowEndX - arrowHeadLen * Math.cos(angle - Math.PI / 6), arrowEndY - arrowHeadLen * Math.sin(angle - Math.PI / 6));
-        ctx.moveTo(arrowEndX, arrowEndY);
-        ctx.lineTo(arrowEndX - arrowHeadLen * Math.cos(angle + Math.PI / 6), arrowEndY - arrowHeadLen * Math.sin(angle + Math.PI / 6));
-        ctx.stroke();
-      }
-    }
+    // Draw arrow pointing downward to indicate placement location
+    const arrowStartY = y + boxH / 2 + 4 * lw;
+    const arrowLen = 30 * lw;
+    const arrowHeadLen = 12 * lw;
+    ctx.strokeStyle = "#d97706";
+    ctx.lineWidth = 2 * lw;
+    ctx.beginPath();
+    ctx.moveTo(x, arrowStartY);
+    ctx.lineTo(x, arrowStartY + arrowLen);
+    ctx.stroke();
+    
+    // Arrowhead
+    ctx.beginPath();
+    ctx.moveTo(x, arrowStartY + arrowLen);
+    ctx.lineTo(x - arrowHeadLen * 0.35, arrowStartY + arrowLen - arrowHeadLen * 0.7);
+    ctx.moveTo(x, arrowStartY + arrowLen);
+    ctx.lineTo(x + arrowHeadLen * 0.35, arrowStartY + arrowLen - arrowHeadLen * 0.7);
+    ctx.stroke();
   } else if (sym.symbolKey === "door" || sym.symbolKey === "window") {
     const { anchorX, anchorY, wallAngle = 0 } = sym;
     ctx.translate(anchorX, anchorY);
@@ -476,7 +464,7 @@ function hitTestWallSymbol(pos, sym) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, sketchId, ceilingHeight, onCeilingHeightChange }) {
+export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, sketchId, ceilingHeight, onCeilingHeightChange, catalogItems = [] }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -485,11 +473,13 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
   const [thickness, setThickness] = useState("medium");
   const [activeHighlight, setActiveHighlight] = useState("base");
   const [activeSymbol, setActiveSymbol] = useState(null);
+  const [activeRollout, setActiveRollout] = useState(null);
   const [symbolSizes, setSymbolSizes] = useState({ door: 32, window: 36 });
   const [selectedIdx, setSelectedIdx] = useState(null);
   const [zoom, setZoom] = useState(1);
-  const [editDim, setEditDim] = useState({ w: "", h: "", len: "", angle: "", symW: "", offset: "", elevation: "", offsetFromEnd: "left" });
+  const [editDim, setEditDim] = useState({ w: "", h: "", len: "", angle: "", symW: "", offset: "", elevation: "", offsetFromEnd: "left", label: "", targetX: undefined, targetY: undefined });
   const [liveAngle, setLiveAngle] = useState(null);
+  const [placeRolloutMode, setPlaceRolloutMode] = useState(false);
 
   const history = useRef([[]]);
   const historyIdx = useRef(0);
@@ -499,9 +489,11 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
   const thicknessRef = useRef(thickness);
   const activeHighlightRef = useRef(activeHighlight);
   const activeSymbolRef = useRef(activeSymbol);
+  const activeRolloutRef = useRef(activeRollout);
   const symbolSizesRef = useRef(symbolSizes);
   const selectedIdxRef = useRef(selectedIdx);
   const zoomRef = useRef(zoom);
+  const placeRolloutModeRef = useRef(placeRolloutMode);
 
   const isDrawing = useRef(false);
   const dragStart = useRef(null);
@@ -516,9 +508,11 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
   useEffect(() => { thicknessRef.current = thickness; }, [thickness]);
   useEffect(() => { activeHighlightRef.current = activeHighlight; }, [activeHighlight]);
   useEffect(() => { activeSymbolRef.current = activeSymbol; }, [activeSymbol]);
+  useEffect(() => { activeRolloutRef.current = activeRollout; }, [activeRollout]);
   useEffect(() => { symbolSizesRef.current = symbolSizes; }, [symbolSizes]);
   useEffect(() => { selectedIdxRef.current = selectedIdx; }, [selectedIdx]);
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  useEffect(() => { placeRolloutModeRef.current = placeRolloutMode; }, [placeRolloutMode]);
   useEffect(() => { localPaths.current = paths || []; scheduleRedraw(); }, [paths]);
 
   // ── History ────────────────────────────────────────────────────────────────
@@ -729,6 +723,13 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
       return;
     }
     if (toolRef.current === "eraser") { eraseAt(raw); return; }
+    if (placeRolloutModeRef.current && activeRolloutRef.current) {
+      const rollout = activeRolloutRef.current;
+      const newSym = { type: "symbol", symbolKey: "rollout", x: pos.x, y: pos.y, label: rollout.name, targetX: undefined, targetY: undefined };
+      commitPaths([...localPaths.current, newSym]);
+      isDrawing.current = false;
+      return;
+    }
     if (toolRef.current === "symbol") {
       const sym = activeSymbolRef.current;
       if (sym) {
@@ -1037,23 +1038,54 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
         ))}
         <div className="w-px h-6 bg-slate-300 mx-0.5" />
         {SYMBOLS.map(sym => (
-          <button key={sym.key}
-            onPointerDown={(e) => { e.stopPropagation(); setTool("symbol"); setActiveSymbol(sym.key); }}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all touch-manipulation ${tool === "symbol" && activeSymbol === sym.key ? "bg-indigo-500 text-white border-indigo-500" : "bg-white text-slate-600 border-slate-200"}`}>
-            <SymbolIcon symbolKey={sym.key} size={22} />
-            {sym.label}
-          </button>
+          sym.key !== "rollout" && (
+            <button key={sym.key}
+              onPointerDown={(e) => { e.stopPropagation(); setTool("symbol"); setActiveSymbol(sym.key); }}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all touch-manipulation ${tool === "symbol" && activeSymbol === sym.key ? "bg-indigo-500 text-white border-indigo-500" : "bg-white text-slate-600 border-slate-200"}`}>
+              <SymbolIcon symbolKey={sym.key} size={22} />
+              {sym.label}
+            </button>
+          )
         ))}
-        {tool === "symbol" && (activeSymbol === "door" || activeSymbol === "window") && (
-          <div className="flex items-center gap-1.5 ml-1">
-            <span className="text-xs text-slate-500">Size:</span>
-            <input type="number" step="1" value={symbolSizes[activeSymbol] || ""}
-              onChange={e => setSymbolSizes(prev => ({ ...prev, [activeSymbol]: parseFloat(e.target.value) || 0 }))}
-              className="w-14 h-8 text-xs border border-indigo-300 rounded-lg px-2 bg-white"
-              onPointerDown={e => e.stopPropagation()} />
-            <span className="text-xs text-slate-500">in</span>
-          </div>
+        {/* Rollout Catalog Selector */}
+        {(catalogItems || []).filter(c => c.cabinet_category === "roll_out_inserts").length > 0 && (
+          <select 
+            value={activeRollout?.id || ""} 
+            onChange={(e) => {
+              const item = catalogItems.find(c => c.id === e.target.value);
+              if (item) {
+                setActiveRollout(item);
+                setPlaceRolloutMode(true);
+              } else {
+                setActiveRollout(null);
+                setPlaceRolloutMode(false);
+              }
+            }}
+            className="h-9 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-slate-200 bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-orange-400"
+            onPointerDown={e => e.stopPropagation()}
+          >
+            <option value="">Select Rollout/Insert...</option>
+            {(catalogItems || []).filter(c => c.cabinet_category === "roll_out_inserts").map(item => (
+              <option key={item.id} value={item.id}>{item.name}</option>
+            ))}
+          </select>
         )}
+        {tool === "symbol" && (activeSymbol === "door" || activeSymbol === "window") && (
+            <div className="flex items-center gap-1.5 ml-1">
+              <span className="text-xs text-slate-500">Size:</span>
+              <input type="number" step="1" value={symbolSizes[activeSymbol] || ""}
+                onChange={e => setSymbolSizes(prev => ({ ...prev, [activeSymbol]: parseFloat(e.target.value) || 0 }))}
+                className="w-14 h-8 text-xs border border-indigo-300 rounded-lg px-2 bg-white"
+                onPointerDown={e => e.stopPropagation()} />
+              <span className="text-xs text-slate-500">in</span>
+            </div>
+          )}
+          {placeRolloutMode && (
+            <div className="flex items-center gap-1.5 ml-1 px-2.5 py-1.5 bg-orange-50 rounded-lg border border-orange-200">
+              <span className="text-xs font-semibold text-orange-700">Click to place: {activeRollout?.name}</span>
+              <button onClick={() => { setPlaceRolloutMode(false); setActiveRollout(null); }} className="text-xs text-orange-600 hover:text-orange-800 font-medium">✕</button>
+            </div>
+          )}
         <div className="w-px h-6 bg-slate-300 mx-0.5 ml-auto" />
         <button onPointerDown={(e) => { e.stopPropagation(); changeZoom(0.2); }} className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-lg text-slate-600 touch-manipulation"><ZoomIn className="w-4 h-4" /></button>
         <span className="text-xs font-mono text-slate-500 w-10 text-center">{Math.round(zoom * 100)}%</span>

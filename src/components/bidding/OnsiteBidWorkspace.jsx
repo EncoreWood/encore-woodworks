@@ -642,6 +642,7 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
                    ceilingHeight={room.ceiling_height || ""}
                    onCeilingHeightChange={val => updateRoom(room.id, { ceiling_height: val })}
                    onPathsChange={paths => updateRoom(room.id, { sketch_paths: paths })}
+                   catalogItems={catalogItems}
                     onHighlightsChange={highlights => {
                       // Combine highlights with the same cabKey, summing their LF
                       const grouped = {};
