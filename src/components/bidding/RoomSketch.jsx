@@ -130,10 +130,10 @@ function drawOnePath(ctx, path, isSelected, zoom) {
     ctx.fillRect(rx, ry, rw, rh); ctx.strokeRect(rx, ry, rw, rh);
     const { wFt, hFt } = calcRectFt(x1, y1, x2, y2);
     ctx.fillStyle = hl.color; ctx.font = `bold ${12 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    if (rw > 30 * lw && rh > 14 * lw) ctx.fillText(`${hl.label} ${ftToFtIn(wFt)}×${ftToFtIn(hFt)}`, rx + rw / 2, ry + rh / 2);
+    if (rw > 30 * lw && rh > 14 * lw) ctx.fillText(`${hl.label} ${ftToFtIn(wFt)} × ${ftToFtIn(hFt)}`, rx + rw / 2, ry + rh / 2);
     ctx.font = `${10 * lw}px sans-serif`; ctx.fillStyle = "#475569";
-    ctx.textBaseline = "bottom"; ctx.textAlign = "center"; ctx.fillText(ftToFtIn(wFt), rx + rw / 2, ry - 2 * lw);
-    ctx.textBaseline = "middle"; ctx.textAlign = "right"; ctx.fillText(ftToFtIn(hFt), rx - 4 * lw, ry + rh / 2);
+    ctx.textBaseline = "bottom"; ctx.textAlign = "center"; ctx.fillText(`${ftToFtIn(wFt)}  (${wFt} LF)`, rx + rw / 2, ry - 2 * lw);
+    ctx.textBaseline = "middle"; ctx.textAlign = "right"; ctx.fillText(`${ftToFtIn(hFt)}  (${hFt} LF)`, rx - 4 * lw, ry + rh / 2);
     if (isSelected) {
       ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2.5 * lw; ctx.setLineDash([5 * lw, 3 * lw]);
       ctx.strokeRect(rx - 2 * lw, ry - 2 * lw, rw + 4 * lw, rh + 4 * lw); ctx.setLineDash([]);
@@ -151,7 +151,7 @@ function drawOnePath(ctx, path, isSelected, zoom) {
     const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
     ctx.save(); ctx.translate(mx, my); ctx.rotate(Math.atan2(p2.y - p1.y, p2.x - p1.x));
     ctx.fillStyle = "#1e293b"; ctx.font = `bold ${11 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-    ctx.fillText(`${ftToFtIn(ft)} (${angle}°)`, 0, -4 * lw); ctx.restore();
+    ctx.fillText(`${ftToFtIn(ft)}  (${ft} LF)  ${angle}°`, 0, -4 * lw); ctx.restore();
     return;
   }
   if (path.type === "pen" && path.points?.length > 1) {
@@ -233,7 +233,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         const ft = calcLineFt(x1, y1, x2, y2), angle = calcAngle(x1, y1, x2, y2);
         ctx.translate((x1 + x2) / 2, (y1 + y2) / 2); ctx.rotate(Math.atan2(y2 - y1, x2 - x1));
         ctx.fillStyle = "#1e293b"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-        ctx.fillText(`${ftToFtIn(ft)} (${angle}°)`, 0, -4);
+        ctx.fillText(`${ftToFtIn(ft)}  (${ft} LF)  ${angle}°`, 0, -4);
       } else if (type === "highlight") {
         const hl = CAB_HIGHLIGHTS.find(h => h.key === activeHighlightRef.current);
         if (hl) {
@@ -242,7 +242,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
           ctx.fillRect(rx, ry, rw, rh); ctx.strokeRect(rx, ry, rw, rh); ctx.setLineDash([]);
           const { wFt, hFt } = calcRectFt(x1, y1, x2, y2);
           ctx.font = "bold 11px sans-serif"; ctx.fillStyle = hl.color; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          ctx.fillText(`${ftToFtIn(wFt)}×${ftToFtIn(hFt)}`, rx + rw / 2, ry + rh / 2);
+          ctx.fillText(`${ftToFtIn(wFt)} × ${ftToFtIn(hFt)}`, rx + rw / 2, ry + rh / 2);
         }
       }
       ctx.restore();
