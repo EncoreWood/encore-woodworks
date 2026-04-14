@@ -18,6 +18,7 @@
       "type": "string",
       "enum": [
         "planned",
+        "prepping",
         "in_progress",
         "on_hold",
         "ready_for_delivery",

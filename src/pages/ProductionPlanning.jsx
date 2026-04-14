@@ -10,6 +10,7 @@ import { ChevronLeft, Plus, CheckCircle2, Clock, AlertCircle, Truck, Home, Zap }
 
 const STATUS_CONFIG = {
   planned: { label: "Planned", color: "bg-slate-100 text-slate-700", icon: Home },
+  prepping: { label: "Prepping", color: "bg-orange-100 text-orange-700", icon: Clock },
   in_progress: { label: "In Progress", color: "bg-blue-100 text-blue-700", icon: Clock },
   on_hold: { label: "On Hold", color: "bg-yellow-100 text-yellow-700", icon: AlertCircle },
   ready_for_delivery: { label: "Ready for Delivery", color: "bg-green-100 text-green-700", icon: Truck },
@@ -19,6 +20,7 @@ const STATUS_CONFIG = {
 
 const STATUS_WORKFLOW = [
   "planned",
+  "prepping",
   "in_progress",
   "on_hold",
   "ready_for_delivery",
@@ -104,6 +106,7 @@ export default function ProductionPlanning() {
     if (roomPlanning.length === 0) return 0;
     const weights = {
       planned: 0,
+      prepping: 10,
       in_progress: 25,
       on_hold: 10,
       ready_for_delivery: 75,
