@@ -641,7 +641,26 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
                    paths={room.sketch_paths || []}
                    ceilingHeight={room.ceiling_height || ""}
                    onCeilingHeightChange={val => updateRoom(room.id, { ceiling_height: val })}
-                   onPathsChange={paths => updateRoom(room.id, { sketch_paths: paths })}
+                   onPathsChange={paths => {
+                     // Extract rollout items from paths and add to items
+                     const rollouts = paths.filter(p => p.type === "symbol" && p.symbolKey === "rollout");
+                     const rolloutItemIds = new Set(rollouts.map(r => `rollout_${r.id}`));
+                     const existingNonRolloutItems = (room.items || []).filter(i => !i.id?.startsWith("rollout_"));
+                     const newRolloutItems = rollouts.map(r => ({
+                       id: `rollout_${r.id}`,
+                       name: r.label || "Rollout Insert",
+                       cabinet_category: "roll_out_inserts",
+                       measure_type: "qty",
+                       quantity: 1,
+                       unit_price: catalogItems.find(c => c.cabinet_category === "roll_out_inserts")?.default_price || 0,
+                       notes: "From sketch",
+                       sketch_symbol_id: r.id
+                     }));
+                     setRooms(prev => prev.map(rr => rr.id === room.id
+                       ? { ...rr, sketch_paths: paths, items: [...existingNonRolloutItems, ...newRolloutItems] }
+                       : rr
+                     ));
+                   }}
                    catalogItems={catalogItems}
                     onHighlightsChange={highlights => {
                       // Combine highlights with the same cabKey, summing their LF
@@ -652,7 +671,7 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
                         grouped[hl.cabKey].count += 1;
                       });
                       const sketchItemIds = new Set((room.sketch_items || []).map(i => i.id));
-                      const existingCustomItems = (room.items || []).filter(i => !sketchItemIds.has(i.id));
+                      const existingCustomItems = (room.items || []).filter(i => !sketchItemIds.has(i.id) && !i.id?.startsWith("rollout_"));
                       const newSketchItems = Object.values(grouped).map(hl => {
                         const price = getPriceForCategory(hl.cabKey);
                         const label = hl.cabKey.charAt(0).toUpperCase() + hl.cabKey.slice(1);
@@ -666,8 +685,20 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
                           notes: `From sketch: ${hl.count} section${hl.count > 1 ? "s" : ""} · ${hl.quantity.toFixed(2)} LF total`,
                         };
                       });
+                      // Re-add rollout items if they exist
+                      const rollouts = (room.sketch_paths || []).filter(p => p.type === "symbol" && p.symbolKey === "rollout");
+                      const newRolloutItems = rollouts.map(r => ({
+                        id: `rollout_${r.id}`,
+                        name: r.label || "Rollout Insert",
+                        cabinet_category: "roll_out_inserts",
+                        measure_type: "qty",
+                        quantity: 1,
+                        unit_price: catalogItems.find(c => c.cabinet_category === "roll_out_inserts")?.default_price || 0,
+                        notes: "From sketch",
+                        sketch_symbol_id: r.id
+                      }));
                       setRooms(prev => prev.map(r => r.id === room.id
-                        ? { ...r, sketch_paths: r.sketch_paths, sketch_items: newSketchItems, items: [...existingCustomItems, ...newSketchItems] }
+                        ? { ...r, sketch_paths: r.sketch_paths, sketch_items: newSketchItems, items: [...existingCustomItems, ...newSketchItems, ...newRolloutItems] }
                         : r
                       ));
                     }}
