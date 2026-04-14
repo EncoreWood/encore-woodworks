@@ -23,6 +23,7 @@ const SYMBOLS = [
   { key: "plumbing", label: "Plumbing" },
   { key: "door",     label: "Door",    hasSizing: true },
   { key: "window",   label: "Window",  hasSizing: true },
+  { key: "rollout",  label: "Rollout", isInsert: true },
 ];
 
 // ── Mini canvas icons ─────────────────────────────────────────────────────────
@@ -118,7 +119,59 @@ function drawWindowSymbol(ctx, sym, lw) {
 function drawSymbol(ctx, sym, zoom) {
   const lw = 1 / zoom;
   ctx.save();
-  if (sym.symbolKey === "door" || sym.symbolKey === "window") {
+  if (sym.symbolKey === "rollout") {
+    // Draw rollout/insert with arrow pointing to location
+    const { x, y, label, targetX, targetY } = sym;
+    const fontSize = 11 * lw;
+    ctx.font = `bold ${fontSize}px sans-serif`;
+    ctx.fillStyle = "#d97706";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    
+    // Draw label box
+    const textMetrics = ctx.measureText(label || "Rollout");
+    const boxW = textMetrics.width + 8 * lw;
+    const boxH = fontSize + 4 * lw;
+    ctx.fillStyle = "rgba(217, 119, 6, 0.15)";
+    ctx.strokeStyle = "#d97706";
+    ctx.lineWidth = 1.5 * lw;
+    ctx.fillRect(x - boxW / 2, y - boxH / 2, boxW, boxH);
+    ctx.strokeRect(x - boxW / 2, y - boxH / 2, boxW, boxH);
+    
+    // Draw label text
+    ctx.fillStyle = "#d97706";
+    ctx.fillText(label || "Rollout", x, y);
+    
+    // Draw arrow to target location if specified
+    if (targetX !== undefined && targetY !== undefined) {
+      const arrowStartX = x;
+      const arrowStartY = y + boxH / 2 + 4 * lw;
+      const arrowHeadLen = 12 * lw;
+      const dx = targetX - arrowStartX;
+      const dy = targetY - arrowStartY;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 20) {
+        const arrowEndX = arrowStartX + (dx / dist) * (dist - arrowHeadLen);
+        const arrowEndY = arrowStartY + (dy / dist) * (dist - arrowHeadLen);
+        const angle = Math.atan2(dy, dx);
+        
+        ctx.strokeStyle = "#d97706";
+        ctx.lineWidth = 2 * lw;
+        ctx.beginPath();
+        ctx.moveTo(arrowStartX, arrowStartY);
+        ctx.lineTo(arrowEndX, arrowEndY);
+        ctx.stroke();
+        
+        // Arrowhead
+        ctx.beginPath();
+        ctx.moveTo(arrowEndX, arrowEndY);
+        ctx.lineTo(arrowEndX - arrowHeadLen * Math.cos(angle - Math.PI / 6), arrowEndY - arrowHeadLen * Math.sin(angle - Math.PI / 6));
+        ctx.moveTo(arrowEndX, arrowEndY);
+        ctx.lineTo(arrowEndX - arrowHeadLen * Math.cos(angle + Math.PI / 6), arrowEndY - arrowHeadLen * Math.sin(angle + Math.PI / 6));
+        ctx.stroke();
+      }
+    }
+  } else if (sym.symbolKey === "door" || sym.symbolKey === "window") {
     const { anchorX, anchorY, wallAngle = 0 } = sym;
     ctx.translate(anchorX, anchorY);
     ctx.rotate(wallAngle);
@@ -644,6 +697,9 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
       } else if (p?.type === "symbol" && p.anchorX !== undefined) {
         // Wall-mounted outlet/switch/plumbing
         setEditDim({ w: "", h: "", len: "", angle: "", symW: "", offset: p.offsetIn ?? getWallOffset(p), elevation: p.elevationIn ?? 48, offsetFromEnd: p.offsetFromEnd || "left" });
+      } else if (p?.type === "symbol" && p.symbolKey === "rollout") {
+        // Rollout/insert item
+        setEditDim({ w: "", h: "", len: "", angle: "", symW: "", offset: "", elevation: "", label: p.label || "", targetX: p.targetX, targetY: p.targetY });
       } else {
         setEditDim({ w: "", h: "", len: "", angle: "", symW: "", offset: "", elevation: "", offsetFromEnd: "left" });
       }
@@ -677,18 +733,21 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
       const sym = activeSymbolRef.current;
       if (sym) {
         const isWallSym = sym === "door" || sym === "window";
+        const isInsert = sym === "rollout";
         const widthIn = isWallSym ? (symbolSizesRef.current[sym] || 32) : null;
         const widthPx = widthIn ? (widthIn / 12) * BASE_PX_PER_FOOT : null;
         const wallSnap = findNearestWallForPoint(pos.x, pos.y, localPaths.current);
         let newSym;
         if (isWallSym && wallSnap) {
           newSym = { type: "symbol", symbolKey: sym, anchorX: wallSnap.projX, anchorY: wallSnap.projY, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side, widthPx };
-        } else if (!isWallSym && wallSnap) {
+        } else if (!isWallSym && wallSnap && !isInsert) {
           // Snap outlet/switch/plumbing to wall too
           const wallLen = wallSnap.wallLen;
           const offsetPx = wallSnap.t * wallLen;
           const offsetIn = Math.round((offsetPx / BASE_PX_PER_FOOT) * 12);
           newSym = { type: "symbol", symbolKey: sym, anchorX: wallSnap.projX, anchorY: wallSnap.projY, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side, offsetIn, offsetFromEnd: "left", elevationIn: 48 };
+        } else if (isInsert) {
+          newSym = { type: "symbol", symbolKey: sym, x: pos.x, y: pos.y, label: "", targetX: undefined, targetY: undefined };
         } else {
           newSym = { type: "symbol", symbolKey: sym, x: pos.x, y: pos.y, wallAngle: 0, widthPx };
         }
@@ -717,7 +776,10 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
       const dx = raw.x - startX, dy = raw.y - startY;
       let updated = [...localPaths.current];
       const p = origPath;
-      if (p.type === "highlight") {
+      if (p.type === "symbol" && p.symbolKey === "rollout") {
+        // Moving rollout label - drag to update target point or label position
+        updated[idx] = { ...p, x: p.x + dx, y: p.y + dy };
+      } else if (p.type === "highlight") {
         if (p.wallAngle !== undefined) {
           // Use current raw cursor position to find nearest wall — allows dragging to a different wall
           const wallSnap = findNearestWallForPoint(raw.x, raw.y, localPaths.current, 80);
@@ -899,6 +961,10 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
           sym = { ...sym, anchorX: pw1.x + ax * offsetPx, anchorY: pw1.y + ay * offsetPx };
         }
       }
+      updated[selectedIdx] = sym;
+    } else if (p.type === "symbol" && p.symbolKey === "rollout") {
+      // Rollout/insert item
+      let sym = { ...p, label: editDim.label || "" };
       updated[selectedIdx] = sym;
     }
     commitPaths(updated);
@@ -1098,6 +1164,20 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
           )}
           <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-sky-500 hover:bg-sky-600 text-white rounded-lg">Apply</button>
           <span className="text-xs text-slate-500">{editDim.symW}" = {((parseFloat(editDim.symW)||0)/12).toFixed(2)} ft</span>
+          <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 text-white rounded-lg">Delete</button>
+          <button onClick={() => selectItem(null)} className="px-2 h-8 text-xs text-slate-500 border border-slate-200 rounded-lg">✕</button>
+        </div>
+      )}
+
+      {/* Edit bar — rollout/insert */}
+      {selectedPath?.type === "symbol" && selectedPath.symbolKey === "rollout" && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 border-b border-orange-200 flex-wrap">
+          <Edit3 className="w-3.5 h-3.5 text-orange-700 flex-shrink-0" />
+          <span className="text-xs font-semibold text-orange-800">Rollout/Insert:</span>
+          <label className="text-xs text-slate-600">Item Name</label>
+          <input type="text" value={editDim.label || ""} onChange={e => setEditDim(prev => ({ ...prev, label: e.target.value }))} className="w-32 h-8 text-sm border border-orange-300 rounded-lg px-2 bg-white"
+            placeholder="e.g., Spice Rack" onPointerDown={e => e.stopPropagation()} />
+          <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-white rounded-lg">Apply</button>
           <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 text-white rounded-lg">Delete</button>
           <button onClick={() => selectItem(null)} className="px-2 h-8 text-xs text-slate-500 border border-slate-200 rounded-lg">✕</button>
         </div>

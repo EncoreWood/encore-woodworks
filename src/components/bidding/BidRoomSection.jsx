@@ -9,7 +9,7 @@ import PDFAnnotator from "../production/PDFAnnotator";
 
 import { getCategoryStyle } from "./BidCatalogEditor";
 
-export default function BidRoomSection({ room, catalogItems, categories, pricingConfigs, bidType, onChange, onDelete }) {
+export default function BidRoomSection({ room, catalogItems, categories, pricingConfigs, bidType, onChange, onDelete, sketchPaths = [] }) {
   const [collapsed, setCollapsed] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [annotating, setAnnotating] = useState(false);
@@ -59,6 +59,28 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
       notes: ""
     };
     onChange({ ...room, items: [...(room.items || []), newItem] });
+  };
+
+  const addSketchInserts = () => {
+    const inserts = (sketchPaths || []).filter(p => p.type === "symbol" && p.symbolKey === "rollout");
+    if (!inserts.length) return;
+    inserts.forEach(insert => {
+      const existingItem = (room.items || []).find(i => i.sketch_insert_id === insert.id);
+      if (!existingItem) {
+        const newItem = {
+          id: `item_${Date.now()}`,
+          name: insert.label || "Rollout Insert",
+          cabinet_category: "roll_out_inserts",
+          measure_type: "qty",
+          quantity: 1,
+          unit_price: 0,
+          notes: "",
+          sketch_insert_id: insert.id
+        };
+        const items = [...(room.items || []), newItem];
+        onChange({ ...room, items });
+      }
+    });
   };
 
   const updateItem = (itemId, field, value) => {
@@ -253,6 +275,15 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
               );
             })}
           </div>
+
+          {/* Add Sketch Inserts Button */}
+          {(sketchPaths || []).some(p => p.type === "symbol" && p.symbolKey === "rollout") && (
+            <div className="mb-3">
+              <Button onClick={addSketchInserts} variant="outline" size="sm" className="text-xs text-orange-600 border-orange-300">
+                + Add Sketch Rollout/Inserts to Pricing
+              </Button>
+            </div>
+          )}
 
           {/* Add Item — Category Filter + Dropdown */}
           <div className="space-y-2">

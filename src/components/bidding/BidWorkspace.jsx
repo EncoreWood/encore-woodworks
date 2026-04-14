@@ -598,6 +598,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
               bidType={bidType}
               onChange={updated => setRooms(prev => prev.map(r => r.id === room.id ? updated : r))}
               onDelete={() => setRooms(prev => prev.filter(r => r.id !== room.id))}
+              sketchPaths={room.sketch_paths || []}
             />
           ))}
 
