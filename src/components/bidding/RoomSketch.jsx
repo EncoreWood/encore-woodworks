@@ -25,10 +25,6 @@ const SYMBOLS = [
   { key: "window",   label: "Window",  hasSizing: true },
 ];
 
-// Door swing: hingeLeft/Right × swingIn/Out
-// In local space: wall is along X, room-side is -Y (wallSide adjusts sign)
-// hingeLeft = hinge at left end of opening; swingIn = arc goes toward room interior
-
 // ── Mini canvas icons ─────────────────────────────────────────────────────────
 function SymbolIcon({ symbolKey, size = 24 }) {
   const canvasRef = useRef(null);
@@ -55,12 +51,12 @@ function SymbolIcon({ symbolKey, size = 24 }) {
       ctx.beginPath(); ctx.moveTo(cx, cy - s * 0.6); ctx.lineTo(cx, cy + s * 0.6); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(cx - s * 0.6, cy); ctx.lineTo(cx + s * 0.6, cy); ctx.stroke();
     } else if (symbolKey === "door") {
-      ctx.fillStyle = "#374151"; ctx.fillRect(cx - s, cy - 2, s * 0.18, 5);
-      ctx.fillRect(cx + s * 0.82, cy - 2, s * 0.18, 5);
+      // Simple opening symbol
+      ctx.fillStyle = "#374151"; ctx.fillRect(cx - s, cy - 2, s * 0.18, 5); ctx.fillRect(cx + s * 0.82, cy - 2, s * 0.18, 5);
       ctx.fillStyle = "#ffffff"; ctx.fillRect(cx - s * 0.82, cy - 3, s * 1.64, 7);
-      ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(cx - s * 0.82, cy); ctx.lineTo(cx - s * 0.82, cy - s * 0.82); ctx.stroke();
-      ctx.beginPath(); ctx.arc(cx - s * 0.82, cy, s * 0.82, -Math.PI / 2, 0); ctx.stroke();
+      ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(cx - s * 0.82, cy - 3); ctx.lineTo(cx + s * 0.82, cy - 3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - s * 0.82, cy + 3); ctx.lineTo(cx + s * 0.82, cy + 3); ctx.stroke();
     } else if (symbolKey === "window") {
       ctx.fillStyle = "#374151"; ctx.fillRect(cx - s, cy - 2, s * 0.2, 5); ctx.fillRect(cx + s * 0.8, cy - 2, s * 0.2, 5);
       ctx.fillStyle = "rgba(186,230,253,0.6)"; ctx.fillRect(cx - s * 0.78, cy - 3, s * 1.56, 7);
@@ -72,62 +68,40 @@ function SymbolIcon({ symbolKey, size = 24 }) {
   return <canvas ref={canvasRef} width={size} height={size} style={{ display: "block" }} />;
 }
 
-// ── Draw door (wall-oriented) ─────────────────────────────────────────────────
-// anchorX/Y = left end of opening on wall
-// widthPx = opening width in px
-// wallSide: 1 = room is in +normal direction, -1 = room is in -normal direction
-// hingeLeft: true = hinge on left/start end of opening
-// swingIn: true = door swings into room, false = swings out (away from room)
+// ── Draw door: simple opening with "Doorway" label ────────────────────────────
 function drawDoorSymbol(ctx, sym, lw) {
-  const { widthPx, wallSide = 1, hingeLeft = true, swingIn = true } = sym;
+  const { widthPx } = sym;
   const wt = 5 * lw;
   const w = widthPx;
 
-  // Wall caps
+  // Wall caps (solid black blocks)
   ctx.fillStyle = "#1e293b";
-  ctx.fillRect(0, -wt * 1.5, wt * 2, wt * 3);
-  ctx.fillRect(w - wt * 2, -wt * 1.5, wt * 2, wt * 3);
-  // White opening gap
+  ctx.fillRect(0, -wt * 1.5, wt * 2.2, wt * 3);
+  ctx.fillRect(w - wt * 2.2, -wt * 1.5, wt * 2.2, wt * 3);
+  // White gap (the opening)
   ctx.fillStyle = "#ffffff";
-  ctx.fillRect(wt * 2, -wt * 2, w - wt * 4, wt * 4);
+  ctx.fillRect(wt * 2.2, -wt * 2, w - wt * 4.4, wt * 4);
+  // Dashed border around opening to indicate door
+  ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 1.5 * lw;
+  ctx.setLineDash([4 * lw, 3 * lw]);
+  ctx.strokeRect(wt * 2.2, -wt * 2, w - wt * 4.4, wt * 4);
+  ctx.setLineDash([]);
 
-  // Hinge X: left or right end of opening
-  const hingeX = hingeLeft ? wt * 2 : w - wt * 2;
-  // Swing direction: into room (negative normal) or out (positive normal)
-  // In local space normal is -Y. wallSide flips which side is "in".
-  // swingIn=true means arc goes toward -Y*wallSide
-  const swingDir = swingIn ? -wallSide : wallSide;
-  const leafEndX = hingeLeft ? hingeX + w * 0.9 : hingeX - w * 0.9;
-
-  ctx.strokeStyle = "#7c3aed"; ctx.lineWidth = 2 * lw;
-  // Door leaf
-  ctx.beginPath();
-  ctx.moveTo(hingeX, 0);
-  ctx.lineTo(hingeX, swingDir * w * 0.9);
-  ctx.stroke();
-  // Arc
-  const startAngle = Math.atan2(0, (hingeLeft ? 1 : -1));
-  const endAngle = Math.atan2(swingDir * w * 0.9, (hingeLeft ? w * 0.9 : -w * 0.9));
-  ctx.beginPath();
-  ctx.arc(hingeX, 0, w * 0.9, startAngle, endAngle, swingDir < 0 ? false : true);
-  ctx.stroke();
-
-  // Size label
+  // "Doorway" label centered in opening
   const wIn = Math.round((w / BASE_PX_PER_FOOT) * 12);
-  ctx.fillStyle = "#7c3aed"; ctx.font = `bold ${10 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-  ctx.fillText(`${wIn}"`, w / 2, swingDir < 0 ? -w * 0.92 : -wt * 2);
+  ctx.fillStyle = "#7c3aed";
+  ctx.font = `bold ${9 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(`Doorway ${wIn}"`, w / 2, 0);
 }
 
-// ── Draw window (wall-oriented) ───────────────────────────────────────────────
+// ── Draw window ───────────────────────────────────────────────────────────────
 function drawWindowSymbol(ctx, sym, lw) {
   const { widthPx } = sym;
   const wt = 5 * lw;
   const w = widthPx;
-  // Wall caps
   ctx.fillStyle = "#1e293b";
   ctx.fillRect(0, -wt * 1.5, wt * 2, wt * 3);
   ctx.fillRect(w - wt * 2, -wt * 1.5, wt * 2, wt * 3);
-  // Glass pane
   ctx.fillStyle = "rgba(186,230,253,0.5)"; ctx.strokeStyle = "#0ea5e9"; ctx.lineWidth = 2 * lw;
   const gx = wt * 2, gw = w - wt * 4;
   ctx.fillRect(gx, -wt * 1.2, gw, wt * 2.4);
@@ -144,16 +118,13 @@ function drawWindowSymbol(ctx, sym, lw) {
 function drawSymbol(ctx, sym, zoom) {
   const lw = 1 / zoom;
   ctx.save();
-
   if (sym.symbolKey === "door" || sym.symbolKey === "window") {
-    // Wall-oriented: anchorX/Y is the left end of opening on wall
     const { anchorX, anchorY, wallAngle = 0 } = sym;
     ctx.translate(anchorX, anchorY);
     ctx.rotate(wallAngle);
     if (sym.symbolKey === "door") drawDoorSymbol(ctx, sym, lw);
     else drawWindowSymbol(ctx, sym, lw);
   } else {
-    // Free-placed symbols (outlet, switch, plumbing)
     const { x, y, wallAngle = 0 } = sym;
     ctx.translate(x, y);
     ctx.rotate(wallAngle);
@@ -186,7 +157,6 @@ function drawHighlight(ctx, path, isSelected, zoom) {
   const lw = 1 / zoom;
 
   if (path.wallAngle === undefined) {
-    // Legacy axis-aligned
     const { x1, y1, x2, y2 } = path;
     const rx = Math.min(x1, x2), ry = Math.min(y1, y2), rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
     ctx.save();
@@ -195,9 +165,6 @@ function drawHighlight(ctx, path, isSelected, zoom) {
     const { wFt, hFt } = calcRectFt(x1, y1, x2, y2);
     ctx.fillStyle = hl.color; ctx.font = `bold ${12 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     if (rw > 30 * lw && rh > 14 * lw) ctx.fillText(`${hl.label} ${ftToFtIn(wFt)} × ${ftToFtIn(hFt)}`, rx + rw / 2, ry + rh / 2);
-    ctx.font = `${10 * lw}px sans-serif`; ctx.fillStyle = "#475569";
-    ctx.textBaseline = "bottom"; ctx.textAlign = "center"; ctx.fillText(`${ftToFtIn(wFt)}  (${wFt} LF)`, rx + rw / 2, ry - 2 * lw);
-    ctx.textBaseline = "middle"; ctx.textAlign = "right"; ctx.fillText(`${ftToFtIn(hFt)}  (${hFt} LF)`, rx - 4 * lw, ry + rh / 2);
     if (isSelected) {
       ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2.5 * lw; ctx.setLineDash([5 * lw, 3 * lw]);
       ctx.strokeRect(rx - 2 * lw, ry - 2 * lw, rw + 4 * lw, rh + 4 * lw); ctx.setLineDash([]);
@@ -210,6 +177,8 @@ function drawHighlight(ctx, path, isSelected, zoom) {
   const wPx = (widthIn / 12) * BASE_PX_PER_FOOT;
   const dPx = (depthIn / 12) * BASE_PX_PER_FOOT;
   const ax = Math.cos(wallAngle), ay = Math.sin(wallAngle);
+  // wallSide: 1 = cabinet goes in positive normal direction, -1 = negative
+  // Cabinet is on the ROOM side (opposite from where user tapped relative to wall)
   const nx = -Math.sin(wallAngle) * wallSide, ny = Math.cos(wallAngle) * wallSide;
   const c0 = { x: anchorX, y: anchorY };
   const c1 = { x: anchorX + ax * wPx, y: anchorY + ay * wPx };
@@ -224,10 +193,8 @@ function drawHighlight(ctx, path, isSelected, zoom) {
   ctx.fill(); ctx.stroke();
   const ccx = (c0.x + c1.x + c2.x + c3.x) / 4, ccy = (c0.y + c1.y + c2.y + c3.y) / 4;
   ctx.save(); ctx.translate(ccx, ccy); ctx.rotate(wallAngle);
-  ctx.fillStyle = hl.color; ctx.font = `bold ${12 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillStyle = hl.color; ctx.font = `bold ${11 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText(`${hl.label} ${widthIn}" × ${depthIn}"`, 0, 0);
-  ctx.font = `${10 * lw}px sans-serif`; ctx.fillStyle = "#475569";
-  ctx.textBaseline = "bottom"; ctx.fillText(`${widthIn}" (${(widthIn/12).toFixed(2)} LF)`, 0, -dPx / 2 - 2 * lw);
   ctx.restore();
   if (isSelected) {
     ctx.beginPath();
@@ -252,16 +219,13 @@ function getSnapCandidates(paths) {
         const wPx = (widthIn / 12) * BASE_PX_PER_FOOT, dPx = (depthIn / 12) * BASE_PX_PER_FOOT;
         const ax = Math.cos(wallAngle), ay = Math.sin(wallAngle);
         const nx = -Math.sin(wallAngle) * wallSide, ny = Math.cos(wallAngle) * wallSide;
-        pts.push(
-          { x: anchorX, y: anchorY },
-          { x: anchorX + ax * wPx, y: anchorY + ay * wPx },
+        pts.push({ x: anchorX, y: anchorY }, { x: anchorX + ax * wPx, y: anchorY + ay * wPx },
           { x: anchorX + ax * wPx + nx * dPx, y: anchorY + ay * wPx + ny * dPx },
-          { x: anchorX + nx * dPx, y: anchorY + ny * dPx },
-        );
+          { x: anchorX + nx * dPx, y: anchorY + ny * dPx });
       } else {
         const { x1, y1, x2, y2 } = p;
-        const rx = Math.min(x1, x2), ry = Math.min(y1, y2), rw = Math.abs(x2 - x1), rh = Math.abs(y2 - y1);
-        pts.push({ x: rx, y: ry }, { x: rx + rw, y: ry }, { x: rx, y: ry + rh }, { x: rx + rw, y: ry + rh });
+        pts.push({ x: Math.min(x1,x2), y: Math.min(y1,y2) }, { x: Math.max(x1,x2), y: Math.min(y1,y2) },
+          { x: Math.min(x1,x2), y: Math.max(y1,y2) }, { x: Math.max(x1,x2), y: Math.max(y1,y2) });
       }
     }
   });
@@ -324,6 +288,18 @@ function findNearestWallForPoint(x, y, paths, maxDist = 80) {
   return { projX: best.projX, projY: best.projY, wallAngle, side, wall: best.wall, t: best.t, wallLen: Math.hypot(p2.x - p1.x, p2.y - p1.y) };
 }
 
+// Check if a point (mx, my) is covered by any door/window symbol on a wall
+function isMeasurementCoveredBySymbol(mx, my, wallAngle, paths) {
+  const wallSymbols = paths.filter(p => p.type === "symbol" && (p.symbolKey === "door" || p.symbolKey === "window") && p.anchorX !== undefined);
+  for (const sym of wallSymbols) {
+    // Transform measurement point into symbol local space
+    const dx = mx - sym.anchorX, dy = my - sym.anchorY;
+    const lx = dx * Math.cos(-sym.wallAngle) - dy * Math.sin(-sym.wallAngle);
+    if (lx >= 0 && lx <= sym.widthPx) return true;
+  }
+  return false;
+}
+
 function drawGrid(ctx, w, h) {
   const gs = GRID_SIZE;
   ctx.strokeStyle = "#e2e8f0"; ctx.lineWidth = 0.5;
@@ -336,20 +312,19 @@ function drawGrid(ctx, w, h) {
   ctx.fillText("1 sq = 1 ft", 6, 4);
 }
 
-function drawOnePath(ctx, path, isSelected, zoom) {
+function drawOnePath(ctx, path, isSelected, zoom, allPaths) {
   const lw = 1 / zoom;
   if (path.type === "symbol") {
     drawSymbol(ctx, path, zoom);
-    // Selection highlight
     if (isSelected) {
       ctx.save();
       if (path.symbolKey === "door" || path.symbolKey === "window") {
         ctx.translate(path.anchorX, path.anchorY); ctx.rotate(path.wallAngle || 0);
-        const w = path.widthPx, hh = 25 * lw;
+        const w = path.widthPx, hh = 20 * lw;
         ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2 * lw; ctx.setLineDash([4 * lw, 3 * lw]);
         ctx.strokeRect(-4 * lw, -hh, w + 8 * lw, hh * 2); ctx.setLineDash([]);
       } else {
-        ctx.translate(path.x, path.y); ctx.rotate(path.wallAngle || 0);
+        ctx.translate(path.x, path.y);
         const s = 18 * lw;
         ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2 * lw; ctx.setLineDash([4 * lw, 3 * lw]);
         ctx.strokeRect(-s, -s, s * 2, s * 2); ctx.setLineDash([]);
@@ -364,18 +339,40 @@ function drawOnePath(ctx, path, isSelected, zoom) {
     ctx.strokeStyle = isSelected ? "#f59e0b" : path.color;
     ctx.lineWidth = (path.lineWidth || 2) * lw; ctx.lineCap = "round";
     ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
-    const ft = calcLineFt(p1.x, p1.y, p2.x, p2.y), angle = calcAngle(p1.x, p1.y, p2.x, p2.y);
+
+    // Wall measurement label — offset if covered by door/window
+    const ft = calcLineFt(p1.x, p1.y, p2.x, p2.y);
+    const angle = calcAngle(p1.x, p1.y, p2.x, p2.y);
     const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
-    ctx.save(); ctx.translate(mx, my); ctx.rotate(Math.atan2(p2.y - p1.y, p2.x - p1.x));
-    ctx.fillStyle = "#1e293b"; ctx.font = `bold ${11 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-    ctx.fillText(`${ftToFtIn(ft)}  (${ft} LF)  ${angle}°`, 0, -4 * lw); ctx.restore();
+    const wallAngle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+    const covered = allPaths && isMeasurementCoveredBySymbol(mx, my, wallAngle, allPaths);
+
+    ctx.save();
+    ctx.translate(mx, my);
+    ctx.rotate(wallAngle);
+    ctx.fillStyle = "#1e293b";
+    ctx.font = `bold ${11 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+
+    const labelOffset = covered ? -28 * lw : -4 * lw;
+    if (covered) {
+      // Draw arrow pointing to wall
+      ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 1.5 * lw;
+      ctx.beginPath(); ctx.moveTo(0, labelOffset + 2 * lw); ctx.lineTo(0, -1 * lw); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-3 * lw, -6 * lw); ctx.lineTo(0, -1 * lw); ctx.lineTo(3 * lw, -6 * lw); ctx.stroke();
+    }
+    ctx.fillText(`${ftToFtIn(ft)}  (${ft} LF)  ${angle}°`, 0, labelOffset);
+    ctx.restore();
     return;
   }
   if (path.type === "pen" && path.points?.length > 1) {
-    ctx.strokeStyle = path.color; ctx.lineWidth = (path.lineWidth || 2) * lw; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    // Pen = annotation: always slightly transparent, no snapping
+    ctx.strokeStyle = path.color;
+    ctx.lineWidth = (path.lineWidth || 1.5) * lw;
+    ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.globalAlpha = 0.8;
     ctx.beginPath();
     path.points.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
     ctx.stroke();
+    ctx.globalAlpha = 1;
   }
 }
 
@@ -398,11 +395,11 @@ function hitTestWallSymbol(pos, sym) {
   const dx = pos.x - anchorX, dy = pos.y - anchorY;
   const lx = dx * Math.cos(-wallAngle) - dy * Math.sin(-wallAngle);
   const ly = dx * Math.sin(-wallAngle) + dy * Math.cos(-wallAngle);
-  return lx >= -8 && lx <= widthPx + 8 && Math.abs(ly) < 30;
+  return lx >= -8 && lx <= widthPx + 8 && Math.abs(ly) < 28;
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function RoomSketch({ paths, onPathsChange, onHighlightsChange }) {
+export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, sketchId }) {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -447,6 +444,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   useEffect(() => { localPaths.current = paths || []; scheduleRedraw(); }, [paths]);
 
+  // ── History ────────────────────────────────────────────────────────────────
   const pushHistory = (newPaths) => {
     history.current = history.current.slice(0, historyIdx.current + 1);
     history.current.push(JSON.parse(JSON.stringify(newPaths)));
@@ -456,6 +454,10 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
   const commitPaths = (newPaths) => {
     localPaths.current = newPaths;
     pushHistory(newPaths);
+    // Auto-save sketch to localStorage for crash recovery
+    if (sketchId) {
+      try { localStorage.setItem(`sketch_${sketchId}`, JSON.stringify(newPaths)); } catch(e) {}
+    }
     onPathsChange(newPaths);
     notifyHighlights(newPaths);
     scheduleRedraw();
@@ -475,6 +477,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     localPaths.current = next; onPathsChange(next); notifyHighlights(next); selectItem(null); scheduleRedraw();
   };
 
+  // ── Redraw ────────────────────────────────────────────────────────────────
   const scheduleRedraw = useCallback(() => {
     if (rafId.current) return;
     rafId.current = requestAnimationFrame(() => { rafId.current = null; redrawCanvas(); });
@@ -488,7 +491,8 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, canvas.width, canvas.height);
     drawGrid(ctx, CANVAS_W, CANVAS_H);
-    localPaths.current.forEach((path, idx) => drawOnePath(ctx, path, idx === selectedIdxRef.current, 1));
+    const allPaths = localPaths.current;
+    allPaths.forEach((path, idx) => drawOnePath(ctx, path, idx === selectedIdxRef.current, 1, allPaths));
     if (preview) {
       const { type, x1, y1, x2, y2 } = preview;
       ctx.save();
@@ -520,6 +524,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     }
   }, []);
 
+  // ── Pointer helpers ───────────────────────────────────────────────────────
   const getRawPos = (e) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -551,9 +556,8 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       if (p.type === "symbol") {
         if ((p.symbolKey === "door" || p.symbolKey === "window") && p.anchorX !== undefined) {
           if (hitTestWallSymbol(pos, p)) return i;
-        } else {
-          const cx = p.x, cy = p.y;
-          if (Math.hypot(pos.x - cx, pos.y - cy) < 28) return i;
+        } else if (p.x !== undefined) {
+          if (Math.hypot(pos.x - p.x, pos.y - p.y) < 28) return i;
         }
       }
     }
@@ -568,6 +572,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         return Math.hypot(p.x - pos.x, p.y - pos.y) > 28;
       }
       if (p.type === "highlight") return !hitTestHighlight(pos, p);
+      if (p.type === "pen") return !p.points?.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) < 20);
       return !p.points?.some(pt => Math.hypot(pt.x - pos.x, pt.y - pos.y) < 18);
     });
     commitPaths(updated);
@@ -579,14 +584,12 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     return parseFloat(wFt);
   };
 
-  // Compute offset of door/window from wall start
   const getWallOffset = (sym) => {
-    if (!sym.anchorX) return 0;
+    if (!sym.anchorX && sym.anchorX !== 0) return 0;
     const wallSnap = findNearestWallForPoint(sym.anchorX, sym.anchorY, localPaths.current, Infinity);
     if (!wallSnap?.wall) return 0;
     const p1 = wallSnap.wall.points[0];
-    const offsetPx = Math.hypot(sym.anchorX - p1.x, sym.anchorY - p1.y);
-    return Math.round((offsetPx / BASE_PX_PER_FOOT) * 12);
+    return Math.round((Math.hypot(sym.anchorX - p1.x, sym.anchorY - p1.y) / BASE_PX_PER_FOOT) * 12);
   };
 
   const selectItem = (idx) => {
@@ -599,18 +602,17 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
           const wall = findNearestWallForPoint(p.anchorX, p.anchorY, localPaths.current, Infinity);
           let offsetIn = 0;
           if (wall?.wall) {
-            const offsetPx = Math.hypot(p.anchorX - wall.wall.points[0].x, p.anchorY - wall.wall.points[0].y);
-            offsetIn = Math.round((offsetPx / BASE_PX_PER_FOOT) * 12);
+            offsetIn = Math.round((Math.hypot(p.anchorX - wall.wall.points[0].x, p.anchorY - wall.wall.points[0].y) / BASE_PX_PER_FOOT) * 12);
           }
           setEditDim({ w: p.widthIn, h: p.depthIn, len: "", angle: "", symW: "", offset: offsetIn });
         } else {
           const { wFt, hFt } = calcRectFt(p.x1, p.y1, p.x2, p.y2);
-          setEditDim({ w: Math.round(parseFloat(wFt) * 12), h: Math.round(parseFloat(hFt) * 12), len: "", angle: "", symW: "", offset: "" });
+          setEditDim({ w: Math.round(parseFloat(wFt)*12), h: Math.round(parseFloat(hFt)*12), len: "", angle: "", symW: "", offset: "" });
         }
       } else if (p?.type === "line") {
         const lenFt = calcLineFt(p.points[0].x, p.points[0].y, p.points[1].x, p.points[1].y);
         const ang = calcAngle(p.points[0].x, p.points[0].y, p.points[1].x, p.points[1].y);
-        setEditDim({ w: "", h: "", len: Math.round(parseFloat(lenFt) * 12), angle: ang, symW: "", offset: "" });
+        setEditDim({ w: "", h: "", len: Math.round(parseFloat(lenFt)*12), angle: ang, symW: "", offset: "" });
       } else if (p?.type === "symbol" && (p.symbolKey === "door" || p.symbolKey === "window")) {
         const wIn = Math.round((p.widthPx / BASE_PX_PER_FOOT) * 12);
         setEditDim({ w: "", h: "", len: "", angle: "", symW: wIn, offset: getWallOffset(p) });
@@ -621,6 +623,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     scheduleRedraw();
   };
 
+  // ── Pointer events ────────────────────────────────────────────────────────
   const onPointerDown = (e) => {
     e.preventDefault();
     e.target.setPointerCapture?.(e.pointerId);
@@ -641,9 +644,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       }
       return;
     }
-
     if (toolRef.current === "eraser") { eraseAt(raw); return; }
-
     if (toolRef.current === "symbol") {
       const sym = activeSymbolRef.current;
       if (sym) {
@@ -653,12 +654,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         const wallSnap = isWallSym ? findNearestWallForPoint(pos.x, pos.y, localPaths.current) : null;
         let newSym;
         if (isWallSym && wallSnap) {
-          newSym = {
-            type: "symbol", symbolKey: sym,
-            anchorX: wallSnap.projX, anchorY: wallSnap.projY,
-            wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side,
-            widthPx, hingeLeft: true, swingIn: true,
-          };
+          newSym = { type: "symbol", symbolKey: sym, anchorX: wallSnap.projX, anchorY: wallSnap.projY, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side, widthPx };
         } else {
           newSym = { type: "symbol", symbolKey: sym, x: pos.x, y: pos.y, wallAngle: 0, widthPx };
         }
@@ -666,7 +662,12 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       }
       isDrawing.current = false; return;
     }
-
+    // Pen: free-form annotation, no snap to grid
+    if (toolRef.current === "pen") {
+      const rawPos = getRawPos(e);
+      localPaths.current = [...localPaths.current, { type: "pen", points: [rawPos], color: colorRef.current, lineWidth: THICKNESS[thicknessRef.current] }];
+      scheduleRedraw(); return;
+    }
     const isHL = toolRef.current === "highlight";
     dragStart.current = isHL ? getSnappedPos(e, true, true) : pos;
     snapIndicator.current = { ...dragStart.current, snapped: dragStart.current.snapped };
@@ -700,9 +701,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         const isWallSym = p.symbolKey === "door" || p.symbolKey === "window";
         if (isWallSym && p.anchorX !== undefined) {
           const wallSnap = findNearestWallForPoint(p.anchorX + dx, p.anchorY + dy, localPaths.current, Infinity);
-          updated[idx] = wallSnap
-            ? { ...p, anchorX: wallSnap.projX, anchorY: wallSnap.projY, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side }
-            : { ...p, anchorX: p.anchorX + dx, anchorY: p.anchorY + dy };
+          updated[idx] = wallSnap ? { ...p, anchorX: wallSnap.projX, anchorY: wallSnap.projY, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side } : { ...p, anchorX: p.anchorX + dx, anchorY: p.anchorY + dy };
         } else {
           updated[idx] = { ...p, x: snapToGrid(p.x + dx), y: snapToGrid(p.y + dy) };
         }
@@ -712,6 +711,12 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
 
     if (!isDrawing.current) return;
     if (toolRef.current === "eraser") { eraseAt(raw); return; }
+    // Pen: push raw point (no snapping for annotation)
+    if (toolRef.current === "pen") {
+      const last = localPaths.current[localPaths.current.length - 1];
+      if (last?.type === "pen") { last.points.push(getRawPos(e)); scheduleRedraw(); }
+      return;
+    }
     const isHL = toolRef.current === "highlight";
     const snapped = getSnappedPos(e, false, isHL);
     snapIndicator.current = { ...snapped, snapped: snapped.snapped };
@@ -723,12 +728,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       }
       setLiveAngle(snappedAngle);
       previewRef.current = { type: toolRef.current, x1: dragStart.current.x, y1: dragStart.current.y, x2: ex, y2: ey };
-      redrawCanvas(previewRef.current); return;
-    }
-    if (toolRef.current === "pen") {
-      localPaths.current[localPaths.current.length - 1]?.points?.push(snapped) ||
-        (localPaths.current = [...localPaths.current, { type: "pen", points: [dragStart.current, snapped], color: colorRef.current, lineWidth: THICKNESS[thicknessRef.current] }]);
-      scheduleRedraw();
+      redrawCanvas(previewRef.current);
     }
   };
 
@@ -749,6 +749,8 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     }
     if (!isDrawing.current) return;
     isDrawing.current = false;
+    // Pen: commit on up
+    if (toolRef.current === "pen") { commitPaths([...localPaths.current]); return; }
     const snapped = getSnappedPos(e, false, toolRef.current === "highlight");
     if ((toolRef.current === "line" || toolRef.current === "highlight") && dragStart.current) {
       const start = dragStart.current; dragStart.current = null;
@@ -764,15 +766,17 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         if (wallSnap) {
           const wPx = Math.hypot(snapped.x - start.x, snapped.y - start.y) || BASE_PX_PER_FOOT * 2;
           const widthIn = Math.round((wPx / BASE_PX_PER_FOOT) * 12);
+          // Cabinet goes on OPPOSITE side from where user tapped (tap on wall, cabinet goes into room)
+          // wallSnap.side is the side of user's tap point relative to wall
+          // Cabinet interior should extend toward the room (same side as user tap, since user taps from room side)
           commitPaths([...localPaths.current, { type: "highlight", cabKey: activeHighlightRef.current, color: hl?.color, anchorX: wallSnap.projX, anchorY: wallSnap.projY, widthIn: widthIn > 0 ? widthIn : 24, depthIn: defaultDepthIn, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side }]);
         } else {
           const depthPx = (defaultDepthIn / 12) * BASE_PX_PER_FOOT;
           commitPaths([...localPaths.current, { type: "highlight", cabKey: activeHighlightRef.current, color: hl?.color, x1: start.x, y1: start.y, x2: snapped.x, y2: start.y + depthPx }]);
         }
       }
-      scheduleRedraw(); return;
+      scheduleRedraw();
     }
-    if (toolRef.current === "pen") { commitPaths([...localPaths.current]); }
   };
 
   const notifyHighlights = (allPaths) => {
@@ -790,7 +794,6 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     const p = localPaths.current[selectedIdx];
     if (!p) return;
     const updated = [...localPaths.current];
-
     if (p.type === "highlight") {
       const wIn = parseFloat(editDim.w), hIn = parseFloat(editDim.h);
       if (isNaN(wIn) || isNaN(hIn) || wIn <= 0 || hIn <= 0) return;
@@ -814,37 +817,25 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
     } else if (p.type === "line") {
       const newLen = (parseFloat(editDim.len) / 12) * BASE_PX_PER_FOOT;
       if (!newLen || newLen <= 0) return;
-      const [p1, p2] = p.points;
-      const angleDeg = !isNaN(parseFloat(editDim.angle)) ? parseFloat(editDim.angle) : calcAngle(p1.x, p1.y, p2.x, p2.y);
+      const [p1] = p.points;
+      const angleDeg = !isNaN(parseFloat(editDim.angle)) ? parseFloat(editDim.angle) : calcAngle(p.points[0].x, p.points[0].y, p.points[1].x, p.points[1].y);
       const angleRad = angleDeg * Math.PI / 180;
       updated[selectedIdx] = { ...p, points: [p1, { x: Math.round(p1.x + Math.cos(angleRad) * newLen), y: Math.round(p1.y + Math.sin(angleRad) * newLen) }] };
     } else if (p.type === "symbol" && (p.symbolKey === "door" || p.symbolKey === "window")) {
       const wIn = parseFloat(editDim.symW);
       if (isNaN(wIn) || wIn <= 0) return;
       let sym = { ...p, widthPx: (wIn / 12) * BASE_PX_PER_FOOT };
-      // Apply offset
       const offsetIn = parseFloat(editDim.offset);
       if (!isNaN(offsetIn) && offsetIn >= 0 && p.anchorX !== undefined) {
         const wallSnap = findNearestWallForPoint(p.anchorX, p.anchorY, localPaths.current, Infinity);
         if (wallSnap?.wall) {
           const [pw1] = wallSnap.wall.points;
           const ax = Math.cos(p.wallAngle), ay = Math.sin(p.wallAngle);
-          const offsetPx = (offsetIn / 12) * BASE_PX_PER_FOOT;
-          sym = { ...sym, anchorX: pw1.x + ax * offsetPx, anchorY: pw1.y + ay * offsetPx };
+          sym = { ...sym, anchorX: pw1.x + ax * (offsetIn / 12) * BASE_PX_PER_FOOT, anchorY: pw1.y + ay * (offsetIn / 12) * BASE_PX_PER_FOOT };
         }
       }
       updated[selectedIdx] = sym;
     }
-    commitPaths(updated);
-  };
-
-  // Toggle door property
-  const toggleDoorProp = (prop) => {
-    if (selectedIdx === null) return;
-    const p = localPaths.current[selectedIdx];
-    if (p?.type !== "symbol" || p.symbolKey !== "door") return;
-    const updated = [...localPaths.current];
-    updated[selectedIdx] = { ...p, [prop]: !p[prop] };
     commitPaths(updated);
   };
 
@@ -891,7 +882,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
 
   const swingBtn = (label, active, onClick) => (
     <button onClick={onClick}
-      className={`px-2.5 h-8 text-xs font-semibold rounded-lg border touch-manipulation transition-all ${active ? "bg-violet-500 text-white border-violet-500" : "bg-white text-slate-600 border-slate-300 hover:bg-violet-50"}`}>
+      className={`px-2.5 h-8 text-xs font-semibold rounded-lg border touch-manipulation transition-all ${active ? "bg-violet-500 text-white border-violet-500" : "bg-white text-slate-600 border-slate-300"}`}>
       {label}
     </button>
   );
@@ -902,7 +893,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
       <div className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 border-b border-slate-200 flex-wrap">
         {toolBtn("select", "Select", <Move className="w-4 h-4" />, "bg-amber-500")}
         {toolBtn("line",   "Wall",   <Minus className="w-4 h-4" />, "bg-blue-500")}
-        {toolBtn("pen",    "Pen",    <Pencil className="w-4 h-4" />, "bg-slate-700")}
+        {toolBtn("pen",    "Annotate", <Pencil className="w-4 h-4" />, "bg-purple-600")}
         {toolBtn("eraser", "Erase",  <Eraser className="w-4 h-4" />, "bg-red-500")}
         <div className="w-px h-6 bg-slate-300 mx-0.5" />
         {CAB_HIGHLIGHTS.map(h => (
@@ -950,7 +941,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         </div>
         <div className="flex items-center gap-2">
           {COLORS.map(c => (
-            <button key={c} onPointerDown={(e) => { e.stopPropagation(); setColor(c); if (!["eraser","highlight","symbol"].includes(tool)) setTool("line"); }}
+            <button key={c} onPointerDown={(e) => { e.stopPropagation(); setColor(c); }}
               className="rounded-full touch-manipulation" style={{ backgroundColor: c, width: 24, height: 24, border: `3px solid ${color === c ? "#f59e0b" : "transparent"}`, boxShadow: "0 1px 3px rgba(0,0,0,0.2)" }} />
           ))}
         </div>
@@ -961,7 +952,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         </div>
       </div>
 
-      {/* Edit bar — highlight */}
+      {/* Edit bar — cabinet */}
       {selectedPath?.type === "highlight" && (
         <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border-b border-amber-200 flex-wrap">
           <Edit3 className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
@@ -979,10 +970,10 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
                 value={editDim.offset} onChange={e => setEditDim(prev => ({ ...prev, offset: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
             </>
           )}
-          <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg touch-manipulation">Apply</button>
+          <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg">Apply</button>
           <span className="text-xs text-slate-500">{editDim.w}" = {((parseFloat(editDim.w)||0)/12).toFixed(2)} LF</span>
-          <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg touch-manipulation">Delete</button>
-          <button onClick={() => selectItem(null)} className="px-2 h-8 text-xs text-slate-500 border border-slate-200 rounded-lg touch-manipulation">✕</button>
+          <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 text-white rounded-lg">Delete</button>
+          <button onClick={() => selectItem(null)} className="px-2 h-8 text-xs text-slate-500 border border-slate-200 rounded-lg">✕</button>
         </div>
       )}
 
@@ -998,9 +989,9 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
           <input type="number" step="1" inputMode="decimal" className="w-16 h-8 text-sm border border-blue-300 rounded-lg px-2 bg-white"
             value={editDim.angle} onChange={e => setEditDim(prev => ({ ...prev, angle: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
           <span className="text-xs text-slate-500">{editDim.len}" = {((parseFloat(editDim.len)||0)/12).toFixed(2)} LF</span>
-          <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white rounded-lg touch-manipulation">Apply</button>
-          <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg touch-manipulation">Delete</button>
-          <button onClick={() => selectItem(null)} className="px-2 h-8 text-xs text-slate-500 border border-slate-200 rounded-lg touch-manipulation">✕</button>
+          <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white rounded-lg">Apply</button>
+          <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 text-white rounded-lg">Delete</button>
+          <button onClick={() => selectItem(null)} className="px-2 h-8 text-xs text-slate-500 border border-slate-200 rounded-lg">✕</button>
         </div>
       )}
 
@@ -1019,17 +1010,9 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
                 value={editDim.offset} onChange={e => setEditDim(prev => ({ ...prev, offset: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
             </>
           )}
-          <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-violet-500 hover:bg-violet-600 text-white rounded-lg touch-manipulation">Apply</button>
-          <div className="w-px h-5 bg-violet-300 mx-0.5" />
-          <span className="text-xs text-slate-600 font-medium">Hinge:</span>
-          {swingBtn("◀ Left",  selectedPath.hingeLeft === true,  () => { const u=[...localPaths.current]; u[selectedIdx]={...selectedPath,hingeLeft:true}; commitPaths(u); })}
-          {swingBtn("Right ▶", selectedPath.hingeLeft === false, () => { const u=[...localPaths.current]; u[selectedIdx]={...selectedPath,hingeLeft:false}; commitPaths(u); })}
-          <div className="w-px h-5 bg-violet-300 mx-0.5" />
-          <span className="text-xs text-slate-600 font-medium">Swing:</span>
-          {swingBtn("Into Room",   selectedPath.swingIn === true,  () => { const u=[...localPaths.current]; u[selectedIdx]={...selectedPath,swingIn:true}; commitPaths(u); })}
-          {swingBtn("Out of Room", selectedPath.swingIn === false, () => { const u=[...localPaths.current]; u[selectedIdx]={...selectedPath,swingIn:false}; commitPaths(u); })}
-          <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg touch-manipulation">Delete</button>
-          <button onClick={() => selectItem(null)} className="px-2 h-8 text-xs text-slate-500 border border-slate-200 rounded-lg touch-manipulation">✕</button>
+          <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-violet-500 hover:bg-violet-600 text-white rounded-lg">Apply</button>
+          <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 text-white rounded-lg">Delete</button>
+          <button onClick={() => selectItem(null)} className="px-2 h-8 text-xs text-slate-500 border border-slate-200 rounded-lg">✕</button>
         </div>
       )}
 
@@ -1048,10 +1031,10 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
                 value={editDim.offset} onChange={e => setEditDim(prev => ({ ...prev, offset: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
             </>
           )}
-          <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-sky-500 hover:bg-sky-600 text-white rounded-lg touch-manipulation">Apply</button>
+          <button onClick={applyDimEdit} className="px-3 h-8 text-xs font-semibold bg-sky-500 hover:bg-sky-600 text-white rounded-lg">Apply</button>
           <span className="text-xs text-slate-500">{editDim.symW}" = {((parseFloat(editDim.symW)||0)/12).toFixed(2)} ft</span>
-          <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg touch-manipulation">Delete</button>
-          <button onClick={() => selectItem(null)} className="px-2 h-8 text-xs text-slate-500 border border-slate-200 rounded-lg touch-manipulation">✕</button>
+          <button onClick={deleteSelected} className="ml-auto px-3 h-8 text-xs font-semibold bg-red-500 text-white rounded-lg">Delete</button>
+          <button onClick={() => selectItem(null)} className="px-2 h-8 text-xs text-slate-500 border border-slate-200 rounded-lg">✕</button>
         </div>
       )}
 
@@ -1066,7 +1049,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
         <div style={{ width: CANVAS_W * zoom, height: CANVAS_H * zoom, position: "relative", flexShrink: 0 }}>
           <canvas ref={canvasRef} width={CANVAS_W} height={CANVAS_H}
-            style={{ cursor: tool === "eraser" ? "cell" : tool === "symbol" ? "copy" : tool === "select" ? "pointer" : "crosshair", touchAction: "none", display: "block", width: CANVAS_W * zoom, height: CANVAS_H * zoom }}
+            style={{ cursor: tool === "eraser" ? "cell" : tool === "pen" ? "crosshair" : tool === "symbol" ? "copy" : tool === "select" ? "pointer" : "crosshair", touchAction: "none", display: "block", width: CANVAS_W * zoom, height: CANVAS_H * zoom }}
             onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
           />
         </div>

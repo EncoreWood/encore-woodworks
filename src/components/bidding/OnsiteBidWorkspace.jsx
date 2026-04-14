@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -189,6 +189,16 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
     enabled: !!bidId,
   });
 
+  // Auto-save draft to localStorage on every change (crash protection)
+  const autoSaveKey = bidId ? `bid_draft_${bidId}` : `bid_draft_new_${linkedProject?.id || "new"}`;
+  const autoSaveTimer = useRef(null);
+  const triggerAutoSave = useCallback((data) => {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      try { localStorage.setItem(autoSaveKey, JSON.stringify({ ...data, _savedAt: Date.now() })); } catch(e) {}
+    }, 500);
+  }, [autoSaveKey]);
+
   useEffect(() => {
     loadPricing(); loadCatalog(); loadCategories();
     base44.entities.Employee.list().then(setEmployees);
@@ -204,8 +214,26 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
   }, [linkedProject, bidId]);
 
   useEffect(() => {
+    // First try to restore from localStorage draft (crash protection)
     if (bidData?.[0]) {
       const b = bidData[0];
+      // Check if there's a newer local draft
+      try {
+        const localDraft = JSON.parse(localStorage.getItem(autoSaveKey) || "null");
+        if (localDraft && localDraft._savedAt > (new Date(b.updated_date || 0).getTime())) {
+          setProjectName(localDraft.project_name || b.project_name || "");
+          setClientName(localDraft.client_name || b.client_name || "");
+          setAddress(localDraft.address || b.address || "");
+          setLinkedProjectId(localDraft.project_id || b.project_id || null);
+          setBidType(localDraft.bid_type || b.bid_type || null);
+          setRooms(localDraft.rooms || b.rooms || []);
+          setSpecs(localDraft.specs || { wood_species: b.wood_species || "", door_style: b.door_style || "", handles: b.handles || "", drawerbox: b.drawerbox || "", drawer_glides: b.drawer_glides || "", hinges: b.hinges || "" });
+          setNotes(localDraft.notes || b.notes || "");
+          setStatus(localDraft.status || b.status || "draft");
+          setEstimatedBy(localDraft.estimated_by || b.estimated_by || "");
+          return;
+        }
+      } catch(e) {}
       setProjectName(b.project_name || "");
       setClientName(b.client_name || "");
       setAddress(b.address || "");
@@ -216,6 +244,21 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
       setNotes(b.notes || "");
       setStatus(b.status || "draft");
       setEstimatedBy(b.estimated_by || "");
+    } else if (!bidId) {
+      // New bid — try restoring from local draft
+      try {
+        const localDraft = JSON.parse(localStorage.getItem(autoSaveKey) || "null");
+        if (localDraft) {
+          if (localDraft.project_name) setProjectName(localDraft.project_name);
+          if (localDraft.client_name) setClientName(localDraft.client_name);
+          if (localDraft.address) setAddress(localDraft.address);
+          if (localDraft.rooms?.length) setRooms(localDraft.rooms);
+          if (localDraft.notes) setNotes(localDraft.notes);
+          if (localDraft.bid_type) setBidType(localDraft.bid_type);
+          if (localDraft.specs) setSpecs(localDraft.specs);
+          if (localDraft.estimated_by) setEstimatedBy(localDraft.estimated_by);
+        }
+      } catch(e) {}
     }
   }, [bidData]);
 
@@ -259,6 +302,11 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
       })
     })));
   };
+
+  // Auto-save on every relevant state change
+  useEffect(() => {
+    triggerAutoSave({ project_name: projectName, client_name: clientName, address, project_id: linkedProjectId, bid_type: bidType, specs, rooms, notes, status, estimated_by: estimatedBy });
+  }, [projectName, clientName, address, bidType, specs, rooms, notes, status, estimatedBy]);
 
   const grandTotal = rooms.reduce((s, room) => s + (room.items || []).reduce((rs, item) => rs + (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0), 0), 0);
   const totalLf = rooms.reduce((s, room) => s + (room.items || []).filter(i => i.measure_type === "lf").reduce((rs, i) => rs + (parseFloat(i.quantity) || 0), 0), 0);
@@ -314,6 +362,8 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
     };
     if (bidId) { await base44.entities.Bid.update(bidId, data); }
     else { await base44.entities.Bid.create(data); }
+    // Clear draft after successful save
+    try { localStorage.removeItem(autoSaveKey); } catch(e) {}
     setIsSaving(false);
     setSaved(true);
     onSaved?.();
@@ -521,8 +571,9 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
                 <div>
                   <p className="text-sm font-semibold text-slate-700 mb-2">Room Layout Sketch</p>
                   <RoomSketch
-                    paths={room.sketch_paths || []}
-                    onPathsChange={paths => updateRoom(room.id, { sketch_paths: paths })}
+                   sketchId={`${autoSaveKey}_room_${room.id}`}
+                   paths={room.sketch_paths || []}
+                   onPathsChange={paths => updateRoom(room.id, { sketch_paths: paths })}
                     onHighlightsChange={highlights => {
                       // Combine highlights with the same cabKey, summing their LF
                       const grouped = {};
