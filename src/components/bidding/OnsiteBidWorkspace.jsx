@@ -261,6 +261,7 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
           setNotes(localDraft.notes || b.notes || "");
           setStatus(localDraft.status || b.status || "draft");
           setEstimatedBy(localDraft.estimated_by || b.estimated_by || "");
+          setBidFiles(localDraft.bid_files || b.bid_files || []);
           return;
         }
       } catch(e) {}
@@ -274,6 +275,7 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
       setNotes(b.notes || "");
       setStatus(b.status || "draft");
       setEstimatedBy(b.estimated_by || "");
+      setBidFiles(b.bid_files || []);
     } else if (!bidId) {
       // New bid — try restoring from local draft
       try {
@@ -335,8 +337,8 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
 
   // Auto-save on every relevant state change
   useEffect(() => {
-    triggerAutoSave({ project_name: projectName, client_name: clientName, address, project_id: linkedProjectId, bid_type: bidType, specs, rooms, notes, status, estimated_by: estimatedBy });
-  }, [projectName, clientName, address, bidType, specs, rooms, notes, status, estimatedBy]);
+    triggerAutoSave({ project_name: projectName, client_name: clientName, address, project_id: linkedProjectId, bid_type: bidType, specs, rooms, notes, status, estimated_by: estimatedBy, bid_files: bidFiles });
+  }, [projectName, clientName, address, bidType, specs, rooms, notes, status, estimatedBy, bidFiles]);
 
   const grandTotal = rooms.reduce((s, room) => s + (room.items || []).reduce((rs, item) => rs + (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0), 0), 0);
   const totalLf = rooms.reduce((s, room) => s + (room.items || []).filter(i => i.measure_type === "lf").reduce((rs, i) => rs + (parseFloat(i.quantity) || 0), 0), 0);
@@ -389,6 +391,7 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
       status,
       bid_mode: "onsite",
       estimated_by: estimatedBy,
+      bid_files: bidFiles,
     };
     if (bidId) { await base44.entities.Bid.update(bidId, data); }
     else { await base44.entities.Bid.create(data); }

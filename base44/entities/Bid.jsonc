@@ -82,6 +82,10 @@
           "room_name": {
             "type": "string"
           },
+          "ceiling_height": {
+            "type": "string",
+            "description": "Ceiling height in inches"
+          },
           "items": {
             "type": "array",
             "items": {
@@ -120,6 +124,24 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "bid_files": {
+      "type": "array",
+      "description": "Attached files (recordings, PDFs, drawings, etc.)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
           }
         }
       }
