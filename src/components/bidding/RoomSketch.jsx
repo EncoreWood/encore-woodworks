@@ -71,6 +71,13 @@ function calcRectFt(x1, y1, x2, y2) {
   const hFt = (Math.abs(y2 - y1) / BASE_PX_PER_FOOT).toFixed(2);
   return { wFt, hFt, lf: (parseFloat(wFt) + parseFloat(hFt)).toFixed(2) };
 }
+/** Convert a decimal feet value to e.g. 3'6" */
+function ftToFtIn(decFt) {
+  const totalIn = Math.round(parseFloat(decFt) * 12);
+  const ft = Math.floor(totalIn / 12);
+  const inches = totalIn % 12;
+  return inches === 0 ? `${ft}'` : `${ft}'${inches}"`;
+}
 
 // ── Draw helpers ──────────────────────────────────────────────────────────────
 function drawSymbol(ctx, key, x, y, size = 18) {
@@ -123,10 +130,10 @@ function drawOnePath(ctx, path, isSelected, zoom) {
     ctx.fillRect(rx, ry, rw, rh); ctx.strokeRect(rx, ry, rw, rh);
     const { wFt, hFt } = calcRectFt(x1, y1, x2, y2);
     ctx.fillStyle = hl.color; ctx.font = `bold ${12 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    if (rw > 30 * lw && rh > 14 * lw) ctx.fillText(`${hl.label} ${wFt}'×${hFt}'`, rx + rw / 2, ry + rh / 2);
+    if (rw > 30 * lw && rh > 14 * lw) ctx.fillText(`${hl.label} ${ftToFtIn(wFt)}×${ftToFtIn(hFt)}`, rx + rw / 2, ry + rh / 2);
     ctx.font = `${10 * lw}px sans-serif`; ctx.fillStyle = "#475569";
-    ctx.textBaseline = "bottom"; ctx.textAlign = "center"; ctx.fillText(`${wFt}'`, rx + rw / 2, ry - 2 * lw);
-    ctx.textBaseline = "middle"; ctx.textAlign = "right"; ctx.fillText(`${hFt}'`, rx - 4 * lw, ry + rh / 2);
+    ctx.textBaseline = "bottom"; ctx.textAlign = "center"; ctx.fillText(ftToFtIn(wFt), rx + rw / 2, ry - 2 * lw);
+    ctx.textBaseline = "middle"; ctx.textAlign = "right"; ctx.fillText(ftToFtIn(hFt), rx - 4 * lw, ry + rh / 2);
     if (isSelected) {
       ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2.5 * lw; ctx.setLineDash([5 * lw, 3 * lw]);
       ctx.strokeRect(rx - 2 * lw, ry - 2 * lw, rw + 4 * lw, rh + 4 * lw); ctx.setLineDash([]);
@@ -144,7 +151,7 @@ function drawOnePath(ctx, path, isSelected, zoom) {
     const mx = (p1.x + p2.x) / 2, my = (p1.y + p2.y) / 2;
     ctx.save(); ctx.translate(mx, my); ctx.rotate(Math.atan2(p2.y - p1.y, p2.x - p1.x));
     ctx.fillStyle = "#1e293b"; ctx.font = `bold ${11 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-    ctx.fillText(`${ft}' (${angle}°)`, 0, -4 * lw); ctx.restore();
+    ctx.fillText(`${ftToFtIn(ft)} (${angle}°)`, 0, -4 * lw); ctx.restore();
     return;
   }
   if (path.type === "pen" && path.points?.length > 1) {
@@ -226,7 +233,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
         const ft = calcLineFt(x1, y1, x2, y2), angle = calcAngle(x1, y1, x2, y2);
         ctx.translate((x1 + x2) / 2, (y1 + y2) / 2); ctx.rotate(Math.atan2(y2 - y1, x2 - x1));
         ctx.fillStyle = "#1e293b"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-        ctx.fillText(`${ft}' (${angle}°)`, 0, -4);
+        ctx.fillText(`${ftToFtIn(ft)} (${angle}°)`, 0, -4);
       } else if (type === "highlight") {
         const hl = CAB_HIGHLIGHTS.find(h => h.key === activeHighlightRef.current);
         if (hl) {
@@ -235,7 +242,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
           ctx.fillRect(rx, ry, rw, rh); ctx.strokeRect(rx, ry, rw, rh); ctx.setLineDash([]);
           const { wFt, hFt } = calcRectFt(x1, y1, x2, y2);
           ctx.font = "bold 11px sans-serif"; ctx.fillStyle = hl.color; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-          ctx.fillText(`${wFt}'×${hFt}'`, rx + rw / 2, ry + rh / 2);
+          ctx.fillText(`${ftToFtIn(wFt)}×${ftToFtIn(hFt)}`, rx + rw / 2, ry + rh / 2);
         }
       }
       ctx.restore();
@@ -609,7 +616,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
             onChange={e => setEditDim(prev => ({ ...prev, h: e.target.value }))} />
           <button onClick={applyDimEdit} className="px-3 h-7 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg">Apply</button>
           <span className="text-xs text-slate-500">
-            = {((parseFloat(editDim.w) || 0) * 2 + (parseFloat(editDim.h) || 0) * 2).toFixed(1)} LF
+            = {ftToFtIn(((parseFloat(editDim.w) || 0) * 2 + (parseFloat(editDim.h) || 0) * 2).toFixed(2))} LF ({((parseFloat(editDim.w) || 0) * 2 + (parseFloat(editDim.h) || 0) * 2).toFixed(1)} ft)
           </span>
           <button onClick={deleteSelected} className="ml-auto px-3 h-7 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
           <button onClick={() => selectItem(null)} className="px-2 h-7 text-xs text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-100">✕</button>
@@ -625,7 +632,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
             value={editDim.len}
             onChange={e => setEditDim(prev => ({ ...prev, len: e.target.value }))} />
           <span className="text-xs text-slate-500">
-            at {calcAngle(selectedPath.points[0].x, selectedPath.points[0].y, selectedPath.points[1].x, selectedPath.points[1].y)}°
+            = {ftToFtIn(editDim.len)} &nbsp;at {calcAngle(selectedPath.points[0].x, selectedPath.points[0].y, selectedPath.points[1].x, selectedPath.points[1].y)}°
           </span>
           <button onClick={applyDimEdit} className="px-3 h-7 text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white rounded-lg">Apply</button>
           <button onClick={deleteSelected} className="ml-auto px-3 h-7 text-xs font-semibold bg-red-500 hover:bg-red-600 text-white rounded-lg">Delete</button>
@@ -664,7 +671,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange })
           return (
             <span key={h.key} className="text-xs font-semibold rounded-full px-2 py-0.5"
               style={{ backgroundColor: h.fillColor, color: h.color }}>
-              {h.label}: {totalLf.toFixed(1)} LF
+              {h.label}: {ftToFtIn(totalLf.toFixed(2))} ({totalLf.toFixed(1)} LF)
             </span>
           );
         })}
