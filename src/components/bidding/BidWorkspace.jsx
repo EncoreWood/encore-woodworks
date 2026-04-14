@@ -24,7 +24,7 @@ const BID_STYLES = [
 ];
 
 // project prop: optional pre-linked project object (when opened from ProjectDetails)
-export default function BidWorkspace({ bidId, project: linkedProject, onClose, onSaved }) {
+export default function BidWorkspace({ bidId, project: linkedProject, onClose, onSaved, onOpenPricing }) {
   const [projectName, setProjectName] = useState("");
   const [clientName, setClientName] = useState("");
   const [address, setAddress] = useState("");
@@ -457,7 +457,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
         <Card className="p-4 sm:p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-bold text-slate-900">Cabinet Style</h2>
-            <Button variant="outline" size="sm" onClick={() => setShowPricingSettings(true)} className="h-9 gap-1.5">
+            <Button variant="outline" size="sm" onClick={onOpenPricing || (() => setShowPricingSettings(true))} className="h-9 gap-1.5">
               <Settings2 className="w-4 h-4" /> Edit Pricing
             </Button>
           </div>

@@ -1,0 +1,48 @@
+{
+  "name": "BidItemCatalog",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Item display name"
+    },
+    "cabinet_category": {
+      "type": "string",
+      "enum": [
+        "base",
+        "upper",
+        "tall",
+        "misc",
+        "roll_out_inserts",
+        "custom"
+      ],
+      "description": "Cabinet category"
+    },
+    "measure_type": {
+      "type": "string",
+      "enum": [
+        "lf",
+        "qty",
+        "sqft",
+        "both"
+      ],
+      "default": "lf",
+      "description": "Linear feet, quantity, square feet, or both"
+    },
+    "default_price": {
+      "type": "number",
+      "description": "Default unit price"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this item is shown in bids"
+    },
+    "sort_order": {
+      "type": "number"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
