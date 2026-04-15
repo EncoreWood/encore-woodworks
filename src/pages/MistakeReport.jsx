@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { ChevronLeft, Camera, X, CheckCircle2, Loader2, AlertTriangle, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -176,6 +177,7 @@ function DataTab() {
 
 // ─── Wizard Tab ───────────────────────────────────────────────────────────────
 function WizardTab() {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [data, setData] = useState({
     mistake_of: null, mistake_type: null, stem_of_mistake: null,
@@ -268,9 +270,14 @@ function WizardTab() {
             <p className="text-yellow-800 font-semibold">📋 A SOP task was created for <span className="font-bold">{data.stem_of_mistake}</span>.</p>
           </div>
         )}
-        <Button onClick={reset} className="bg-amber-600 hover:bg-amber-700 text-white text-xl px-10 py-6 rounded-2xl h-auto">
-          Submit Another Report
-        </Button>
+        <div className="flex gap-3">
+          <Button onClick={() => navigate("/ShopProduction")} className="bg-slate-600 hover:bg-slate-700 text-white text-xl px-10 py-6 rounded-2xl h-auto">
+            Back to Production Board
+          </Button>
+          <Button onClick={reset} className="bg-amber-600 hover:bg-amber-700 text-white text-xl px-10 py-6 rounded-2xl h-auto">
+            Submit Another Report
+          </Button>
+        </div>
       </div>
     );
   }
