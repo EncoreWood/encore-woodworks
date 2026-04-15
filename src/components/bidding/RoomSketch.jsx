@@ -1069,7 +1069,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
         {SYMBOLS.map(sym => (
           sym.key !== "rollout" && (
             <button key={sym.key}
-              onPointerDown={(e) => { e.stopPropagation(); setTool("symbol"); setActiveSymbol(sym.key); }}
+              onPointerDown={(e) => { e.stopPropagation(); setTool("symbol"); setActiveSymbol(sym.key); setPlaceRolloutMode(false); setActiveRollout(null); }}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all touch-manipulation ${tool === "symbol" && activeSymbol === sym.key ? "bg-indigo-500 text-white border-indigo-500" : "bg-white text-slate-600 border-slate-200"}`}>
               <SymbolIcon symbolKey={sym.key} size={22} />
               {sym.label}
@@ -1085,6 +1085,8 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
               if (item) {
                 setActiveRollout(item);
                 setPlaceRolloutMode(true);
+                setTool("select"); // clear any other active tool
+                setActiveSymbol(null);
               } else {
                 setActiveRollout(null);
                 setPlaceRolloutMode(false);
