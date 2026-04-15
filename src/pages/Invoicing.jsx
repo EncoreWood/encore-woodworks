@@ -511,12 +511,15 @@ export default function Invoicing() {
                                         <span className="font-medium text-red-600">${(actualCost - deposit).toLocaleString()}</span>
                                       </div>
                                     )}
-                                    {expDate && (
-                                      <div className="flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 rounded px-2 py-1">
-                                        <CalendarClock className="w-3 h-3 flex-shrink-0" />
-                                        <span>Exp: {format(new Date(expDate), "MMM d, yyyy")}</span>
-                                      </div>
-                                    )}
+                                    {expDate && (() => {
+                                      const expStageLabel = expDateKey === "deposit_expected_date" ? "Deposit" : expDateKey === "ninety_percent_expected_date" ? "90%" : "Final";
+                                      return (
+                                        <div className="flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 rounded px-2 py-1">
+                                          <CalendarClock className="w-3 h-3 flex-shrink-0" />
+                                          <span>{expStageLabel} exp: {format(new Date(expDate), "MMM d, yyyy")}</span>
+                                        </div>
+                                      );
+                                    })()}
                                     <div className="pt-2 border-t">
                                       <Badge variant="outline" className="text-xs">
                                         {project.status?.replace(/_/g, ' ')}
