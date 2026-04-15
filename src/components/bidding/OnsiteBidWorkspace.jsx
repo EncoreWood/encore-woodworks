@@ -714,10 +714,11 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
                       const existingCustomItems = (room.items || []).filter(i => !sketchItemIds.has(i.id) && !i.id?.startsWith("rollout_"));
                       const newSketchItems = Object.values(grouped).map(hl => {
                         const price = getPriceForCategory(hl.cabKey);
-                        const label = hl.cabKey.charAt(0).toUpperCase() + hl.cabKey.slice(1);
+                        const defaultLabel = hl.cabKey.charAt(0).toUpperCase() + hl.cabKey.slice(1);
+                        const itemName = hl.customLabel || `${defaultLabel} Cabinets (sketch)`;
                         return {
-                          id: `sketch_${hl.cabKey}`,
-                          name: `${label} Cabinets (sketch)`,
+                          id: `sketch_${hl.cabKey}${hl.customLabel ? `_${hl.customLabel}` : ""}`,
+                          name: itemName,
                           cabinet_category: hl.cabKey,
                           measure_type: "lf",
                           quantity: Math.round(hl.quantity * 100) / 100,

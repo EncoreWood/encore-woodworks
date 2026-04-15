@@ -11,10 +11,11 @@ const COLORS = ["#1e1e1e", "#ef4444", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6"
 const THICKNESS = { thin: 1.5, medium: 3, thick: 6 };
 
 const CAB_HIGHLIGHTS = [
-  { key: "base",  label: "Base",  color: "#3b82f6", fillColor: "rgba(59,130,246,0.22)" },
-  { key: "upper", label: "Upper", color: "#22c55e", fillColor: "rgba(34,197,94,0.22)" },
-  { key: "tall",  label: "Tall",  color: "#f59e0b", fillColor: "rgba(245,158,11,0.22)" },
-  { key: "misc",  label: "Misc",  color: "#8b5cf6", fillColor: "rgba(139,92,246,0.22)" },
+  { key: "base",   label: "Base",   color: "#3b82f6", fillColor: "rgba(59,130,246,0.22)" },
+  { key: "upper",  label: "Upper",  color: "#22c55e", fillColor: "rgba(34,197,94,0.22)" },
+  { key: "tall",   label: "Tall",   color: "#f59e0b", fillColor: "rgba(245,158,11,0.22)" },
+  { key: "misc",   label: "Misc",   color: "#8b5cf6", fillColor: "rgba(139,92,246,0.22)" },
+  { key: "custom", label: "Custom", color: "#db2777", fillColor: "rgba(219,39,119,0.18)" },
 ];
 
 const SYMBOLS = [
@@ -231,7 +232,8 @@ function drawHighlight(ctx, path, isSelected, zoom) {
     ctx.fillRect(rx, ry, rw, rh); ctx.strokeRect(rx, ry, rw, rh);
     const { wFt, hFt } = calcRectFt(x1, y1, x2, y2);
     ctx.fillStyle = hl.color; ctx.font = `bold ${12 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    if (rw > 30 * lw && rh > 14 * lw) ctx.fillText(`${hl.label} ${ftToFtIn(wFt)} × ${ftToFtIn(hFt)}`, rx + rw / 2, ry + rh / 2);
+    const displayLabel = path.customLabel || hl.label;
+    if (rw > 30 * lw && rh > 14 * lw) ctx.fillText(`${displayLabel} ${ftToFtIn(wFt)} × ${ftToFtIn(hFt)}`, rx + rw / 2, ry + rh / 2);
     if (isSelected) {
       ctx.strokeStyle = "#f59e0b"; ctx.lineWidth = 2.5 * lw; ctx.setLineDash([5 * lw, 3 * lw]);
       ctx.strokeRect(rx - 2 * lw, ry - 2 * lw, rw + 4 * lw, rh + 4 * lw); ctx.setLineDash([]);
@@ -264,7 +266,8 @@ function drawHighlight(ctx, path, isSelected, zoom) {
   const ccx = (c0.x + c1.x + c2.x + c3.x) / 4, ccy = (c0.y + c1.y + c2.y + c3.y) / 4;
   ctx.save(); ctx.translate(ccx, ccy); ctx.rotate(wallAngle);
   ctx.fillStyle = hl.color; ctx.font = `bold ${11 * lw}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(`${hl.label} ${widthIn}" × ${depthIn}"`, 0, 0);
+  const wallDisplayLabel = path.customLabel || hl.label;
+  ctx.fillText(`${wallDisplayLabel} ${widthIn}" × ${depthIn}"`, 0, 0);
   ctx.restore();
   if (isSelected) {
     ctx.beginPath();
@@ -699,10 +702,10 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
           if (wall?.wall) {
             offsetIn = Math.round((Math.hypot(p.anchorX - wall.wall.points[0].x, p.anchorY - wall.wall.points[0].y) / BASE_PX_PER_FOOT) * 12);
           }
-          setEditDim({ w: p.widthIn, h: p.depthIn, len: "", angle: "", symW: "", offset: offsetIn });
+          setEditDim({ w: p.widthIn, h: p.depthIn, len: "", angle: "", symW: "", offset: offsetIn, customLabel: p.customLabel || "" });
         } else {
           const { wFt, hFt } = calcRectFt(p.x1, p.y1, p.x2, p.y2);
-          setEditDim({ w: Math.round(parseFloat(wFt)*12), h: Math.round(parseFloat(hFt)*12), len: "", angle: "", symW: "", offset: "" });
+          setEditDim({ w: Math.round(parseFloat(wFt)*12), h: Math.round(parseFloat(hFt)*12), len: "", angle: "", symW: "", offset: "", customLabel: p.customLabel || "" });
         }
       } else if (p?.type === "line") {
         const lenFt = calcLineFt(p.points[0].x, p.points[0].y, p.points[1].x, p.points[1].y);
@@ -918,7 +921,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
     const highlights = allPaths.filter(p => p.type === "highlight").map(p => {
       const lf = getHighlightLf(p);
       const hFt = p.wallAngle !== undefined ? p.depthIn / 12 : parseFloat(calcRectFt(p.x1 ?? 0, p.y1 ?? 0, p.x2 ?? 0, p.y2 ?? 0).hFt);
-      return { cabKey: p.cabKey, wFt: lf, hFt, lf, measureType: "lf", quantity: lf };
+      return { cabKey: p.cabKey, wFt: lf, hFt, lf, measureType: "lf", quantity: lf, customLabel: p.customLabel };
     });
     onHighlightsChange(highlights);
   };
@@ -932,7 +935,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
       const wIn = parseFloat(editDim.w), hIn = parseFloat(editDim.h);
       if (isNaN(wIn) || isNaN(hIn) || wIn <= 0 || hIn <= 0) return;
       if (p.wallAngle !== undefined) {
-        updated[selectedIdx] = { ...p, widthIn: wIn, depthIn: hIn };
+        updated[selectedIdx] = { ...p, widthIn: wIn, depthIn: hIn, customLabel: editDim.customLabel || undefined };
         const offsetIn = parseFloat(editDim.offset);
         if (!isNaN(offsetIn) && offsetIn >= 0) {
           const wallSnap = findNearestWallForPoint(p.anchorX, p.anchorY, localPaths.current, Infinity);
@@ -946,7 +949,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
       } else {
         const wPx = (wIn / 12) * BASE_PX_PER_FOOT, hPx = (hIn / 12) * BASE_PX_PER_FOOT;
         const rx = Math.min(p.x1, p.x2), ry = Math.min(p.y1, p.y2);
-        updated[selectedIdx] = { ...p, x1: rx, y1: ry, x2: rx + wPx, y2: ry + hPx };
+        updated[selectedIdx] = { ...p, x1: rx, y1: ry, x2: rx + wPx, y2: ry + hPx, customLabel: editDim.customLabel || undefined };
       }
     } else if (p.type === "line") {
       const newLen = (parseFloat(editDim.len) / 12) * BASE_PX_PER_FOOT;
@@ -1151,6 +1154,11 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
         <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border-b border-amber-200 flex-wrap">
           <Edit3 className="w-3.5 h-3.5 text-amber-700 flex-shrink-0" />
           <span className="text-xs font-semibold text-amber-800">Cabinet:</span>
+          <label className="text-xs text-slate-600">Name</label>
+          <input type="text" className="w-28 h-8 text-sm border border-amber-300 rounded-lg px-2 bg-white"
+            value={editDim.customLabel || ""} onChange={e => setEditDim(prev => ({ ...prev, customLabel: e.target.value }))}
+            placeholder={CAB_HIGHLIGHTS.find(h => h.key === selectedPath.cabKey)?.label || "Label"}
+            onPointerDown={e => e.stopPropagation()} />
           <label className="text-xs text-slate-600">Width (in)</label>
           <input type="number" step="0.5" inputMode="decimal" className="w-16 h-8 text-sm border border-amber-300 rounded-lg px-2 bg-white"
             value={editDim.w} onChange={e => setEditDim(prev => ({ ...prev, w: e.target.value }))} onPointerDown={e => e.stopPropagation()} />
