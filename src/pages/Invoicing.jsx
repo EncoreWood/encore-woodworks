@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail, Edit3, Download, PlusCircle, Save, LayoutDashboard, Calendar } from "lucide-react";
+import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail, Edit3, Download, PlusCircle, Save, LayoutDashboard, Calendar, CalendarClock } from "lucide-react";
+import { format } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 import ProposalViewer from "../components/proposals/ProposalViewer";
 import ProposalForm from "../components/proposals/ProposalForm";
@@ -213,6 +214,15 @@ export default function Invoicing() {
     paid_in_full: "final_invoice_amount",
   };
 
+  const stageExpectedDateKey = {
+    deposit_invoice_sent: "deposit_expected_date",
+    deposit_received: "ninety_percent_expected_date",
+    ninety_percent_sent: "ninety_percent_expected_date",
+    ninety_percent_received: "final_expected_date",
+    final_sent: "final_expected_date",
+    paid_in_full: null,
+  };
+
   const getStageTotal = (status, projectList) => {
     const key = stageAmountKey[status];
     const total = projectList.reduce((sum, p) => sum + (p[key] || p.estimated_budget || 0), 0);
@@ -353,10 +363,12 @@ export default function Invoicing() {
                        <div className="space-y-3 flex-1">
                          {filtered.map((project, index) => {
                            const budget = project.estimated_budget || 0;
-                           const deposit = project.deposit_paid || 0;
-                           const actualCost = project.actual_cost || 0;
-                           const remaining = budget - deposit;
-                           const hasProposal = proposals.some(p => p.project_id === project.id);
+                                    const deposit = project.deposit_paid || 0;
+                                    const actualCost = project.actual_cost || 0;
+                                    const remaining = budget - deposit;
+                                    const hasProposal = proposals.some(p => p.project_id === project.id);
+                                    const expDateKey = stageExpectedDateKey[status];
+                                    const expDate = expDateKey ? project[expDateKey] : null;
 
                            return (
                              <Draggable draggableId={project.id} index={index} key={project.id}>
@@ -495,6 +507,12 @@ export default function Invoicing() {
                                         <span className="font-medium text-red-600">${(actualCost - deposit).toLocaleString()}</span>
                                       </div>
                                     )}
+                                    {expDate && (
+                                      <div className="flex items-center gap-1.5 text-xs text-blue-600 bg-blue-50 rounded px-2 py-1">
+                                        <CalendarClock className="w-3 h-3 flex-shrink-0" />
+                                        <span>Exp: {format(new Date(expDate), "MMM d, yyyy")}</span>
+                                      </div>
+                                    )}
                                     <div className="pt-2 border-t">
                                       <Badge variant="outline" className="text-xs">
                                         {project.status?.replace(/_/g, ' ')}
@@ -563,9 +581,9 @@ export default function Invoicing() {
               const hasUnsaved = Object.keys(invoiceFields[viewingDetails.id] || {}).length > 0;
 
               const invoiceStages = [
-                { label: "Deposit Invoice", amtKey: "deposit_invoice_amount", sentKey: "deposit_invoice_sent_date", recKey: "deposit_invoice_received_date", sentStatus: "deposit_invoice_sent", recStatus: "deposit_received" },
-                { label: "90% Invoice", amtKey: "ninety_percent_invoice_amount", sentKey: "ninety_percent_invoice_sent_date", recKey: "ninety_percent_invoice_received_date", sentStatus: "ninety_percent_sent", recStatus: "ninety_percent_received" },
-                { label: "Final Invoice", amtKey: "final_invoice_amount", sentKey: "final_invoice_sent_date", recKey: "final_invoice_received_date", sentStatus: "final_sent", recStatus: "paid_in_full" },
+                { label: "Deposit Invoice", amtKey: "deposit_invoice_amount", sentKey: "deposit_invoice_sent_date", recKey: "deposit_invoice_received_date", expKey: "deposit_expected_date", sentStatus: "deposit_invoice_sent", recStatus: "deposit_received" },
+                { label: "90% Invoice", amtKey: "ninety_percent_invoice_amount", sentKey: "ninety_percent_invoice_sent_date", recKey: "ninety_percent_invoice_received_date", expKey: "ninety_percent_expected_date", sentStatus: "ninety_percent_sent", recStatus: "ninety_percent_received" },
+                { label: "Final Invoice", amtKey: "final_invoice_amount", sentKey: "final_invoice_sent_date", recKey: "final_invoice_received_date", expKey: "final_expected_date", sentStatus: "final_sent", recStatus: "paid_in_full" },
               ];
               const currentStatus = viewingDetails.invoice_status || "deposit_invoice_sent";
 
@@ -608,39 +626,49 @@ export default function Invoicing() {
                               {isReceived && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Received</span>}
                               {isSent && !isReceived && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Sent — Pending</span>}
                             </div>
-                            <div className="grid grid-cols-3 gap-3">
-                              <div>
-                                <label className="text-xs text-slate-500 block mb-1">Invoice Amount</label>
-                                <div className="relative">
-                                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-                                  <Input
-                                    type="number"
-                                    className="pl-6 h-8 text-sm"
-                                    placeholder="0.00"
-                                    value={getIv(stage.amtKey, "")}
-                                    onChange={(e) => setIv(stage.amtKey, e.target.value)}
-                                  />
-                                </div>
-                              </div>
-                              <div>
-                                <label className="text-xs text-slate-500 block mb-1">Sent Date</label>
-                                <Input
-                                  type="date"
-                                  className="h-8 text-sm"
-                                  value={getIv(stage.sentKey, "")}
-                                  onChange={(e) => setIv(stage.sentKey, e.target.value)}
-                                />
-                              </div>
-                              <div>
-                                <label className="text-xs text-slate-500 block mb-1">Received Date</label>
-                                <Input
-                                  type="date"
-                                  className="h-8 text-sm"
-                                  value={getIv(stage.recKey, "")}
-                                  onChange={(e) => setIv(stage.recKey, e.target.value)}
-                                />
-                              </div>
-                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                               <div>
+                                 <label className="text-xs text-slate-500 block mb-1">Invoice Amount</label>
+                                 <div className="relative">
+                                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                                   <Input
+                                     type="number"
+                                     className="pl-6 h-8 text-sm"
+                                     placeholder="0.00"
+                                     value={getIv(stage.amtKey, "")}
+                                     onChange={(e) => setIv(stage.amtKey, e.target.value)}
+                                   />
+                                 </div>
+                               </div>
+                               <div>
+                                 <label className="text-xs text-slate-500 block mb-1">Expected Date</label>
+                                 <Input
+                                   type="date"
+                                   className="h-8 text-sm"
+                                   value={getIv(stage.expKey, "")}
+                                   onChange={(e) => setIv(stage.expKey, e.target.value)}
+                                   disabled={!!getIv(stage.recKey, "")}
+                                 />
+                               </div>
+                               <div>
+                                 <label className="text-xs text-slate-500 block mb-1">Sent Date</label>
+                                 <Input
+                                   type="date"
+                                   className="h-8 text-sm"
+                                   value={getIv(stage.sentKey, "")}
+                                   onChange={(e) => setIv(stage.sentKey, e.target.value)}
+                                 />
+                               </div>
+                               <div>
+                                 <label className="text-xs text-slate-500 block mb-1">Received Date</label>
+                                 <Input
+                                   type="date"
+                                   className="h-8 text-sm"
+                                   value={getIv(stage.recKey, "")}
+                                   onChange={(e) => setIv(stage.recKey, e.target.value)}
+                                 />
+                               </div>
+                             </div>
                           </div>
                         );
                       })}
