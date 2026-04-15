@@ -8,7 +8,8 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Factory, Briefcase, Link2, Unlink, Package, AlertTriangle, PackageX, Sunset } from "lucide-react";
+import { Plus, Factory, Briefcase, Link2, Unlink, Package, AlertTriangle, PackageX, Sunset, Clipboard } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
 import GiveComplimentDialog from "../components/production/GiveComplimentDialog";
 import ReportMissingDialog from "../components/production/ReportMissingDialog";
@@ -35,7 +36,8 @@ const ACTIVE_PROJECT_STATUSES = ["in_production", "ready_for_install", "installi
 
 
 export default function ShopProduction() {
-  const queryClient = useQueryClient();
+   const navigate = useNavigate();
+   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("production");
   const [showForm, setShowForm] = useState(false);
   const [jobInfoMode, setJobInfoMode] = useState(false);
@@ -458,6 +460,13 @@ export default function ShopProduction() {
               className="border-amber-300 text-amber-600 hover:bg-amber-50"
             >
               🎉 Well Done
+            </Button>
+            <Button
+              onClick={() => navigate("/MistakeReport")}
+              variant="outline"
+              className="border-red-300 text-red-600 hover:bg-red-50"
+            >
+              <AlertTriangle className="w-4 h-4 mr-2" /> Report Mistake
             </Button>
             <Button onClick={() => { setJobInfoMode(false); setShowForm(true); }} className="bg-amber-600 hover:bg-amber-700">
               <Plus className="w-4 h-4 mr-2" /> Add Item
