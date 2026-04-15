@@ -68,7 +68,15 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
       const created = await Promise.all(DEFAULT_CATEGORIES.map(c => base44.entities.BidCategory.create(c)));
       setCategories(created);
     } else {
-      setCategories(existing);
+      // Ensure all default categories exist (e.g. "upgrades" added after initial seed)
+      let updated = [...existing];
+      for (const def of DEFAULT_CATEGORIES) {
+        if (!existing.find(c => c.key === def.key)) {
+          const created = await base44.entities.BidCategory.create(def);
+          updated = [...updated, created];
+        }
+      }
+      setCategories(updated.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
     }
   };
 

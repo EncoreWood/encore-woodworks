@@ -400,7 +400,7 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
                       {items.map(ci => (
                         <SelectItem key={ci.id} value={ci.id}>
                           {ci.name}
-                          <span className="text-slate-400 text-xs ml-1">({ci.measure_type === "lf" ? "LF" : ci.measure_type === "sqft" ? "SqFt" : "Qty"})</span>
+                          <span className="text-slate-400 text-xs ml-1">({ci.measure_type === "lf" ? "LF" : ci.measure_type === "sqft" ? "SqFt" : ci.measure_type === "percentage" ? "%" : "Qty"})</span>
                         </SelectItem>
                       ))}
                     </SelectGroup>

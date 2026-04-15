@@ -108,13 +108,21 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
 
   const loadCategories = async () => {
     const cats = await base44.entities.BidCategory.list("sort_order");
-    if (cats.length > 0) {
-      setCategories(cats);
-    } else {
-      // Seed defaults if none exist yet
+    if (cats.length === 0) {
       const { DEFAULT_CATEGORIES } = await import("./BidCatalogEditor");
       const created = await Promise.all(DEFAULT_CATEGORIES.map(c => base44.entities.BidCategory.create(c)));
       setCategories(created);
+    } else {
+      // Ensure "upgrades" category exists (may have been added after initial seed)
+      const { DEFAULT_CATEGORIES } = await import("./BidCatalogEditor");
+      let updated = [...cats];
+      for (const def of DEFAULT_CATEGORIES) {
+        if (!cats.find(c => c.key === def.key)) {
+          const created = await base44.entities.BidCategory.create(def);
+          updated = [...updated, created];
+        }
+      }
+      setCategories(updated.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
     }
   };
 
@@ -151,9 +159,21 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
     })));
   };
 
-  const grandTotal = rooms.reduce((s, room) =>
-    s + (room.items || []).reduce((rs, item) => rs + (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0), 0), 0
-  );
+  const getRoomTotal = (room) => {
+    const items = room.items || [];
+    const getItemSub = (item) => {
+      if (item.measure_type === "percentage") {
+        const appliesTo = item.upgrade_applies_to || ["base", "upper", "tall"];
+        const base = items
+          .filter(i => i.measure_type !== "percentage" && appliesTo.includes(i.cabinet_category))
+          .reduce((s, i) => s + (parseFloat(i.quantity) || 0) * (parseFloat(i.unit_price) || 0), 0);
+        return base * ((parseFloat(item.percentage) || 0) / 100);
+      }
+      return (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
+    };
+    return items.reduce((s, i) => s + getItemSub(i), 0);
+  };
+  const grandTotal = rooms.reduce((s, room) => s + getRoomTotal(room), 0);
   const totalLf = rooms.reduce((s, room) =>
     s + (room.items || []).filter(i => i.measure_type === "lf").reduce((rs, i) => rs + (parseFloat(i.quantity) || 0), 0), 0
   );
