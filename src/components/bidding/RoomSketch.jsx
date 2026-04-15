@@ -752,7 +752,9 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
       const newSym = { type: "symbol", symbolKey: "rollout", x: pos.x, y: pos.y, label: rollout.name, targetX: pos.x, targetY: pos.y + 40 };
       commitPaths([...localPaths.current, newSym]);
       isDrawing.current = false;
-      // Keep mode active for multiple placements
+      setTool("select");
+      setPlaceRolloutMode(false);
+      setActiveRollout(null);
       return;
     }
     if (toolRef.current === "symbol") {
@@ -767,7 +769,6 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
         if (isWallSym && wallSnap) {
           newSym = { type: "symbol", symbolKey: sym, anchorX: wallSnap.projX, anchorY: wallSnap.projY, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side, widthPx };
         } else if (!isWallSym && wallSnap && !isInsert) {
-          // Snap outlet/switch/plumbing to wall too
           const wallLen = wallSnap.wallLen;
           const offsetPx = wallSnap.t * wallLen;
           const offsetIn = Math.round((offsetPx / BASE_PX_PER_FOOT) * 12);
@@ -779,7 +780,9 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
         }
         commitPaths([...localPaths.current, newSym]);
       }
-      isDrawing.current = false; return;
+      isDrawing.current = false;
+      setTool("select");
+      return;
     }
     // Pen: free-form annotation, no snap to grid
     if (toolRef.current === "pen") {
@@ -880,8 +883,8 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
     }
     if (!isDrawing.current) return;
     isDrawing.current = false;
-    // Pen: commit on up
-    if (toolRef.current === "pen") { commitPaths([...localPaths.current]); return; }
+    // Pen: commit on up, then switch to select
+    if (toolRef.current === "pen") { commitPaths([...localPaths.current]); setTool("select"); return; }
     const snapped = getSnappedPos(e, false, toolRef.current === "highlight");
     if ((toolRef.current === "line" || toolRef.current === "highlight") && dragStart.current) {
       const start = dragStart.current; dragStart.current = null;
@@ -890,6 +893,7 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
         const as = snapAngle(start.x, start.y, snapped.x, snapped.y);
         const end = as.snappedAngle !== null ? { x: as.x, y: as.y } : { x: snapped.x, y: snapped.y };
         commitPaths([...localPaths.current, { type: "line", points: [start, end], color: colorRef.current, lineWidth: THICKNESS[thicknessRef.current] }]);
+        // Wall tool stays active (don't switch to select)
       } else {
         const hl = CAB_HIGHLIGHTS.find(h => h.key === activeHighlightRef.current);
         const defaultDepthIn = activeHighlightRef.current === "base" ? 24 : activeHighlightRef.current === "upper" ? 14 : 12;
@@ -897,14 +901,12 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
         if (wallSnap) {
           const wPx = Math.hypot(snapped.x - start.x, snapped.y - start.y) || BASE_PX_PER_FOOT * 2;
           const widthIn = Math.round((wPx / BASE_PX_PER_FOOT) * 12);
-          // Cabinet goes on OPPOSITE side from where user tapped (tap on wall, cabinet goes into room)
-          // wallSnap.side is the side of user's tap point relative to wall
-          // Cabinet interior should extend toward the room (same side as user tap, since user taps from room side)
           commitPaths([...localPaths.current, { type: "highlight", cabKey: activeHighlightRef.current, color: hl?.color, anchorX: wallSnap.projX, anchorY: wallSnap.projY, widthIn: widthIn > 0 ? widthIn : 24, depthIn: defaultDepthIn, wallAngle: wallSnap.wallAngle, wallSide: wallSnap.side }]);
         } else {
           const depthPx = (defaultDepthIn / 12) * BASE_PX_PER_FOOT;
           commitPaths([...localPaths.current, { type: "highlight", cabKey: activeHighlightRef.current, color: hl?.color, x1: start.x, y1: start.y, x2: snapped.x, y2: start.y + depthPx }]);
         }
+        setTool("select");
       }
       scheduleRedraw();
     }
