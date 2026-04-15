@@ -62,6 +62,7 @@ export default function Layout({ children, currentPageName }) {
         { name: "Project Orders", icon: ShoppingCart, iconName: "ShoppingCart", page: "OrdersBoard" },
         { name: "Pick Up List", icon: Clipboard, iconName: "Clipboard", page: "PickupList" },
         { name: "Project Estimates", icon: FileText, iconName: "FileText", page: "PlanBidding" },
+        { name: "Mistake Report", icon: FileText, iconName: "FileText", page: "MistakeReport" },
         { name: "Archived Projects", icon: Archive, iconName: "Archive", page: "ArchivedProjects" },
       ]
     },

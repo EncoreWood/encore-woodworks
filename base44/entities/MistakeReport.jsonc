@@ -1,0 +1,103 @@
+{
+  "name": "MistakeReport",
+  "type": "object",
+  "properties": {
+    "submitted_by": {
+      "type": "string",
+      "description": "Name of employee who submitted"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Optional project name"
+    },
+    "mistake_of": {
+      "type": "string",
+      "enum": [
+        "Door",
+        "Frame",
+        "Cab Parts",
+        "Drawer Box"
+      ]
+    },
+    "mistake_type": {
+      "type": "string",
+      "enum": [
+        "Wrong Size",
+        "Wrong Species",
+        "Wrong Finish",
+        "Damaged"
+      ]
+    },
+    "stem_of_mistake": {
+      "type": "string",
+      "enum": [
+        "Office",
+        "Face Frame",
+        "Spray",
+        "Build",
+        "Cut",
+        "Install"
+      ]
+    },
+    "followed_sop": {
+      "type": "string",
+      "enum": [
+        "Yes",
+        "No",
+        "Other Area",
+        "Don't Have One"
+      ]
+    },
+    "sop_task_created": {
+      "type": "boolean",
+      "default": false
+    },
+    "pickup_required": {
+      "type": "string",
+      "enum": [
+        "Yes",
+        "Fixed Mistake"
+      ]
+    },
+    "pickup_row": {
+      "type": "string"
+    },
+    "pickup_col": {
+      "type": "string"
+    },
+    "pickup_size": {
+      "type": "string"
+    },
+    "pickup_species": {
+      "type": "string"
+    },
+    "pickup_finish": {
+      "type": "string"
+    },
+    "pickup_notes": {
+      "type": "string"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs of uploaded photos"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Submitted",
+        "In Review",
+        "Resolved"
+      ],
+      "default": "Submitted"
+    }
+  },
+  "required": [
+    "submitted_by",
+    "mistake_of",
+    "mistake_type",
+    "stem_of_mistake"
+  ]
+}

@@ -7,6 +7,7 @@ import OverallDataTab from "@/components/admin/OverallDataTab";
 import WeeklyTopicsTab from "@/components/admin/WeeklyTopicsTab";
 import EndOfDayTab from "@/components/admin/EndOfDayTab";
 import ComplimentsLog from "@/components/admin/ComplimentsLog";
+import MistakeReportsTab from "@/components/admin/MistakeReportsTab";
 
 export default function Admin() {
   return (
@@ -16,7 +17,7 @@ export default function Admin() {
         <p className="text-slate-600 mb-6">Manage financial data, production metrics, employee evaluations, and overall performance.</p>
 
         <Tabs defaultValue="financial" className="w-full">
-          <TabsList className="grid w-full grid-cols-7 mb-6">
+          <TabsList className="grid w-full grid-cols-8 mb-6">
             <TabsTrigger value="financial">Financial Data</TabsTrigger>
             <TabsTrigger value="production">Production Data</TabsTrigger>
             <TabsTrigger value="evaluation">Evaluation Data</TabsTrigger>
@@ -24,6 +25,7 @@ export default function Admin() {
             <TabsTrigger value="weekly_topics">Weekly Topics</TabsTrigger>
             <TabsTrigger value="end_of_day">End of Day</TabsTrigger>
             <TabsTrigger value="compliments">🎉 Compliments</TabsTrigger>
+            <TabsTrigger value="mistake_reports">⚠️ Mistakes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="financial">
@@ -52,6 +54,10 @@ export default function Admin() {
 
           <TabsContent value="compliments">
             <ComplimentsLog />
+          </TabsContent>
+
+          <TabsContent value="mistake_reports">
+            <MistakeReportsTab />
           </TabsContent>
         </Tabs>
       </div>
