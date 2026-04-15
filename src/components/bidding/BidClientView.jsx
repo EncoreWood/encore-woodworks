@@ -188,7 +188,9 @@ export default function BidClientView({ open, onClose, bid, bidType }) {
           <div className="space-y-5">
             {rooms.map((room) => {
             const roomTotal = (room.items || []).reduce((s, i) => s + getItemSubtotal(i, room.items), 0);
-            const displayItems = (room.items || []).filter(i => (parseFloat(i.quantity) || 0) > 0 || i.measure_type === "percentage" || i.name);
+            const regularItems = (room.items || []).filter(i => i.measure_type !== "percentage" && ((parseFloat(i.quantity) || 0) > 0 || i.name));
+            const upgradeItems = (room.items || []).filter(i => i.measure_type === "percentage");
+            const displayItems = regularItems;
 
               return (
                 <div key={room.id} className="room">
@@ -239,6 +241,35 @@ export default function BidClientView({ open, onClose, bid, bidType }) {
                       })}
                     </tbody>
                   </table>
+
+                  {/* Upgrades Section */}
+                  {upgradeItems.length > 0 && (
+                    <div className="mt-2 border border-green-200 rounded-lg overflow-hidden">
+                      <div className="bg-green-700 text-white px-4 py-1.5 text-xs font-bold uppercase tracking-wide">
+                        Upgrades
+                      </div>
+                      <table className="w-full text-sm">
+                        <tbody className="divide-y divide-green-100">
+                          {upgradeItems.map(item => {
+                            const sub = getItemSubtotal(item, room.items);
+                            return (
+                              <tr key={item.id} className="bg-green-50/60">
+                                <td className="px-4 py-2.5 font-medium text-slate-800">
+                                  {item.name || "—"}
+                                </td>
+                                <td className="px-4 py-2.5 text-center text-green-600 text-xs">
+                                  {item.percentage || 0}%
+                                </td>
+                                <td className="px-4 py-2.5 text-right font-semibold text-green-700">
+                                  ${sub.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               );
             })}
