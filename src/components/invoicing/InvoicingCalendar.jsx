@@ -2,10 +2,9 @@ import { useState, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { format, addMonths, subMonths, startOfMonth, isSameMonth } from "date-fns";
-import { ChevronLeft, ChevronRight, Edit, Save, X, TrendingUp, DollarSign, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, TrendingUp, DollarSign, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
@@ -21,17 +20,35 @@ export default function InvoicingCalendar({ projects }) {
   const queryClient = useQueryClient();
   const [focusMonth, setFocusMonth] = useState(startOfMonth(new Date()));
   const [selectedMonth, setSelectedMonth] = useState(null);
-  const [editingProject, setEditingProject] = useState(null);
-  const [editFields, setEditFields] = useState({});
+  // inline editing state: { [projectId]: { field: value } }
+  const [pendingEdits, setPendingEdits] = useState({});
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Project.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("Saved!");
-      setEditingProject(null);
     },
   });
+
+  const handleDateChange = (projectId, field, value) => {
+    setPendingEdits(prev => ({ ...prev, [projectId]: { ...(prev[projectId] || {}), [field]: value } }));
+  };
+
+  const handleDateBlur = (projectId, field, value) => {
+    updateMutation.mutate({ id: projectId, data: { [field]: value } });
+    setPendingEdits(prev => {
+      const next = { ...prev };
+      if (next[projectId]) delete next[projectId][field];
+      return next;
+    });
+    toast.success("Date saved!");
+  };
+
+  const getDateValue = (project, field) => {
+    return pendingEdits[project.id]?.[field] !== undefined
+      ? pendingEdits[project.id][field]
+      : (project[field] || "");
+  };
 
   // Build 12-month window starting 3 months back
   const months = useMemo(() => {
@@ -272,10 +289,14 @@ export default function InvoicingCalendar({ projects }) {
             <thead className="bg-slate-50 text-xs text-slate-500 uppercase">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold">Project</th>
-                <th className="text-center px-3 py-3 font-semibold">Deposit Exp.</th>
-                <th className="text-center px-3 py-3 font-semibold">90% Exp.</th>
-                <th className="text-center px-3 py-3 font-semibold">Final Exp.</th>
-                <th className="px-3 py-3 w-10"></th>
+                {STAGE_CONFIG.map(stage => (
+                  <th key={stage.key} className="text-center px-3 py-3 font-semibold">
+                    <div className="flex items-center justify-center gap-1">
+                      <span className={`w-2 h-2 rounded-full ${stage.dot}`} />
+                      {stage.label} Expected
+                    </div>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -286,67 +307,26 @@ export default function InvoicingCalendar({ projects }) {
                     <div className="text-xs text-slate-500">{p.client_name}</div>
                   </td>
                   {STAGE_CONFIG.map((stage) => (
-                    <td key={stage.key} className="px-3 py-3 text-center">
+                    <td key={stage.key} className="px-3 py-2 text-center">
                       {p[stage.recField] ? (
                         <span className="text-xs text-green-600 font-medium">✓ Received</span>
-                      ) : p[stage.expField] ? (
-                        <span className="text-xs text-blue-600">{format(new Date(p[stage.expField]), "MMM d, yyyy")}</span>
                       ) : (
-                        <span className="text-xs text-slate-300">—</span>
+                        <Input
+                          type="date"
+                          className="h-7 text-xs w-36 mx-auto"
+                          value={getDateValue(p, stage.expField)}
+                          onChange={(e) => handleDateChange(p.id, stage.expField, e.target.value)}
+                          onBlur={(e) => { if (e.target.value) handleDateBlur(p.id, stage.expField, e.target.value); }}
+                        />
                       )}
                     </td>
                   ))}
-                  <td className="px-3 py-3">
-                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleEditProject(p)}>
-                      <Edit className="w-3.5 h-3.5" />
-                    </Button>
-                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
-
-      {/* Edit Expected Dates Dialog */}
-      <Dialog open={!!editingProject} onOpenChange={() => setEditingProject(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Set Expected Dates — {editingProject?.project_name}</DialogTitle>
-          </DialogHeader>
-          {editingProject && (
-            <div className="space-y-4 py-2">
-              <p className="text-xs text-slate-500">Set the expected date when each invoice will be received. These appear as future expected amounts on the calendar.</p>
-              {STAGE_CONFIG.map((stage) => (
-                <div key={stage.key} className="space-y-1">
-                  <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full ${stage.dot}`} />
-                    {stage.label} Invoice Expected Date
-                    {editingProject[stage.amtField] && (
-                      <span className="text-xs text-slate-400">({fmt$(editingProject[stage.amtField])})</span>
-                    )}
-                    {editingProject[stage.recField] && (
-                      <Badge className="text-xs bg-green-100 text-green-700 ml-auto">Received ✓</Badge>
-                    )}
-                  </label>
-                  <Input
-                    type="date"
-                    value={editFields[stage.expField] || ""}
-                    onChange={(e) => setEditFields(f => ({ ...f, [stage.expField]: e.target.value }))}
-                    disabled={!!editingProject[stage.recField]}
-                  />
-                </div>
-              ))}
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setEditingProject(null)}>Cancel</Button>
-                <Button onClick={handleSave} className="bg-slate-800 hover:bg-slate-900 gap-1" disabled={updateMutation.isPending}>
-                  <Save className="w-4 h-4" /> Save Dates
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
