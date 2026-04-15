@@ -118,6 +118,37 @@
       "default": "deposit_invoice_sent",
       "description": "Invoice status for tracking payments"
     },
+    "custom_invoices": {
+      "type": "array",
+      "description": "Flexible list of named invoices for this project",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string",
+            "description": "Invoice name, e.g. Deposit, 90%, Final"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "sent_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "received_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "expected_date": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    },
     "deposit_invoice_amount": {
       "type": "number"
     },

@@ -10,13 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail, Edit3, Download, PlusCircle, Save, LayoutDashboard, Calendar, CalendarClock } from "lucide-react";
+import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail, Edit3, Download, PlusCircle, LayoutDashboard, Calendar, CalendarClock } from "lucide-react";
 import { format } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 import ProposalViewer from "../components/proposals/ProposalViewer";
 import ProposalForm from "../components/proposals/ProposalForm";
 import { toast } from "sonner";
 import InvoicingCalendar from "../components/invoicing/InvoicingCalendar";
+import CustomInvoicesEditor, { getEffectiveInvoices, calcCollected } from "../components/invoicing/CustomInvoicesEditor";
 
 export default function Invoicing() {
   const [activeTab, setActiveTab] = useState("board");
@@ -36,7 +37,7 @@ export default function Invoicing() {
   const [addingPayment, setAddingPayment] = useState(null);
   const [paymentForm, setPaymentForm] = useState({ amount: "", date: "", notes: "" });
   const [viewingPayments, setViewingPayments] = useState(null);
-  const [invoiceFields, setInvoiceFields] = useState({});
+
 
   const queryClient = useQueryClient();
 
@@ -52,6 +53,7 @@ export default function Invoicing() {
 
   const updateProjectMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Project.update(id, data),
+
     onMutate: async ({ id, data }) => {
       await queryClient.cancelQueries({ queryKey: ["projects"] });
       const previous = queryClient.getQueryData(["projects"]);
@@ -61,9 +63,9 @@ export default function Invoicing() {
     onError: (_err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(["projects"], context.previous);
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-      setEditingProject(null);
+      if (!vars._skipClose) setEditingProject(null);
     },
   });
 
@@ -364,11 +366,7 @@ export default function Invoicing() {
                          {filtered.map((project, index) => {
                            const budget = project.estimated_budget || 0;
                                     const actualCost = project.actual_cost || 0;
-                                    const collected =
-                                      (project.deposit_invoice_received_date ? (parseFloat(project.deposit_invoice_amount) || 0) : 0) +
-                                      (project.ninety_percent_invoice_received_date ? (parseFloat(project.ninety_percent_invoice_amount) || 0) : 0) +
-                                      (project.final_invoice_received_date ? (parseFloat(project.final_invoice_amount) || 0) : 0);
-                                    const deposit = collected;
+                                    const collected = calcCollected(getEffectiveInvoices(project));
                                     const remaining = budget - collected;
                                     const hasProposal = proposals.some(p => p.project_id === project.id);
                                     const expDateKey = stageExpectedDateKey[status];
@@ -565,142 +563,22 @@ export default function Invoicing() {
               </DialogTitle>
             </DialogHeader>
             {viewingDetails && (() => {
-              const budget = viewingDetails.estimated_budget || 0;
-              const actualCost = viewingDetails.actual_cost || 0;
-              // Collected = sum of invoice amounts that have a received date (merge pending edits)
-              const ivPending = invoiceFields[viewingDetails.id] || {};
-              const mergedDetails = { ...viewingDetails, ...ivPending };
-              const collected =
-                (mergedDetails.deposit_invoice_received_date ? (parseFloat(mergedDetails.deposit_invoice_amount) || 0) : 0) +
-                (mergedDetails.ninety_percent_invoice_received_date ? (parseFloat(mergedDetails.ninety_percent_invoice_amount) || 0) : 0) +
-                (mergedDetails.final_invoice_received_date ? (parseFloat(mergedDetails.final_invoice_amount) || 0) : 0);
-              const deposit = collected; // alias for legacy refs below
-              const remaining = budget - collected;
-              const balanceDue = actualCost - collected;
               const proposal = proposals.find(p => p.project_id === viewingDetails.id);
 
-              // Invoice stage fields helpers
-              const iv = invoiceFields[viewingDetails.id] || {};
-              const getIv = (key, fallback) => iv[key] !== undefined ? iv[key] : (viewingDetails[key] ?? fallback ?? "");
-              const setIv = (key, val) => setInvoiceFields(prev => ({ ...prev, [viewingDetails.id]: { ...(prev[viewingDetails.id] || {}), [key]: val } }));
-              const saveInvoiceFields = () => {
-                const fields = invoiceFields[viewingDetails.id] || {};
-                const numFields = ["deposit_invoice_amount","ninety_percent_invoice_amount","final_invoice_amount"];
-                const toSave = {};
-                Object.entries(fields).forEach(([k, v]) => { toSave[k] = numFields.includes(k) ? (parseFloat(v) || 0) : v; });
-                updateProjectMutation.mutate({ id: viewingDetails.id, data: toSave });
-                setViewingDetails(prev => ({ ...prev, ...toSave }));
-                setInvoiceFields(prev => ({ ...prev, [viewingDetails.id]: {} }));
+              const saveCustomInvoices = (customInvoices) => {
+                updateProjectMutation.mutate({ id: viewingDetails.id, data: { custom_invoices: customInvoices }, _skipClose: true });
+                setViewingDetails(prev => ({ ...prev, custom_invoices: customInvoices }));
               };
-              const hasUnsaved = Object.keys(invoiceFields[viewingDetails.id] || {}).length > 0;
-
-              const invoiceStages = [
-                { label: "Deposit Invoice", amtKey: "deposit_invoice_amount", sentKey: "deposit_invoice_sent_date", recKey: "deposit_invoice_received_date", expKey: "deposit_expected_date", sentStatus: "deposit_invoice_sent", recStatus: "deposit_received" },
-                { label: "90% Invoice", amtKey: "ninety_percent_invoice_amount", sentKey: "ninety_percent_invoice_sent_date", recKey: "ninety_percent_invoice_received_date", expKey: "ninety_percent_expected_date", sentStatus: "ninety_percent_sent", recStatus: "ninety_percent_received" },
-                { label: "Final Invoice", amtKey: "final_invoice_amount", sentKey: "final_invoice_sent_date", recKey: "final_invoice_received_date", expKey: "final_expected_date", sentStatus: "final_sent", recStatus: "paid_in_full" },
-              ];
-              const currentStatus = viewingDetails.invoice_status || "deposit_invoice_sent";
 
               return (
                 <div className="space-y-6 py-4">
                   <Card className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-semibold text-lg">Pricing Breakdown</h3>
-                      {hasUnsaved && (
-                        <Button size="sm" onClick={saveInvoiceFields} className="bg-green-600 hover:bg-green-700 gap-1">
-                          <Save className="w-4 h-4" /> Save Changes
-                        </Button>
-                      )}
-                    </div>
-                    {/* Summary row */}
-                    <div className="grid grid-cols-3 gap-3 mb-5">
-                      <div className="bg-slate-50 rounded-lg p-3 text-center">
-                        <p className="text-xs text-slate-500 mb-1">Est. Budget</p>
-                        <p className="text-lg font-bold text-slate-900">${budget.toLocaleString()}</p>
-                      </div>
-                      <div className="bg-green-50 rounded-lg p-3 text-center">
-                        <p className="text-xs text-slate-500 mb-1">Collected</p>
-                        <p className="text-lg font-bold text-green-700">${collected.toLocaleString()}</p>
-                      </div>
-                      <div className="bg-amber-50 rounded-lg p-3 text-center">
-                        <p className="text-xs text-slate-500 mb-1">Remaining</p>
-                        <p className="text-lg font-bold text-amber-700">${remaining.toLocaleString()}</p>
-                      </div>
-                    </div>
-
-                    {/* Per-stage invoice tracking */}
-                    <div className="space-y-4">
-                      {invoiceStages.map((stage) => {
-                        const isSent = ["deposit_invoice_sent","deposit_received","ninety_percent_sent","ninety_percent_received","final_sent","paid_in_full"].indexOf(currentStatus) >= ["deposit_invoice_sent","deposit_received","ninety_percent_sent","ninety_percent_received","final_sent","paid_in_full"].indexOf(stage.sentStatus);
-                        const isReceived = ["deposit_invoice_sent","deposit_received","ninety_percent_sent","ninety_percent_received","final_sent","paid_in_full"].indexOf(currentStatus) >= ["deposit_invoice_sent","deposit_received","ninety_percent_sent","ninety_percent_received","final_sent","paid_in_full"].indexOf(stage.recStatus);
-                        return (
-                          <div key={stage.label} className={`border rounded-lg p-4 ${isSent ? "border-blue-200 bg-blue-50/40" : "border-slate-200 bg-slate-50/40 opacity-60"}`}>
-                            <div className="flex items-center gap-2 mb-3">
-                              <span className={`text-sm font-semibold ${isSent ? "text-blue-700" : "text-slate-500"}`}>{stage.label}</span>
-                              {isReceived && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Received</span>}
-                              {isSent && !isReceived && <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Sent — Pending</span>}
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                               <div>
-                                 <label className="text-xs text-slate-500 block mb-1">Invoice Amount</label>
-                                 <div className="relative">
-                                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
-                                   <Input
-                                     type="number"
-                                     className="pl-6 h-8 text-sm"
-                                     placeholder="0.00"
-                                     value={getIv(stage.amtKey, "")}
-                                     onChange={(e) => setIv(stage.amtKey, e.target.value)}
-                                   />
-                                 </div>
-                               </div>
-                               <div>
-                                 <label className="text-xs text-slate-500 block mb-1">Expected Date</label>
-                                 <Input
-                                   type="date"
-                                   className="h-8 text-sm"
-                                   value={getIv(stage.expKey, "")}
-                                   onChange={(e) => setIv(stage.expKey, e.target.value)}
-                                   disabled={!!getIv(stage.recKey, "")}
-                                 />
-                               </div>
-                               <div>
-                                 <label className="text-xs text-slate-500 block mb-1">Sent Date</label>
-                                 <Input
-                                   type="date"
-                                   className="h-8 text-sm"
-                                   value={getIv(stage.sentKey, "")}
-                                   onChange={(e) => setIv(stage.sentKey, e.target.value)}
-                                 />
-                               </div>
-                               <div>
-                                 <label className="text-xs text-slate-500 block mb-1">Received Date</label>
-                                 <Input
-                                   type="date"
-                                   className="h-8 text-sm"
-                                   value={getIv(stage.recKey, "")}
-                                   onChange={(e) => setIv(stage.recKey, e.target.value)}
-                                 />
-                               </div>
-                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="mt-4 pt-4 border-t">
-                      <Button 
-                        variant="outline" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(viewingDetails, { preventDefault: () => {}, stopPropagation: () => {} });
-                        }}
-                        className="w-full"
-                      >
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit Financial Details
-                      </Button>
-                    </div>
+                    <h3 className="font-semibold text-lg mb-4">Invoices</h3>
+                    <CustomInvoicesEditor
+                      key={viewingDetails.id}
+                      project={viewingDetails}
+                      onSave={saveCustomInvoices}
+                    />
                   </Card>
 
                   {proposal ? (
