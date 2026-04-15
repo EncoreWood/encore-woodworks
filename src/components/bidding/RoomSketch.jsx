@@ -524,16 +524,18 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
   useEffect(() => { selectedIdxRef.current = selectedIdx; }, [selectedIdx]);
   useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   useEffect(() => { placeRolloutModeRef.current = placeRolloutMode; }, [placeRolloutMode]);
+  const initializedRef = useRef(false);
   useEffect(() => {
-    // On initial load with paths prop, use that instead of localStorage
+    // Only initialize once per sketchId — never overwrite user's in-progress drawing
+    if (initializedRef.current) return;
+    initializedRef.current = true;
     if (paths && paths.length > 0) {
       localPaths.current = paths;
-    } else if (!localPaths.current.length && sketchId) {
-      // Only load from localStorage if no paths prop and no prior paths
+    } else if (sketchId) {
       try { const saved = JSON.parse(localStorage.getItem(`sketch_${sketchId}`) || "null"); if (saved) localPaths.current = saved; } catch(e) {}
     }
     scheduleRedraw();
-  }, [paths, sketchId]);
+  }, [sketchId]);
 
   // ── History ────────────────────────────────────────────────────────────────
   const pushHistory = (newPaths) => {
