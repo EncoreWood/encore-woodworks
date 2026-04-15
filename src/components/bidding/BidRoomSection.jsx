@@ -8,8 +8,9 @@ import { Trash2, ChevronDown, ChevronRight, Plus, Paperclip, FileText, Loader2 }
 import PDFAnnotator from "../production/PDFAnnotator";
 
 import { getCategoryStyle } from "./BidCatalogEditor";
+import SketchPreviewGenerator from "./SketchPreviewGenerator";
 
-export default function BidRoomSection({ room, catalogItems, categories, pricingConfigs, bidType, onChange, onDelete, sketchPaths = [] }) {
+export default function BidRoomSection({ room, catalogItems, categories, pricingConfigs, bidType, onChange, onDelete, sketchPaths = [], specs = {}, linkedProjectId = null }) {
   const [collapsed, setCollapsed] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [annotating, setAnnotating] = useState(false);
@@ -408,6 +409,13 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
               </SelectContent>
             </Select>
           </div>
+          {/* AI Sketch Preview */}
+          <SketchPreviewGenerator
+            room={room}
+            specs={specs}
+            linkedProjectId={linkedProjectId}
+            onRoomChange={onChange}
+          />
         </div>
       )}
 

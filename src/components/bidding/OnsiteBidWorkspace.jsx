@@ -15,6 +15,7 @@ import BidClientView from "./BidClientView";
 import BidCatalogEditor from "./BidCatalogEditor";
 import { getCategoryStyle } from "./BidCatalogEditor";
 import RoomSketch from "./RoomSketch";
+import SketchPreviewGenerator from "./SketchPreviewGenerator";
 
 // Aliases for use inside RoomItemsEditor to avoid naming conflicts
 const UISelect = Select, UISelectContent = SelectContent, UISelectItem = SelectItem, UISelectTrigger = SelectTrigger, UISelectValue = SelectValue;
@@ -745,6 +746,14 @@ export default function OnsiteBidWorkspace({ bidId, project: linkedProject, onCl
                     }}
                   />
                 </div>
+
+                {/* AI Sketch Preview */}
+                <SketchPreviewGenerator
+                  room={room}
+                  specs={specs}
+                  linkedProjectId={linkedProjectId}
+                  onRoomChange={updated => setRooms(prev => prev.map(r => r.id === room.id ? updated : r))}
+                />
 
                 {/* Room notes */}
                 <div>
