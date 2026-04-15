@@ -72,10 +72,10 @@ export default function InvoicingCalendar({ projects }) {
 
           if (recDate && format(new Date(recDate), "yyyy-MM") === monthKey && amt > 0) {
             actual.total += amt;
-            actual.breakdown.push({ project: p.project_name, stage: stage.label, amt, color: stage.color });
+            actual.breakdown.push({ project: p.project_name, stage: stage.label, amt, color: stage.color, date: recDate });
           } else if (!recDate && expDate && format(new Date(expDate), "yyyy-MM") === monthKey && amt > 0) {
             expected.total += amt;
-            expected.breakdown.push({ project: p.project_name, stage: stage.label, amt, color: stage.color });
+            expected.breakdown.push({ project: p.project_name, stage: stage.label, amt, color: stage.color, date: expDate });
           }
         });
       });
@@ -224,7 +224,10 @@ export default function InvoicingCalendar({ projects }) {
                     <div key={i} className="flex items-center justify-between bg-green-50 rounded-lg px-3 py-2">
                       <div>
                         <p className="text-sm font-medium text-slate-800">{b.project}</p>
-                        <Badge className={`text-xs mt-0.5 ${b.color}`}>{b.stage}</Badge>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <Badge className={`text-xs ${b.color}`}>{b.stage}</Badge>
+                          <span className="text-xs text-slate-500">{format(new Date(b.date), "MMM d, yyyy")}</span>
+                        </div>
                       </div>
                       <span className="text-sm font-bold text-green-700">{fmt$(b.amt)}</span>
                     </div>
@@ -251,7 +254,10 @@ export default function InvoicingCalendar({ projects }) {
                     <div key={i} className="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2">
                       <div>
                         <p className="text-sm font-medium text-slate-800">{b.project}</p>
-                        <Badge className={`text-xs mt-0.5 ${b.color}`}>{b.stage}</Badge>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <Badge className={`text-xs ${b.color}`}>{b.stage}</Badge>
+                          <span className="text-xs text-slate-500">{format(new Date(b.date), "MMM d, yyyy")}</span>
+                        </div>
                       </div>
                       <span className="text-sm font-bold text-blue-700">{fmt$(b.amt)}</span>
                     </div>

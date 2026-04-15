@@ -363,9 +363,13 @@ export default function Invoicing() {
                        <div className="space-y-3 flex-1">
                          {filtered.map((project, index) => {
                            const budget = project.estimated_budget || 0;
-                                    const deposit = project.deposit_paid || 0;
                                     const actualCost = project.actual_cost || 0;
-                                    const remaining = budget - deposit;
+                                    const collected =
+                                      (project.deposit_invoice_received_date ? (parseFloat(project.deposit_invoice_amount) || 0) : 0) +
+                                      (project.ninety_percent_invoice_received_date ? (parseFloat(project.ninety_percent_invoice_amount) || 0) : 0) +
+                                      (project.final_invoice_received_date ? (parseFloat(project.final_invoice_amount) || 0) : 0);
+                                    const deposit = collected;
+                                    const remaining = budget - collected;
                                     const hasProposal = proposals.some(p => p.project_id === project.id);
                                     const expDateKey = stageExpectedDateKey[status];
                                     const expDate = expDateKey ? project[expDateKey] : null;
