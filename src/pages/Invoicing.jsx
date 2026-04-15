@@ -201,6 +201,22 @@ export default function Invoicing() {
     );
   };
 
+  // Which project field holds the invoice amount for each stage
+  const stageAmountKey = {
+    deposit_invoice_sent: "deposit_invoice_amount",
+    deposit_received: "deposit_invoice_amount",
+    ninety_percent_sent: "ninety_percent_invoice_amount",
+    ninety_percent_received: "ninety_percent_invoice_amount",
+    final_sent: "final_invoice_amount",
+    paid_in_full: "final_invoice_amount",
+  };
+
+  const getStageTotal = (status, projectList) => {
+    const key = stageAmountKey[status];
+    const total = projectList.reduce((sum, p) => sum + (p[key] || p.estimated_budget || 0), 0);
+    return total;
+  };
+
   const statusConfig = {
     deposit_invoice_sent: {
       title: "Deposit Invoice Sent",
@@ -295,8 +311,15 @@ export default function Invoicing() {
                      >
                        <div className={`flex items-center gap-2 p-3 rounded-lg ${config.bg} ${config.border} border mb-4`}>
                          <Icon className={`w-5 h-5 ${config.color}`} />
-                         <h2 className={`font-semibold ${config.color}`}>{config.title}</h2>
-                         <Badge variant="secondary" className="ml-auto">
+                         <div className="flex flex-col flex-1 min-w-0">
+                           <h2 className={`font-semibold ${config.color} leading-tight`}>{config.title}</h2>
+                           {filtered.length > 0 && (
+                             <span className="text-xs font-bold text-slate-700 mt-0.5">
+                               ${getStageTotal(status, filtered).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                             </span>
+                           )}
+                         </div>
+                         <Badge variant="secondary" className="ml-auto flex-shrink-0">
                            {filtered.length}
                          </Badge>
                        </div>
