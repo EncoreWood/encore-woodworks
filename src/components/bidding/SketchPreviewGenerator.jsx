@@ -3,60 +3,75 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Sparkles, RefreshCw, Download, BookOpen, Loader2 } from "lucide-react";
 
+const CANVAS_W = 2000;
+
 /**
- * Builds a layout description string from the sketch paths (highlights).
+ * Gets the X anchor of a highlight path (wall-based or free-drawn).
  */
-function buildLayoutDescription(sketchPaths) {
-  if (!sketchPaths || sketchPaths.length === 0) return null;
-  const highlights = sketchPaths.filter(p => p.type === "highlight");
-  if (highlights.length === 0) return null;
-
-  const groups = {};
-  highlights.forEach(p => {
-    const key = p.cabKey || "base";
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(p);
-  });
-
-  const parts = [];
-  if (groups.base?.length) {
-    const total = groups.base.reduce((s, h) => s + (h.lf || h.wFt || 0), 0);
-    parts.push(`${Math.round(total)} LF of base cabinets`);
-  }
-  if (groups.upper?.length) {
-    const total = groups.upper.reduce((s, h) => s + (h.lf || h.wFt || 0), 0);
-    parts.push(`${Math.round(total)} LF of upper/wall cabinets`);
-  }
-  if (groups.tall?.length) {
-    const total = groups.tall.reduce((s, h) => s + (h.lf || h.wFt || 0), 0);
-    const count = groups.tall.length;
-    parts.push(`${count > 1 ? `${count} tall/pantry cabinet sections` : "1 tall pantry section"} (${Math.round(total)} LF)`);
-  }
-  if (groups.misc?.length) {
-    parts.push(`${groups.misc.length} misc/island section(s)`);
-  }
-
-  // Detect custom-labeled items for extra description
-  const customLabels = highlights.filter(h => h.customLabel).map(h => h.customLabel);
-  if (customLabels.length) {
-    parts.push(`including: ${customLabels.join(", ")}`);
-  }
-
-  return parts.join(", ");
+function getHighlightX(h) {
+  if (h.anchorX !== undefined) return h.anchorX;
+  if (h.x1 !== undefined) return Math.min(h.x1, h.x2);
+  return 0;
 }
 
 /**
- * Builds the image generation prompt.
+ * Builds a dynamic left-to-right layout prompt from sketch highlight paths.
  */
-function buildPrompt({ roomName, layoutDescription, specs }) {
+function buildPrompt({ room, specs }) {
+  const sketchPaths = room.sketch_paths || [];
+  const highlights = sketchPaths.filter(p => p.type === "highlight");
+  const ceilingHeight = room.ceiling_height || 96;
   const { door_style, wood_species } = specs || {};
-  const doorPart = door_style ? `${door_style} door style` : "shaker door style";
-  const woodPart = wood_species ? `, ${wood_species} wood species` : "";
-  const layoutPart = layoutDescription
-    ? `Cabinet layout: ${layoutDescription}.`
-    : "Standard cabinet layout with base and upper cabinets.";
+  const doorPart = door_style ? `${door_style} door style` : "Shaker door style";
+  const woodPart = wood_species ? `, ${wood_species}` : "";
 
-  return `Clean architectural line drawing sketch of a ${roomName || "room"} cabinet elevation. ${layoutPart} ${doorPart}${woodPart}. Clean architectural line drawing, black and white, no color, no shading, no measurements, white background. Thin clean lines only, simple elevation view, just cabinet outlines and door/drawer lines. No text, no dimensions, no people, no decorations.`;
+  if (highlights.length === 0) {
+    return `Architectural cabinet elevation line drawing. Single continuous wall view from left to right. Standard kitchen layout: base cabinets at counter height with upper wall cabinets mounted above with a gap, ${doorPart}${woodPart}. Ceiling height ${ceilingHeight} inches. ALL cabinets must appear in ONE single horizontal elevation — do NOT split into separate views. Tall cabinets extend full floor-to-ceiling height. Black and white line drawing only, no color, no shading, no measurements, white background, clean thin lines.`;
+  }
+
+  // Sort highlights left to right by X position
+  const sorted = [...highlights].sort((a, b) => getHighlightX(a) - getHighlightX(b));
+
+  const tallCabs = highlights.filter(h => h.cabKey === "tall");
+  const baseCabs = highlights.filter(h => h.cabKey === "base");
+  const upperCabs = highlights.filter(h => h.cabKey === "upper");
+  const miscCabs = highlights.filter(h => h.cabKey === "misc" || h.cabKey === "custom");
+
+  const hasTallLeft  = tallCabs.some(h => getHighlightX(h) < CANVAS_W * 0.3);
+  const hasTallRight = tallCabs.some(h => getHighlightX(h) > CANVAS_W * 0.7);
+  const hasTallMid   = tallCabs.some(h => getHighlightX(h) >= CANVAS_W * 0.3 && getHighlightX(h) <= CANVAS_W * 0.7);
+
+  // Build left-to-right layout description from sorted highlights
+  const layoutParts = sorted.map(h => {
+    const label = h.customLabel || h.cabKey;
+    const widthIn = h.widthIn || (h.x1 !== undefined ? Math.round(Math.abs(h.x2 - h.x1) / 40 * 12) : null);
+    const widthStr = widthIn ? ` (${widthIn}" wide)` : "";
+    if (h.cabKey === "tall")  return `tall floor-to-ceiling pantry cabinet${widthStr}`;
+    if (h.cabKey === "base")  return `base cabinet at counter height${widthStr}`;
+    if (h.cabKey === "upper") return `upper wall cabinet mounted above bases${widthStr}`;
+    return `${label} cabinet${widthStr}`;
+  });
+
+  let layout = "Left to right: " + layoutParts.join(", then ");
+
+  // Add positional tall cabinet notes
+  const tallNotes = [];
+  if (hasTallLeft)  tallNotes.push("tall floor-to-ceiling cabinet on the far left");
+  if (hasTallRight) tallNotes.push("tall floor-to-ceiling cabinet on the far right");
+  if (hasTallMid)   tallNotes.push("tall floor-to-ceiling cabinet in the middle");
+
+  const baseLf  = baseCabs.reduce((s, h) => s + (h.widthIn ? h.widthIn / 12 : Math.abs((h.x2||0) - (h.x1||0)) / 40), 0);
+  const upperLf = upperCabs.reduce((s, h) => s + (h.widthIn ? h.widthIn / 12 : Math.abs((h.x2||0) - (h.x1||0)) / 40), 0);
+
+  const rules = [
+    upperCabs.length > 0 ? "upper wall cabinets are mounted ABOVE the base cabinets with a gap between them" : null,
+    tallCabs.length > 0  ? "tall cabinets extend the FULL floor-to-ceiling height" : null,
+    baseLf > 0   ? `base cabinets span approximately ${baseLf.toFixed(1)} linear feet` : null,
+    upperLf > 0  ? `upper cabinets span approximately ${upperLf.toFixed(1)} linear feet` : null,
+    ...tallNotes,
+  ].filter(Boolean);
+
+  return `Architectural cabinet elevation line drawing. Single continuous wall view from left to right — do NOT split into separate views. ${layout}. ${rules.join(". ")}. ${doorPart}${woodPart}. Ceiling height ${ceilingHeight} inches. ALL cabinets must appear in ONE single horizontal elevation. Black and white line drawing only, no color, no shading, no measurements, white background, clean thin lines.`;
 }
 
 export default function SketchPreviewGenerator({ room, specs, linkedProjectId, onRoomChange }) {
@@ -69,8 +84,7 @@ export default function SketchPreviewGenerator({ room, specs, linkedProjectId, o
 
   const handleGenerate = async () => {
     setIsGenerating(true);
-    const layoutDescription = buildLayoutDescription(sketchPaths);
-    const prompt = buildPrompt({ roomName: room.room_name, layoutDescription, specs });
+    const prompt = buildPrompt({ room, specs });
 
     const result = await base44.integrations.Core.GenerateImage({ prompt });
     const url = result?.url;
