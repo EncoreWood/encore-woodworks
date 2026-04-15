@@ -129,6 +129,11 @@
       "type": "string",
       "format": "date"
     },
+    "deposit_expected_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Expected date deposit invoice will be received"
+    },
     "ninety_percent_invoice_amount": {
       "type": "number"
     },
@@ -140,6 +145,11 @@
       "type": "string",
       "format": "date"
     },
+    "ninety_percent_expected_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Expected date 90% invoice will be received"
+    },
     "final_invoice_amount": {
       "type": "number"
     },
@@ -150,6 +160,11 @@
     "final_invoice_received_date": {
       "type": "string",
       "format": "date"
+    },
+    "final_expected_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Expected date final invoice will be received"
     },
     "priority": {
       "type": "string",

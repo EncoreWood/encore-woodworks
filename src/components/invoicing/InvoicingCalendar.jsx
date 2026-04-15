@@ -35,13 +35,15 @@ export default function InvoicingCalendar({ projects }) {
   };
 
   const handleDateBlur = (projectId, field, value) => {
-    updateMutation.mutate({ id: projectId, data: { [field]: value } });
+    updateMutation.mutate(
+      { id: projectId, data: { [field]: value || null } },
+      { onSuccess: () => toast.success("Date saved!") }
+    );
     setPendingEdits(prev => {
       const next = { ...prev };
       if (next[projectId]) delete next[projectId][field];
       return next;
     });
-    toast.success("Date saved!");
   };
 
   const getDateValue = (project, field) => {
@@ -303,7 +305,7 @@ export default function InvoicingCalendar({ projects }) {
                           className="h-7 text-xs w-36 mx-auto"
                           value={getDateValue(p, stage.expField)}
                           onChange={(e) => handleDateChange(p.id, stage.expField, e.target.value)}
-                          onBlur={(e) => { if (e.target.value) handleDateBlur(p.id, stage.expField, e.target.value); }}
+                          onBlur={(e) => handleDateBlur(p.id, stage.expField, e.target.value)}
                         />
                       )}
                     </td>
