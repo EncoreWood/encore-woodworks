@@ -733,6 +733,17 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
     const raw = getRawPos(e);
     const pos = getSnappedPos(e, true, false);
 
+    // Rollout placement takes priority over select tool
+    if (placeRolloutModeRef.current && activeRolloutRef.current) {
+      const rollout = activeRolloutRef.current;
+      const newSym = { type: "symbol", symbolKey: "rollout", x: pos.x, y: pos.y, label: rollout.name, targetX: pos.x, targetY: pos.y + 40 };
+      commitPaths([...localPaths.current, newSym]);
+      isDrawing.current = false;
+      setTool("select");
+      setPlaceRolloutMode(false);
+      setActiveRollout(null);
+      return;
+    }
     if (toolRef.current === "select") {
       const idx = findHitIdx(raw);
       if (idx !== null) {
@@ -747,16 +758,6 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
       return;
     }
     if (toolRef.current === "eraser") { eraseAt(raw); return; }
-    if (placeRolloutModeRef.current && activeRolloutRef.current) {
-      const rollout = activeRolloutRef.current;
-      const newSym = { type: "symbol", symbolKey: "rollout", x: pos.x, y: pos.y, label: rollout.name, targetX: pos.x, targetY: pos.y + 40 };
-      commitPaths([...localPaths.current, newSym]);
-      isDrawing.current = false;
-      setTool("select");
-      setPlaceRolloutMode(false);
-      setActiveRollout(null);
-      return;
-    }
     if (toolRef.current === "symbol") {
       const sym = activeSymbolRef.current;
       if (sym) {
@@ -1085,7 +1086,6 @@ export default function RoomSketch({ paths, onPathsChange, onHighlightsChange, s
               if (item) {
                 setActiveRollout(item);
                 setPlaceRolloutMode(true);
-                setTool("select"); // clear any other active tool
                 setActiveSymbol(null);
               } else {
                 setActiveRollout(null);
