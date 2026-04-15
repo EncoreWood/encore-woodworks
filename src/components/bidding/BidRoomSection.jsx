@@ -48,14 +48,17 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
     }
     const cat = catalogItems.find(c => c.id === catalogId);
     if (!cat) return;
-    const price = getPrice(cat.cabinet_category, cat.measure_type, cat);
+    const isPercent = cat.measure_type === "percentage";
+    const price = isPercent ? 0 : getPrice(cat.cabinet_category, cat.measure_type, cat);
     const newItem = {
       id: `item_${Date.now()}`,
       name: cat.name,
       cabinet_category: cat.cabinet_category || "misc",
       measure_type: cat.measure_type || "lf",
-      quantity: 0,
+      quantity: isPercent ? 0 : 0,
       unit_price: price,
+      percentage: cat.default_percentage || 0,
+      upgrade_applies_to: cat.upgrade_applies_to || ["base", "upper", "tall"],
       notes: ""
     };
     onChange({ ...room, items: [...(room.items || []), newItem] });
@@ -97,7 +100,21 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
 
   const removeItem = (itemId) => onChange({ ...room, items: (room.items || []).filter(i => i.id !== itemId) });
 
-  const roomTotal = (room.items || []).reduce((s, i) => s + (parseFloat(i.quantity) || 0) * (parseFloat(i.unit_price) || 0), 0);
+  // Compute subtotal for a percentage item based on which categories it applies to
+  const getPercentageSubtotal = (item) => {
+    const appliesTo = item.upgrade_applies_to || ["base", "upper", "tall"];
+    const baseTotal = (room.items || [])
+      .filter(i => i.measure_type !== "percentage" && appliesTo.includes(i.cabinet_category))
+      .reduce((s, i) => s + (parseFloat(i.quantity) || 0) * (parseFloat(i.unit_price) || 0), 0);
+    return baseTotal * ((parseFloat(item.percentage) || 0) / 100);
+  };
+
+  const getItemSubtotal = (item) => {
+    if (item.measure_type === "percentage") return getPercentageSubtotal(item);
+    return (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
+  };
+
+  const roomTotal = (room.items || []).reduce((s, i) => s + getItemSubtotal(i), 0);
   const roomLf = (room.items || []).filter(i => i.measure_type === "lf").reduce((s, i) => s + (parseFloat(i.quantity) || 0), 0);
 
   // Group catalog for dropdown by category
@@ -180,9 +197,10 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {(room.items || []).map(item => {
-                    const sub = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
+                    const isPercent = item.measure_type === "percentage";
+                    const sub = getItemSubtotal(item);
                     return (
-                      <tr key={item.id} className="hover:bg-slate-50">
+                      <tr key={item.id} className={`hover:bg-slate-50 ${isPercent ? "bg-green-50" : ""}`}>
                         <td className="py-1.5 pr-2">
                           <Input value={item.name} onChange={e => updateItem(item.id, "name", e.target.value)} className="h-8 text-sm" placeholder="Item name" />
                         </td>
@@ -197,22 +215,50 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
                           </Select>
                         </td>
                         <td className="py-1.5 pr-2">
-                         <Select value={item.measure_type} onValueChange={v => updateItem(item.id, "measure_type", v)}>
-                           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                           <SelectContent>
-                             <SelectItem value="lf">LF</SelectItem>
-                             <SelectItem value="qty">Qty</SelectItem>
-                             <SelectItem value="sqft">SqFt</SelectItem>
-                           </SelectContent>
-                         </Select>
+                          <Select value={item.measure_type} onValueChange={v => updateItem(item.id, "measure_type", v)}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="lf">LF</SelectItem>
+                              <SelectItem value="qty">Qty</SelectItem>
+                              <SelectItem value="sqft">SqFt</SelectItem>
+                              <SelectItem value="percentage">%</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </td>
                         <td className="py-1.5 pr-2">
-                          <Input type="number" value={item.quantity} onChange={e => updateItem(item.id, "quantity", e.target.value)} className="h-8 text-sm text-center" />
+                          {isPercent ? (
+                            <div className="flex items-center gap-1">
+                              <Input type="number" value={item.percentage || ""} onChange={e => updateItem(item.id, "percentage", e.target.value)} className="h-8 text-sm text-center w-14" placeholder="%" />
+                              <span className="text-xs text-slate-500">%</span>
+                            </div>
+                          ) : (
+                            <Input type="number" value={item.quantity} onChange={e => updateItem(item.id, "quantity", e.target.value)} className="h-8 text-sm text-center" />
+                          )}
                         </td>
                         <td className="py-1.5 pr-2">
-                          <Input type="number" value={item.unit_price} onChange={e => updateItem(item.id, "unit_price", e.target.value)} className="h-8 text-sm text-center" />
+                          {isPercent ? (
+                            <div className="flex gap-1 flex-wrap">
+                              {["base","upper","tall"].map(cat => (
+                                <label key={cat} className="flex items-center gap-0.5 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={(item.upgrade_applies_to || ["base","upper","tall"]).includes(cat)}
+                                    onChange={e => {
+                                      const current = item.upgrade_applies_to || ["base","upper","tall"];
+                                      updateItem(item.id, "upgrade_applies_to", e.target.checked ? [...current, cat] : current.filter(c => c !== cat));
+                                    }}
+                                    className="w-3 h-3 accent-green-600"
+                                  />
+                                  <span className="text-xs capitalize text-slate-600">{cat}</span>
+                                </label>
+                              ))}
+                            </div>
+                          ) : (
+                            <Input type="number" value={item.unit_price} onChange={e => updateItem(item.id, "unit_price", e.target.value)} className="h-8 text-sm text-center" />
+                          )}
                         </td>
                         <td className="py-1.5 pr-2 text-right font-semibold text-slate-800">
+                          {isPercent && <span className="text-xs text-green-700 font-normal mr-1">({item.percentage || 0}%)</span>}
                           ${sub.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                         </td>
                         <td className="py-1.5">
@@ -234,9 +280,10 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
           {/* Mobile Cards */}
           <div className="sm:hidden space-y-2 mb-3">
             {(room.items || []).map(item => {
-              const sub = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
+              const isPercent = item.measure_type === "percentage";
+              const sub = getItemSubtotal(item);
               return (
-                <div key={item.id} className="border border-slate-200 rounded-lg p-3 space-y-2 bg-white">
+                <div key={item.id} className={`border rounded-lg p-3 space-y-2 ${isPercent ? "border-green-200 bg-green-50" : "border-slate-200 bg-white"}`}>
                   <div className="flex gap-2">
                     <Input value={item.name} onChange={e => updateItem(item.id, "name", e.target.value)} className="h-8 text-sm flex-1" placeholder="Item name" />
                     <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="h-8 w-8 text-red-400 flex-shrink-0"><Trash2 className="w-3.5 h-3.5" /></Button>
@@ -249,28 +296,59 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
                       </SelectContent>
                     </Select>
                     <Select value={item.measure_type} onValueChange={v => updateItem(item.id, "measure_type", v)}>
-                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                     <SelectContent>
-                       <SelectItem value="lf">Linear Feet</SelectItem>
-                       <SelectItem value="qty">Quantity</SelectItem>
-                       <SelectItem value="sqft">Square Feet</SelectItem>
-                     </SelectContent>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="lf">Linear Feet</SelectItem>
+                        <SelectItem value="qty">Quantity</SelectItem>
+                        <SelectItem value="sqft">Square Feet</SelectItem>
+                        <SelectItem value="percentage">% Upgrade</SelectItem>
+                      </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 items-end">
-                    <div>
-                      <label className="text-xs text-slate-500">{item.measure_type === "lf" ? "Lin. Feet" : item.measure_type === "sqft" ? "Sq. Feet" : "Qty"}</label>
-                      <Input type="number" value={item.quantity} onChange={e => updateItem(item.id, "quantity", e.target.value)} className="h-8 text-sm mt-0.5" />
+                  {isPercent ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-slate-500">Percentage</label>
+                        <Input type="number" value={item.percentage || ""} onChange={e => updateItem(item.id, "percentage", e.target.value)} className="h-8 text-sm w-20" placeholder="%" />
+                        <span className="text-xs text-slate-500">%</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-slate-500">Applies to:</span>
+                        {["base","upper","tall"].map(cat => (
+                          <label key={cat} className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={(item.upgrade_applies_to || ["base","upper","tall"]).includes(cat)}
+                              onChange={e => {
+                                const current = item.upgrade_applies_to || ["base","upper","tall"];
+                                updateItem(item.id, "upgrade_applies_to", e.target.checked ? [...current, cat] : current.filter(c => c !== cat));
+                              }}
+                              className="w-3.5 h-3.5 accent-green-600"
+                            />
+                            <span className="text-xs capitalize font-semibold text-slate-700">{cat}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-green-700">${sub.toLocaleString(undefined, { maximumFractionDigits: 0 })} <span className="text-xs font-normal">({item.percentage || 0}%)</span></p>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs text-slate-500">Unit Price</label>
-                      <Input type="number" value={item.unit_price} onChange={e => updateItem(item.id, "unit_price", e.target.value)} className="h-8 text-sm mt-0.5" />
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2 items-end">
+                      <div>
+                        <label className="text-xs text-slate-500">{item.measure_type === "lf" ? "Lin. Feet" : item.measure_type === "sqft" ? "Sq. Feet" : "Qty"}</label>
+                        <Input type="number" value={item.quantity} onChange={e => updateItem(item.id, "quantity", e.target.value)} className="h-8 text-sm mt-0.5" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-500">Unit Price</label>
+                        <Input type="number" value={item.unit_price} onChange={e => updateItem(item.id, "unit_price", e.target.value)} className="h-8 text-sm mt-0.5" />
+                      </div>
+                      <div className="text-right">
+                        <label className="text-xs text-slate-500">Subtotal</label>
+                        <p className="font-bold text-amber-700 mt-1">${sub.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <label className="text-xs text-slate-500">Subtotal</label>
-                      <p className="font-bold text-amber-700 mt-1">${sub.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               );
             })}

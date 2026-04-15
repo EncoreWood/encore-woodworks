@@ -14,6 +14,7 @@
         "tall",
         "misc",
         "roll_out_inserts",
+        "upgrades",
         "custom"
       ],
       "description": "Cabinet category"
@@ -24,14 +25,26 @@
         "lf",
         "qty",
         "sqft",
-        "both"
+        "both",
+        "percentage"
       ],
       "default": "lf",
-      "description": "Linear feet, quantity, square feet, or both"
+      "description": "Linear feet, quantity, square feet, both, or percentage"
     },
     "default_price": {
       "type": "number",
       "description": "Default unit price"
+    },
+    "default_percentage": {
+      "type": "number",
+      "description": "Default percentage value for percentage-type items"
+    },
+    "upgrade_applies_to": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Which cabinet categories this upgrade percentage applies to (base, upper, tall)"
     },
     "is_active": {
       "type": "boolean",

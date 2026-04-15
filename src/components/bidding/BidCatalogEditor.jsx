@@ -25,10 +25,11 @@ export const DEFAULT_CATALOG = [
 ];
 
 export const DEFAULT_CATEGORIES = [
-  { label: "Base",  key: "base",  color: "amber",  sort_order: 1 },
-  { label: "Upper", key: "upper", color: "blue",   sort_order: 2 },
-  { label: "Tall",  key: "tall",  color: "purple", sort_order: 3 },
-  { label: "Misc",  key: "misc",  color: "slate",  sort_order: 4 },
+  { label: "Base",     key: "base",     color: "amber",  sort_order: 1 },
+  { label: "Upper",    key: "upper",    color: "blue",   sort_order: 2 },
+  { label: "Tall",     key: "tall",     color: "purple", sort_order: 3 },
+  { label: "Misc",     key: "misc",     color: "slate",  sort_order: 4 },
+  { label: "Upgrades", key: "upgrades", color: "green",  sort_order: 5 },
 ];
 
 const COLOR_OPTIONS = ["amber", "blue", "purple", "slate", "green", "red", "indigo", "teal", "orange", "pink"];
@@ -136,7 +137,7 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
     await Promise.all(items.map(({ _isNew, ...data }) =>
       _isNew
         ? base44.entities.BidItemCatalog.create(data)
-        : base44.entities.BidItemCatalog.update(data.id, { name: data.name, cabinet_category: data.cabinet_category, measure_type: data.measure_type, default_price: data.default_price })
+        : base44.entities.BidItemCatalog.update(data.id, { name: data.name, cabinet_category: data.cabinet_category, measure_type: data.measure_type, default_price: data.default_price, default_percentage: data.default_percentage, upgrade_applies_to: data.upgrade_applies_to })
     ));
     setSaving(false);
     onSaved?.();
@@ -248,8 +249,8 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
             </div>
 
             <div className="space-y-2 mt-1">
-              <div className="grid grid-cols-[1fr_110px_60px_90px_36px] gap-2 text-xs font-semibold text-slate-500 px-1">
-                <div>Item Name</div><div>Category</div><div className="text-center">Type</div><div className="text-center">Default $</div><div></div>
+              <div className="grid grid-cols-[1fr_110px_70px_90px_36px] gap-2 text-xs font-semibold text-slate-500 px-1">
+                <div>Item Name</div><div>Category</div><div className="text-center">Type</div><div className="text-center">Default $ / %</div><div></div>
               </div>
 
               {visibleItems.length === 0 && (
@@ -259,31 +260,61 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
               {visibleItems.map(item => {
                 const catObj = categories.find(c => c.key === item.cabinet_category);
                 const catStyle = getCategoryStyle(catObj?.color || "slate");
+                const isPercent = item.measure_type === "percentage";
                 return (
-                  <div key={item.id} className="grid grid-cols-[1fr_110px_60px_90px_36px] gap-2 items-center">
-                    <Input value={item.name} onChange={e => updateItem(item.id, "name", e.target.value)} className="h-9 text-sm" placeholder="Item name" />
-                    <Select value={item.cabinet_category} onValueChange={v => updateItem(item.id, "cabinet_category", v)}>
-                      <SelectTrigger className={`h-9 text-xs font-semibold ${catStyle.text} ${catStyle.bg}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map(c => (
-                          <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+                  <div key={item.id} className="space-y-1.5">
+                    <div className="grid grid-cols-[1fr_110px_70px_90px_36px] gap-2 items-center">
+                      <Input value={item.name} onChange={e => updateItem(item.id, "name", e.target.value)} className="h-9 text-sm" placeholder="Item name" />
+                      <Select value={item.cabinet_category} onValueChange={v => updateItem(item.id, "cabinet_category", v)}>
+                        <SelectTrigger className={`h-9 text-xs font-semibold ${catStyle.text} ${catStyle.bg}`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map(c => (
+                            <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Select value={item.measure_type} onValueChange={v => updateItem(item.id, "measure_type", v)}>
+                        <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="lf">LF</SelectItem>
+                          <SelectItem value="qty">Qty</SelectItem>
+                          <SelectItem value="sqft">SqFt</SelectItem>
+                          <SelectItem value="percentage">%</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        value={isPercent ? (item.default_percentage ?? "") : item.default_price}
+                        onChange={e => updateItem(item.id, isPercent ? "default_percentage" : "default_price", parseFloat(e.target.value) || 0)}
+                        className="h-9 text-sm text-center"
+                        placeholder={isPercent ? "%" : "$"}
+                      />
+                      <Button variant="ghost" size="icon" onClick={() => deleteItem(item)} className="h-9 w-9 text-red-400 hover:text-red-600">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                    {isPercent && (
+                      <div className="ml-1 flex items-center gap-2 flex-wrap pb-1">
+                        <span className="text-xs text-slate-500">Applies to:</span>
+                        {["base", "upper", "tall"].map(cat => (
+                          <label key={cat} className="flex items-center gap-1 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={(item.upgrade_applies_to || []).includes(cat)}
+                              onChange={e => {
+                                const current = item.upgrade_applies_to || [];
+                                const updated = e.target.checked ? [...current, cat] : current.filter(c => c !== cat);
+                                updateItem(item.id, "upgrade_applies_to", updated);
+                              }}
+                              className="w-3.5 h-3.5 accent-green-600"
+                            />
+                            <span className="text-xs font-semibold capitalize text-slate-600">{cat}</span>
+                          </label>
                         ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={item.measure_type} onValueChange={v => updateItem(item.id, "measure_type", v)}>
-                      <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="lf">LF</SelectItem>
-                        <SelectItem value="qty">Qty</SelectItem>
-                        <SelectItem value="sqft">SqFt</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Input type="number" value={item.default_price} onChange={e => updateItem(item.id, "default_price", parseFloat(e.target.value) || 0)} className="h-9 text-sm text-center" placeholder="0" />
-                    <Button variant="ghost" size="icon" onClick={() => deleteItem(item)} className="h-9 w-9 text-red-400 hover:text-red-600">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                      </div>
+                    )}
                   </div>
                 );
               })}

@@ -76,7 +76,15 @@ function RoomItemsEditor({ room, catalogItems, categories, pricingConfigs, bidTy
   const byCategory = {};
   (catalogItems || []).forEach(c => { const cat = c.cabinet_category || "misc"; if (!byCategory[cat]) byCategory[cat] = []; byCategory[cat].push(c); });
 
-  const roomTotal = (room.items || []).reduce((s, i) => s + (parseFloat(i.quantity) || 0) * (parseFloat(i.unit_price) || 0), 0);
+  const getPercentageSubtotal = (item) => {
+    const appliesTo = item.upgrade_applies_to || ["base", "upper", "tall"];
+    const base = (room.items || [])
+      .filter(i => i.measure_type !== "percentage" && appliesTo.includes(i.cabinet_category))
+      .reduce((s, i) => s + (parseFloat(i.quantity) || 0) * (parseFloat(i.unit_price) || 0), 0);
+    return base * ((parseFloat(item.percentage) || 0) / 100);
+  };
+  const getItemSub = (item) => item.measure_type === "percentage" ? getPercentageSubtotal(item) : (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
+  const roomTotal = (room.items || []).reduce((s, i) => s + getItemSub(i), 0);
   const roomLf = (room.items || []).filter(i => i.measure_type === "lf").reduce((s, i) => s + (parseFloat(i.quantity) || 0), 0);
 
   return (
@@ -89,9 +97,10 @@ function RoomItemsEditor({ room, catalogItems, categories, pricingConfigs, bidTy
           </div>
           <div className="space-y-2">
             {(room.items || []).map(item => {
-              const sub = (parseFloat(item.quantity) || 0) * (parseFloat(item.unit_price) || 0);
+              const isPercent = item.measure_type === "percentage";
+              const sub = getItemSub(item);
               return (
-                <div key={item.id} className="border border-slate-200 rounded-lg p-3 space-y-2 bg-white">
+                <div key={item.id} className={`border rounded-lg p-3 space-y-2 ${isPercent ? "border-green-200 bg-green-50" : "border-slate-200 bg-white"}`}>
                   <div className="flex gap-2">
                     <Input value={item.name} onChange={e => updateItem(item.id, "name", e.target.value)} className="h-8 text-sm flex-1" placeholder="Item name" />
                     <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)} className="h-8 w-8 text-red-400 flex-shrink-0"><Trash2 className="w-3.5 h-3.5" /></Button>
@@ -107,23 +116,53 @@ function RoomItemsEditor({ room, catalogItems, categories, pricingConfigs, bidTy
                         <UISelectItem value="lf">Linear Feet</UISelectItem>
                         <UISelectItem value="qty">Quantity</UISelectItem>
                         <UISelectItem value="sqft">Square Feet</UISelectItem>
+                        <UISelectItem value="percentage">% Upgrade</UISelectItem>
                       </UISelectContent>
                     </UISelect>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 items-end">
-                    <div>
-                      <label className="text-xs text-slate-500">{item.measure_type === "lf" ? "Lin. Feet" : item.measure_type === "sqft" ? "Sq. Feet" : "Qty"}</label>
-                      <Input type="number" value={item.quantity} onChange={e => updateItem(item.id, "quantity", e.target.value)} className="h-8 text-sm mt-0.5" />
+                  {isPercent ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-slate-500">Percentage</label>
+                        <Input type="number" value={item.percentage || ""} onChange={e => updateItem(item.id, "percentage", e.target.value)} className="h-8 text-sm w-20" placeholder="%" />
+                        <span className="text-xs text-slate-500">%</span>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-slate-500">Applies to:</span>
+                        {["base","upper","tall"].map(cat => (
+                          <label key={cat} className="flex items-center gap-1 cursor-pointer">
+                            <input type="checkbox"
+                              checked={(item.upgrade_applies_to || ["base","upper","tall"]).includes(cat)}
+                              onChange={e => {
+                                const current = item.upgrade_applies_to || ["base","upper","tall"];
+                                updateItem(item.id, "upgrade_applies_to", e.target.checked ? [...current, cat] : current.filter(c => c !== cat));
+                              }}
+                              className="w-3.5 h-3.5 accent-green-600"
+                            />
+                            <span className="text-xs capitalize font-semibold text-slate-700">{cat}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <div className="text-right font-bold text-green-700">
+                        ${sub.toLocaleString(undefined, { maximumFractionDigits: 0 })} <span className="text-xs font-normal">({item.percentage || 0}%)</span>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs text-slate-500">Unit Price</label>
-                      <Input type="number" value={item.unit_price} onChange={e => updateItem(item.id, "unit_price", e.target.value)} className="h-8 text-sm mt-0.5" />
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2 items-end">
+                      <div>
+                        <label className="text-xs text-slate-500">{item.measure_type === "lf" ? "Lin. Feet" : item.measure_type === "sqft" ? "Sq. Feet" : "Qty"}</label>
+                        <Input type="number" value={item.quantity} onChange={e => updateItem(item.id, "quantity", e.target.value)} className="h-8 text-sm mt-0.5" />
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-500">Unit Price</label>
+                        <Input type="number" value={item.unit_price} onChange={e => updateItem(item.id, "unit_price", e.target.value)} className="h-8 text-sm mt-0.5" />
+                      </div>
+                      <div className="text-right">
+                        <label className="text-xs text-slate-500">Subtotal</label>
+                        <p className="font-bold text-amber-700 mt-1">${sub.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <label className="text-xs text-slate-500">Subtotal</label>
-                      <p className="font-bold text-amber-700 mt-1">${sub.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               );
             })}
