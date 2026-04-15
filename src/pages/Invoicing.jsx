@@ -10,13 +10,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail, Edit3, Download, PlusCircle, Save } from "lucide-react";
+import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail, Edit3, Download, PlusCircle, Save, LayoutDashboard, Calendar } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import ProposalViewer from "../components/proposals/ProposalViewer";
 import ProposalForm from "../components/proposals/ProposalForm";
 import { toast } from "sonner";
+import InvoicingCalendar from "../components/invoicing/InvoicingCalendar";
 
 export default function Invoicing() {
+  const [activeTab, setActiveTab] = useState("board");
   const [searchTerm, setSearchTerm] = useState("");
   const [editingProject, setEditingProject] = useState(null);
   const [viewingProposal, setViewingProposal] = useState(null);
@@ -273,11 +275,35 @@ export default function Invoicing() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Invoicing</h1>
-          <p className="text-slate-500 mt-1">Track project invoicing and payments</p>
+        <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Invoicing</h1>
+            <p className="text-slate-500 mt-1">Track project invoicing and payments</p>
+          </div>
+          {/* Tabs */}
+          <div className="flex bg-white border border-slate-200 rounded-lg p-1 gap-1">
+            <button
+              onClick={() => setActiveTab("board")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "board" ? "bg-slate-900 text-white shadow" : "text-slate-600 hover:bg-slate-100"}`}
+            >
+              <LayoutDashboard className="w-4 h-4" /> Board
+            </button>
+            <button
+              onClick={() => setActiveTab("calendar")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "calendar" ? "bg-slate-900 text-white shadow" : "text-slate-600 hover:bg-slate-100"}`}
+            >
+              <Calendar className="w-4 h-4" /> Revenue Calendar
+            </button>
+          </div>
         </div>
 
+        {/* Calendar Tab */}
+        {activeTab === "calendar" && (
+          <InvoicingCalendar projects={invoicingProjects} />
+        )}
+
+        {/* Board Tab */}
+        {activeTab === "board" && <>
         {/* Search */}
         <div className="mb-6">
           <div className="relative max-w-md">
@@ -497,8 +523,9 @@ export default function Invoicing() {
                         })}
                         </div>
                         </DragDropContext>
+                        </>}
 
-        {/* Project Details Dialog */}
+                        {/* Project Details Dialog */}
         <Dialog open={!!viewingDetails} onOpenChange={() => setViewingDetails(null)}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
