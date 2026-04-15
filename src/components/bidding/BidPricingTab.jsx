@@ -34,13 +34,13 @@ const DEFAULT_CATALOG = [
   { name: "Filler Panel",           cabinet_category: "misc",  measure_type: "qty", default_price: 75,  is_active: true, sort_order: 15 },
 ];
 
-const CATALOG_CATEGORIES = [
-  { key: "all",              label: "All" },
+const FALLBACK_CATEGORIES = [
   { key: "base",             label: "Base" },
   { key: "upper",            label: "Upper" },
   { key: "tall",             label: "Tall" },
   { key: "misc",             label: "Misc" },
   { key: "roll_out_inserts", label: "Roll Out/Inserts" },
+  { key: "upgrades",         label: "Upgrades" },
   { key: "custom",           label: "Custom" },
 ];
 
@@ -162,6 +162,7 @@ function StyleEditDrawer({ config, open, onClose, onSave }) {
 export default function BidPricingTab() {
   const [styles, setStyles] = useState([]);
   const [catalogItems, setCatalogItems] = useState([]);
+  const [categories, setCategories] = useState(FALLBACK_CATEGORIES);
   const [catFilter, setCatFilter] = useState("all");
   const [editingStyle, setEditingStyle] = useState(null);
   const [savingStyleId, setSavingStyleId] = useState(null);
@@ -170,6 +171,7 @@ export default function BidPricingTab() {
   useEffect(() => {
     loadStyles();
     loadCatalog();
+    loadCategories();
   }, []);
 
   const loadStyles = async () => {
@@ -187,6 +189,14 @@ export default function BidPricingTab() {
         setStyles(merged);
       }
     }
+  };
+
+  const loadCategories = async () => {
+    const cats = await base44.entities.BidCategory.list("sort_order");
+    if (cats.length > 0) {
+      setCategories(cats);
+    }
+    // else keep FALLBACK_CATEGORIES
   };
 
   const loadCatalog = async () => {
@@ -250,6 +260,7 @@ export default function BidPricingTab() {
 
   const visibleItems = catFilter === "all" ? catalogItems : catalogItems.filter(i => i.cabinet_category === catFilter);
   const countFor = (key) => key === "all" ? catalogItems.length : catalogItems.filter(i => i.cabinet_category === key).length;
+  const getCatLabel = (key) => categories.find(c => c.key === key)?.label || key;
 
   return (
     <div className="space-y-8">
@@ -296,7 +307,13 @@ export default function BidPricingTab() {
 
         {/* Category Tab Filter */}
         <div className="flex gap-1.5 flex-wrap mb-3">
-          {CATALOG_CATEGORIES.map(cat => (
+          <button
+            onClick={() => setCatFilter("all")}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${catFilter === "all" ? "bg-slate-700 text-white border-transparent" : "text-slate-600 bg-slate-100 border-slate-200 hover:border-slate-300"}`}
+          >
+            All <span className="ml-1 opacity-60">({countFor("all")})</span>
+          </button>
+          {categories.map(cat => (
             <button
               key={cat.key}
               onClick={() => setCatFilter(cat.key)}
@@ -306,13 +323,7 @@ export default function BidPricingTab() {
                   : "text-slate-600 bg-slate-100 border-slate-200 hover:border-slate-300"
               }`}
             >
-              {cat.label}
-              {cat.key !== "all" && (
-                <span className="ml-1 opacity-60">({countFor(cat.key)})</span>
-              )}
-              {cat.key === "all" && (
-                <span className="ml-1 opacity-60">({countFor("all")})</span>
-              )}
+              {cat.label} <span className="ml-1 opacity-60">({countFor(cat.key)})</span>
             </button>
           ))}
         </div>
@@ -326,7 +337,7 @@ export default function BidPricingTab() {
                   <th className="text-left text-xs font-semibold text-slate-500 px-4 py-2.5">Item Name</th>
                   <th className="text-left text-xs font-semibold text-slate-500 px-3 py-2.5 w-36">Category</th>
                   <th className="text-center text-xs font-semibold text-slate-500 px-3 py-2.5 w-24">Type</th>
-                  <th className="text-center text-xs font-semibold text-slate-500 px-3 py-2.5 w-28">Default $</th>
+                  <th className="text-center text-xs font-semibold text-slate-500 px-3 py-2.5 w-28">Default $ / %</th>
                   <th className="text-center text-xs font-semibold text-slate-500 px-3 py-2.5 w-20">Active</th>
                   <th className="w-10 px-2 py-2.5"></th>
                 </tr>
@@ -351,36 +362,39 @@ export default function BidPricingTab() {
                       />
                     </td>
                     <td className="px-3 py-2">
-                      <Select value={item.cabinet_category} onValueChange={v => updateCatalogItem(item.id, "cabinet_category", v)}>
-                        <SelectTrigger className="h-8 text-xs w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {CATALOG_CATEGORIES.filter(c => c.key !== "all").map(c => (
-                            <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                     <Select value={item.cabinet_category} onValueChange={v => updateCatalogItem(item.id, "cabinet_category", v)}>
+                       <SelectTrigger className="h-8 text-xs w-full">
+                         <SelectValue />
+                       </SelectTrigger>
+                       <SelectContent>
+                         {categories.map(c => (
+                           <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+                         ))}
+                       </SelectContent>
+                     </Select>
                     </td>
                     <td className="px-3 py-2">
-                      <Select value={item.measure_type} onValueChange={v => updateCatalogItem(item.id, "measure_type", v)}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="lf">LF</SelectItem>
-                          <SelectItem value="qty">QTY</SelectItem>
-                          <SelectItem value="both">Both</SelectItem>
-                        </SelectContent>
-                      </Select>
+                     <Select value={item.measure_type} onValueChange={v => updateCatalogItem(item.id, "measure_type", v)}>
+                       <SelectTrigger className="h-8 text-xs">
+                         <SelectValue />
+                       </SelectTrigger>
+                       <SelectContent>
+                         <SelectItem value="lf">LF</SelectItem>
+                         <SelectItem value="qty">QTY</SelectItem>
+                         <SelectItem value="sqft">SqFt</SelectItem>
+                         <SelectItem value="both">Both</SelectItem>
+                         <SelectItem value="percentage">% Upgrade</SelectItem>
+                       </SelectContent>
+                     </Select>
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <Input
-                        type="number"
-                        value={item.default_price || 0}
-                        onChange={e => updateCatalogItem(item.id, "default_price", parseFloat(e.target.value) || 0)}
-                        className="h-8 text-sm text-center w-24 mx-auto"
-                      />
+                     <Input
+                       type="number"
+                       value={item.measure_type === "percentage" ? (item.default_percentage ?? "") : (item.default_price || 0)}
+                       onChange={e => updateCatalogItem(item.id, item.measure_type === "percentage" ? "default_percentage" : "default_price", parseFloat(e.target.value) || 0)}
+                       className="h-8 text-sm text-center w-24 mx-auto"
+                       placeholder={item.measure_type === "percentage" ? "%" : "$"}
+                     />
                     </td>
                     <td className="px-3 py-2 text-center">
                       <Switch
