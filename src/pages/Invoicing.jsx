@@ -487,13 +487,13 @@ export default function Invoicing() {
                                       <span className="text-slate-600">Budget:</span>
                                       <span className="font-medium">${budget.toLocaleString()}</span>
                                     </div>
-                                    {deposit > 0 && (
+                                    {collected > 0 && (
                                       <div className="flex justify-between">
-                                        <span className="text-slate-600">Deposit:</span>
-                                        <span className="font-medium text-green-600">${deposit.toLocaleString()}</span>
+                                        <span className="text-slate-600">Collected:</span>
+                                        <span className="font-medium text-green-600">${collected.toLocaleString()}</span>
                                       </div>
                                     )}
-                                    {deposit > 0 && (
+                                    {budget > 0 && (
                                       <div className="flex justify-between">
                                         <span className="text-slate-600">Remaining:</span>
                                         <span className="font-medium text-amber-600">${remaining.toLocaleString()}</span>
@@ -505,10 +505,10 @@ export default function Invoicing() {
                                         <span className="font-medium">${actualCost.toLocaleString()}</span>
                                       </div>
                                     )}
-                                    {actualCost > deposit && deposit > 0 && (
+                                    {actualCost > collected && collected > 0 && (
                                       <div className="flex justify-between">
                                         <span className="text-slate-600">Balance Due:</span>
-                                        <span className="font-medium text-red-600">${(actualCost - deposit).toLocaleString()}</span>
+                                        <span className="font-medium text-red-600">${(actualCost - collected).toLocaleString()}</span>
                                       </div>
                                     )}
                                     {expDate && (() => {
