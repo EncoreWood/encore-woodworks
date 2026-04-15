@@ -559,10 +559,17 @@ export default function Invoicing() {
             </DialogHeader>
             {viewingDetails && (() => {
               const budget = viewingDetails.estimated_budget || 0;
-              const deposit = viewingDetails.deposit_paid || 0;
               const actualCost = viewingDetails.actual_cost || 0;
-              const remaining = budget - deposit;
-              const balanceDue = actualCost - deposit;
+              // Collected = sum of invoice amounts that have a received date (merge pending edits)
+              const ivPending = invoiceFields[viewingDetails.id] || {};
+              const mergedDetails = { ...viewingDetails, ...ivPending };
+              const collected =
+                (mergedDetails.deposit_invoice_received_date ? (parseFloat(mergedDetails.deposit_invoice_amount) || 0) : 0) +
+                (mergedDetails.ninety_percent_invoice_received_date ? (parseFloat(mergedDetails.ninety_percent_invoice_amount) || 0) : 0) +
+                (mergedDetails.final_invoice_received_date ? (parseFloat(mergedDetails.final_invoice_amount) || 0) : 0);
+              const deposit = collected; // alias for legacy refs below
+              const remaining = budget - collected;
+              const balanceDue = actualCost - collected;
               const proposal = proposals.find(p => p.project_id === viewingDetails.id);
 
               // Invoice stage fields helpers
@@ -606,7 +613,7 @@ export default function Invoicing() {
                       </div>
                       <div className="bg-green-50 rounded-lg p-3 text-center">
                         <p className="text-xs text-slate-500 mb-1">Collected</p>
-                        <p className="text-lg font-bold text-green-700">${deposit.toLocaleString()}</p>
+                        <p className="text-lg font-bold text-green-700">${collected.toLocaleString()}</p>
                       </div>
                       <div className="bg-amber-50 rounded-lg p-3 text-center">
                         <p className="text-xs text-slate-500 mb-1">Remaining</p>
