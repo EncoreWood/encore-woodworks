@@ -86,19 +86,6 @@ export default function InvoicingCalendar({ projects }) {
     ? monthData.find((m) => format(m.month, "yyyy-MM") === format(selectedMonth, "yyyy-MM"))
     : null;
 
-  const handleEditProject = (project) => {
-    setEditingProject(project);
-    setEditFields({
-      deposit_expected_date: project.deposit_expected_date || "",
-      ninety_percent_expected_date: project.ninety_percent_expected_date || "",
-      final_expected_date: project.final_expected_date || "",
-    });
-  };
-
-  const handleSave = () => {
-    updateMutation.mutate({ id: editingProject.id, data: editFields });
-  };
-
   // Summary stats
   const totalActualYTD = monthData
     .filter((m) => m.month <= new Date() && m.month.getFullYear() === new Date().getFullYear())
