@@ -1,0 +1,49 @@
+{
+  "name": "RoomFile",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for reference"
+    },
+    "room_name": {
+      "type": "string",
+      "description": "Room name (used for matching with production cards)"
+    },
+    "room_id": {
+      "type": "string",
+      "description": "Stable room identifier (room index or UUID)"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL of the uploaded file"
+    },
+    "file_name": {
+      "type": "string",
+      "description": "Original file name"
+    },
+    "file_type": {
+      "type": "string",
+      "enum": [
+        "image",
+        "pdf"
+      ],
+      "description": "Type of file"
+    },
+    "label": {
+      "type": "string",
+      "description": "Optional label e.g. Front Elevation, Countertop Drawing"
+    }
+  },
+  "required": [
+    "project_id",
+    "room_name",
+    "file_url",
+    "file_name",
+    "file_type"
+  ]
+}

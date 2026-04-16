@@ -34,6 +34,7 @@ import PageSlideWrapper from "@/components/PageSlideWrapper";
 import CadDrawingsSection from "../components/cad/CadDrawingsSection";
 import ClientPortalTab from "../components/projects/ClientPortalTab";
 import GlbViewer from "../components/cad/GlbViewer";
+import RoomFilesSection from "../components/projects/RoomFilesSection";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -543,6 +544,7 @@ export default function ProjectDetails() {
                             {room.finish && <div><span className="text-slate-500">Finish:</span> <span className="text-slate-700">{room.finish}</span></div>}
                           </div>
                           {room.notes && <p className="text-sm text-slate-600 mt-2">{room.notes}</p>}
+                          <RoomFilesSection project={project} roomName={room.room_name || `Room ${idx + 1}`} roomId={`${projectId}_${idx}`} />
                           {room.files?.length > 0 && (
                             <div className="mt-3 space-y-2">
                               <div className="flex items-center justify-between mb-2">

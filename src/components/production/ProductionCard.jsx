@@ -5,12 +5,14 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, ArrowRight, Box, Upload, Loader2, PenLine, FileCode2, ChevronDown, AlertTriangle, PackageX, Flag } from "lucide-react";
+import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, ArrowRight, Box, Upload, Loader2, PenLine, FileCode2, ChevronDown, AlertTriangle, PackageX, Flag, Paperclip } from "lucide-react";
 import MissingItemBadge from "@/components/production/MissingItemBadge";
 import GlbViewer from "@/components/cad/GlbViewer";
 import DxfViewer from "@/components/cad/DxfViewer";
 import { base44 } from "@/api/base44Client";
 import SketchPad from "@/components/production/SketchPad";
+import RoomFilesModal from "@/components/production/RoomFilesModal";
+import { useQuery } from "@tanstack/react-query";
 
 function PdfPreviewTooltip({ url, anchorEl }) {
   if (!url || !anchorEl) return null;
@@ -86,8 +88,17 @@ export default function ProductionCard({
   const [showSketch, setShowSketch] = useState(false);
   const [uploadingGlb, setUploadingGlb] = useState(false);
   const [viewingCad, setViewingCad] = useState(null);
+  const [showRoomFiles, setShowRoomFiles] = useState(false);
   const glbInputRef = useRef(null);
   const isAdmin = currentUser?.role === "admin";
+
+  const { data: roomFileCount = 0 } = useQuery({
+    queryKey: ["roomFiles", item.project_id, item.room_name],
+    queryFn: () => base44.entities.RoomFile.filter({ project_id: item.project_id }),
+    select: (all) => all.filter(f => f.room_name?.toLowerCase() === item.room_name?.toLowerCase()).length,
+    enabled: !!item.project_id && !!item.room_name,
+    staleTime: 60_000,
+  });
 
   const cardGlbUrl = item.glb_url;
   const cardGlbName = item.glb_name || item.name;
@@ -213,6 +224,18 @@ export default function ProductionCard({
                   title="View room 3D model"
                 >
                   <Box className="w-3 h-3" />
+                </button>
+              )}
+              {item.project_id && item.room_name && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowRoomFiles(true); }}
+                  className="flex items-center gap-0.5 text-slate-500 hover:text-amber-700 flex-shrink-0"
+                  title="View room files"
+                >
+                  <Paperclip className="w-3 h-3" />
+                  {roomFileCount > 0 && (
+                    <span className="text-xs font-bold text-amber-600">{roomFileCount}</span>
+                  )}
                 </button>
               )}
 
@@ -512,6 +535,14 @@ export default function ProductionCard({
           </div>
         )}
       </Card>
+      {showRoomFiles && (
+        <RoomFilesModal
+          projectId={item.project_id}
+          projectName={item.project_name}
+          roomName={item.room_name}
+          onClose={() => setShowRoomFiles(false)}
+        />
+      )}
       <PdfPreviewTooltip url={hoveredPdfUrl} anchorEl={hoveredAnchorEl} />
       {viewingCad && (() => {
         const ext = (viewingCad.name || "").toLowerCase().split('.').pop();
