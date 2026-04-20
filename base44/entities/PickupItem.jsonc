@@ -1,0 +1,127 @@
+{
+  "name": "PickupItem",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for reference"
+    },
+    "room_name": {
+      "type": "string",
+      "description": "Room this item belongs to"
+    },
+    "title": {
+      "type": "string",
+      "description": "Description of the pickup item"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "missing",
+        "reorder",
+        "task"
+      ],
+      "default": "missing",
+      "description": "Type of pickup item"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "in_progress",
+        "resolved"
+      ],
+      "default": "open",
+      "description": "Current status"
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "open",
+        "in_progress",
+        "ready_at_shop",
+        "installers",
+        "resolved"
+      ],
+      "default": "open",
+      "description": "Progress stage of the pickup item"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "medium"
+    },
+    "pts": {
+      "type": "number",
+      "description": "Point value for this pickup item"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    },
+    "files": {
+      "type": "array",
+      "description": "Attached files (PDFs, images, etc.)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "pts": {
+            "type": "number"
+          },
+          "annotations": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          }
+        }
+      }
+    },
+    "sketch_url": {
+      "type": "string",
+      "description": "URL of hand-drawn sketch image"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "project",
+        "production",
+        "manual"
+      ],
+      "default": "manual",
+      "description": "Where this item was created from"
+    },
+    "production_item_id": {
+      "type": "string",
+      "description": "Reference to linked production item"
+    },
+    "production_stage": {
+      "type": "string",
+      "description": "Current stage of the linked production card"
+    },
+    "archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this item is archived/completed"
+    }
+  },
+  "required": [
+    "project_id",
+    "project_name",
+    "title"
+  ]
+}

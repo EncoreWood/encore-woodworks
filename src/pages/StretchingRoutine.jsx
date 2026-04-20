@@ -86,12 +86,6 @@ export default function StretchingRoutine() {
       totalSeconds.current = 0;
       intervalRef.current = setInterval(() => {
         totalSeconds.current += 1;
-        // End after 3 minutes (180s) to match the video
-        if (totalSeconds.current >= 180) {
-          clearInterval(intervalRef.current);
-          setPhase("done");
-          return;
-        }
         setTick(prev => {
           if (prev >= 29) {
             setBgIdx(i => (i + 1) % BG_GRADIENTS.length);

@@ -26,6 +26,16 @@ const statusConfig = {
   resolved: { label: "Resolved", color: "bg-emerald-100 text-emerald-700" }
 };
 
+const stageConfig = {
+  open:         { label: "Open",          color: "bg-slate-100 text-slate-600 border-slate-300" },
+  in_progress:  { label: "In Progress",   color: "bg-amber-100 text-amber-700 border-amber-300" },
+  ready_at_shop:{ label: "Ready at Shop", color: "bg-blue-100 text-blue-700 border-blue-300" },
+  installers:   { label: "Installers",    color: "bg-purple-100 text-purple-700 border-purple-300" },
+  resolved:     { label: "Resolved",      color: "bg-emerald-100 text-emerald-700 border-emerald-300" }
+};
+
+const STAGE_ORDER = ["open", "in_progress", "ready_at_shop", "installers", "resolved"];
+
 const productionStageColors = {
   face_frame: { label: "Face Frame", color: "bg-blue-100 text-blue-700 border-blue-300" },
   spray: { label: "Spray", color: "bg-purple-100 text-purple-700 border-purple-300" },
@@ -142,6 +152,15 @@ export default function PickupList() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pickupItems"] })
   });
 
+  const handleStageCycle = (item) => {
+    const currentStage = item.stage || "open";
+    const currentIdx = STAGE_ORDER.indexOf(currentStage);
+    const nextStage = STAGE_ORDER[(currentIdx + 1) % STAGE_ORDER.length];
+    // Sync status field: resolved when stage=resolved, otherwise open/in_progress
+    const newStatus = nextStage === "resolved" ? "resolved" : nextStage === "open" ? "open" : "in_progress";
+    updateMutation.mutate({ id: item.id, data: { stage: nextStage, status: newStatus } });
+  };
+
   const handleStatusCycle = (item) => {
     const order = ["open", "in_progress", "resolved"];
     const next = order[(order.indexOf(item.status) + 1) % order.length];
@@ -150,7 +169,10 @@ export default function PickupList() {
 
   const filtered = pickupItems.filter(item => {
     if (filterProjectId !== "all" && item.project_id !== filterProjectId) return false;
-    if (filterStatus !== "all" && item.status !== filterStatus) return false;
+    if (filterStatus !== "all") {
+      const itemStage = item.stage || item.status || "open";
+      if (itemStage !== filterStatus) return false;
+    }
     if (filterType !== "all" && item.type !== filterType) return false;
     if (search && !item.title.toLowerCase().includes(search.toLowerCase()) &&
         !item.project_name?.toLowerCase().includes(search.toLowerCase()) &&
@@ -177,7 +199,7 @@ export default function PickupList() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pickupItems"] })
   });
 
-  const openCount = allPickupItems.filter(i => !i.archived && i.status === "open").length;
+  const openCount = allPickupItems.filter(i => !i.archived && (i.stage || i.status) !== "resolved").length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200">
@@ -242,13 +264,15 @@ export default function PickupList() {
             </SelectContent>
           </Select>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-36 h-9">
-              <SelectValue placeholder="All Statuses" />
+            <SelectTrigger className="w-44 h-9">
+              <SelectValue placeholder="All Stages" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="all">All Stages</SelectItem>
               <SelectItem value="open">Open</SelectItem>
               <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="ready_at_shop">Ready at Shop</SelectItem>
+              <SelectItem value="installers">Installers</SelectItem>
               <SelectItem value="resolved">Resolved</SelectItem>
             </SelectContent>
           </Select>
@@ -326,8 +350,8 @@ export default function PickupList() {
                                   className="px-5 py-3 flex items-center gap-3 transition-colors"
                                   style={{ borderLeft: getPickupCardStyle(item.priority).borderLeft || "4px solid transparent", backgroundColor: getPickupCardStyle(item.priority).backgroundColor || undefined }}
                                 >
-                                  <button onClick={() => handleStatusCycle(item)} title="Click to advance status">
-                                    <TypeIcon className={cn("w-5 h-5 flex-shrink-0", item.status === "resolved" ? "text-emerald-500" : "text-slate-400")} />
+                                  <button onClick={() => handleStageCycle(item)} title="Click to advance stage">
+                                   <TypeIcon className={cn("w-5 h-5 flex-shrink-0", (item.stage || item.status) === "resolved" ? "text-emerald-500" : "text-slate-400")} />
                                   </button>
                                   <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
@@ -351,9 +375,19 @@ export default function PickupList() {
                                     )}>
                                       {item.priority === "high" ? "🔴 High" : item.priority === "medium" ? "🟡 Medium" : "Low"}
                                     </Badge>
-                                    <Badge className={cn("text-xs border-0", statusConfig[item.status]?.color)}>
-                                      {statusConfig[item.status]?.label}
-                                    </Badge>
+                                    {(() => {
+                                      const stg = item.stage || item.status || "open";
+                                      const sc = stageConfig[stg] || stageConfig.open;
+                                      return (
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); handleStageCycle(item); }}
+                                          title="Click to advance stage"
+                                          className={cn("text-xs font-semibold border rounded-full px-2 py-0.5 transition-all hover:opacity-80", sc.color)}
+                                        >
+                                          {sc.label}
+                                        </button>
+                                      );
+                                    })()}
                                     {item.production_item_id && (() => {
                                       const stageInfo = productionStageColors[item.production_stage] || productionStageColors.face_frame;
                                       return (
@@ -373,8 +407,8 @@ export default function PickupList() {
                                         {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                                       </Button>
                                     )}
-                                    {!item.archived && (
-                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" title="Complete & Archive"
+                                    {!item.archived && (item.stage === "resolved" || item.status === "resolved") && (
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" title="Archive (resolved)"
                                         onClick={(e) => { e.stopPropagation(); archiveMutation.mutate(item); }}>
                                         <Archive className="w-3 h-3" />
                                       </Button>
