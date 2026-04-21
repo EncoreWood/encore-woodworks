@@ -407,8 +407,8 @@ export default function PickupList() {
                                         {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                                       </Button>
                                     )}
-                                    {!item.archived && (item.stage === "resolved" || item.status === "resolved") && (
-                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" title="Archive (resolved)"
+                                    {!item.archived && (
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" title="Archive"
                                         onClick={(e) => { e.stopPropagation(); archiveMutation.mutate(item); }}>
                                         <Archive className="w-3 h-3" />
                                       </Button>
