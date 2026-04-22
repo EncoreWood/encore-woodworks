@@ -167,89 +167,95 @@ export default function ProductionCard({
           </button>
         )}
 
-        {/* Missing item badge */}
-        {item.id && (
-          <div className={`absolute top-2 z-10 ${item.project_id && item.room_name ? "right-16" : "right-2"}`}>
-            <MissingItemBadge itemId={item.id} currentUser={currentUser} />
-          </div>
+        {/* Header: project/room name */}
+        {item.project_name && (
+          <p className="text-xs text-slate-500 font-medium truncate pr-10 mb-1">
+            {item.project_name}{item.room_name ? ` · ${item.room_name}` : ""}
+          </p>
         )}
 
-        {/* Header row */}
-        {item.project_name && (
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-xs text-slate-500 font-medium truncate flex-1">
-              {item.project_name}{item.room_name ? ` · ${item.room_name}` : ""}
-            </p>
-            <div className="flex items-center gap-1 ml-1 mr-5 flex-wrap justify-end">
-              {/* Room folder link */}
-              {onOpenRoomFolder && roomFolderLabel && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onOpenRoomFolder(); }}
-                  className="flex items-center gap-0.5 text-amber-600 hover:text-amber-800 flex-shrink-0"
-                  title={`Open room folder: ${roomFolderLabel}`}
-                >
-                  <FolderOpen className="w-3 h-3" />
-                </button>
-              )}
-              {/* Return to Job Packets folder */}
-              {onReturnToFolder && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onReturnToFolder(item); }}
-                  className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded px-2 py-0.5 flex-shrink-0 transition-colors"
-                  title="Return to Job Packets folder"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                  Return to Packet
-                </button>
-              )}
+        {/* Action button row — sits neatly below the project name */}
+        {(onOpenRoomFolder || onReturnToFolder || showLinkButton || roomGlbUrl || onPickup || onReportStruggle || onQuickReportMissing || item.id) && (
+          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+            {/* Missing item badge */}
+            {item.id && <MissingItemBadge itemId={item.id} currentUser={currentUser} />}
 
-              {showLinkButton && linkedProductionItem && onLinkClick && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onLinkClick(linkedProductionItem); }}
-                  className="text-blue-500 hover:text-blue-700 flex-shrink-0"
-                  title="View linked production card"
-                >
-                  <Link2 className="w-3 h-3" />
-                </button>
-              )}
-              {roomGlbUrl && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowGlb(true); }}
-                  className="flex items-center gap-0.5 text-indigo-600 hover:text-indigo-800 flex-shrink-0"
-                  title="View room 3D model"
-                >
-                  <Box className="w-3 h-3" />
-                </button>
-              )}
-              {item.project_id && onPickup && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onPickup(item); }}
-                  className="text-amber-600 hover:text-amber-700 flex-shrink-0"
-                  title="Add pickup item"
-                >
-                  <ClipboardList className="w-3 h-3" />
-                </button>
-              )}
+            {/* Return to Job Packets — icon only */}
+            {onReturnToFolder && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onReturnToFolder(item); }}
+                className="flex items-center justify-center w-6 h-6 rounded bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 hover:text-blue-800 flex-shrink-0 transition-colors"
+                title="Return to Packet"
+              >
+                <RotateCcw className="w-3 h-3" />
+              </button>
+            )}
 
-              {onReportStruggle && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onReportStruggle(item); }}
-                  className="flex items-center justify-center w-5 h-5 rounded-full bg-red-100 hover:bg-red-200 text-red-600 font-black text-xs flex-shrink-0 transition-colors"
-                  title="Report a struggle"
-                >
-                  !
-                </button>
-              )}
-              {onQuickReportMissing && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onQuickReportMissing(item); }}
-                  className="flex items-center justify-center w-5 h-5 rounded-full bg-orange-100 hover:bg-orange-200 text-orange-600 flex-shrink-0 transition-colors"
-                  title="Report a missing item"
-                >
-                  <Flag className="w-2.5 h-2.5" />
-                </button>
-              )}
-            </div>
+            {/* Room folder link */}
+            {onOpenRoomFolder && roomFolderLabel && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onOpenRoomFolder(); }}
+                className="flex items-center justify-center w-6 h-6 rounded bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-600 hover:text-amber-800 flex-shrink-0 transition-colors"
+                title={`Open room folder: ${roomFolderLabel}`}
+              >
+                <FolderOpen className="w-3 h-3" />
+              </button>
+            )}
+
+            {/* Linked card */}
+            {showLinkButton && linkedProductionItem && onLinkClick && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onLinkClick(linkedProductionItem); }}
+                className="flex items-center justify-center w-6 h-6 rounded bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-500 hover:text-blue-700 flex-shrink-0 transition-colors"
+                title="View linked production card"
+              >
+                <Link2 className="w-3 h-3" />
+              </button>
+            )}
+
+            {/* Room 3D model */}
+            {roomGlbUrl && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowGlb(true); }}
+                className="flex items-center justify-center w-6 h-6 rounded bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-600 hover:text-indigo-800 flex-shrink-0 transition-colors"
+                title="View room 3D model"
+              >
+                <Box className="w-3 h-3" />
+              </button>
+            )}
+
+            {/* Add pickup */}
+            {item.project_id && onPickup && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onPickup(item); }}
+                className="flex items-center justify-center w-6 h-6 rounded bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-600 hover:text-amber-700 flex-shrink-0 transition-colors"
+                title="Add pickup item"
+              >
+                <ClipboardList className="w-3 h-3" />
+              </button>
+            )}
+
+            {/* Report struggle */}
+            {onReportStruggle && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onReportStruggle(item); }}
+                className="flex items-center justify-center w-6 h-6 rounded-full bg-red-100 hover:bg-red-200 border border-red-200 text-red-600 font-black text-xs flex-shrink-0 transition-colors"
+                title="Report a struggle"
+              >
+                !
+              </button>
+            )}
+
+            {/* Report missing */}
+            {onQuickReportMissing && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onQuickReportMissing(item); }}
+                className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 hover:bg-orange-200 border border-orange-200 text-orange-600 flex-shrink-0 transition-colors"
+                title="Report a missing item"
+              >
+                <Flag className="w-3 h-3" />
+              </button>
+            )}
           </div>
         )}
 
