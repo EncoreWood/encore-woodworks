@@ -539,13 +539,7 @@ export default function ShopProduction() {
                 {productionColumns.map((column, colIdx) => {
                   const columnItems = items
                     .filter(i => i.stage === column.id && !i.is_job_info)
-                    .sort((a, b) => {
-                      // If any item has a sort_order set, use it; otherwise fall back to created_date
-                      const aHasOrder = a.sort_order !== undefined && a.sort_order !== null;
-                      const bHasOrder = b.sort_order !== undefined && b.sort_order !== null;
-                      if (aHasOrder || bHasOrder) return (a.sort_order ?? 9999) - (b.sort_order ?? 9999);
-                      return new Date(a.created_date) - new Date(b.created_date);
-                    });
+                    .sort((a, b) => (a.sort_order ?? 999999) - (b.sort_order ?? 999999) || new Date(a.created_date) - new Date(b.created_date));
                   const colPts = columnItems.reduce((sum, item) => {
                     const filePts = (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
                     const cardPts = parseFloat(item.pts) || 0;
