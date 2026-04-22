@@ -28,6 +28,10 @@
       "default": "face_frame",
       "description": "Current production stage"
     },
+    "sort_order": {
+      "type": "number",
+      "description": "Manual sort order within a column (admin-set)"
+    },
     "is_job_info": {
       "type": "boolean",
       "default": false,

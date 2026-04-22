@@ -153,6 +153,28 @@ export default function ShopProduction() {
     if (!item) return;
 
     const oldStage = item.stage;
+
+    // Admin-only: within-column reorder — update sort_order for all cards in that column
+    if (oldStage === newStage && currentUser?.role === "admin") {
+      const columnItems = items
+        .filter(i => i.stage === oldStage && !i.is_job_info)
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      // Apply the reorder
+      const reordered = [...columnItems];
+      const [moved] = reordered.splice(result.source.index, 1);
+      reordered.splice(result.destination.index, 0, moved);
+      // Optimistic update
+      queryClient.setQueryData(["productionItems"], (old = []) => {
+        const orderMap = Object.fromEntries(reordered.map((it, idx) => [it.id, idx]));
+        return old.map(i => orderMap[i.id] !== undefined ? { ...i, sort_order: orderMap[i.id] } : i);
+      });
+      // Persist all reordered items
+      await Promise.all(reordered.map((it, idx) =>
+        base44.entities.ProductionItem.update(it.id, { sort_order: idx })
+      ));
+      return;
+    }
+
     if (oldStage === newStage) return;
 
     const safeFiles = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts !== undefined ? Number(f.pts) : undefined, annotations: f.annotations }));
@@ -515,7 +537,15 @@ export default function ShopProduction() {
             <DragDropContext onDragEnd={handleDragEnd}>
               <div className="flex gap-4 overflow-x-auto pb-4">
                 {productionColumns.map((column, colIdx) => {
-                  const columnItems = items.filter(i => i.stage === column.id && !i.is_job_info).sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+                  const columnItems = items
+                    .filter(i => i.stage === column.id && !i.is_job_info)
+                    .sort((a, b) => {
+                      // If any item has a sort_order set, use it; otherwise fall back to created_date
+                      const aHasOrder = a.sort_order !== undefined && a.sort_order !== null;
+                      const bHasOrder = b.sort_order !== undefined && b.sort_order !== null;
+                      if (aHasOrder || bHasOrder) return (a.sort_order ?? 9999) - (b.sort_order ?? 9999);
+                      return new Date(a.created_date) - new Date(b.created_date);
+                    });
                   const colPts = columnItems.reduce((sum, item) => {
                     const filePts = (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
                     const cardPts = parseFloat(item.pts) || 0;
