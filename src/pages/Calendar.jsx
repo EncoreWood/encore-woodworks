@@ -195,26 +195,100 @@ export default function CalendarPage() {
 
   const DAY_NAME_TO_OFFSET = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5 };
 
-  // Returns cleaning entries for a specific date, with which "slot" (day1/day2) it is
+  // Returns cleaning entries for a specific date, with which "slot" (day1/day2) it is.
+  // For dates beyond the last stored week, the rotation continues perpetually by cycling.
   const getCleaningScheduleForDate = (date) => {
+    if (cleaningSchedules.length === 0) return [];
+
+    // First check if an explicit stored record covers this date
     const results = [];
     for (const cs of cleaningSchedules) {
       if (!cs.week_start) continue;
       const weekMon = new Date(cs.week_start + "T00:00:00");
-      // Check day1
       if (cs.day1_of_week) {
         const d1 = new Date(weekMon);
         d1.setDate(weekMon.getDate() + (DAY_NAME_TO_OFFSET[cs.day1_of_week] - 1));
         if (isSameDay(date, d1)) results.push({ cs, slot: "day1" });
       }
-      // Check day2
       if (cs.day2_of_week) {
         const d2 = new Date(weekMon);
         d2.setDate(weekMon.getDate() + (DAY_NAME_TO_OFFSET[cs.day2_of_week] - 1));
         if (isSameDay(date, d2)) results.push({ cs, slot: "day2" });
       }
     }
-    return results;
+    if (results.length > 0) return results;
+
+    // If date is beyond last stored week, project the rotation perpetually
+    const sorted = [...cleaningSchedules]
+      .filter(cs => cs.week_start)
+      .sort((a, b) => a.week_start.localeCompare(b.week_start));
+
+    const lastCs = sorted[sorted.length - 1];
+    if (!lastCs) return [];
+
+    const lastWeekMon = new Date(lastCs.week_start + "T00:00:00");
+    // Find Monday of the target date's week
+    const dayOfWeek = date.getDay(); // 0=Sun
+    const targetMon = new Date(date);
+    targetMon.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+    targetMon.setHours(0, 0, 0, 0);
+
+    // Only project forward beyond stored weeks
+    if (targetMon <= lastWeekMon) return [];
+
+    const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+    const weeksAhead = Math.round((targetMon - lastWeekMon) / msPerWeek);
+    if (weeksAhead <= 0) return [];
+
+    // Build rotating pool from all stored schedules (extract unique rotating persons)
+    const rotatingPool = [];
+    sorted.forEach(cs => {
+      if (cs.rotating_person) {
+        cs.rotating_person.split(", ").map(s => s.trim()).filter(Boolean).forEach(p => {
+          if (!rotatingPool.includes(p)) rotatingPool.push(p);
+        });
+      }
+    });
+
+    if (rotatingPool.length < 2) return [];
+
+    // Figure out what rotation index the last stored schedule used
+    const lastRotPair = lastCs.rotating_person
+      ? lastCs.rotating_person.split(", ").map(s => s.trim()).filter(Boolean)
+      : [];
+    const lastP1 = lastRotPair[0];
+    const lastP1Idx = rotatingPool.indexOf(lastP1);
+    // Work out the global rotation index for the target week
+    const globalIdx = (lastP1Idx < 0 ? 0 : lastP1Idx) + weeksAhead * 2;
+    const p1 = rotatingPool[globalIdx % rotatingPool.length];
+    const p2 = rotatingPool[(globalIdx + 1) % rotatingPool.length];
+    const projectedRotating = p1 === p2 ? p1 : `${p1}, ${p2}`;
+
+    // Build a virtual cs for this projected week
+    const virtualCs = {
+      id: `virtual-${format(targetMon, "yyyy-MM-dd")}`,
+      week_start: format(targetMon, "yyyy-MM-dd"),
+      permanent_pair: lastCs.permanent_pair,
+      rotating_person: projectedRotating,
+      day1_of_week: lastCs.day1_of_week,
+      day2_of_week: lastCs.day2_of_week,
+      notes: lastCs.notes,
+      completed_day1: false,
+      completed_day2: false,
+    };
+
+    const projResults = [];
+    if (virtualCs.day1_of_week) {
+      const d1 = new Date(targetMon);
+      d1.setDate(targetMon.getDate() + (DAY_NAME_TO_OFFSET[virtualCs.day1_of_week] - 1));
+      if (isSameDay(date, d1)) projResults.push({ cs: virtualCs, slot: "day1" });
+    }
+    if (virtualCs.day2_of_week) {
+      const d2 = new Date(targetMon);
+      d2.setDate(targetMon.getDate() + (DAY_NAME_TO_OFFSET[virtualCs.day2_of_week] - 1));
+      if (isSameDay(date, d2)) projResults.push({ cs: virtualCs, slot: "day2" });
+    }
+    return projResults;
   };
 
   const createProjectMutation = useMutation({
