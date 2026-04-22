@@ -34,8 +34,51 @@ export default function CleaningScheduleWidget({ showCheckboxes = false, compact
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cleaningSchedules"] }),
   });
 
-  // Find this week's schedule
-  const thisWeek = schedules.find(s => s.week_start === weekMonday);
+  // Find this week's schedule (exact match first)
+  let thisWeek = schedules.find(s => s.week_start === weekMonday);
+
+  // If no exact match, project perpetually from the last stored schedule
+  if (!thisWeek && schedules.length > 0) {
+    const sorted = [...schedules].filter(s => s.week_start).sort((a, b) => a.week_start.localeCompare(b.week_start));
+    const lastCs = sorted[sorted.length - 1];
+    if (lastCs) {
+      const lastMon = new Date(lastCs.week_start + "T00:00:00");
+      const thisMon = new Date(weekMonday + "T00:00:00");
+      const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+      const weeksAhead = Math.round((thisMon - lastMon) / msPerWeek);
+      if (weeksAhead > 0) {
+        // Build rotating pool from all stored schedules
+        const rotatingPool = [];
+        sorted.forEach(cs => {
+          if (cs.rotating_person) {
+            cs.rotating_person.split(", ").map(s => s.trim()).filter(Boolean).forEach(p => {
+              if (!rotatingPool.includes(p)) rotatingPool.push(p);
+            });
+          }
+        });
+        if (rotatingPool.length >= 2) {
+          const lastRotPair = lastCs.rotating_person
+            ? lastCs.rotating_person.split(", ").map(s => s.trim()).filter(Boolean)
+            : [];
+          const lastP1Idx = rotatingPool.indexOf(lastRotPair[0]);
+          const globalIdx = (lastP1Idx < 0 ? 0 : lastP1Idx) + weeksAhead * 2;
+          const p1 = rotatingPool[globalIdx % rotatingPool.length];
+          const p2 = rotatingPool[(globalIdx + 1) % rotatingPool.length];
+          thisWeek = {
+            id: null,
+            week_start: weekMonday,
+            permanent_pair: lastCs.permanent_pair,
+            rotating_person: p1 === p2 ? p1 : `${p1}, ${p2}`,
+            day1_of_week: lastCs.day1_of_week,
+            day2_of_week: lastCs.day2_of_week,
+            notes: lastCs.notes,
+            completed_day1: false,
+            completed_day2: false,
+          };
+        }
+      }
+    }
+  }
 
   if (!thisWeek) {
     return (
@@ -73,7 +116,7 @@ export default function CleaningScheduleWidget({ showCheckboxes = false, compact
 
       {/* Day 1 */}
       <div className={`flex items-center gap-3 p-2.5 rounded-lg border ${thisWeek.completed_day1 ? "bg-green-50 border-green-200" : "bg-teal-50 border-teal-200"}`}>
-        {showCheckboxes && (
+        {showCheckboxes && thisWeek.id && (
           <Checkbox
             checked={!!thisWeek.completed_day1}
             onCheckedChange={(v) => updateMutation.mutate({ id: thisWeek.id, data: { completed_day1: !!v } })}
@@ -93,7 +136,7 @@ export default function CleaningScheduleWidget({ showCheckboxes = false, compact
 
       {/* Day 2 */}
       <div className={`flex items-center gap-3 p-2.5 rounded-lg border ${thisWeek.completed_day2 ? "bg-green-50 border-green-200" : "bg-purple-50 border-purple-200"}`}>
-        {showCheckboxes && (
+        {showCheckboxes && thisWeek.id && (
           <Checkbox
             checked={!!thisWeek.completed_day2}
             onCheckedChange={(v) => updateMutation.mutate({ id: thisWeek.id, data: { completed_day2: !!v } })}
