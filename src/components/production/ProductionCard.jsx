@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, ArrowRight, Box, Upload, Loader2, PenLine, FileCode2, ChevronDown, AlertTriangle, PackageX, Flag, Paperclip } from "lucide-react";
+import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, Upload, Loader2, PenLine, FileCode2, ChevronDown, PackageX, Flag, Boxes } from "lucide-react";
 import MissingItemBadge from "@/components/production/MissingItemBadge";
 import GlbViewer from "@/components/cad/GlbViewer";
 import DxfViewer from "@/components/cad/DxfViewer";
@@ -153,9 +153,23 @@ export default function ProductionCard({
         className={`relative p-4 border-0 shadow-sm transition-shadow overflow-hidden ${isDragging ? "shadow-lg" : ""}`}
         style={{ backgroundColor: "#ffffff", ...cardStyle }}
       >
-        {/* Missing item badge — top-right corner */}
+        {/* Room files button — top-right corner */}
+        {item.project_id && item.room_name && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowRoomFiles(true); }}
+            className="absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 transition-colors shadow-sm"
+            title="View room files & images"
+          >
+            <Boxes className="w-4 h-4" />
+            {roomFileCount > 0 && (
+              <span className="text-xs font-bold">{roomFileCount}</span>
+            )}
+          </button>
+        )}
+
+        {/* Missing item badge */}
         {item.id && (
-          <div className="absolute top-2 right-2 z-10">
+          <div className={`absolute top-2 z-10 ${item.project_id && item.room_name ? "right-16" : "right-2"}`}>
             <MissingItemBadge itemId={item.id} currentUser={currentUser} />
           </div>
         )}
@@ -188,26 +202,7 @@ export default function ProductionCard({
                   Return to Packet
                 </button>
               )}
-              {/* Send to Job Info */}
-              {onSendToJobInfo && !item.is_job_info && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onSendToJobInfo(item); }}
-                  className="flex items-center gap-0.5 text-purple-500 hover:text-purple-700 flex-shrink-0"
-                  title="Send to Job Info"
-                >
-                  <ArrowRight className="w-3 h-3" />
-                </button>
-              )}
-              {/* Return to Job Info */}
-              {onReturnToJobInfo && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onReturnToJobInfo(item); }}
-                  className="flex items-center gap-0.5 text-purple-500 hover:text-purple-700 flex-shrink-0"
-                  title="Return to Job Info"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                </button>
-              )}
+
               {showLinkButton && linkedProductionItem && onLinkClick && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onLinkClick(linkedProductionItem); }}
@@ -226,19 +221,6 @@ export default function ProductionCard({
                   <Box className="w-3 h-3" />
                 </button>
               )}
-              {item.project_id && item.room_name && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowRoomFiles(true); }}
-                  className="flex items-center gap-0.5 text-slate-500 hover:text-amber-700 flex-shrink-0"
-                  title="View room files"
-                >
-                  <Paperclip className="w-3 h-3" />
-                  {roomFileCount > 0 && (
-                    <span className="text-xs font-bold text-amber-600">{roomFileCount}</span>
-                  )}
-                </button>
-              )}
-
               {item.project_id && onPickup && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onPickup(item); }}
@@ -248,15 +230,7 @@ export default function ProductionCard({
                   <ClipboardList className="w-3 h-3" />
                 </button>
               )}
-              {onReportMissing && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onReportMissing(item); }}
-                  className="flex items-center justify-center w-5 h-5 rounded-full bg-orange-100 hover:bg-orange-200 text-orange-600 flex-shrink-0 transition-colors"
-                  title="Report missing item"
-                >
-                  <PackageX className="w-3 h-3" />
-                </button>
-              )}
+
               {onReportStruggle && (
                 <button
                   onClick={(e) => { e.stopPropagation(); onReportStruggle(item); }}
