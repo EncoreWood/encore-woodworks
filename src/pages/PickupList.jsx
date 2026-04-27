@@ -64,7 +64,8 @@ export default function PickupList() {
 
   const { data: allPickupItems = [] } = useQuery({
     queryKey: ["pickupItems"],
-    queryFn: () => base44.entities.PickupItem.list("-created_date")
+    queryFn: () => base44.entities.PickupItem.list("-created_date"),
+    refetchInterval: showForm ? false : 30_000,  // pause polling while form is open
   });
 
   const [showArchived, setShowArchived] = useState(false);
@@ -72,7 +73,8 @@ export default function PickupList() {
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
-    queryFn: () => base44.entities.Project.list("-created_date")
+    queryFn: () => base44.entities.Project.list("-created_date"),
+    refetchInterval: showForm ? false : 30_000,  // pause polling while form is open
   });
 
   const createMutation = useMutation({

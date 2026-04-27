@@ -61,25 +61,29 @@ export default function ShopProduction() {
     base44.auth.me().then(setCurrentUser).catch(() => {});
   }, []);
 
+  // Pause background polling when any modal/form is open — prevents refresh interrupting edits
+  const anyModalOpen = showForm || !!pickupItem || !!linkingItem || !!reportingStruggle || givingCompliment || !!reportingMissing || !!quickReportItem || showEndOfDay || !!annotatingPdf;
+
   const { data: items = [] } = useQuery({
     queryKey: ["productionItems"],
     queryFn: () => base44.entities.ProductionItem.list(),
     staleTime: 30_000,
-    refetchOnWindowFocus: false,
+    // Real-time subscriptions handle instant updates; polling is just a safety net
+    refetchInterval: anyModalOpen ? false : 60_000,
   });
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
     queryFn: () => base44.entities.Project.list(),
     staleTime: 60_000,
-    refetchOnWindowFocus: false,
+    refetchInterval: anyModalOpen ? false : 60_000,
   });
 
   const { data: columnMoveLogs = [] } = useQuery({
     queryKey: ["columnMoveLogs"],
     queryFn: () => base44.entities.ColumnMoveLog.list(),
     staleTime: 30_000,
-    refetchOnWindowFocus: false,
+    refetchInterval: anyModalOpen ? false : 60_000,
   });
 
   // Real-time subscriptions

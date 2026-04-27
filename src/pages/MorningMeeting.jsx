@@ -97,10 +97,14 @@ export default function MorningMeeting() {
   const dateString = format(selectedDate, "yyyy-MM-dd");
   const queryClient = useQueryClient();
 
+  // Pause polling when any dialog/popup is open to avoid refreshing while user is editing
+  const anyDialogOpen = showPresenterDialog || !!topicPopup;
+
   // --- Queries ---
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
-    queryFn: () => base44.entities.Project.list("-created_date")
+    queryFn: () => base44.entities.Project.list("-created_date"),
+    refetchInterval: anyDialogOpen ? false : 30_000,
   });
 
   const { data: presenterData } = useQuery({
