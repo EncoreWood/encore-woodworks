@@ -1,5 +1,13 @@
 import React, { useState } from "react";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, subWeeks, addWeeks } from "date-fns";
+
+function to12hr(time24) {
+  if (!time24) return null;
+  const [h, m] = time24.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
 import { ChevronDown, ChevronRight, Clock, Briefcase, UtensilsCrossed, CheckCircle2, Trash2, Pencil, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -107,8 +115,8 @@ function DayRow({ date, entries, isToday, openEntryId, isAdmin, onEdit, onDelete
                 </div>
                 <div className="flex items-center gap-3 mt-0.5 text-sm text-slate-600">
                   <span className="font-mono text-xs text-slate-700">
-                    {entry.clock_in || "—"} → {entry.clock_out
-                      ? entry.clock_out
+                    {to12hr(entry.clock_in) || "—"} → {entry.clock_out
+                      ? to12hr(entry.clock_out)
                       : <span className="text-green-600 animate-pulse font-semibold">Active</span>
                     }
                   </span>

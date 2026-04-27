@@ -1,5 +1,13 @@
 import React, { useState } from "react";
 import { format, addMonths, subMonths } from "date-fns";
+
+function to12hr(time24) {
+  if (!time24) return null;
+  const [h, m] = time24.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
 import { ChevronLeft, ChevronRight, Clock, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -159,7 +167,7 @@ export default function PayPeriodsView({ employeeEntries }) {
                         <div className="flex-1 flex flex-wrap gap-1">
                           {dayEntries.map(e => (
                             <span key={e.id} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full font-mono">
-                              {e.clock_in || "?"} → {e.clock_out || "active"}{e.project_name ? ` · ${e.project_name}` : ""}
+                              {to12hr(e.clock_in) || "?"} → {e.clock_out ? to12hr(e.clock_out) : "active"}{e.project_name ? ` · ${e.project_name}` : ""}
                             </span>
                           ))}
                         </div>

@@ -4,6 +4,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { format } from "date-fns";
 
+function to12hr(time24) {
+  if (!time24) return null;
+  const [h, m] = time24.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
 const COLORS = ["#f59e0b", "#3b82f6", "#8b5cf6", "#10b981", "#ef4444", "#f97316", "#06b6d4", "#84cc16", "#ec4899", "#6366f1"];
 
 export default function TimeDataTab({ timeEntries, employees, projects }) {
@@ -202,8 +210,8 @@ export default function TimeDataTab({ timeEntries, employees, projects }) {
                     <td className="py-2 px-2 text-slate-700">{format(new Date(e.date), "MMM d, yyyy")}</td>
                     <td className="py-2 px-2 font-medium">{e.employee_name}</td>
                     <td className="py-2 px-2 text-slate-600">{e.project_name || <span className="text-slate-400 italic">General</span>}</td>
-                    <td className="text-center py-2 px-2">{e.clock_in || "—"}</td>
-                    <td className="text-center py-2 px-2">{e.clock_out || <span className="text-green-600 font-semibold">Active</span>}</td>
+                    <td className="text-center py-2 px-2">{to12hr(e.clock_in) || "—"}</td>
+                    <td className="text-center py-2 px-2">{e.clock_out ? to12hr(e.clock_out) : <span className="text-green-600 font-semibold">Active</span>}</td>
                     <td className="text-center py-2 px-2 font-semibold">{e.hours_worked ?? "—"}</td>
                     <td className="py-2 px-2 text-slate-500 text-xs">{e.notes || ""}</td>
                   </tr>

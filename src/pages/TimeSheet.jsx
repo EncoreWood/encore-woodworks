@@ -38,6 +38,14 @@ function useElapsedTime(clockInTime) {
   return elapsed;
 }
 
+function to12hr(time24) {
+  if (!time24) return null;
+  const [h, m] = time24.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
 function calculateHours(clockIn, clockOut) {
   if (!clockIn || !clockOut) return 0;
   const [inH, inM] = clockIn.split(":").map(Number);
@@ -132,8 +140,8 @@ function DayRow({ date, entries, isToday, isAdmin, onEdit, onDelete }) {
                 </div>
                 <div className="flex items-center gap-3 mt-0.5 text-sm text-slate-600">
                   <span className="font-mono text-xs text-slate-700">
-                    {entry.clock_in || "—"} → {entry.clock_out
-                      ? entry.clock_out
+                    {to12hr(entry.clock_in) || "—"} → {entry.clock_out
+                      ? to12hr(entry.clock_out)
                       : <span className="text-green-600 animate-pulse font-semibold">Active</span>
                     }
                   </span>
@@ -635,7 +643,7 @@ export default function TimeSheet() {
                       <div key={e.employee.id} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
                         <div>
                           <p className="font-semibold text-slate-900">{e.employee.full_name}</p>
-                          <p className="text-sm text-slate-600">Since {e.clockInTime}</p>
+                          <p className="text-sm text-slate-600">Since {to12hr(e.clockInTime)}</p>
                         </div>
                         <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
                       </div>
