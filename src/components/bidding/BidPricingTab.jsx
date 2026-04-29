@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -231,13 +231,19 @@ export default function BidPricingTab() {
     setEditingStyle(null);
   };
 
-  // Catalog inline editing — saves immediately on blur/change
-  const updateCatalogItem = async (id, field, value) => {
+  // Debounce refs to avoid hammering the API on every keystroke
+  const saveTimers = useRef({});
+
+  // Update local state instantly; persist to API after 800ms idle (debounced per field)
+  const updateCatalogItem = (id, field, value) => {
     setCatalogItems(prev => prev.map(i => i.id === id ? { ...i, [field]: value } : i));
     const isNew = String(id).startsWith("new_");
-    if (!isNew) {
-      await base44.entities.BidItemCatalog.update(id, { [field]: value });
-    }
+    if (isNew) return;
+    const key = `${id}_${field}`;
+    clearTimeout(saveTimers.current[key]);
+    saveTimers.current[key] = setTimeout(() => {
+      base44.entities.BidItemCatalog.update(id, { [field]: value });
+    }, 800);
   };
 
   const addCatalogItem = async () => {
@@ -356,7 +362,6 @@ export default function BidPricingTab() {
                       <Input
                         value={item.name}
                         onChange={e => updateCatalogItem(item.id, "name", e.target.value)}
-                        onBlur={e => updateCatalogItem(item.id, "name", e.target.value)}
                         className="h-8 text-sm border-transparent hover:border-slate-200 focus:border-slate-300 bg-transparent"
                         placeholder="Item name"
                       />
