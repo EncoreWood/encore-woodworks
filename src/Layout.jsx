@@ -4,7 +4,7 @@ import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffe
 import MobileTabBar from "@/components/MobileTabBar";
 import ClockInModal from "@/components/timesheet/ClockInModal";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -358,13 +358,20 @@ export default function Layout({ children, currentPageName }) {
     }
   };
 
+  const hasFetchedLayout = useRef(false);
+
   useEffect(() => {
+    if (hasFetchedLayout.current) return;
+    hasFetchedLayout.current = true;
+
     const fetchData = async () => {
-      const user = await base44.auth.me();
+      const [user, emps, projs] = await Promise.all([
+        base44.auth.me(),
+        base44.entities.Employee.list(),
+        base44.entities.Project.list(),
+      ]);
       setCurrentUser(user);
-      const emps = await base44.entities.Employee.list();
       setEmployees(emps);
-      const projs = await base44.entities.Project.list();
       setProjects(projs);
 
       // If non-admin, find employee record and load their allowed_pages strictly
@@ -380,13 +387,11 @@ export default function Layout({ children, currentPageName }) {
           if (openEntry) {
             setOpenTimeEntryId(openEntry.id);
             setCurrentProjectName(openEntry.project_name || null);
-            // Reconstruct clockInTime from stored clock_in string
             const [h, m] = openEntry.clock_in.split(":").map(Number);
             const reconstructed = new Date();
             reconstructed.setHours(h, m, 0, 0);
             setClockInTime(reconstructed);
           }
-          // Sum all completed work entries for today
           const completedToday = entries.filter(e => e.date === todayStr && e.clock_out && e.hours_worked);
           setTodayCompletedHours(completedToday.reduce((s, e) => s + (e.hours_worked || 0), 0));
         }
