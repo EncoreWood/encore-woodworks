@@ -12,6 +12,20 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+// Module-level cache — persists across re-mounts, cleared on page reload
+const _layoutCache = {
+  fetched: false,
+  fetching: false,
+  user: null,
+  employees: [],
+  projects: [],
+  allowedPages: null,
+  clockInTime: null,
+  openTimeEntryId: null,
+  currentProjectName: null,
+  todayCompletedHours: 0,
+};
+
 export default function Layout({ children, currentPageName }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const location = useLocation();
@@ -358,11 +372,22 @@ export default function Layout({ children, currentPageName }) {
     }
   };
 
-  const hasFetchedLayout = useRef(false);
-
+  // Module-level cache so data is fetched once per browser session, not on every mount
   useEffect(() => {
-    if (hasFetchedLayout.current) return;
-    hasFetchedLayout.current = true;
+    if (_layoutCache.fetched) {
+      setCurrentUser(_layoutCache.user);
+      setEmployees(_layoutCache.employees);
+      setProjects(_layoutCache.projects);
+      if (_layoutCache.allowedPages !== null) setEmployeeAllowedPages(_layoutCache.allowedPages);
+      if (_layoutCache.clockInTime) setClockInTime(_layoutCache.clockInTime);
+      if (_layoutCache.openTimeEntryId) setOpenTimeEntryId(_layoutCache.openTimeEntryId);
+      if (_layoutCache.currentProjectName) setCurrentProjectName(_layoutCache.currentProjectName);
+      if (_layoutCache.todayCompletedHours) setTodayCompletedHours(_layoutCache.todayCompletedHours);
+      setPermissionsReady(true);
+      return;
+    }
+    if (_layoutCache.fetching) return;
+    _layoutCache.fetching = true;
 
     const fetchData = async () => {
       const [user, emps, projs] = await Promise.all([
@@ -370,17 +395,21 @@ export default function Layout({ children, currentPageName }) {
         base44.entities.Employee.list(),
         base44.entities.Project.list(),
       ]);
+      _layoutCache.user = user;
+      _layoutCache.employees = emps;
+      _layoutCache.projects = projs;
+
       setCurrentUser(user);
       setEmployees(emps);
       setProjects(projs);
 
-      // If non-admin, find employee record and load their allowed_pages strictly
       if (user?.role !== "admin") {
         const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
         if (emp) {
-          setEmployeeAllowedPages(new Set(emp.allowed_pages || []));
+          const allowedPages = new Set(emp.allowed_pages || []);
+          _layoutCache.allowedPages = allowedPages;
+          setEmployeeAllowedPages(allowedPages);
 
-          // Check if already clocked in today (open entry = has clock_in but no clock_out)
           const todayStr = format(new Date(), "yyyy-MM-dd");
           const entries = await base44.entities.TimeEntry.filter({ employee_id: emp.id });
           const openEntry = entries.find(e => e.date === todayStr && e.clock_in && !e.clock_out);
@@ -391,11 +420,18 @@ export default function Layout({ children, currentPageName }) {
             const reconstructed = new Date();
             reconstructed.setHours(h, m, 0, 0);
             setClockInTime(reconstructed);
+            _layoutCache.openTimeEntryId = openEntry.id;
+            _layoutCache.currentProjectName = openEntry.project_name || null;
+            _layoutCache.clockInTime = reconstructed;
           }
           const completedToday = entries.filter(e => e.date === todayStr && e.clock_out && e.hours_worked);
-          setTodayCompletedHours(completedToday.reduce((s, e) => s + (e.hours_worked || 0), 0));
+          const hrs = completedToday.reduce((s, e) => s + (e.hours_worked || 0), 0);
+          setTodayCompletedHours(hrs);
+          _layoutCache.todayCompletedHours = hrs;
         }
       }
+      _layoutCache.fetched = true;
+      _layoutCache.fetching = false;
       setPermissionsReady(true);
     };
     fetchData();
