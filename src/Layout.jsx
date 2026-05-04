@@ -551,7 +551,9 @@ export default function Layout({ children, currentPageName }) {
             // Admin section only visible to admins
             if (groupKey === "admin" && currentUser?.role !== "admin") return null;
             
-            const visibleItems = currentUser?.role === "admin"
+            // Wait until we know the user before filtering
+            if (!currentUser) return null;
+            const visibleItems = currentUser.role === "admin"
               ? group.items
               : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page));
             if (visibleItems.length === 0) return null;
@@ -689,8 +691,9 @@ export default function Layout({ children, currentPageName }) {
               </div>
               <nav className="p-3 space-y-3 flex-1 overflow-y-auto">
                 {Object.entries(navGroups).map(([groupKey, group]) => {
-                  if (groupKey === "admin" && currentUser?.role !== "admin") return null;
-                  const visibleItems = currentUser?.role === "admin"
+                  if (!currentUser) return null;
+                  if (groupKey === "admin" && currentUser.role !== "admin") return null;
+                  const visibleItems = currentUser.role === "admin"
                     ? group.items
                     : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page));
                   if (visibleItems.length === 0) return null;
