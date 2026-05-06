@@ -18,7 +18,7 @@ const _layoutCache = {
   fetching: false,
   user: null,
   employees: [],
-  projects: [],
+  projects: null, // null = not yet loaded (lazy)
   allowedPages: null,
   clockInTime: null,
   openTimeEntryId: null,
@@ -377,7 +377,7 @@ export default function Layout({ children, currentPageName }) {
     if (_layoutCache.fetched) {
       setCurrentUser(_layoutCache.user);
       setEmployees(_layoutCache.employees);
-      setProjects(_layoutCache.projects);
+      if (_layoutCache.projects !== null) setProjects(_layoutCache.projects);
       if (_layoutCache.allowedPages !== null) setEmployeeAllowedPages(_layoutCache.allowedPages);
       if (_layoutCache.clockInTime) setClockInTime(_layoutCache.clockInTime);
       if (_layoutCache.openTimeEntryId) setOpenTimeEntryId(_layoutCache.openTimeEntryId);
@@ -390,18 +390,15 @@ export default function Layout({ children, currentPageName }) {
     _layoutCache.fetching = true;
 
     const fetchData = async () => {
-      const [user, emps, projs] = await Promise.all([
+      const [user, emps] = await Promise.all([
         base44.auth.me(),
         base44.entities.Employee.list(),
-        base44.entities.Project.list(),
       ]);
       _layoutCache.user = user;
       _layoutCache.employees = emps;
-      _layoutCache.projects = projs;
 
       setCurrentUser(user);
       setEmployees(emps);
-      setProjects(projs);
 
       if (user?.role !== "admin") {
         const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
@@ -473,7 +470,15 @@ export default function Layout({ children, currentPageName }) {
     setCurrentProjectName(project_name || null);
   };
 
-  const handleClockIn = () => setShowClockInModal(true);
+  const handleClockIn = async () => {
+    // Lazy-load projects only when needed
+    if (_layoutCache.projects === null) {
+      const projs = await base44.entities.Project.filter({ archived: false }, '-updated_date', 100);
+      _layoutCache.projects = projs;
+      setProjects(projs);
+    }
+    setShowClockInModal(true);
+  };
 
   const handleSwitch = async ({ project_id, project_name, category }) => {
     // Clock out of current job first
@@ -558,7 +563,14 @@ export default function Layout({ children, currentPageName }) {
                     </span>
                   </button>
                   <button
-                    onClick={() => setShowSwitchModal(true)}
+                    onClick={async () => {
+                      if (_layoutCache.projects === null) {
+                        const projs = await base44.entities.Project.filter({ archived: false }, '-updated_date', 100);
+                        _layoutCache.projects = projs;
+                        setProjects(projs);
+                      }
+                      setShowSwitchModal(true);
+                    }}
                     title="Switch Job"
                     className="flex items-center justify-center px-3 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold transition-all shadow-lg"
                   >
