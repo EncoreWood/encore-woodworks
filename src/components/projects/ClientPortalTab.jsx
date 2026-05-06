@@ -161,10 +161,15 @@ export default function ClientPortalTab({ project }) {
               <p className="text-sm font-semibold text-slate-800">{clientUser.full_name || clientUser.email}</p>
               <p className="text-xs text-slate-500">{clientUser.email} · Client role</p>
             </div>
-            <button onClick={copyPortalLink} className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 font-medium border border-amber-300 rounded-lg px-2.5 py-1.5 hover:bg-amber-100 transition-colors">
-              {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-              {copied ? "Copied!" : "Copy Link"}
-            </button>
+            <div className="flex items-center gap-2">
+              <a href="/ClientPortal" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-800 font-medium border border-slate-300 rounded-lg px-2.5 py-1.5 hover:bg-slate-100 transition-colors">
+                Preview Portal
+              </a>
+              <button onClick={copyPortalLink} className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 font-medium border border-amber-300 rounded-lg px-2.5 py-1.5 hover:bg-amber-100 transition-colors">
+                {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                {copied ? "Copied!" : "Copy Link"}
+              </button>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">
@@ -181,6 +186,7 @@ export default function ClientPortalTab({ project }) {
                 {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                 {window.location.origin}/ClientPortal
               </button>
+              <a href="/ClientPortal" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:text-slate-700 underline ml-2">Preview</a>
             </div>
           </div>
         )}
