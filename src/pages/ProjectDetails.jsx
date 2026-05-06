@@ -210,6 +210,12 @@ export default function ProjectDetails() {
     setEditingSection(section);
   };
 
+  if (!projectId) {
+    // No ID in URL — redirect straight back to Kanban
+    window.location.replace(createPageUrl("Kanban"));
+    return null;
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
