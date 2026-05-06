@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
-import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Download, MessageSquare, Send, X, DollarSign, Image, FileText, Calendar, MapPin, User } from "lucide-react";
+import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Download, MessageSquare, Send, X, DollarSign, Image, FileText, Calendar, MapPin, User, ClipboardList, StickyNote, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // ── Milestone tracker ──────────────────────────────────────────────────────
@@ -160,6 +160,55 @@ function Section({ title, icon: Icon, children }) {
         {title}
       </h3>
       {children}
+    </div>
+  );
+}
+
+// ── Tasks section ─────────────────────────────────────────────────────────
+function ClientTasks({ projectId }) {
+  const [tasks, setTasks] = useState([]);
+  useEffect(() => {
+    base44.entities.ClientTask.filter({ project_id: projectId }).then(setTasks);
+  }, [projectId]);
+
+  const statusColor = { Pending: "bg-slate-100 text-slate-600", "In Progress": "bg-blue-100 text-blue-700", Completed: "bg-emerald-100 text-emerald-700" };
+
+  if (!tasks.length) return <p className="text-sm text-slate-400 text-center py-6">No tasks assigned yet.</p>;
+
+  return (
+    <div className="space-y-3">
+      {tasks.map(task => (
+        <div key={task.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <p className="text-sm font-semibold text-slate-800">{task.title}</p>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${statusColor[task.status] || statusColor.Pending}`}>{task.status}</span>
+          </div>
+          <p className="text-xs text-slate-500">{task.task_type}{task.due_date ? ` · Due ${format(new Date(task.due_date), "MMM d, yyyy")}` : ""}{task.requires_signature ? " · Signature required" : ""}</p>
+          {task.admin_notes && <p className="text-xs text-slate-500 mt-2 italic border-t border-slate-200 pt-2">{task.admin_notes}</p>}
+          {task.signed_by && <p className="text-xs text-emerald-600 mt-1">✓ Signed by {task.signed_by}</p>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Notes section ─────────────────────────────────────────────────────────
+function PortalNotes({ projectId }) {
+  const [notes, setNotes] = useState([]);
+  useEffect(() => {
+    base44.entities.PortalNote.filter({ project_id: projectId, is_visible_to_client: true }).then(setNotes);
+  }, [projectId]);
+
+  if (!notes.length) return <p className="text-sm text-slate-400 text-center py-6">No notes from your project team yet.</p>;
+
+  return (
+    <div className="space-y-3">
+      {notes.map(note => (
+        <div key={note.id} className="p-4 rounded-xl bg-amber-50 border border-amber-100">
+          <p className="text-sm text-slate-700">{note.note_text}</p>
+          <p className="text-xs text-slate-400 mt-2">{note.author_name || "Project Team"}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -363,6 +412,20 @@ export default function ClientPortal() {
                 </div>
               )}
             </div>
+          </Section>
+        )}
+
+        {/* Client Tasks */}
+        {settings?.show_tasks !== false && (
+          <Section title="Your Tasks" icon={ClipboardList}>
+            <ClientTasks projectId={project.id} />
+          </Section>
+        )}
+
+        {/* Notes */}
+        {settings?.show_notes !== false && (
+          <Section title="Project Notes" icon={StickyNote}>
+            <PortalNotes projectId={project.id} />
           </Section>
         )}
 
