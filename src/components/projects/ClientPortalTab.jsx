@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, UserPlus, Globe, GlobeLock, Copy, Check, Plus, Trash2, StickyNote, ClipboardList, Eye, EyeOff } from "lucide-react";
+import { Loader2, UserPlus, Globe, GlobeLock, Copy, Check, Plus, Trash2, StickyNote, ClipboardList, Eye, EyeOff, Monitor } from "lucide-react";
+import ClientPortalPreview from "@/components/projects/ClientPortalPreview";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -35,6 +36,7 @@ export default function ClientPortalTab({ project }) {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [newNote, setNewNote] = useState({ note_text: "", is_visible_to_client: true });
   const [showNoteForm, setShowNoteForm] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["client_portal_settings", project.id],
@@ -140,6 +142,23 @@ export default function ClientPortalTab({ project }) {
 
   return (
     <div className="space-y-6">
+      {showPreview && (
+        <ClientPortalPreview
+          project={project}
+          settings={settings}
+          tasks={tasks}
+          notes={notes}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
+
+      {/* Preview Button */}
+      <div className="flex justify-end">
+        <Button size="sm" variant="outline" onClick={() => setShowPreview(true)} className="gap-1.5 text-xs border-amber-300 text-amber-700 hover:bg-amber-50">
+          <Monitor className="w-3.5 h-3.5" /> Preview Portal
+        </Button>
+      </div>
+
       {/* Portal Status */}
       <div className={`rounded-xl p-4 border flex items-center justify-between ${isActive ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-200"}`}>
         <div className="flex items-center gap-3">
