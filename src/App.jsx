@@ -22,6 +22,7 @@ import ArchivedProjects from './pages/ArchivedProjects';
 import StrugglesSolutions from './pages/StrugglesSolutions';
 import ProductionPlanning from './pages/ProductionPlanning';
 import MistakeReport from './pages/MistakeReport';
+import ClientPortal from './pages/ClientPortal';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -77,6 +78,7 @@ const AuthenticatedApp = () => {
       <Route path="/StrugglesSolutions" element={<LayoutWrapper currentPageName="StrugglesSolutions"><StrugglesSolutions /></LayoutWrapper>} />
       <Route path="/ProductionPlanning" element={<LayoutWrapper currentPageName="ProductionPlanning"><ProductionPlanning /></LayoutWrapper>} />
       <Route path="/MistakeReport" element={<LayoutWrapper currentPageName="MistakeReport"><MistakeReport /></LayoutWrapper>} />
+      <Route path="/ClientPortal" element={<ClientPortal />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
