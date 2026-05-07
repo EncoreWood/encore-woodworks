@@ -83,7 +83,7 @@ function SelectionCard({ field, value, customValue, onChange, onCustomChange, re
   );
 }
 
-export default function SelectionsTab({ formData, setFormData, project, roomIndex, readOnly = false }) {
+export default function SelectionsTab({ formData, setFormData, project, roomIndex, readOnly = false, onSaved }) {
   const queryClient = useQueryClient();
   const [newCustomLabel, setNewCustomLabel] = useState("");
   const [newCustomValue, setNewCustomValue] = useState("");
@@ -98,9 +98,7 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
     if (readOnly || roomIndex === null || roomIndex === undefined || !project?.id) return;
     setSaving(true);
     const latestData = overrideData || formDataRef.current;
-    // Re-fetch fresh project to get latest rooms array
-    const freshProject = await base44.entities.Project.filter({ id: project.id });
-    const baseRooms = (freshProject?.[0]?.rooms ?? project.rooms ?? []);
+    const baseRooms = [...(project.rooms ?? [])];
     const updatedRooms = [...baseRooms];
     updatedRooms[roomIndex] = { ...updatedRooms[roomIndex], ...latestData };
     await base44.entities.Project.update(project.id, { rooms: updatedRooms });
@@ -108,6 +106,7 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
     queryClient.invalidateQueries({ queryKey: ["project", project.id] });
     setSaving(false);
     toast.success("Selections saved!");
+    if (onSaved) onSaved(latestData);
   };
 
   const handleChange = (key, value) => {

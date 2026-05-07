@@ -274,6 +274,9 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
                 project={project}
                 roomIndex={roomIndex}
                 readOnly={false}
+                onSaved={(savedData) => {
+                  setFormData(prev => ({ ...prev, ...savedData }));
+                }}
               />
             )}
 
