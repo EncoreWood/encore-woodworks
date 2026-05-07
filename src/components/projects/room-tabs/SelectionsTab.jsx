@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Save } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -88,51 +88,37 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
   const [newCustomLabel, setNewCustomLabel] = useState("");
   const [newCustomValue, setNewCustomValue] = useState("");
   const [addingCustom, setAddingCustom] = useState(false);
-  const [pendingCustoms, setPendingCustoms] = useState({});
+  const [saving, setSaving] = useState(false);
+  // Keep a live ref to always have the latest formData for save
+  const formDataRef = useRef(formData);
+  formDataRef.current = formData;
 
-  const autoSave = async (updatedRoom) => {
+  const saveSelections = async (overrideData) => {
     if (readOnly || roomIndex === null || roomIndex === undefined || !project?.id) return;
-    // Always pull latest rooms from cache to avoid stale-prop overwrites
-    const cached = queryClient.getQueryData(["project", project.id]);
-    const baseRooms = (cached?.rooms ?? project.rooms ?? []);
+    setSaving(true);
+    const latestData = overrideData || formDataRef.current;
+    // Re-fetch fresh project to get latest rooms array
+    const freshProject = await base44.entities.Project.filter({ id: project.id });
+    const baseRooms = (freshProject?.[0]?.rooms ?? project.rooms ?? []);
     const updatedRooms = [...baseRooms];
-    updatedRooms[roomIndex] = updatedRoom;
+    updatedRooms[roomIndex] = { ...updatedRooms[roomIndex], ...latestData };
     await base44.entities.Project.update(project.id, { rooms: updatedRooms });
     queryClient.invalidateQueries({ queryKey: ["projects"] });
     queryClient.invalidateQueries({ queryKey: ["project", project.id] });
+    setSaving(false);
+    toast.success("Selections saved!");
   };
 
-  const handleChange = async (key, value) => {
-    const updated = { ...formData, [key]: value };
-    setFormData(updated);
-    if (value !== "Custom") {
-      await autoSave(updated);
-    }
+  const handleChange = (key, value) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleCustomChange = async (key, value) => {
-    setPendingCustoms(prev => ({ ...prev, [key]: value }));
-    const updated = { ...formData, [key]: value };
-    setFormData(updated);
+  const handleCustomChange = (key, value) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleCustomBlur = async (key) => {
-    const updated = { ...formData, [key]: formData[key] };
-    await autoSave(updated);
-  };
-
-  const handleCabinetCountChange = async (value) => {
-    const updated = { ...formData, cabinet_count: value };
-    setFormData(updated);
-  };
-
-  const handleCabinetCountBlur = async () => {
-    const updated = { ...formData, cabinet_count: formData.cabinet_count ? Number(formData.cabinet_count) : undefined };
-    await autoSave(updated);
-  };
-
-  const handleNotesBlur = async () => {
-    await autoSave({ ...formData });
+  const handleCabinetCountChange = (value) => {
+    setFormData(prev => ({ ...prev, cabinet_count: value }));
   };
 
   const handleAddCustomSelection = async () => {
@@ -140,17 +126,14 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
     const custom_selections = [...(formData.custom_selections || []), { label: newCustomLabel.trim(), value: newCustomValue.trim() }];
     const updated = { ...formData, custom_selections };
     setFormData(updated);
-    await autoSave(updated);
     setNewCustomLabel("");
     setNewCustomValue("");
     setAddingCustom(false);
   };
 
-  const handleRemoveCustomSelection = async (idx) => {
+  const handleRemoveCustomSelection = (idx) => {
     const custom_selections = (formData.custom_selections || []).filter((_, i) => i !== idx);
-    const updated = { ...formData, custom_selections };
-    setFormData(updated);
-    await autoSave(updated);
+    setFormData(prev => ({ ...prev, custom_selections }));
   };
 
   return (
@@ -162,7 +145,7 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
             key={field.key}
             field={field}
             value={formData[field.key] || ""}
-            customValue={pendingCustoms[field.key]}
+            customValue={formData[field.key]}
             onChange={handleChange}
             onCustomChange={handleCustomChange}
             readOnly={readOnly}
@@ -182,7 +165,7 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
               type="number"
               value={formData.cabinet_count || ""}
               onChange={e => handleCabinetCountChange(e.target.value)}
-              onBlur={handleCabinetCountBlur}
+
               className="h-8 text-sm"
               placeholder="Count"
             />
@@ -202,8 +185,7 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
         ) : (
           <Textarea
             value={formData.notes || ""}
-            onChange={e => setFormData({ ...formData, notes: e.target.value })}
-            onBlur={handleNotesBlur}
+            onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
             placeholder="Room-specific notes..."
             rows={2}
             className="mt-1 text-sm"
@@ -258,6 +240,20 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
               <Plus className="w-3 h-3" /> Add Custom Selection
             </Button>
           )}
+        </div>
+      )}
+
+      {/* Save Button */}
+      {!readOnly && (
+        <div className="flex justify-end pt-2 border-t border-slate-100">
+          <Button
+            onClick={() => saveSelections()}
+            disabled={saving}
+            className="bg-amber-600 hover:bg-amber-700 text-white gap-2"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? "Saving..." : "Save Selections"}
+          </Button>
         </div>
       )}
     </div>
