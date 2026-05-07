@@ -9,6 +9,7 @@ import { base44 } from "@/api/base44Client";
 import { Trash2, Upload, X, Send, Edit, FileText, ExternalLink, CheckCircle2, Circle } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import RoomFilesSection from "@/components/projects/RoomFilesSection";
 
 export default function RoomManager({ open, onOpenChange, room, roomIndex, project, onSave }) {
   const queryClient = useQueryClient();
@@ -245,11 +246,19 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
               </div>
             )}
 
-            {/* Files */}
+            {/* Room Files (from RoomFile entity — uploaded via Room Files section) */}
+            <RoomFilesSection
+              project={project}
+              roomName={formData.room_name || `Room ${roomIndex + 1}`}
+              roomId={`${project?.id}_${roomIndex}`}
+            />
+
+            {/* Legacy Files (stored inside project.rooms[].files) */}
+            {filesWithLiveStatus.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-slate-700">
-                  Files {filesWithLiveStatus.length > 0 && `(${filesWithLiveStatus.length})`}
+                  Legacy Files ({filesWithLiveStatus.length})
                 </p>
                 {filesWithLiveStatus.length > 0 && (
                   <Button size="sm" className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white" onClick={handlePtsSave}>
@@ -257,7 +266,7 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
                   </Button>
                 )}
               </div>
-              {filesWithLiveStatus.length > 0 ? (
+              {filesWithLiveStatus.length > 0 && (
                 <div className="space-y-3">
                   {filesWithLiveStatus.map((file, idx) => (
                     <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
@@ -317,10 +326,9 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-sm text-slate-400 text-center py-4 bg-slate-50 rounded-lg">No files attached</p>
               )}
             </div>
+            )}
 
             <div className="flex justify-end pt-2">
               <Button variant="outline" onClick={handleClose}>Close</Button>

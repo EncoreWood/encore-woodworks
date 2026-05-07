@@ -10,7 +10,7 @@ export default function RoomFilesModal({ projectId, projectName, roomName, onClo
   const { data: files = [], isLoading } = useQuery({
     queryKey: ["roomFiles", projectId, roomName],
     queryFn: () => base44.entities.RoomFile.filter({ project_id: projectId }),
-    select: (all) => all.filter(f => f.room_name?.toLowerCase() === roomName?.toLowerCase()),
+    select: (all) => all.filter(f => f.room_name?.toLowerCase().trim() === roomName?.toLowerCase().trim()),
     enabled: !!projectId && !!roomName,
   });
 
