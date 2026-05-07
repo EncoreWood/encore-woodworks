@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
-import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Download, MessageSquare, DollarSign, Image, FileText, Calendar, MapPin, ClipboardList, StickyNote, X } from "lucide-react";
+import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Download, MessageSquare, DollarSign, Image, FileText, Calendar, MapPin, ClipboardList, StickyNote, X, DoorOpen } from "lucide-react";
 
 function Milestones({ project }) {
   const steps = [
@@ -114,6 +114,98 @@ function PortalNotesPreview({ notes }) {
   );
 }
 
+function RoomsPreview({ project }) {
+  const [roomFiles, setRoomFiles] = useState([]);
+  const [openRoom, setOpenRoom] = useState(null);
+
+  useEffect(() => {
+    base44.entities.RoomFile.filter({ project_id: project.id }).then(files => {
+      setRoomFiles(files.filter(f => !f.is_shop_file));
+    });
+  }, [project.id]);
+
+  const rooms = project.rooms || [];
+  if (!rooms.length) return <p className="text-sm text-slate-400 text-center py-4">No rooms added yet.</p>;
+
+  const SELECTION_LABELS = {
+    cabinet_style: "Cabinet Style", wood_species: "Wood Species", finish: "Finish",
+    door_style: "Door Style", handles: "Hardware", drawer_glides: "Drawer Glides",
+    hinges: "Hinges", molding: "Molding", cabs_to_height: "Cabs to Height", cabinet_count: "Cabinet Count"
+  };
+
+  return (
+    <div className="space-y-2">
+      {rooms.map((room, idx) => {
+        const photos = roomFiles.filter(f => f.room_name?.toLowerCase() === room.room_name?.toLowerCase());
+        const isOpen = openRoom === idx;
+        const hasSelections = Object.keys(SELECTION_LABELS).some(k => room[k]);
+        return (
+          <div key={idx} className="border border-slate-100 rounded-xl overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-slate-50 transition-colors text-left"
+              onClick={() => setOpenRoom(isOpen ? null : idx)}
+            >
+              <div className="flex items-center gap-2">
+                <DoorOpen className="w-4 h-4 text-amber-500" />
+                <span className="text-sm font-semibold text-slate-800">{room.room_name || `Room ${idx + 1}`}</span>
+                {room.cabinet_count && <span className="text-xs text-slate-400">· {room.cabinet_count} cabinets</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                {photos.length > 0 && <span className="text-xs text-slate-400">{photos.length} photo{photos.length !== 1 ? "s" : ""}</span>}
+                <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? "rotate-90" : ""}`} />
+              </div>
+            </button>
+            {isOpen && (
+              <div className="px-4 pb-4 bg-white border-t border-slate-100 space-y-3">
+                {hasSelections && (
+                  <div className="grid grid-cols-2 gap-2 pt-3">
+                    {Object.entries(SELECTION_LABELS).map(([key, label]) => {
+                      if (!room[key]) return null;
+                      return (
+                        <div key={key} className="bg-slate-50 rounded-lg p-2">
+                          <p className="text-xs text-slate-400 mb-0.5">{label}</p>
+                          <p className="text-sm font-semibold text-slate-800">{room[key]}</p>
+                        </div>
+                      );
+                    })}
+                    {(room.custom_selections || []).map((cs, ci) => (
+                      <div key={ci} className="bg-amber-50 rounded-lg p-2">
+                        <p className="text-xs text-amber-500 mb-0.5">{cs.label}</p>
+                        <p className="text-sm font-semibold text-slate-800">{cs.value || "—"}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {room.notes && <p className="text-sm text-slate-600 bg-amber-50/50 rounded-lg p-2">{room.notes}</p>}
+                {photos.length > 0 && (
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {photos.map(f => (
+                      f.file_type === "image" ? (
+                        <a key={f.id} href={f.file_url} target="_blank" rel="noopener noreferrer">
+                          <img src={f.file_url} alt={f.label || f.file_name} className="w-full aspect-square object-cover rounded-lg hover:opacity-90 transition-opacity" />
+                        </a>
+                      ) : (
+                        <a key={f.id} href={f.file_url} target="_blank" rel="noopener noreferrer"
+                          className="flex flex-col items-center justify-center gap-1 aspect-square bg-slate-50 rounded-lg border border-slate-100 hover:bg-amber-50 transition-colors">
+                          <FileText className="w-5 h-5 text-red-400" />
+                          <span className="text-xs text-slate-500 truncate px-1 w-full text-center">{f.label || f.file_name}</span>
+                        </a>
+                      )
+                    ))}
+                  </div>
+                )}
+                {!hasSelections && !room.notes && photos.length === 0 && (
+                  <p className="text-sm text-slate-400 text-center py-2">No details added yet.</p>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ClientPortalPreview({ project, settings, tasks, notes, onClose }) {
   const statusLabels = {
     inquiry: "Inquiry", quoted: "Quoted", approved: "Approved", in_design: "In Design",
@@ -174,6 +266,12 @@ export default function ClientPortalPreview({ project, settings, tasks, notes, o
             {settings?.show_milestones !== false && (
               <Section title="Progress" icon={CheckCircle2}>
                 <Milestones project={project} />
+              </Section>
+            )}
+
+            {(project.rooms?.length > 0) && (
+              <Section title="Your Rooms" icon={DoorOpen}>
+                <RoomsPreview project={project} />
               </Section>
             )}
 
