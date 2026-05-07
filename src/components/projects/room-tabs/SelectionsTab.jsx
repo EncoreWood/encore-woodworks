@@ -92,7 +92,10 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
 
   const autoSave = async (updatedRoom) => {
     if (readOnly || roomIndex === null || roomIndex === undefined || !project?.id) return;
-    const updatedRooms = [...(project.rooms || [])];
+    // Always pull latest rooms from cache to avoid stale-prop overwrites
+    const cached = queryClient.getQueryData(["project", project.id]);
+    const baseRooms = (cached?.rooms ?? project.rooms ?? []);
+    const updatedRooms = [...baseRooms];
     updatedRooms[roomIndex] = updatedRoom;
     await base44.entities.Project.update(project.id, { rooms: updatedRooms });
     queryClient.invalidateQueries({ queryKey: ["projects"] });

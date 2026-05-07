@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
-import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Download, MessageSquare, Send, X, DollarSign, Image, FileText, Calendar, MapPin, User, ClipboardList, StickyNote, Clock } from "lucide-react";
+import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Download, MessageSquare, Send, X, DollarSign, Image, FileText, Calendar, MapPin, User, ClipboardList, StickyNote, Clock, DoorOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // ── Milestone tracker ──────────────────────────────────────────────────────
@@ -213,6 +213,128 @@ function PortalNotes({ projectId }) {
   );
 }
 
+// ── Rooms section ─────────────────────────────────────────────────────────
+function RoomsSection({ project }) {
+  const [roomFiles, setRoomFiles] = useState([]);
+  const [lightbox, setLightbox] = useState(null);
+  const [openRoom, setOpenRoom] = useState(null);
+
+  useEffect(() => {
+    base44.entities.RoomFile.filter({ project_id: project.id }).then(files => {
+      setRoomFiles(files.filter(f => !f.is_shop_file));
+    });
+  }, [project.id]);
+
+  const rooms = (project.rooms || []);
+  if (!rooms.length) return <p className="text-sm text-slate-400 text-center py-6">No rooms added yet.</p>;
+
+  const SELECTION_LABELS = {
+    cabinet_style: "Cabinet Style", wood_species: "Wood Species", finish: "Finish",
+    door_style: "Door Style", handles: "Hardware", drawer_glides: "Drawer Glides",
+    hinges: "Hinges", molding: "Molding", cabs_to_height: "Cabs to Height", cabinet_count: "Cabinet Count"
+  };
+
+  return (
+    <div className="space-y-3">
+      {rooms.map((room, idx) => {
+        const photos = roomFiles.filter(f => f.room_name?.toLowerCase() === room.room_name?.toLowerCase());
+        const isOpen = openRoom === idx;
+        const hasSelections = Object.keys(SELECTION_LABELS).some(k => room[k]);
+
+        return (
+          <div key={idx} className="border border-slate-100 rounded-2xl overflow-hidden">
+            <button
+              className="w-full flex items-center justify-between px-5 py-4 bg-white hover:bg-slate-50 transition-colors text-left"
+              onClick={() => setOpenRoom(isOpen ? null : idx)}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center">
+                  <DoorOpen className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-800">{room.room_name || `Room ${idx + 1}`}</p>
+                  {room.cabinet_count && <p className="text-xs text-slate-400">{room.cabinet_count} cabinets</p>}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {photos.length > 0 && <span className="text-xs text-slate-400">{photos.length} photo{photos.length !== 1 ? "s" : ""}</span>}
+                <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? "rotate-90" : ""}`} />
+              </div>
+            </button>
+
+            {isOpen && (
+              <div className="px-5 pb-5 bg-white border-t border-slate-100 space-y-4">
+                {/* Selections */}
+                {hasSelections && (
+                  <div className="grid grid-cols-2 gap-2 pt-3">
+                    {Object.entries(SELECTION_LABELS).map(([key, label]) => {
+                      if (!room[key]) return null;
+                      return (
+                        <div key={key} className="bg-slate-50 rounded-xl p-3">
+                          <p className="text-xs text-slate-400 font-medium mb-0.5">{label}</p>
+                          <p className="text-sm font-semibold text-slate-800">{room[key]}</p>
+                        </div>
+                      );
+                    })}
+                    {(room.custom_selections || []).map((cs, ci) => (
+                      <div key={ci} className="bg-amber-50 rounded-xl p-3">
+                        <p className="text-xs text-amber-500 font-medium mb-0.5">{cs.label}</p>
+                        <p className="text-sm font-semibold text-slate-800">{cs.value || "—"}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Notes */}
+                {room.notes && (
+                  <p className="text-sm text-slate-600 bg-amber-50/50 rounded-xl p-3">{room.notes}</p>
+                )}
+
+                {/* Photos */}
+                {photos.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Photos & Files</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {photos.map(f => (
+                        f.file_type === "image" ? (
+                          <button key={f.id} onClick={() => setLightbox(f)} className="rounded-xl overflow-hidden border border-slate-100">
+                            <img src={f.file_url} alt={f.label || f.file_name} className="w-full aspect-square object-cover hover:opacity-90 transition-opacity" />
+                          </button>
+                        ) : (
+                          <a key={f.id} href={f.file_url} target="_blank" rel="noopener noreferrer"
+                            className="flex flex-col items-center justify-center gap-1 aspect-square bg-slate-50 rounded-xl border border-slate-100 hover:bg-amber-50 transition-colors">
+                            <FileText className="w-6 h-6 text-red-400" />
+                            <span className="text-xs text-slate-500 truncate px-1 w-full text-center">{f.label || f.file_name}</span>
+                          </a>
+                        )
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {!hasSelections && !room.notes && photos.length === 0 && (
+                  <p className="text-sm text-slate-400 text-center py-3">No details added yet.</p>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {lightbox && (
+        <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
+          <div className="relative max-w-2xl max-h-full" onClick={e => e.stopPropagation()}>
+            <img src={lightbox.file_url} alt={lightbox.label || lightbox.file_name} className="max-h-[90vh] max-w-full rounded-xl object-contain" />
+            <button className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1.5" onClick={() => setLightbox(null)}>
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main portal ───────────────────────────────────────────────────────────
 export default function ClientPortal() {
   const [user, setUser] = useState(null);
@@ -348,6 +470,13 @@ export default function ClientPortal() {
         {settings?.show_milestones !== false && (
           <Section title="Progress" icon={CheckCircle2}>
             <Milestones project={project} />
+          </Section>
+        )}
+
+        {/* Rooms */}
+        {(project.rooms?.length > 0) && (
+          <Section title="Your Rooms" icon={DoorOpen}>
+            <RoomsSection project={project} />
           </Section>
         )}
 
