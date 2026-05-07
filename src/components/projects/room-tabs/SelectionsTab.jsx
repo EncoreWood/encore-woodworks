@@ -89,6 +89,7 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
   const [newCustomValue, setNewCustomValue] = useState("");
   const [addingCustom, setAddingCustom] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pendingCustoms, setPendingCustoms] = useState({});
   // Keep a live ref to always have the latest formData for save
   const formDataRef = useRef(formData);
   formDataRef.current = formData;
@@ -121,6 +122,10 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
     setFormData(prev => ({ ...prev, cabinet_count: value }));
   };
 
+  const handleCabinetCountBlur = () => {
+    setFormData(prev => ({ ...prev, cabinet_count: prev.cabinet_count ? Number(prev.cabinet_count) : undefined }));
+  };
+
   const handleAddCustomSelection = async () => {
     if (!newCustomLabel.trim()) return;
     const custom_selections = [...(formData.custom_selections || []), { label: newCustomLabel.trim(), value: newCustomValue.trim() }];
@@ -145,7 +150,7 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
             key={field.key}
             field={field}
             value={formData[field.key] || ""}
-            customValue={formData[field.key]}
+            customValue={pendingCustoms[field.key]}
             onChange={handleChange}
             onCustomChange={handleCustomChange}
             readOnly={readOnly}
@@ -165,7 +170,7 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
               type="number"
               value={formData.cabinet_count || ""}
               onChange={e => handleCabinetCountChange(e.target.value)}
-
+              onBlur={handleCabinetCountBlur}
               className="h-8 text-sm"
               placeholder="Count"
             />
