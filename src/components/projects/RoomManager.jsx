@@ -3,18 +3,27 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { base44 } from "@/api/base44Client";
-import { Trash2, Upload, X, Send, Edit, FileText, ExternalLink, CheckCircle2, Circle } from "lucide-react";
+import { Edit, CheckCircle2, Circle, Send, Trash2, FileText, Upload, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import RoomFilesSection from "@/components/projects/RoomFilesSection";
+import SelectionsTab from "@/components/projects/room-tabs/SelectionsTab";
+import PhotosTasksTab from "@/components/projects/room-tabs/PhotosTasksTab";
+import ShopFilesTab from "@/components/projects/room-tabs/ShopFilesTab";
+import { cn } from "@/lib/utils";
 
-export default function RoomManager({ open, onOpenChange, room, roomIndex, project, onSave }) {
+const TABS = [
+  { id: "selections", label: "🎨 Selections" },
+  { id: "photos", label: "📸 3Ds & Tasks" },
+  { id: "shop", label: "🔧 Shop" },
+];
+
+export default function RoomManager({ open, onOpenChange, room, roomIndex, project, onSave, currentUser }) {
   const queryClient = useQueryClient();
   const isNewRoom = roomIndex === null || roomIndex === undefined;
   const [isEditing, setIsEditing] = useState(isNewRoom);
+  const [activeTab, setActiveTab] = useState("selections");
   const [formData, setFormData] = useState({
     room_name: "",
     cabinet_count: "",
@@ -23,12 +32,22 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
     notes: "",
     files: [],
     completed: false,
+    cabinet_style: "",
+    wood_species: "",
+    door_style: "",
+    handles: "",
+    drawer_glides: "",
+    hinges: "",
+    molding: "",
+    cabs_to_height: "",
+    custom_selections: [],
     ...room
   });
 
   useEffect(() => {
     const newIsNew = roomIndex === null || roomIndex === undefined;
     setIsEditing(newIsNew);
+    setActiveTab("selections");
     setFormData({
       room_name: "",
       cabinet_count: "",
@@ -37,29 +56,35 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
       notes: "",
       files: [],
       completed: false,
+      cabinet_style: "",
+      wood_species: "",
+      door_style: "",
+      handles: "",
+      drawer_glides: "",
+      hinges: "",
+      molding: "",
+      cabs_to_height: "",
+      custom_selections: [],
       ...room
     });
   }, [room, roomIndex]);
+
   const [uploading, setUploading] = useState(false);
 
-  // Fetch live production items to get up-to-date stages for this room's files
+  // Fetch live production items for legacy files
   const { data: productionItems = [] } = useQuery({
     queryKey: ["productionItems"],
     queryFn: () => base44.entities.ProductionItem.list(),
-    enabled: open && !!project?.id
+    enabled: open && !!project?.id && (formData.files || []).length > 0
   });
 
-  // Merge production stage from live ProductionItems into the room's files
   const filesWithLiveStatus = (formData.files || []).map(file => {
     const match = productionItems.find(
       pi => pi.project_id === project?.id &&
         pi.room_name === formData.room_name &&
         (pi.file_id === file.url || pi.files?.some(f => f.url === file.url || f.name === file.name))
     );
-    if (match) {
-      return { ...file, in_production: true, production_stage: match.stage };
-    }
-    return file;
+    return match ? { ...file, in_production: true, production_stage: match.stage } : file;
   });
 
   const createProductionItemMutation = useMutation({
@@ -74,42 +99,27 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
     const files = Array.from(e.target.files);
     if (!files.length) return;
     setUploading(true);
-    try {
-      for (const file of files) {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        setFormData(prev => ({
-          ...prev,
-          files: [...(prev.files || []), { name: file.name, url: file_url }]
-        }));
-      }
-    } catch (error) {
-      toast.error("Failed to upload file");
+    for (const file of files) {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setFormData(prev => ({ ...prev, files: [...(prev.files || []), { name: file.name, url: file_url }] }));
     }
     setUploading(false);
     e.target.value = "";
   };
 
   const handleRemoveFile = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      files: prev.files.filter((_, i) => i !== index)
-    }));
+    setFormData(prev => ({ ...prev, files: prev.files.filter((_, i) => i !== index) }));
   };
 
   const handleSendToProduction = (file, fileIndex) => {
-    const currentFile = formData.files[fileIndex]; // use latest formData (has PTS)
+    const currentFile = formData.files[fileIndex];
     const updatedFiles = [...formData.files];
     updatedFiles[fileIndex] = { ...currentFile, in_production: true, production_stage: "face_frame" };
     setFormData(prev => ({ ...prev, files: updatedFiles }));
 
     const updatedRooms = [...(project.rooms || [])];
     if (roomIndex !== null && roomIndex !== undefined) {
-      const roomToSave = {
-        ...formData,
-        cabinet_count: formData.cabinet_count ? Number(formData.cabinet_count) : undefined,
-        files: updatedFiles
-      };
-      updatedRooms[roomIndex] = roomToSave;
+      updatedRooms[roomIndex] = { ...formData, cabinet_count: formData.cabinet_count ? Number(formData.cabinet_count) : undefined, files: updatedFiles };
       base44.entities.Project.update(project.id, { rooms: updatedRooms });
     }
 
@@ -126,7 +136,6 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
     });
   };
 
-  // Save PTS inline without entering edit mode
   const handlePtsChange = (fileIdx, newPts) => {
     const updated = [...(formData.files || [])];
     updated[fileIdx] = { ...updated[fileIdx], pts: newPts === "" ? undefined : Number(newPts) };
@@ -135,18 +144,10 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
 
   const handlePtsSave = async () => {
     if (roomIndex === null || roomIndex === undefined) return;
-
-    const dataToSave = {
-      ...formData,
-      cabinet_count: formData.cabinet_count ? Number(formData.cabinet_count) : undefined
-    };
-
-    // Build updated rooms array and save directly to DB
+    const dataToSave = { ...formData, cabinet_count: formData.cabinet_count ? Number(formData.cabinet_count) : undefined };
     const updatedRooms = [...(project.rooms || [])];
     updatedRooms[roomIndex] = dataToSave;
     await base44.entities.Project.update(project.id, { rooms: updatedRooms });
-
-    // Also sync pts to any existing production items for these files
     for (const pi of productionItems) {
       if (pi.project_id !== project?.id || pi.room_name !== formData.room_name) continue;
       const updatedPiFiles = (pi.files || []).map(pf => {
@@ -157,7 +158,6 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
         await base44.entities.ProductionItem.update(pi.id, { files: updatedPiFiles });
       }
     }
-
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
     queryClient.invalidateQueries({ queryKey: ["project", project.id] });
     queryClient.invalidateQueries({ queryKey: ["projects"] });
@@ -166,10 +166,7 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const dataToSave = {
-      ...formData,
-      cabinet_count: formData.cabinet_count ? Number(formData.cabinet_count) : undefined
-    };
+    const dataToSave = { ...formData, cabinet_count: formData.cabinet_count ? Number(formData.cabinet_count) : undefined };
     onSave(dataToSave);
     setIsEditing(false);
   };
@@ -179,94 +176,133 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
     setIsEditing(isNewRoom);
   };
 
-  const displayData = formData;
+  const roomName = formData.room_name || (roomIndex !== null && roomIndex !== undefined ? `Room ${roomIndex + 1}` : "New Room");
+  const roomId = project?.id && roomIndex !== null ? `${project.id}_${roomIndex}` : undefined;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between pr-6">
-            <DialogTitle>
-              {isNewRoom ? "Add Room" : displayData.room_name || "Room Details"}
-            </DialogTitle>
+            <div className="flex items-center gap-3">
+              <DialogTitle>
+                {isNewRoom ? "Add Room" : (formData.room_name || "Room Details")}
+              </DialogTitle>
+              {!isNewRoom && (
+                formData.completed ? (
+                  <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">
+                    <CheckCircle2 className="w-3 h-3 mr-1" /> Completed
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-slate-500 text-xs">
+                    <Circle className="w-3 h-3 mr-1" /> In Progress
+                  </Badge>
+                )
+              )}
+            </div>
             {!isNewRoom && !isEditing && (
               <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
-                <Edit className="w-4 h-4 mr-1" />
-                Edit
+                <Edit className="w-4 h-4 mr-1" /> Edit Name
               </Button>
             )}
           </div>
         </DialogHeader>
 
-        {/* VIEW MODE */}
-        {!isEditing ? (
-          <div className="space-y-5">
-            {/* Status */}
-            <div className="flex items-center gap-2">
-              {displayData.completed ? (
-                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
-                  <CheckCircle2 className="w-3 h-3 mr-1" /> Completed
-                </Badge>
-              ) : (
-                <Badge variant="outline" className="text-slate-600">
-                  <Circle className="w-3 h-3 mr-1" /> In Progress
-                </Badge>
-              )}
+        {/* New room form: just name */}
+        {isNewRoom ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="room_name">Room Name</Label>
+              <Input
+                id="room_name"
+                value={formData.room_name}
+                onChange={(e) => setFormData({ ...formData, room_name: e.target.value })}
+                placeholder="e.g., Kitchen, Master Bath"
+                className="mt-1"
+                autoFocus
+              />
             </div>
-
-            {/* Details Grid */}
-            <div className="grid grid-cols-2 gap-4">
-              {displayData.cabinet_count && (
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Cabinet Count</p>
-                  <p className="font-semibold text-slate-900">{displayData.cabinet_count}</p>
-                </div>
-              )}
-              {displayData.style && (
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Style</p>
-                  <p className="font-semibold text-slate-900">{displayData.style}</p>
-                </div>
-              )}
-              {displayData.finish && (
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Finish</p>
-                  <p className="font-semibold text-slate-900">{displayData.finish}</p>
-                </div>
-              )}
+            <div className="flex gap-2 justify-end pt-2">
+              <Button type="button" variant="outline" onClick={handleClose}>Cancel</Button>
+              <Button type="submit" className="bg-amber-600 hover:bg-amber-700" disabled={!formData.room_name.trim()}>
+                Add Room
+              </Button>
             </div>
-
-            {/* Notes */}
-            {displayData.notes && (
-              <div>
-                <p className="text-xs text-slate-500 mb-1 font-medium">Notes</p>
-                <p className="text-slate-700 text-sm whitespace-pre-wrap bg-slate-50 rounded-lg p-3">
-                  {displayData.notes}
-                </p>
-              </div>
+          </form>
+        ) : (
+          <>
+            {/* Edit room name inline */}
+            {isEditing && (
+              <form onSubmit={handleSubmit} className="mb-3 flex gap-2 items-end">
+                <div className="flex-1">
+                  <Label htmlFor="room_name_edit" className="text-xs">Room Name</Label>
+                  <Input
+                    id="room_name_edit"
+                    value={formData.room_name}
+                    onChange={(e) => setFormData({ ...formData, room_name: e.target.value })}
+                    className="mt-1"
+                  />
+                </div>
+                <Button type="submit" className="bg-amber-600 hover:bg-amber-700 h-9">Save</Button>
+                <Button type="button" variant="outline" className="h-9" onClick={() => setIsEditing(false)}>Cancel</Button>
+              </form>
             )}
 
-            {/* Room Files (from RoomFile entity — uploaded via Room Files section) */}
-            <RoomFilesSection
-              project={project}
-              roomName={formData.room_name || `Room ${roomIndex + 1}`}
-              roomId={`${project?.id}_${roomIndex}`}
-            />
+            {/* Tabs */}
+            <div className="flex border-b border-slate-200 mb-4">
+              {TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px",
+                    activeTab === tab.id
+                      ? "border-amber-500 text-amber-700"
+                      : "border-transparent text-slate-500 hover:text-slate-700"
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
-            {/* Legacy Files (stored inside project.rooms[].files) */}
-            {filesWithLiveStatus.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-medium text-slate-700">
-                  Legacy Files ({filesWithLiveStatus.length})
-                </p>
-                {filesWithLiveStatus.length > 0 && (
-                  <Button size="sm" className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white" onClick={handlePtsSave}>
-                    Save PTS
-                  </Button>
-                )}
-              </div>
-              {filesWithLiveStatus.length > 0 && (
+            {/* Tab Content */}
+            {activeTab === "selections" && (
+              <SelectionsTab
+                formData={formData}
+                setFormData={setFormData}
+                project={project}
+                roomIndex={roomIndex}
+                readOnly={false}
+              />
+            )}
+
+            {activeTab === "photos" && (
+              <PhotosTasksTab
+                project={project}
+                roomName={roomName}
+                roomId={roomId}
+                currentUser={currentUser}
+                readOnly={false}
+              />
+            )}
+
+            {activeTab === "shop" && (
+              <ShopFilesTab
+                project={project}
+                roomName={roomName}
+                roomId={roomId}
+                currentUser={currentUser}
+              />
+            )}
+
+            {/* Legacy files (if any exist) — shown in Selections tab area below */}
+            {activeTab === "selections" && filesWithLiveStatus.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-slate-700">Legacy Files ({filesWithLiveStatus.length})</p>
+                  <Button size="sm" className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white" onClick={handlePtsSave}>Save PTS</Button>
+                </div>
                 <div className="space-y-3">
                   {filesWithLiveStatus.map((file, idx) => (
                     <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
@@ -286,12 +322,10 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
                         )}
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {/* Inline PTS editor in view mode */}
                         <div className="flex items-center gap-1">
                           <span className="text-xs font-semibold text-slate-500">PTS</span>
                           <input
-                            type="number"
-                            min="0"
+                            type="number" min="0"
                             value={formData.files?.[idx]?.pts ?? ""}
                             onChange={(e) => handlePtsChange(idx, e.target.value)}
                             className="w-14 h-7 text-xs border border-slate-300 rounded px-1 text-center"
@@ -299,200 +333,26 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
                           />
                         </div>
                         {file.in_production ? (
-                          <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">
-                            {file.production_stage?.replace(/_/g, ' ')}
-                          </Badge>
+                          <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-xs">{file.production_stage?.replace(/_/g, ' ')}</Badge>
                         ) : (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleSendToProduction(file, idx)}
-                            className="text-blue-600 hover:text-blue-700 text-xs h-7"
-                          >
-                            <Send className="w-3 h-3 mr-1" />
-                            To Production
+                          <Button type="button" size="sm" variant="outline" onClick={() => handleSendToProduction(file, idx)} className="text-blue-600 hover:text-blue-700 text-xs h-7">
+                            <Send className="w-3 h-3 mr-1" /> To Production
                           </Button>
                         )}
-                        <a
-                          href={file.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-amber-600 hover:text-amber-700"
-                        >
+                        <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-amber-600 hover:text-amber-700">
                           <ExternalLink className="w-4 h-4" />
                         </a>
                       </div>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
             )}
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-end pt-4 mt-2 border-t border-slate-100">
               <Button variant="outline" onClick={handleClose}>Close</Button>
             </div>
-          </div>
-        ) : (
-          /* EDIT MODE */
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="room_name">Room Name</Label>
-                <Input
-                  id="room_name"
-                  value={formData.room_name}
-                  onChange={(e) => setFormData({ ...formData, room_name: e.target.value })}
-                  placeholder="e.g., Kitchen, Master Bath"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="cabinet_count">Cabinet Count</Label>
-                <Input
-                  id="cabinet_count"
-                  type="number"
-                  value={formData.cabinet_count}
-                  onChange={(e) => setFormData({ ...formData, cabinet_count: e.target.value })}
-                  placeholder="Number of cabinets"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="style">Style</Label>
-                <Input
-                  id="style"
-                  value={formData.style}
-                  onChange={(e) => setFormData({ ...formData, style: e.target.value })}
-                  placeholder="Cabinet style"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="finish">Finish</Label>
-                <Input
-                  id="finish"
-                  value={formData.finish}
-                  onChange={(e) => setFormData({ ...formData, finish: e.target.value })}
-                  placeholder="Finish/color"
-                  className="mt-1"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Room-specific notes"
-                rows={3}
-                className="mt-1"
-              />
-            </div>
-
-            <div>
-              <Label>Files</Label>
-              <div className="mt-2">
-                <label className="cursor-pointer">
-                  <input type="file" multiple onChange={handleFileUpload} disabled={uploading} className="hidden" />
-                  <Button type="button" variant="outline" disabled={uploading} className="w-full" asChild>
-                    <span>
-                      <Upload className="w-4 h-4 mr-2" />
-                      {uploading ? "Uploading..." : "Upload Files"}
-                    </span>
-                  </Button>
-                </label>
-
-                {formData.files && formData.files.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {formData.files.map((file, idx) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded border border-slate-200">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          {file.url && file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                            <img src={file.url} alt={file.name} className="w-12 h-12 object-cover rounded" />
-                          ) : (
-                            <div className="w-12 h-12 bg-slate-200 rounded flex items-center justify-center">
-                              <Upload className="w-5 h-5 text-slate-500" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-900 truncate">{file.name}</p>
-                            <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-xs text-amber-600 hover:text-amber-700">
-                              View file
-                            </a>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <span className="text-xs font-semibold text-slate-500">PTS</span>
-                            <input
-                              type="number"
-                              min="0"
-                              value={file.pts ?? ""}
-                              onChange={(e) => {
-                                const updated = [...formData.files];
-                                updated[idx] = { ...updated[idx], pts: e.target.value === "" ? undefined : Number(e.target.value) };
-                                setFormData(prev => ({ ...prev, files: updated }));
-                              }}
-                              className="w-14 h-7 text-xs border border-slate-300 rounded px-1 text-center"
-                              placeholder="0"
-                            />
-                          </div>
-                          {file.in_production ? (
-                            <Badge className="bg-blue-600 text-white text-xs">
-                              In Production: {file.production_stage?.replace(/_/g, ' ')}
-                            </Badge>
-                          ) : (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleSendToProduction(file, idx)}
-                              className="text-blue-600 hover:text-blue-700"
-                            >
-                              <Send className="w-3 h-3 mr-1" />
-                              To Production
-                            </Button>
-                          )}
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => handleRemoveFile(idx)}
-                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex gap-2 justify-end pt-4">
-              {!isNewRoom && (
-                <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
-                  Cancel
-                </Button>
-              )}
-              {isNewRoom && (
-                <Button type="button" variant="outline" onClick={handleClose}>
-                  Cancel
-                </Button>
-              )}
-              <Button type="submit" className="bg-amber-600 hover:bg-amber-700">
-                {isNewRoom ? "Add Room" : "Save Changes"}
-              </Button>
-            </div>
-          </form>
+          </>
         )}
       </DialogContent>
     </Dialog>

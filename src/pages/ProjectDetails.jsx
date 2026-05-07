@@ -791,7 +791,7 @@ export default function ProjectDetails() {
         </Dialog>
 
         {/* Room Manager */}
-        <RoomManager open={showRoomManager} onOpenChange={setShowRoomManager} room={editingRoom} roomIndex={editingRoomIndex} project={project} onSave={handleSaveRoom} />
+        <RoomManager open={showRoomManager} onOpenChange={setShowRoomManager} room={editingRoom} roomIndex={editingRoomIndex} project={project} onSave={handleSaveRoom} currentUser={currentUser} />
 
         {/* Room GLB Viewer */}
         {viewingRoomGlb && (

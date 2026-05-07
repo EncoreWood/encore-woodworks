@@ -37,6 +37,16 @@
     "label": {
       "type": "string",
       "description": "Optional label e.g. Front Elevation, Countertop Drawing"
+    },
+    "is_shop_file": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, this file is only visible to shop/admin \u2014 never shown in client portal"
+    },
+    "flagged_for_production": {
+      "type": "boolean",
+      "default": false,
+      "description": "Marks file as ready for shop/production review"
     }
   },
   "required": [
