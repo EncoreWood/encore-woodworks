@@ -390,46 +390,53 @@ export default function Layout({ children, currentPageName }) {
     _layoutCache.fetching = true;
 
     const fetchData = async () => {
-      const [user, emps] = await Promise.all([
-        base44.auth.me(),
-        base44.entities.Employee.list(),
-      ]);
-      _layoutCache.user = user;
-      _layoutCache.employees = emps;
+      try {
+        const user = await base44.auth.me();
+        _layoutCache.user = user;
+        setCurrentUser(user);
 
-      setCurrentUser(user);
-      setEmployees(emps);
+        if (user?.role !== "admin") {
+          const emps = await base44.entities.Employee.list();
+          _layoutCache.employees = emps;
+          setEmployees(emps);
 
-      if (user?.role !== "admin") {
-        const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
-        if (emp) {
-          const allowedPages = new Set(emp.allowed_pages || []);
-          _layoutCache.allowedPages = allowedPages;
-          setEmployeeAllowedPages(allowedPages);
+          const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
+          if (emp) {
+            const allowedPages = new Set(emp.allowed_pages || []);
+            _layoutCache.allowedPages = allowedPages;
+            setEmployeeAllowedPages(allowedPages);
 
-          const todayStr = format(new Date(), "yyyy-MM-dd");
-          const entries = await base44.entities.TimeEntry.filter({ employee_id: emp.id });
-          const openEntry = entries.find(e => e.date === todayStr && e.clock_in && !e.clock_out);
-          if (openEntry) {
-            setOpenTimeEntryId(openEntry.id);
-            setCurrentProjectName(openEntry.project_name || null);
-            const [h, m] = openEntry.clock_in.split(":").map(Number);
-            const reconstructed = new Date();
-            reconstructed.setHours(h, m, 0, 0);
-            setClockInTime(reconstructed);
-            _layoutCache.openTimeEntryId = openEntry.id;
-            _layoutCache.currentProjectName = openEntry.project_name || null;
-            _layoutCache.clockInTime = reconstructed;
+            const todayStr = format(new Date(), "yyyy-MM-dd");
+            const entries = await base44.entities.TimeEntry.filter({ employee_id: emp.id });
+            const openEntry = entries.find(e => e.date === todayStr && e.clock_in && !e.clock_out);
+            if (openEntry) {
+              setOpenTimeEntryId(openEntry.id);
+              setCurrentProjectName(openEntry.project_name || null);
+              const [h, m] = openEntry.clock_in.split(":").map(Number);
+              const reconstructed = new Date();
+              reconstructed.setHours(h, m, 0, 0);
+              setClockInTime(reconstructed);
+              _layoutCache.openTimeEntryId = openEntry.id;
+              _layoutCache.currentProjectName = openEntry.project_name || null;
+              _layoutCache.clockInTime = reconstructed;
+            }
+            const completedToday = entries.filter(e => e.date === todayStr && e.clock_out && e.hours_worked);
+            const hrs = completedToday.reduce((s, e) => s + (e.hours_worked || 0), 0);
+            setTodayCompletedHours(hrs);
+            _layoutCache.todayCompletedHours = hrs;
           }
-          const completedToday = entries.filter(e => e.date === todayStr && e.clock_out && e.hours_worked);
-          const hrs = completedToday.reduce((s, e) => s + (e.hours_worked || 0), 0);
-          setTodayCompletedHours(hrs);
-          _layoutCache.todayCompletedHours = hrs;
         }
+
+        _layoutCache.fetched = true;
+        setPermissionsReady(true);
+      } catch (err) {
+        console.error("Layout fetch error:", err);
+        // Reset fetching flag so it can retry on next mount
+        _layoutCache.fetching = false;
+        setPermissionsReady(true);
+        return;
       }
-      _layoutCache.fetched = true;
       _layoutCache.fetching = false;
-      setPermissionsReady(true);
     };
     fetchData();
   }, []);
