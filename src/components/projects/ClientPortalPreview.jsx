@@ -114,7 +114,7 @@ function PortalNotesPreview({ notes }) {
   );
 }
 
-function RoomsPreview({ project }) {
+function RoomsPreview({ project, tasks }) {
   const [roomFiles, setRoomFiles] = useState([]);
   const [openRoom, setOpenRoom] = useState(null);
 
@@ -127,18 +127,31 @@ function RoomsPreview({ project }) {
   const rooms = project.rooms || [];
   if (!rooms.length) return <p className="text-sm text-slate-400 text-center py-4">No rooms added yet.</p>;
 
-  const SELECTION_LABELS = {
-    cabinet_style: "Cabinet Style", wood_species: "Wood Species", finish: "Finish",
-    door_style: "Door Style", handles: "Hardware", drawer_glides: "Drawer Glides",
-    hinges: "Hinges", molding: "Molding", cabs_to_height: "Cabs to Height", cabinet_count: "Cabinet Count"
-  };
+  const SELECTION_FIELDS = [
+    { key: "cabinet_style", label: "Cabinet Style" },
+    { key: "wood_species", label: "Wood Species" },
+    { key: "finish", label: "Finish" },
+    { key: "door_style", label: "Door Style" },
+    { key: "handles", label: "Handles / Hardware" },
+    { key: "drawer_glides", label: "Drawer Glides" },
+    { key: "hinges", label: "Hinges" },
+    { key: "molding", label: "Molding" },
+    { key: "cabs_to_height", label: "Cabs to Height" },
+    { key: "cabinet_count", label: "Cabinet Count" },
+  ];
+
+  const statusColor = { Pending: "bg-slate-100 text-slate-600", "In Progress": "bg-blue-100 text-blue-700", Completed: "bg-emerald-100 text-emerald-700" };
 
   return (
     <div className="space-y-2">
       {rooms.map((room, idx) => {
         const photos = roomFiles.filter(f => f.room_name?.toLowerCase() === room.room_name?.toLowerCase());
+        const roomTasks = (tasks || []).filter(t => t.room_name?.toLowerCase() === room.room_name?.toLowerCase());
         const isOpen = openRoom === idx;
-        const hasSelections = Object.keys(SELECTION_LABELS).some(k => room[k]);
+        const selectionFields = SELECTION_FIELDS.filter(f => room[f.key]);
+        const customSelections = room.custom_selections || [];
+        const hasSelections = selectionFields.length > 0 || customSelections.length > 0;
+
         return (
           <div key={idx} className="border border-slate-100 rounded-xl overflow-hidden">
             <button
@@ -152,23 +165,21 @@ function RoomsPreview({ project }) {
               </div>
               <div className="flex items-center gap-2">
                 {photos.length > 0 && <span className="text-xs text-slate-400">{photos.length} photo{photos.length !== 1 ? "s" : ""}</span>}
+                {roomTasks.length > 0 && <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">{roomTasks.length} task{roomTasks.length !== 1 ? "s" : ""}</span>}
                 <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? "rotate-90" : ""}`} />
               </div>
             </button>
             {isOpen && (
-              <div className="px-4 pb-4 bg-white border-t border-slate-100 space-y-3">
+              <div className="px-4 pb-4 bg-white border-t border-slate-100 space-y-3 pt-3">
                 {hasSelections && (
-                  <div className="grid grid-cols-2 gap-2 pt-3">
-                    {Object.entries(SELECTION_LABELS).map(([key, label]) => {
-                      if (!room[key]) return null;
-                      return (
-                        <div key={key} className="bg-slate-50 rounded-lg p-2">
-                          <p className="text-xs text-slate-400 mb-0.5">{label}</p>
-                          <p className="text-sm font-semibold text-slate-800">{room[key]}</p>
-                        </div>
-                      );
-                    })}
-                    {(room.custom_selections || []).map((cs, ci) => (
+                  <div className="grid grid-cols-2 gap-2">
+                    {selectionFields.map(f => (
+                      <div key={f.key} className="bg-slate-50 rounded-lg p-2">
+                        <p className="text-xs text-slate-400 mb-0.5">{f.label}</p>
+                        <p className="text-sm font-semibold text-slate-800">{room[f.key]}</p>
+                      </div>
+                    ))}
+                    {customSelections.map((cs, ci) => (
                       <div key={ci} className="bg-amber-50 rounded-lg p-2">
                         <p className="text-xs text-amber-500 mb-0.5">{cs.label}</p>
                         <p className="text-sm font-semibold text-slate-800">{cs.value || "—"}</p>
@@ -177,6 +188,20 @@ function RoomsPreview({ project }) {
                   </div>
                 )}
                 {room.notes && <p className="text-sm text-slate-600 bg-amber-50/50 rounded-lg p-2">{room.notes}</p>}
+                {roomTasks.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tasks</p>
+                    {roomTasks.map(task => (
+                      <div key={task.id} className="p-2.5 rounded-xl border border-slate-100 bg-slate-50 flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-800">{task.title}</p>
+                          {task.admin_notes && <p className="text-xs text-slate-500 mt-0.5">{task.admin_notes}</p>}
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${statusColor[task.status] || statusColor.Pending}`}>{task.status}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {photos.length > 0 && (
                   <div className="grid grid-cols-3 gap-1.5">
                     {photos.map(f => (
@@ -194,7 +219,7 @@ function RoomsPreview({ project }) {
                     ))}
                   </div>
                 )}
-                {!hasSelections && !room.notes && photos.length === 0 && (
+                {!hasSelections && !room.notes && photos.length === 0 && roomTasks.length === 0 && (
                   <p className="text-sm text-slate-400 text-center py-2">No details added yet.</p>
                 )}
               </div>
@@ -271,7 +296,7 @@ export default function ClientPortalPreview({ project, settings, tasks, notes, o
 
             {(project.rooms?.length > 0) && (
               <Section title="Your Rooms" icon={DoorOpen}>
-                <RoomsPreview project={project} />
+                <RoomsPreview project={project} tasks={tasks} />
               </Section>
             )}
 
