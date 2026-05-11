@@ -282,7 +282,7 @@ export default function TimeSheet() {
   const [editForm, setEditForm] = useState({ clock_in: "", clock_out: "", notes: "" });
 
   const [showAddEntry, setShowAddEntry] = useState(false);
-  const [formData, setFormData] = useState({ clock_in: "", clock_out: "", entry_type: "work", notes: "" });
+  const [formData, setFormData] = useState({ clock_in: "", clock_out: "", entry_type: "work", notes: "", date: "" });
   const [showAdminVacation, setShowAdminVacation] = useState(false);
   const [adminVacForm, setAdminVacForm] = useState({ employee_id: "", entry_type: "vacation", date: "", hours_worked: "8", notes: "" });
 
@@ -355,7 +355,7 @@ export default function TimeSheet() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
       setShowAddEntry(false);
-      setFormData({ clock_in: "", clock_out: "", entry_type: "work", notes: "" });
+      setFormData({ clock_in: "", clock_out: "", entry_type: "work", notes: "", date: "" });
     }
   });
 
@@ -580,7 +580,7 @@ export default function TimeSheet() {
                           {weekTotal.toFixed(2)} hrs {weekTotal > 40 ? `(+${(weekTotal-40).toFixed(2)} OT)` : ""}
                         </span>
                         {isAdmin && (
-                          <Button size="sm" variant="outline" onClick={() => setShowAddEntry(true)} className="gap-1">
+                          <Button size="sm" variant="outline" onClick={() => { setFormData({ clock_in: "", clock_out: "", entry_type: "work", notes: "", date: format(weekStart, "yyyy-MM-dd") }); setShowAddEntry(true); }} className="gap-1">
                             <Plus className="w-3.5 h-3.5" /> Add
                           </Button>
                         )}
@@ -889,6 +889,10 @@ export default function TimeSheet() {
           <DialogHeader><DialogTitle>Add Time Entry</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
+              <label className="text-sm font-medium text-slate-700">Date</label>
+              <Input type="date" value={formData.date} onChange={e => setFormData(d => ({ ...d, date: e.target.value }))} className="mt-1" />
+            </div>
+            <div>
               <label className="text-sm font-medium text-slate-700">Type</label>
               <Select value={formData.entry_type} onValueChange={v => setFormData(d => ({ ...d, entry_type: v }))}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
@@ -923,7 +927,7 @@ export default function TimeSheet() {
                 const hours = formData.entry_type === "work" ? calculateHours(formData.clock_in, formData.clock_out) : null;
                 createEntryMutation.mutate({
                   employee_id: selectedEmployee.id, employee_name: selectedEmployee.full_name,
-                  date: format(today, "yyyy-MM-dd"), clock_in: formData.clock_in || null,
+                  date: formData.date || format(today, "yyyy-MM-dd"), clock_in: formData.clock_in || null,
                   clock_out: formData.clock_out || null, hours_worked: hours ? parseFloat(hours) : null,
                   entry_type: formData.entry_type, notes: formData.notes
                 });
