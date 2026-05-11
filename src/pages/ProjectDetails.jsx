@@ -35,6 +35,7 @@ import CadDrawingsSection from "../components/cad/CadDrawingsSection";
 import ClientPortalTab from "../components/projects/ClientPortalTab";
 import GlbViewer from "../components/cad/GlbViewer";
 import RoomFilesSection from "../components/projects/RoomFilesSection";
+import JobMeasurementsTab from "../components/measurements/JobMeasurementsTab";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -305,8 +306,8 @@ export default function ProjectDetails() {
 
         {/* Tabs */}
         {currentUser?.role === "admin" && (
-          <div className="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-slate-100 p-1 w-fit">
-            {[{ key: "project", label: "Project" }, { key: "client_portal", label: "Client Portal" }].map(t => (
+          <div className="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-slate-100 p-1 w-fit flex-wrap">
+            {[{ key: "project", label: "Project" }, { key: "measurements", label: "Job Measurements" }, { key: "client_portal", label: "Client Portal" }].map(t => (
               <button key={t.key} onClick={() => setActiveTab(t.key)}
                 className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === t.key ? "bg-amber-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-800"}`}>
                 {t.label}
@@ -318,7 +319,10 @@ export default function ProjectDetails() {
         {activeTab === "client_portal" && currentUser?.role === "admin" && (
           <ClientPortalTab project={project} />
         )}
-        {(activeTab !== "client_portal" || currentUser?.role !== "admin") && (
+        {activeTab === "measurements" && currentUser?.role === "admin" && (
+          <JobMeasurementsTab project={project} />
+        )}
+        {(activeTab !== "client_portal" && activeTab !== "measurements" || currentUser?.role !== "admin") && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
