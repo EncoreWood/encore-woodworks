@@ -18,6 +18,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const scrollContainerRef = useRef(null);
   const panStartRef = useRef(null);
   const lastTouchDistRef = useRef(null);
+  const fingerCountRef = useRef(0); // track active finger touches
   const [annList, setAnnList] = useState(annotations);
   const [currentPath, setCurrentPath] = useState([]);
   const [currentLine, setCurrentLine] = useState(null);
@@ -54,29 +55,6 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
-  // Pan handlers — finger/mouse only (pencil is always draw)
-  const handlePanPointerDown = (e) => {
-    if (e.pointerType === "pen") return; // pencil always goes to canvas
-    if (tool !== "pan") return;
-    e.preventDefault();
-    panStartRef.current = { x: e.clientX, y: e.clientY, scrollLeft: scrollContainerRef.current?.scrollLeft || 0, scrollTop: scrollContainerRef.current?.scrollTop || 0 };
-  };
-  const handlePanPointerMove = (e) => {
-    if (e.pointerType === "pen") return;
-    if (tool !== "pan" || !panStartRef.current) return;
-    e.preventDefault();
-    const dx = e.clientX - panStartRef.current.x;
-    const dy = e.clientY - panStartRef.current.y;
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
-      scrollContainerRef.current.scrollTop = panStartRef.current.scrollTop - dy;
-    }
-  };
-  const handlePanPointerUp = (e) => {
-    if (e?.pointerType === "pen") return;
-    panStartRef.current = null;
-  };
-
   // Scroll wheel panning (horizontal + vertical)
   const handleWheel = (e) => {
     if (!scrollContainerRef.current) return;
@@ -85,15 +63,18 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     scrollContainerRef.current.scrollTop += e.deltaY;
   };
 
-  // Pinch-to-zoom & touch pan — always active regardless of tool
+  // Touch handlers on the scroll container — fingers ALWAYS pan/pinch, regardless of tool
+  // Canvas has pointerEvents:none for touch so fingers pass through to here
   const handleTouchStart = (e) => {
+    fingerCountRef.current = e.touches.length;
     if (e.touches.length === 2) {
+      e.preventDefault();
       lastTouchDistRef.current = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
+      panStartRef.current = null; // cancel single-finger pan if second finger joins
     } else if (e.touches.length === 1) {
-      // Pan is always available via single-finger touch
       panStartRef.current = {
         x: e.touches[0].clientX,
         y: e.touches[0].clientY,
@@ -103,6 +84,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     }
   };
   const handleTouchMove = (e) => {
+    fingerCountRef.current = e.touches.length;
     if (e.touches.length === 2) {
       e.preventDefault();
       const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
@@ -121,12 +103,32 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       }
     }
   };
-  const handleTouchEnd = () => { lastTouchDistRef.current = null; panStartRef.current = null; };
+  const handleTouchEnd = (e) => {
+    fingerCountRef.current = e.touches.length;
+    lastTouchDistRef.current = null;
+    panStartRef.current = null;
+  };
+
+  // Mouse-only pan (for desktop)
+  const handleMousePanDown = (e) => {
+    if (e.button !== 0 || tool !== "pan") return;
+    panStartRef.current = { x: e.clientX, y: e.clientY, scrollLeft: scrollContainerRef.current?.scrollLeft || 0, scrollTop: scrollContainerRef.current?.scrollTop || 0 };
+  };
+  const handleMousePanMove = (e) => {
+    if (tool !== "pan" || !panStartRef.current) return;
+    const dx = e.clientX - panStartRef.current.x;
+    const dy = e.clientY - panStartRef.current.y;
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
+      scrollContainerRef.current.scrollTop = panStartRef.current.scrollTop - dy;
+    }
+  };
+  const handleMousePanUp = () => { panStartRef.current = null; };
 
   const handlePointerDown = (e) => {
-    // Finger touches on canvas: if not pencil and tool isn't pan, still draw — but if 2+ fingers are active, skip (pinch handled by touch events)
-    if (e.pointerType === "touch" && tool === "pan") return;
-    if (e.pointerType !== "pen" && tool === "pan") return;
+    // Only handle pencil (Apple Pencil) and mouse — fingers are handled by touch events
+    if (e.pointerType === "touch") return;
+    if (tool === "pan") return;
     e.preventDefault();
     canvasRef.current?.setPointerCapture(e.pointerId);
     const pos = getPos(e);
@@ -146,9 +148,9 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   };
 
   const handlePointerMove = (e) => {
+    if (e.pointerType === "touch") return;
     if (!isPointerDown) return;
-    if (e.pointerType === "touch" && tool === "pan") return;
-    if (e.pointerType !== "pen" && tool === "pan") return;
+    if (tool === "pan") return;
     e.preventDefault();
     const pos = getPos(e);
     if (tool === "pen") {
@@ -161,8 +163,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   };
 
   const handlePointerUp = (e) => {
-    if (e.pointerType === "touch" && tool === "pan") return;
-    if (e.pointerType !== "pen" && tool === "pan") return;
+    if (e.pointerType === "touch") return;
+    if (tool === "pan") return;
     e.preventDefault();
     const pos = getPos(e);
     if (tool === "pen" && currentPath.length > 1) {
@@ -458,15 +460,15 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         <div
           ref={scrollContainerRef}
           className="flex-1 overflow-auto bg-slate-100 rounded-lg select-none"
-          onPointerDown={handlePanPointerDown}
-          onPointerMove={handlePanPointerMove}
-          onPointerUp={handlePanPointerUp}
-          onPointerLeave={handlePanPointerUp}
+          onMouseDown={handleMousePanDown}
+          onMouseMove={handleMousePanMove}
+          onMouseUp={handleMousePanUp}
+          onMouseLeave={handleMousePanUp}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onWheel={handleWheel}
-          style={{ cursor: tool === "pan" ? (panStartRef.current ? "grabbing" : "grab") : undefined, touchAction: "none" }}
+          style={{ cursor: tool === "pan" ? "grab" : undefined, touchAction: "none" }}
         >
           <div className="flex items-center justify-center min-h-full p-4">
             <div className="relative inline-block" ref={pageContainerRef}>
@@ -488,7 +490,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
               <canvas
                 ref={canvasRef}
                 className="absolute top-0 left-0"
-                style={{ cursor: cursorStyle, touchAction: "none", pointerEvents: "auto" }}
+                style={{ cursor: cursorStyle, touchAction: "none", pointerEvents: tool === "pan" ? "none" : "auto" }}
                 width={canvasSize.width}
                 height={canvasSize.height}
                 onPointerDown={handlePointerDown}
