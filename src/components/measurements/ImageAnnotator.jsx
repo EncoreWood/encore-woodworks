@@ -4,13 +4,32 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Pencil, Eraser, Type, ArrowRight, Minus, Hand, Undo2, Trash2, ZoomIn, ZoomOut, Save } from "lucide-react";
 
 const TOOLS = [
-  { key: "pan",    label: "Pan",    icon: Hand,       activeClass: "bg-sky-600 hover:bg-sky-700" },
-  { key: "pen",    label: "Draw",   icon: Pencil,     activeClass: "bg-amber-600 hover:bg-amber-700" },
-  { key: "arrow",  label: "Arrow",  icon: ArrowRight, activeClass: "bg-blue-600 hover:bg-blue-700" },
-  { key: "line",   label: "Line",   icon: Minus,      activeClass: "bg-green-600 hover:bg-green-700" },
-  { key: "text",   label: "Text",   icon: Type,       activeClass: "bg-purple-600 hover:bg-purple-700" },
-  { key: "eraser", label: "Erase",  icon: Eraser,     activeClass: "bg-slate-600 hover:bg-slate-700" },
+  { key: "pan",    label: "Pan",   icon: Hand,       activeClass: "bg-sky-600",    activeBorder: "#0284c7" },
+  { key: "pen",    label: "Draw",  icon: Pencil,     activeClass: "bg-amber-600",  activeBorder: "#d97706" },
+  { key: "arrow",  label: "Arrow", icon: ArrowRight, activeClass: "bg-blue-600",   activeBorder: "#2563eb" },
+  { key: "line",   label: "Line",  icon: Minus,      activeClass: "bg-green-600",  activeBorder: "#16a34a" },
+  { key: "text",   label: "Text",  icon: Type,       activeClass: "bg-purple-600", activeBorder: "#9333ea" },
+  { key: "eraser", label: "Erase", icon: Eraser,     activeClass: "bg-slate-600",  activeBorder: "#475569" },
 ];
+
+// Large tap targets that work with Apple Pencil (pointerDown instead of onClick)
+function ToolButton({ toolDef, active, onSelect }) {
+  const Icon = toolDef.icon;
+  return (
+    <button
+      onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); onSelect(toolDef.key); }}
+      style={active ? { background: toolDef.activeBorder, borderColor: toolDef.activeBorder } : {}}
+      className={`flex flex-col items-center justify-center gap-0.5 w-14 h-14 rounded-xl border-2 transition-all select-none touch-manipulation
+        ${active
+          ? "text-white shadow-md scale-105"
+          : "bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:bg-slate-50"
+        }`}
+    >
+      <Icon className="w-5 h-5" />
+      <span className="text-[10px] font-semibold leading-none">{toolDef.label}</span>
+    </button>
+  );
+}
 
 export default function ImageAnnotator({ open, onOpenChange, imageUrl, annotations = [], onSave, title = "Annotate" }) {
   const [tool, setTool] = useState("pen");
@@ -56,7 +75,7 @@ export default function ImageAnnotator({ open, onOpenChange, imageUrl, annotatio
     return { x: clientX - rect.left, y: clientY - rect.top };
   };
 
-  // Touch handlers
+  // Touch handlers (finger gestures: pinch-zoom, pan)
   const handleTouchStart = (e) => {
     if (e.touches.length === 2) {
       lastTouchDist.current = Math.hypot(
@@ -70,8 +89,7 @@ export default function ImageAnnotator({ open, onOpenChange, imageUrl, annotatio
       };
     } else if (e.touches.length === 1 && tool !== "pan") {
       e.preventDefault();
-      const pos = getPos(e);
-      startDraw(pos);
+      startDraw(getPos(e));
     }
   };
 
@@ -141,23 +159,35 @@ export default function ImageAnnotator({ open, onOpenChange, imageUrl, annotatio
 
   const handleUndo = () => setAnnList(p => p.slice(0, -1));
 
-  // Pointer events (mouse/stylus)
+  // Pointer events — Apple Pencil fires as pointerType="pen", finger as "touch"
+  // For the canvas: pencil draws, finger pans (when tool is pan) or also draws
   const onPointerDown = (e) => {
-    if (tool === "pan") return;
+    // Let pencil always draw, finger only draws when tool is not pan
+    if (e.pointerType === "touch" && tool === "pan") return;
     e.preventDefault();
     canvasRef.current?.setPointerCapture(e.pointerId);
     startDraw(getPos(e));
   };
-  const onPointerMove = (e) => { if (tool === "pan" || !isDown) return; e.preventDefault(); moveDraw(getPos(e)); };
-  const onPointerUp = (e) => { if (tool === "pan") return; e.preventDefault(); endDraw(getPos(e)); };
+  const onPointerMove = (e) => {
+    if (!isDown) return;
+    if (e.pointerType === "touch" && tool === "pan") return;
+    e.preventDefault();
+    moveDraw(getPos(e));
+  };
+  const onPointerUp = (e) => {
+    if (e.pointerType === "touch" && tool === "pan") return;
+    e.preventDefault();
+    endDraw(getPos(e));
+  };
 
-  // Pan (mouse)
+  // Pan — only for finger touch or mouse, not pencil
   const onPanDown = (e) => {
+    if (e.pointerType === "pen") return; // pencil goes to canvas
     if (tool !== "pan") return;
     panStart.current = { x: e.clientX, y: e.clientY, sl: scrollRef.current?.scrollLeft || 0, st: scrollRef.current?.scrollTop || 0 };
   };
   const onPanMove = (e) => {
-    if (tool !== "pan" || !panStart.current) return;
+    if (e.pointerType === "pen" || tool !== "pan" || !panStart.current) return;
     const dx = e.clientX - panStart.current.x;
     const dy = e.clientY - panStart.current.y;
     if (scrollRef.current) { scrollRef.current.scrollLeft = panStart.current.sl - dx; scrollRef.current.scrollTop = panStart.current.st - dy; }
@@ -212,87 +242,133 @@ export default function ImageAnnotator({ open, onOpenChange, imageUrl, annotatio
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col p-0">
-        <DialogHeader className="px-4 pt-4 pb-2 border-b">
-          <DialogTitle>{title}</DialogTitle>
+        <DialogHeader className="px-4 pt-3 pb-2 border-b flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-base">{title}</DialogTitle>
+            <button
+              onPointerDown={(e) => { e.preventDefault(); onSave(annList); }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold transition-colors select-none touch-manipulation"
+            >
+              <Save className="w-4 h-4" /> Save
+            </button>
+          </div>
         </DialogHeader>
 
-        {/* Toolbar */}
-        <div className="flex items-center gap-1.5 px-3 py-2 border-b flex-wrap bg-slate-50">
-          {TOOLS.map(({ key, label, icon: Icon, activeClass }) => (
-            <Button key={key} size="sm" variant={tool === key ? "default" : "outline"}
-              onClick={() => { setTool(key); setTextInput(null); }}
-              className={`${tool === key ? activeClass : ""} min-h-[40px] px-3`}>
-              <Icon className="w-4 h-4 mr-1" /> {label}
-            </Button>
-          ))}
-          <div className="border-l h-6 mx-1" />
-          <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-9 h-9 rounded border cursor-pointer" title="Color" />
-          <div className="border-l h-6 mx-1" />
-          <Button size="sm" variant="outline" onClick={handleUndo} className="min-h-[40px]"><Undo2 className="w-4 h-4 mr-1" /> Undo</Button>
-          <Button size="sm" variant="outline" onClick={() => setAnnList([])} className="text-red-600 min-h-[40px]"><Trash2 className="w-4 h-4 mr-1" /> Clear</Button>
-          <div className="border-l h-6 mx-1" />
-          <Button size="sm" variant="outline" onClick={() => setScale(s => Math.max(0.3, s - 0.15))} className="min-h-[40px]"><ZoomOut className="w-4 h-4" /></Button>
-          <span className="text-sm w-12 text-center">{Math.round(scale * 100)}%</span>
-          <Button size="sm" variant="outline" onClick={() => setScale(s => Math.min(3, s + 0.15))} className="min-h-[40px]"><ZoomIn className="w-4 h-4" /></Button>
-          <Button onClick={() => onSave(annList)} className="ml-auto bg-amber-600 hover:bg-amber-700 min-h-[40px] gap-1.5">
-            <Save className="w-4 h-4" /> Save
-          </Button>
-        </div>
-
-        {/* Canvas area */}
-        <div
-          ref={scrollRef}
-          className="flex-1 overflow-auto bg-slate-200 select-none"
-          style={{ touchAction: "none" }}
-          onPointerDown={onPanDown}
-          onPointerMove={onPanMove}
-          onPointerUp={onPanUp}
-          onPointerLeave={onPanUp}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          <div className="flex items-center justify-center min-h-full p-4">
-            <div className="relative inline-block" ref={containerRef}>
-              <img
-                ref={imgRef}
-                src={imageUrl}
-                alt="Measurement"
-                onLoad={() => { setImgLoaded(true); syncCanvas(); }}
-                style={{ width: `${scale * 100}%`, maxWidth: "none", display: "block", userSelect: "none", WebkitUserSelect: "none" }}
-                draggable={false}
-              />
-              {imgLoaded && (
-                <canvas
-                  ref={canvasRef}
-                  width={canvasSize.width}
-                  height={canvasSize.height}
-                  className="absolute top-0 left-0"
-                  style={{ cursor, touchAction: "none", pointerEvents: tool === "pan" ? "none" : "auto", width: canvasSize.width, height: canvasSize.height }}
-                  onPointerDown={onPointerDown}
-                  onPointerMove={onPointerMove}
-                  onPointerUp={onPointerUp}
-                  onPointerLeave={onPointerUp}
+        {/* Canvas area + floating tool palette */}
+        <div className="flex-1 relative overflow-hidden">
+          {/* Scrollable canvas */}
+          <div
+            ref={scrollRef}
+            className="absolute inset-0 overflow-auto bg-slate-200 select-none"
+            style={{ touchAction: "none" }}
+            onPointerDown={onPanDown}
+            onPointerMove={onPanMove}
+            onPointerUp={onPanUp}
+            onPointerLeave={onPanUp}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="flex items-center justify-center min-h-full p-4 pl-20">
+              <div className="relative inline-block" ref={containerRef}>
+                <img
+                  ref={imgRef}
+                  src={imageUrl}
+                  alt="Measurement"
+                  onLoad={() => { setImgLoaded(true); syncCanvas(); }}
+                  style={{ width: `${scale * 100}%`, maxWidth: "none", display: "block", userSelect: "none", WebkitUserSelect: "none" }}
+                  draggable={false}
                 />
-              )}
-              {textInput && (
-                <input
-                  autoFocus
-                  type="text"
-                  value={textValue}
-                  onChange={e => setTextValue(e.target.value)}
-                  onBlur={commitText}
-                  onKeyDown={e => { if (e.key === "Enter") commitText(); if (e.key === "Escape") { setTextInput(null); setTextValue(""); } }}
-                  style={{
-                    position: "absolute", left: textInput.x, top: textInput.y - 20,
-                    color, background: "rgba(255,255,255,0.95)", border: `2px solid ${color}`,
-                    borderRadius: 4, padding: "2px 6px", fontSize: 14, fontWeight: "bold",
-                    minWidth: 120, outline: "none", zIndex: 20
-                  }}
-                  placeholder="Type & press Enter"
-                />
-              )}
+                {imgLoaded && (
+                  <canvas
+                    ref={canvasRef}
+                    width={canvasSize.width}
+                    height={canvasSize.height}
+                    className="absolute top-0 left-0"
+                    style={{ cursor, touchAction: "none", pointerEvents: "auto", width: canvasSize.width, height: canvasSize.height }}
+                    onPointerDown={onPointerDown}
+                    onPointerMove={onPointerMove}
+                    onPointerUp={onPointerUp}
+                    onPointerLeave={onPointerUp}
+                  />
+                )}
+                {textInput && (
+                  <input
+                    autoFocus
+                    type="text"
+                    value={textValue}
+                    onChange={e => setTextValue(e.target.value)}
+                    onBlur={commitText}
+                    onKeyDown={e => { if (e.key === "Enter") commitText(); if (e.key === "Escape") { setTextInput(null); setTextValue(""); } }}
+                    style={{
+                      position: "absolute", left: textInput.x, top: textInput.y - 20,
+                      color, background: "rgba(255,255,255,0.95)", border: `2px solid ${color}`,
+                      borderRadius: 4, padding: "2px 6px", fontSize: 14, fontWeight: "bold",
+                      minWidth: 120, outline: "none", zIndex: 20
+                    }}
+                    placeholder="Type & press Enter"
+                  />
+                )}
+              </div>
             </div>
+          </div>
+
+          {/* Floating vertical tool palette — left side, large targets for Apple Pencil */}
+          <div
+            className="absolute left-2 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1.5 p-2 rounded-2xl shadow-xl border border-slate-200 bg-white/95 backdrop-blur"
+            style={{ pointerEvents: "auto" }}
+          >
+            {/* Tool buttons */}
+            {TOOLS.map(toolDef => (
+              <ToolButton key={toolDef.key} toolDef={toolDef} active={tool === toolDef.key} onSelect={(k) => { setTool(k); setTextInput(null); }} />
+            ))}
+
+            <div className="h-px bg-slate-200 my-0.5" />
+
+            {/* Color picker — large tap target */}
+            <label className="flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 bg-white cursor-pointer hover:border-slate-400 transition-colors">
+              <div className="w-7 h-7 rounded-full border-2 border-white shadow" style={{ background: color }} />
+              <span className="text-[10px] font-semibold text-slate-500 mt-0.5">Color</span>
+              <input type="color" value={color} onChange={e => setColor(e.target.value)} className="sr-only" />
+            </label>
+
+            <div className="h-px bg-slate-200 my-0.5" />
+
+            {/* Undo */}
+            <button
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleUndo(); }}
+              className="flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:border-slate-400 transition-colors select-none touch-manipulation"
+            >
+              <Undo2 className="w-5 h-5" />
+              <span className="text-[10px] font-semibold mt-0.5">Undo</span>
+            </button>
+
+            {/* Clear */}
+            <button
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setAnnList([]); }}
+              className="flex flex-col items-center justify-center w-14 h-14 rounded-xl border-2 border-red-100 bg-white hover:bg-red-50 text-red-500 hover:border-red-300 transition-colors select-none touch-manipulation"
+            >
+              <Trash2 className="w-5 h-5" />
+              <span className="text-[10px] font-semibold mt-0.5">Clear</span>
+            </button>
+
+            <div className="h-px bg-slate-200 my-0.5" />
+
+            {/* Zoom out */}
+            <button
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setScale(s => Math.max(0.3, s - 0.15)); }}
+              className="flex flex-col items-center justify-center w-14 h-10 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:border-slate-400 transition-colors select-none touch-manipulation"
+            >
+              <ZoomOut className="w-4 h-4" />
+            </button>
+            <div className="text-[10px] font-bold text-slate-500 text-center">{Math.round(scale * 100)}%</div>
+            {/* Zoom in */}
+            <button
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setScale(s => Math.min(3, s + 0.15)); }}
+              className="flex flex-col items-center justify-center w-14 h-10 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 text-slate-600 hover:border-slate-400 transition-colors select-none touch-manipulation"
+            >
+              <ZoomIn className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </DialogContent>
