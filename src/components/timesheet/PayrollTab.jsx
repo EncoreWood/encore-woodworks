@@ -86,8 +86,8 @@ function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved
     overtimePay = overtime * hourlyRate * otMultiplier;
     ptoPay = ptoHoursThisPeriod * hourlyRate;
   } else {
-    // Salaried: semi-monthly = monthly / 2
-    regularPay = monthlySalary / 2;
+    // Salaried: full monthly salary as regular pay
+    regularPay = monthlySalary;
     const hourlyEquiv = (monthlySalary * 12) / 52 / 40;
     overtimePay = overtime * hourlyEquiv * otMultiplier;
     ptoPay = 0; // salaried PTO doesn't add extra pay
@@ -239,7 +239,7 @@ export default function PayrollTab({ employees, timeEntries }) {
     if (payType === "hourly") {
       grandTotal += regular * hourlyRate + overtime * hourlyRate * otMult + ptoHrs * hourlyRate + bonus;
     } else {
-      grandTotal += monthlySalary / 2 + overtime * ((monthlySalary * 12) / 52 / 40) * otMult + bonus;
+      grandTotal += monthlySalary + overtime * ((monthlySalary * 12) / 52 / 40) * otMult + bonus;
     }
   });
 
