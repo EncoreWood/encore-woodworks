@@ -17,6 +17,7 @@ import VacationRequestForm from "../components/team/VacationRequestForm";
 import ClockInModal from "../components/timesheet/ClockInModal";
 import TimeDataTab from "../components/timesheet/TimeDataTab";
 import PayPeriodsView from "../components/timesheet/PayPeriodsView";
+import PayrollTab from "../components/timesheet/PayrollTab";
 import { cn } from "@/lib/utils";
 
 // ─── Live elapsed time hook ────────────────────────────────────────────────────
@@ -541,10 +542,11 @@ export default function TimeSheet() {
 
         {/* ── Tabs ── */}
         <Tabs value={currentTab} onValueChange={setCurrentTab}>
-          <TabsList className={`grid w-full ${isAdmin ? "grid-cols-5" : "grid-cols-2"}`}>
+          <TabsList className={`grid w-full ${isAdmin ? "grid-cols-6" : "grid-cols-2"}`}>
             {isAdmin && <TabsTrigger value="overview">Team</TabsTrigger>}
             <TabsTrigger value="timecard">Time Card</TabsTrigger>
             <TabsTrigger value="vacation">Vacation</TabsTrigger>
+            {isAdmin && <TabsTrigger value="payroll">Payroll</TabsTrigger>}
             {isAdmin && <TabsTrigger value="data">Data</TabsTrigger>}
             {isAdmin && <TabsTrigger value="settings"><Settings className="w-3.5 h-3.5" /></TabsTrigger>}
           </TabsList>
@@ -759,6 +761,13 @@ export default function TimeSheet() {
               </Card>
             )}
           </TabsContent>
+
+          {/* ── PAYROLL TAB (admin) ── */}
+          {isAdmin && (
+            <TabsContent value="payroll" className="mt-5">
+              <PayrollTab employees={employees} timeEntries={timeEntries} />
+            </TabsContent>
+          )}
 
           {/* ── DATA TAB (admin) ── */}
           {isAdmin && (

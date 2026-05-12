@@ -1,0 +1,127 @@
+{
+  "name": "Employee",
+  "type": "object",
+  "properties": {
+    "full_name": {
+      "type": "string",
+      "description": "Employee's full name"
+    },
+    "email": {
+      "type": "string",
+      "description": "Employee's email address"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Employee's phone number"
+    },
+    "position": {
+      "type": "string",
+      "description": "Job title/position"
+    },
+    "department": {
+      "type": "string",
+      "enum": [
+        "production",
+        "design",
+        "installation",
+        "sales",
+        "management"
+      ],
+      "description": "Department"
+    },
+    "hire_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date hired"
+    },
+    "birthday": {
+      "type": "string",
+      "format": "date",
+      "description": "Employee's birthday"
+    },
+    "profile_image": {
+      "type": "string",
+      "description": "Profile image URL"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Linked user account email"
+    },
+    "user_role": {
+      "type": "string",
+      "enum": [
+        "user",
+        "admin"
+      ],
+      "description": "User account role if invited"
+    },
+    "allowed_pages": {
+      "type": "array",
+      "description": "List of page keys this employee is allowed to access (for non-admin users)",
+      "items": {
+        "type": "string"
+      }
+    },
+    "pay_type": {
+      "type": "string",
+      "enum": [
+        "hourly",
+        "salary"
+      ],
+      "default": "hourly",
+      "description": "Whether employee is paid hourly or salary"
+    },
+    "hourly_rate": {
+      "type": "number",
+      "description": "Hourly wage rate (for hourly employees)"
+    },
+    "annual_salary": {
+      "type": "number",
+      "description": "Annual salary amount (for salaried employees)"
+    },
+    "overtime_rate_multiplier": {
+      "type": "number",
+      "default": 1.5,
+      "description": "OT multiplier (default 1.5x)"
+    },
+    "pto_hours_accrued": {
+      "type": "number",
+      "default": 0,
+      "description": "Total PTO hours accrued (running balance)"
+    },
+    "pto_hours_used": {
+      "type": "number",
+      "default": 0,
+      "description": "Total PTO hours used"
+    },
+    "bonus": {
+      "type": "number",
+      "default": 0,
+      "description": "Bonus amount for this pay period"
+    },
+    "files": {
+      "type": "array",
+      "description": "Employee files (documents, certificates, etc.)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "File name"
+          },
+          "url": {
+            "type": "string",
+            "description": "File URL"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "full_name"
+  ]
+}
