@@ -8,13 +8,12 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Factory, Briefcase, Link2, Unlink, Package, AlertTriangle, PackageX, Sunset, Clipboard } from "lucide-react";
+import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
 import GiveComplimentDialog from "../components/production/GiveComplimentDialog";
 import ReportMissingDialog from "../components/production/ReportMissingDialog";
 import EndOfDayDialog from "../components/production/EndOfDayDialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ProductionItemForm from "../components/production/ProductionItemForm";
 import PDFAnnotator from "../components/production/PDFAnnotator";
 import PickupItemForm from "../components/pickup/PickupItemForm";
@@ -40,14 +39,12 @@ export default function ShopProduction() {
    const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("production");
   const [showForm, setShowForm] = useState(false);
-  const [jobInfoMode, setJobInfoMode] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [annotatingPdf, setAnnotatingPdf] = useState(null);
   const [currentPdfUrl, setCurrentPdfUrl] = useState(null);
   const [currentAnnotations, setCurrentAnnotations] = useState([]);
   const [pickupItem, setPickupItem] = useState(null);
   const [editingPts, setEditingPts] = useState(null);
-  const [linkingItem, setLinkingItem] = useState(null); // job info item being linked
   const [packetsFormContext, setPacketsFormContext] = useState(null); // { project, roomName } for Job Packets add
   const [openFolderContext, setOpenFolderContext] = useState(null); // { project, roomName } to auto-open a folder in Job Packets
   const [currentUser, setCurrentUser] = useState(null);
@@ -62,7 +59,7 @@ export default function ShopProduction() {
   }, []);
 
   // Pause background polling when any modal/form is open — prevents refresh interrupting edits
-  const anyModalOpen = showForm || !!pickupItem || !!linkingItem || !!reportingStruggle || givingCompliment || !!reportingMissing || !!quickReportItem || showEndOfDay || !!annotatingPdf;
+  const anyModalOpen = showForm || !!pickupItem || !!reportingStruggle || givingCompliment || !!reportingMissing || !!quickReportItem || showEndOfDay || !!annotatingPdf;
 
   const { data: items = [] } = useQuery({
     queryKey: ["productionItems"],
@@ -355,44 +352,6 @@ export default function ShopProduction() {
     const files = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
     await base44.entities.ProductionItem.update(item.id, { ...item, files, is_job_info: false, stage: null });
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
-    // NOTE: intentionally NOT switching tabs — admin stays on production
-  };
-
-  const returnToFolderFromJobInfo = async (item) => {
-    const files = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
-    await base44.entities.ProductionItem.update(item.id, { ...item, files, is_job_info: false, stage: null });
-    queryClient.invalidateQueries({ queryKey: ["productionItems"] });
-    // NOTE: intentionally NOT switching tabs
-  };
-
-  const sendToJobInfo = async (item) => {
-    // Create a linked Job Info copy — keeps item in Production AND creates a mirrored Job Info card
-    const files = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
-    const newJobInfoItem = await base44.entities.ProductionItem.create({
-      name: item.name,
-      type: item.type,
-      stage: item.stage,
-      project_id: item.project_id,
-      project_name: item.project_name,
-      room_name: item.room_name,
-      notes: item.notes,
-      files,
-      sketch_url: item.sketch_url,
-      glb_url: item.glb_url,
-      glb_name: item.glb_name,
-      is_job_info: true,
-      linked_production_item_id: item.id,
-    });
-    // Update the production item to reference the new job info card
-    await base44.entities.ProductionItem.update(item.id, { ...item, files, linked_production_item_id: newJobInfoItem.id });
-    queryClient.invalidateQueries({ queryKey: ["productionItems"] });
-    setActiveTab("job_info");
-  };
-
-  const returnToJobInfoFromProduction = async (item) => {
-    await base44.entities.ProductionItem.update(item.id, { ...item, is_job_info: true });
-    queryClient.invalidateQueries({ queryKey: ["productionItems"] });
-    setActiveTab("job_info");
   };
 
   const handleRefresh = useCallback(async () => {
@@ -494,7 +453,7 @@ export default function ShopProduction() {
             >
               <AlertTriangle className="w-4 h-4 mr-2" /> Report Mistake
             </Button>
-            <Button onClick={() => { setJobInfoMode(false); setShowForm(true); }} className="bg-amber-600 hover:bg-amber-700">
+            <Button onClick={() => { setShowForm(true); }} className="bg-amber-600 hover:bg-amber-700">
               <Plus className="w-4 h-4 mr-2" /> Add Item
             </Button>
           </div>
@@ -524,9 +483,6 @@ export default function ShopProduction() {
           <TabsList className="mb-6">
             <TabsTrigger value="production" className="flex items-center gap-2">
               <Factory className="w-4 h-4" /> Production
-            </TabsTrigger>
-            <TabsTrigger value="job_info" className="flex items-center gap-2">
-              <Briefcase className="w-4 h-4" /> Job Info
             </TabsTrigger>
             <TabsTrigger value="job_packets" className="flex items-center gap-2">
               <Package className="w-4 h-4" /> Job Packets
@@ -583,8 +539,7 @@ export default function ShopProduction() {
                                          {...sharedCardProps}
                                          roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
                                          onReturnToFolder={currentUser?.role === "admin" && hasRoom ? returnToFolder : undefined}
-                                         onSendToJobInfo={currentUser?.role === "admin" ? sendToJobInfo : undefined}
-                                         roomFolderLabel={hasRoom ? item.room_name : undefined}
+                                                                           roomFolderLabel={hasRoom ? item.room_name : undefined}
                                          onOpenRoomFolder={hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
                                        />
                                      </div>
@@ -604,125 +559,6 @@ export default function ShopProduction() {
             </DragDropContext>
           </TabsContent>
 
-          {/* ── JOB INFO TAB ── */}
-          <TabsContent value="job_info" className="mt-0">
-            <div className="mb-4 flex justify-end">
-              <Button onClick={() => { setJobInfoMode(true); setEditingItem(null); setShowForm(true); }} className="bg-amber-600 hover:bg-amber-700">
-                <Plus className="w-4 h-4 mr-2" /> Add Job Info Item
-              </Button>
-            </div>
-            <DragDropContext onDragEnd={handleDragEnd}>
-              <div className="flex gap-4 overflow-x-auto pb-4">
-                {activeProjects.map((project) => {
-                  // Items whose project_id matches this project (any stage except complete/on_hold for job info view)
-                  const projectItems = items.filter(i => i.project_id === project.id && i.is_job_info);
-
-                  return (
-                    <div key={project.id} className="flex-shrink-0 w-80">
-                      <div className="mb-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
-                          {project.card_color && (
-                            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: project.card_color }} />
-                          )}
-                          <h2 className="font-semibold text-slate-700 truncate">{project.project_name}</h2>
-                        </div>
-                        <Badge variant="outline" className="text-xs flex-shrink-0">{projectItems.length}</Badge>
-                      </div>
-                      <Droppable droppableId={`jobinfo_${project.id}`} isDropDisabled={true}>
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.droppableProps}
-                            className="rounded-lg p-3 bg-slate-100 overflow-y-auto"
-                            style={{ maxHeight: "calc(100vh - 280px)", minHeight: 120 }}
-                          >
-                            {projectItems.length === 0 ? (
-                              <p className="text-xs text-slate-400 text-center py-4">No production items</p>
-                            ) : (
-                              <div className="space-y-3">
-                                {projectItems.map((item, index) => {
-                                  // Find any linked production item (another item with this as pickup_item_id, or just show itself)
-                                  return (
-                                    <Draggable key={item.id} draggableId={`ji_${item.id}`} index={index} isDragDisabled={true}>
-                                           {(provided) => {
-                                             const linkedProd = item.linked_production_item_id
-                                               ? items.find(i => i.id === item.linked_production_item_id)
-                                               : null;
-                                             const proj = projects.find(p => p.id === item.project_id);
-                                             const matchedRoom = proj?.rooms?.find(r => r.room_name === item.room_name);
-                                             return (
-                                               <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                                                  <ProductionCard
-                                                    item={item}
-                                                    isDragging={false}
-                                                    roomGlbUrl={matchedRoom?.glb_url}
-                                                    roomGlbName={matchedRoom?.glb_name}
-                                                    editingPts={editingPts}
-                                                    setEditingPts={setEditingPts}
-                                                    currentUser={currentUser}
-                                                    roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
-                                                    onInlinePtsChange={handleInlinePtsChange}
-                                                    onAnnotate={handleAnnotatePdf}
-                                                    getProjectColor={getProjectColor}
-                                                    onPickup={currentUser?.role === "admin" ? (item) => setPickupItem({ project_id: item.project_id, project_name: item.project_name, room_name: item.room_name, production_item_id: item.id }) : undefined}
-                                                    onEdit={currentUser?.role === "admin" ? (item) => { setEditingItem(item); setShowForm(true); } : undefined}
-                                                    onDelete={currentUser?.role === "admin" ? (id) => deleteMutation.mutate(id) : undefined}
-                                                    onSendToJobInfo={undefined}
-                                                    onReturnToFolder={currentUser?.role === "admin" && matchedRoom ? returnToFolderFromJobInfo : undefined}
-                                                    roomFolderLabel={item.room_name}
-                                                    onOpenRoomFolder={matchedRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
-                                                  />
-                                                 {/* Link row */}
-                                                 <div className="mt-1 flex items-center justify-between gap-2">
-                                                   {linkedProd ? (
-                                                     <button
-                                                       onClick={() => setActiveTab("production")}
-                                                       className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 underline truncate"
-                                                       title="View linked production card"
-                                                     >
-                                                       <Link2 className="w-3 h-3 flex-shrink-0" />
-                                                       <span className="truncate">{linkedProd.name}</span>
-                                                       <Badge variant="outline" className="ml-1 text-xs capitalize flex-shrink-0">{linkedProd.stage?.replace(/_/g, " ")}</Badge>
-                                                     </button>
-                                                   ) : (
-                                                     <button
-                                                       onClick={() => setLinkingItem(item)}
-                                                       className="flex items-center gap-1 text-xs text-slate-400 hover:text-amber-600"
-                                                     >
-                                                       <Link2 className="w-3 h-3" /> Link to production card
-                                                     </button>
-                                                   )}
-                                                   {linkedProd && (
-                                                     <button
-                                                       onClick={() => updateMutation.mutate({ id: item.id, data: { ...item, linked_production_item_id: null } })}
-                                                       className="text-xs text-red-400 hover:text-red-600 flex-shrink-0"
-                                                       title="Unlink"
-                                                     >
-                                                       <Unlink className="w-3 h-3" />
-                                                     </button>
-                                                   )}
-                                                 </div>
-                                               </div>
-                                             );
-                                           }}
-                                         </Draggable>
-                                  );
-                                })}
-                              </div>
-                            )}
-                            {provided.placeholder}
-                          </div>
-                        )}
-                      </Droppable>
-                    </div>
-                  );
-                })}
-                {activeProjects.length === 0 && (
-                  <p className="text-slate-400 text-sm">No active projects found.</p>
-                )}
-              </div>
-            </DragDropContext>
-          </TabsContent>
           {/* ── MISSING ITEMS TAB ── */}
           <TabsContent value="missing_items" className="mt-0">
             <ProductionMissingItemsTab currentUser={currentUser} />
@@ -737,7 +573,6 @@ export default function ShopProduction() {
             onFolderOpened={() => setOpenFolderContext(null)}
             onAddCard={(project, roomName) => {
               setPacketsFormContext({ project, roomName });
-              setJobInfoMode(false);
               setEditingItem({ project_id: project.id, project_name: project.project_name, room_name: roomName, is_job_info: false, type: "cabinet", stage: "face_frame" });
               setShowForm(true);
             }}
@@ -760,7 +595,7 @@ export default function ShopProduction() {
         {/* Forms */}
         <ProductionItemForm
           open={showForm}
-          onOpenChange={(open) => { setShowForm(open); if (!open) { setEditingItem(null); setJobInfoMode(false); setPacketsFormContext(null); } }}
+          onOpenChange={(open) => { setShowForm(open); if (!open) { setEditingItem(null); setPacketsFormContext(null); } }}
           onSubmit={(data) => {
             const finalData = packetsFormContext
               ? { ...data, is_job_info: false, project_id: packetsFormContext.project.id, project_name: packetsFormContext.project.project_name, room_name: packetsFormContext.roomName }
@@ -773,7 +608,6 @@ export default function ShopProduction() {
           }}
           initialData={editingItem ? { ...editingItem } : null}
           isLoading={createMutation.isPending || updateMutation.isPending}
-          jobInfoProjects={jobInfoMode ? activeProjects : undefined}
         />
 
         {pickupItem && (
@@ -787,36 +621,6 @@ export default function ShopProduction() {
             initialData={{ room_name: pickupItem.room_name }}
             isLoading={createPickupMutation.isPending}
           />
-        )}
-
-        {/* Link dialog */}
-        {linkingItem && (
-          <Dialog open={!!linkingItem} onOpenChange={(open) => { if (!open) setLinkingItem(null); }}>
-            <DialogContent className="max-w-sm">
-              <DialogHeader>
-                <DialogTitle>Link to Production Card</DialogTitle>
-              </DialogHeader>
-              <p className="text-sm text-slate-500 mb-3">Select a production board card to link to <strong>{linkingItem.name}</strong>:</p>
-              <div className="space-y-2 max-h-80 overflow-y-auto">
-                {items.filter(i => !i.is_job_info).map(prod => (
-                  <button
-                    key={prod.id}
-                    onClick={() => {
-                      updateMutation.mutate({ id: linkingItem.id, data: { ...linkingItem, linked_production_item_id: prod.id } });
-                      setLinkingItem(null);
-                    }}
-                    className="w-full text-left px-3 py-2 rounded-lg border border-slate-200 hover:border-amber-400 hover:bg-amber-50 text-sm"
-                  >
-                    <div className="font-medium text-slate-900">{prod.name}</div>
-                    <div className="text-xs text-slate-500">{prod.project_name} · <span className="capitalize">{prod.stage?.replace(/_/g, " ")}</span></div>
-                  </button>
-                ))}
-                {items.filter(i => !i.is_job_info).length === 0 && (
-                  <p className="text-sm text-slate-400 text-center py-4">No production cards found.</p>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
         )}
 
         <ReportStruggleDialog

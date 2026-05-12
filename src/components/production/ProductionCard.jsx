@@ -70,8 +70,6 @@ export default function ProductionCard({
   onLinkClick,
   showLinkButton,
   onReturnToFolder,      // called to move production card back to Job Packets folder
-  onSendToJobInfo,       // called to move production card → Job Info
-  onReturnToJobInfo,     // called to move a production card back → Job Info (is_job_info=true)
   roomFolderLabel,       // label for the room folder link on a production card
   onOpenRoomFolder,      // called to open the matching room folder in Job Packets tab
   roomGlbUrl,            // GLB url from the matched room on the project
