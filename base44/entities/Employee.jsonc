@@ -75,9 +75,9 @@
       "type": "number",
       "description": "Hourly wage rate (for hourly employees)"
     },
-    "annual_salary": {
+    "monthly_salary": {
       "type": "number",
-      "description": "Annual salary amount (for salaried employees)"
+      "description": "Monthly salary amount (for salaried employees)"
     },
     "overtime_rate_multiplier": {
       "type": "number",

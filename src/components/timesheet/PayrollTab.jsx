@@ -51,7 +51,7 @@ function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved
   const [form, setForm] = useState({
     pay_type: employee.pay_type || "hourly",
     hourly_rate: employee.hourly_rate || "",
-    annual_salary: employee.annual_salary || "",
+    monthly_salary: employee.monthly_salary || "",
     overtime_rate_multiplier: employee.overtime_rate_multiplier || 1.5,
     bonus: employee.bonus || 0,
   });
@@ -76,7 +76,7 @@ function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved
   // Pay calculations
   const payType = editing ? form.pay_type : (employee.pay_type || "hourly");
   const hourlyRate = editing ? parseFloat(form.hourly_rate) || 0 : (employee.hourly_rate || 0);
-  const annualSalary = editing ? parseFloat(form.annual_salary) || 0 : (employee.annual_salary || 0);
+  const monthlySalary = editing ? parseFloat(form.monthly_salary) || 0 : (employee.monthly_salary || 0);
   const otMultiplier = editing ? parseFloat(form.overtime_rate_multiplier) || 1.5 : (employee.overtime_rate_multiplier || 1.5);
   const bonus = editing ? parseFloat(form.bonus) || 0 : (employee.bonus || 0);
 
@@ -86,9 +86,10 @@ function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved
     overtimePay = overtime * hourlyRate * otMultiplier;
     ptoPay = ptoHoursThisPeriod * hourlyRate;
   } else {
-    // Salaried: semi-monthly = annual / 24
-    regularPay = annualSalary / 24;
-    overtimePay = overtime * (annualSalary / 52 / 40) * otMultiplier;
+    // Salaried: semi-monthly = monthly / 2
+    regularPay = monthlySalary / 2;
+    const hourlyEquiv = (monthlySalary * 12) / 52 / 40;
+    overtimePay = overtime * hourlyEquiv * otMultiplier;
     ptoPay = 0; // salaried PTO doesn't add extra pay
   }
   const totalPay = regularPay + overtimePay + ptoPay + bonus;
@@ -98,7 +99,7 @@ function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved
     await base44.entities.Employee.update(employee.id, {
       pay_type: form.pay_type,
       hourly_rate: parseFloat(form.hourly_rate) || null,
-      annual_salary: parseFloat(form.annual_salary) || null,
+      monthly_salary: parseFloat(form.monthly_salary) || null,
       overtime_rate_multiplier: parseFloat(form.overtime_rate_multiplier) || 1.5,
       bonus: parseFloat(form.bonus) || 0,
     });
@@ -134,8 +135,8 @@ function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved
                 </div>
               ) : (
                 <div className="flex items-center gap-1">
-                  <span className="text-xs text-slate-500">$/yr</span>
-                  <Input type="number" step="100" value={form.annual_salary} onChange={e => setForm(f => ({ ...f, annual_salary: e.target.value }))} className="h-7 w-28 text-xs" />
+                  <span className="text-xs text-slate-500">$/mo</span>
+                  <Input type="number" step="100" value={form.monthly_salary} onChange={e => setForm(f => ({ ...f, monthly_salary: e.target.value }))} className="h-7 w-28 text-xs" />
                 </div>
               )}
               <div className="flex items-center gap-1">
@@ -150,7 +151,7 @@ function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved
           ) : (
             <div className="flex items-center gap-2">
               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${payType === "salary" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"}`}>
-                {payType === "salary" ? `Salary: ${fmt$(annualSalary)}/yr` : `$${hourlyRate.toFixed(2)}/hr`}
+                {payType === "salary" ? `Salary: ${fmt$(monthlySalary)}/mo` : `$${hourlyRate.toFixed(2)}/hr`}
               </span>
               {bonus > 0 && (
                 <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
@@ -171,7 +172,7 @@ function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved
               <Button size="sm" variant="ghost" onClick={handleSave} disabled={saving} className="h-7 w-7 p-0 text-green-600">
                 <Check className="w-3.5 h-3.5" />
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setForm({ pay_type: employee.pay_type || "hourly", hourly_rate: employee.hourly_rate || "", annual_salary: employee.annual_salary || "", overtime_rate_multiplier: employee.overtime_rate_multiplier || 1.5, bonus: employee.bonus || 0 }); }} className="h-7 w-7 p-0 text-red-500">
+              <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setForm({ pay_type: employee.pay_type || "hourly", hourly_rate: employee.hourly_rate || "", monthly_salary: employee.monthly_salary || "", overtime_rate_multiplier: employee.overtime_rate_multiplier || 1.5, bonus: employee.bonus || 0 }); }} className="h-7 w-7 p-0 text-red-500">
                 <X className="w-3.5 h-3.5" />
               </Button>
             </>
@@ -226,7 +227,7 @@ export default function PayrollTab({ employees, timeEntries }) {
     const { regular, overtime } = calcWeeklyOT(empEntries, startStr, endStr);
     const payType = emp.pay_type || "hourly";
     const hourlyRate = emp.hourly_rate || 0;
-    const annualSalary = emp.annual_salary || 0;
+    const monthlySalary = emp.monthly_salary || 0;
     const otMult = emp.overtime_rate_multiplier || 1.5;
     const bonus = emp.bonus || 0;
     const ptoEntries = empEntries.filter(e =>
@@ -238,7 +239,7 @@ export default function PayrollTab({ employees, timeEntries }) {
     if (payType === "hourly") {
       grandTotal += regular * hourlyRate + overtime * hourlyRate * otMult + ptoHrs * hourlyRate + bonus;
     } else {
-      grandTotal += annualSalary / 24 + overtime * (annualSalary / 52 / 40) * otMult + bonus;
+      grandTotal += monthlySalary / 2 + overtime * ((monthlySalary * 12) / 52 / 40) * otMult + bonus;
     }
   });
 
