@@ -45,7 +45,7 @@ function calcWeeklyOT(entries, startStr, endStr) {
   return { total, regular, overtime };
 }
 
-function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved }) {
+function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved, availablePTO }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
@@ -70,8 +70,7 @@ function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved
   );
   const ptoHoursThisPeriod = ptoEntries.reduce((s, e) => s + (e.hours_worked || 0), 0);
 
-  // Available PTO balance
-  const availablePTO = Math.max(0, (employee.pto_hours_accrued || 0) - (employee.pto_hours_used || 0));
+  // availablePTO is passed in from parent (computed dynamically)
 
   // Pay calculations
   const payType = editing ? form.pay_type : (employee.pay_type || "hourly");
@@ -211,7 +210,21 @@ function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved
   );
 }
 
-export default function PayrollTab({ employees, timeEntries }) {
+function calcAvailablePTO(employee, timeEntries, vacations, accrualRate) {
+  const workEntries = timeEntries.filter(e => e.employee_id === employee.id && e.entry_type === "work");
+  const totalHoursWorked = workEntries.reduce((s, e) => s + (e.hours_worked || 0), 0);
+  const earned = totalHoursWorked * accrualRate;
+
+  const ptoEntries = timeEntries.filter(e => e.employee_id === employee.id && e.entry_type === "pto");
+  const ptoUsedFromEntries = ptoEntries.length * 8;
+
+  const approvedVacations = vacations.filter(v => v.employee_id === employee.id && v.status === "approved" && v.use_pto);
+  const ptoUsedFromVacations = approvedVacations.reduce((s, v) => s + (v.pto_hours_used || 0), 0);
+
+  return Math.max(0, earned - ptoUsedFromEntries - ptoUsedFromVacations);
+}
+
+export default function PayrollTab({ employees, timeEntries, vacations = [], accrualRate = 0.0192 }) {
   const [periodOffset, setPeriodOffset] = useState(0);
   const { start: periodStart, end: periodEnd } = getPayPeriodForOffset(periodOffset);
 
@@ -284,6 +297,7 @@ export default function PayrollTab({ employees, timeEntries }) {
             timeEntries={timeEntries}
             periodStart={periodStart}
             periodEnd={periodEnd}
+            availablePTO={calcAvailablePTO(emp, timeEntries, vacations, accrualRate)}
           />
         ))}
         {activeEmployees.length === 0 && (

@@ -320,6 +320,11 @@ export default function TimeSheet() {
     queryFn: () => base44.entities.Settings.filter({ setting_type: "pto_calculation" })
   });
 
+  const { data: allVacations = [] } = useQuery({
+    queryKey: ["allVacations"],
+    queryFn: () => base44.entities.Vacation.list()
+  });
+
   // Real-time
   useEffect(() => {
     const unsub = base44.entities.TimeEntry.subscribe(() => {
@@ -765,7 +770,7 @@ export default function TimeSheet() {
           {/* ── PAYROLL TAB (admin) ── */}
           {isAdmin && (
             <TabsContent value="payroll" className="mt-5">
-              <PayrollTab employees={employees} timeEntries={timeEntries} />
+              <PayrollTab employees={employees} timeEntries={timeEntries} vacations={allVacations} accrualRate={settings[0]?.accrual_rate || 0.0192} />
             </TabsContent>
           )}
 
