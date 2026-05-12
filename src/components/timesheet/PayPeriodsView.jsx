@@ -49,7 +49,18 @@ export default function PayPeriodsView({ employeeEntries }) {
   );
 
   const totalHours = periodEntries.reduce((s, e) => s + (e.hours_worked || 0), 0);
-  const overtimeHours = Math.max(0, totalHours - 80); // >80 hrs in a pay period = OT
+
+  // OT is calculated per week (>40 hrs/week), not as a flat pay-period total
+  const weeklyTotals = {};
+  periodEntries.forEach(entry => {
+    const d = new Date(entry.date);
+    const dow = (d.getDay() + 6) % 7;
+    const weekMonday = new Date(d);
+    weekMonday.setDate(d.getDate() - dow);
+    const weekKey = format(weekMonday, "yyyy-MM-dd");
+    weeklyTotals[weekKey] = (weeklyTotals[weekKey] || 0) + (entry.hours_worked || 0);
+  });
+  const overtimeHours = Object.values(weeklyTotals).reduce((sum, wk) => sum + Math.max(0, wk - 40), 0);
 
   // Group by week within the period
   const weekGroups = {};
