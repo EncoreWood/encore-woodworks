@@ -285,6 +285,8 @@ export default function TimeSheet() {
   const [formData, setFormData] = useState({ clock_in: "", clock_out: "", entry_type: "work", notes: "", date: "" });
   const [showAdminVacation, setShowAdminVacation] = useState(false);
   const [adminVacForm, setAdminVacForm] = useState({ employee_id: "", entry_type: "vacation", date: "", hours_worked: "8", notes: "" });
+  const [applyingLunch, setApplyingLunch] = useState(false);
+  const [lunchResult, setLunchResult] = useState(null);
 
   const [settingsData, setSettingsData] = useState({
     hours_per_year: 160, accrual_rate: 0.0192,
@@ -625,11 +627,39 @@ export default function TimeSheet() {
           {/* ── TEAM OVERVIEW TAB (admin) ── */}
           {isAdmin && (
             <TabsContent value="overview" className="space-y-5 mt-5">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-3">
                 <h2 className="text-lg font-bold text-slate-900">
                   Pay Period: {format(periodStart, "MMM d")} – {format(periodEnd, "MMM d, yyyy")}
                 </h2>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={applyingLunch}
+                  className="gap-1.5 border-orange-300 text-orange-700 hover:bg-orange-50"
+                  onClick={async () => {
+                    setApplyingLunch(true);
+                    setLunchResult(null);
+                    const res = await base44.functions.invoke("applyLunchDeductions", {
+                      start_date: format(periodStart, "yyyy-MM-dd"),
+                      end_date: format(periodEnd, "yyyy-MM-dd")
+                    });
+                    setLunchResult(res.data);
+                    setApplyingLunch(false);
+                    queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
+                  }}
+                >
+                  <UtensilsCrossed className="w-3.5 h-3.5" />
+                  {applyingLunch ? "Applying..." : "Apply Lunch Deductions"}
+                </Button>
               </div>
+              {lunchResult && (
+                <div className="text-xs text-slate-600 bg-orange-50 border border-orange-200 rounded-lg p-3 space-y-0.5">
+                  <p className="font-semibold text-orange-800 mb-1">Lunch deduction results:</p>
+                  {lunchResult.results?.map((r, i) => (
+                    <p key={i}><span className="font-medium">{r.employee}:</span> {r.deductedDays} days deducted, {r.alreadyDone} already done, {r.skippedDays} skipped (&lt;5h)</p>
+                  ))}
+                </div>
+              )}
 
               <Card className="border-0 shadow-sm">
                 <CardHeader className="pb-3">
