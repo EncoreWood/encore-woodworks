@@ -733,43 +733,7 @@ export default function ProjectDetails() {
             {/* Payment Log */}
             <PaymentLog project={project} onSave={(data) => updateMutation.mutate(data)} />
 
-            {/* Budget */}
-            <Card className="p-6 bg-white border-0 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-slate-900">Budget</h2>
-                {editingSection !== "budget" && (
-                  <Button size="sm" variant="outline" onClick={() => startEditSection("budget")} className="gap-1 text-xs h-7">
-                    <Edit className="w-3 h-3" />Edit
-                  </Button>
-                )}
-              </div>
-              {editingSection === "budget" ? (
-                <div className="space-y-3">
-                  <div><Label className="text-xs text-slate-500">Estimated Budget ($)</Label><Input type="number" value={sectionDraft.estimated_budget} onChange={e => setSectionDraft(d => ({...d, estimated_budget: e.target.value}))} className="h-8 text-sm mt-1" /></div>
-                  <div><Label className="text-xs text-slate-500">Actual Cost ($)</Label><Input type="number" value={sectionDraft.actual_cost} onChange={e => setSectionDraft(d => ({...d, actual_cost: e.target.value}))} className="h-8 text-sm mt-1" /></div>
-                  <div><Label className="text-xs text-slate-500">Deposit Paid ($)</Label><Input type="number" value={sectionDraft.deposit_paid} onChange={e => setSectionDraft(d => ({...d, deposit_paid: e.target.value}))} className="h-8 text-sm mt-1" /></div>
-                  <div className="flex gap-2 pt-2">
-                    <Button size="sm" className="h-7 bg-emerald-600 hover:bg-emerald-700" onClick={() => updateMutation.mutate({ estimated_budget: sectionDraft.estimated_budget ? parseFloat(sectionDraft.estimated_budget) : null, actual_cost: sectionDraft.actual_cost ? parseFloat(sectionDraft.actual_cost) : null, deposit_paid: sectionDraft.deposit_paid ? parseFloat(sectionDraft.deposit_paid) : null })}>Save</Button>
-                    <Button size="sm" variant="outline" className="h-7" onClick={() => setEditingSection(null)}>Cancel</Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {project.estimated_budget && (
-                    <div className="flex items-center gap-3"><DollarSign className="w-5 h-5 text-slate-400" /><div><p className="text-sm text-slate-500">Estimated</p><p className="text-xl font-semibold text-slate-900">${project.estimated_budget.toLocaleString()}</p></div></div>
-                  )}
-                  {project.actual_cost && (
-                    <div className="flex items-center gap-3"><DollarSign className="w-5 h-5 text-slate-400" /><div><p className="text-sm text-slate-500">Actual Cost</p><p className="text-xl font-semibold text-slate-900">${project.actual_cost.toLocaleString()}</p></div></div>
-                  )}
-                  {project.deposit_paid && (
-                    <div className="flex items-center gap-3"><DollarSign className="w-5 h-5 text-emerald-500" /><div><p className="text-sm text-slate-500">Deposit Paid</p><p className="font-semibold text-emerald-700">${project.deposit_paid.toLocaleString()}</p></div></div>
-                  )}
-                  {!project.estimated_budget && !project.actual_cost && !project.deposit_paid && (
-                    <p className="text-sm text-slate-400">No budget set</p>
-                  )}
-                </div>
-              )}
-            </Card>
+
           </div>
         </div>
 
