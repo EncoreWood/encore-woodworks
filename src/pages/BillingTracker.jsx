@@ -47,7 +47,7 @@ function DebtBarChart({ items }) {
   );
 }
 
-function BillingTab({ items, category, onEdit, onAdd }) {
+function BillingTab({ items, category, onEdit, onAdd, onDelete }) {
   const filtered = items.filter(i => i.category === category);
   const showChart = category === "Supplier Debt" || category === "Loan";
   return (
@@ -63,7 +63,7 @@ function BillingTab({ items, category, onEdit, onAdd }) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map(item => (
-            <BillingCard key={item.id} item={item} onEdit={onEdit} />
+            <BillingCard key={item.id} item={item} onEdit={onEdit} onDelete={onDelete} />
           ))}
         </div>
       )}
@@ -100,6 +100,11 @@ export default function BillingTracker() {
   };
 
   const handleSaved = () => {
+    queryClient.invalidateQueries({ queryKey: ["billing-items"] });
+  };
+
+  const handleDelete = async (id) => {
+    await base44.entities.BillingItem.delete(id);
     queryClient.invalidateQueries({ queryKey: ["billing-items"] });
   };
 
@@ -140,15 +145,15 @@ export default function BillingTracker() {
             </TabsList>
 
             <TabsContent value="monthly">
-              <BillingTab items={items} category="Monthly Bill" onEdit={handleEdit} onAdd={() => handleAdd("Monthly Bill")} />
+              <BillingTab items={items} category="Monthly Bill" onEdit={handleEdit} onAdd={() => handleAdd("Monthly Bill")} onDelete={handleDelete} />
             </TabsContent>
 
             <TabsContent value="supplier">
-              <BillingTab items={items} category="Supplier Debt" onEdit={handleEdit} onAdd={() => handleAdd("Supplier Debt")} />
+              <BillingTab items={items} category="Supplier Debt" onEdit={handleEdit} onAdd={() => handleAdd("Supplier Debt")} onDelete={handleDelete} />
             </TabsContent>
 
             <TabsContent value="loans">
-              <BillingTab items={items} category="Loan" onEdit={handleEdit} onAdd={() => handleAdd("Loan")} />
+              <BillingTab items={items} category="Loan" onEdit={handleEdit} onAdd={() => handleAdd("Loan")} onDelete={handleDelete} />
             </TabsContent>
 
             <TabsContent value="calendar">

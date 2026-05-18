@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, Zap, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { AlertTriangle, Zap, ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 
 const STATUS_STYLES = {
@@ -23,8 +23,9 @@ function fmt(n) {
   return "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export default function BillingCard({ item, onEdit }) {
+export default function BillingCard({ item, onEdit, onDelete }) {
   const [expanded, setExpanded] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const showProgress = item.category === "Supplier Debt" || item.category === "Loan";
   const pct = showProgress && item.original_amount > 0
     ? Math.min(100, Math.round((item.amount_paid / item.original_amount) * 100))
@@ -64,9 +65,21 @@ export default function BillingCard({ item, onEdit }) {
           )}
         </div>
 
-        <Button variant="ghost" size="sm" onClick={() => onEdit(item)} className="shrink-0 h-7 w-7 p-0">
-          <Pencil className="w-3.5 h-3.5" />
-        </Button>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button variant="ghost" size="sm" onClick={() => onEdit(item)} className="h-7 w-7 p-0">
+            <Pencil className="w-3.5 h-3.5" />
+          </Button>
+          {confirmDelete ? (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => onDelete(item.id)} className="h-7 px-2 text-xs text-red-600 hover:bg-red-50">Yes</Button>
+              <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(false)} className="h-7 px-2 text-xs text-slate-500">No</Button>
+            </>
+          ) : (
+            <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(true)} className="h-7 w-7 p-0 text-slate-400 hover:text-red-600">
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Amounts */}
