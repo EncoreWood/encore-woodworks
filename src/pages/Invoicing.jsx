@@ -518,49 +518,24 @@ export default function Invoicing() {
                                 </CardHeader>
                                 <CardContent className="pt-0">
                                   <div className="space-y-2 text-sm">
-                                    {project.total_amount > 0 && (
-                                      <div className="flex justify-between">
-                                        <span className="text-slate-600 font-medium">Total Amount:</span>
-                                        <span className="font-bold text-slate-900">${project.total_amount.toLocaleString()}</span>
-                                      </div>
-                                    )}
-                                    {(project.change_orders || []).length > 0 && (
-                                      <div className="flex justify-between">
-                                        <span className="text-slate-600">Change Orders:</span>
-                                        <span className="font-medium text-blue-700">
-                                          +${(project.change_orders || []).reduce((s, co) => s + (co.amount || 0), 0).toLocaleString()}
-                                          <span className="text-xs text-slate-400 ml-1">({project.change_orders.length})</span>
-                                        </span>
-                                      </div>
-                                    )}
-                                    <div className="flex justify-between">
-                                      <span className="text-slate-600">Budget:</span>
-                                      <span className="font-medium">${budget.toLocaleString()}</span>
-                                    </div>
-                                    {collected > 0 && (
-                                      <div className="flex justify-between">
-                                        <span className="text-slate-600">Collected:</span>
-                                        <span className="font-medium text-green-600">${collected.toLocaleString()}</span>
-                                      </div>
-                                    )}
-                                    {budget > 0 && (
-                                      <div className="flex justify-between">
-                                        <span className="text-slate-600">Remaining:</span>
-                                        <span className="font-medium text-amber-600">${remaining.toLocaleString()}</span>
-                                      </div>
-                                    )}
-                                    {actualCost > 0 && (
-                                      <div className="flex justify-between">
-                                        <span className="text-slate-600">Actual Cost:</span>
-                                        <span className="font-medium">${actualCost.toLocaleString()}</span>
-                                      </div>
-                                    )}
-                                    {actualCost > collected && collected > 0 && (
-                                      <div className="flex justify-between">
-                                        <span className="text-slate-600">Balance Due:</span>
-                                        <span className="font-medium text-red-600">${(actualCost - collected).toLocaleString()}</span>
-                                      </div>
-                                    )}
+                                    {(() => {
+                                      const coTotal = (project.change_orders || []).reduce((s, co) => s + (co.amount || 0), 0);
+                                      const currentTotal = (project.base_amount || project.total_amount || budget) + coTotal;
+                                      return (<>
+                                        <div className="flex justify-between">
+                                          <span className="text-slate-600 font-medium">Current Total:</span>
+                                          <span className="font-bold text-slate-900">${currentTotal.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-slate-600">Collected:</span>
+                                          <span className="font-medium text-green-600">${collected.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                          <span className="text-slate-600">Remaining:</span>
+                                          <span className="font-medium text-amber-600">${(currentTotal - collected).toLocaleString()}</span>
+                                        </div>
+                                      </>);
+                                    })()}
                                     {expDate && (() => {
                                      const expStageLabel = expDateKey === "deposit_expected_date" ? "Deposit" : expDateKey === "ninety_percent_expected_date" ? "90%" : "Final";
                                      const [y, m, d] = expDate.split("-").map(Number);
