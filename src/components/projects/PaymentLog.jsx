@@ -69,7 +69,7 @@ export default function PaymentLog({ project, onSave }) {
   const payments = project.payments || [];
   const changeOrders = project.change_orders || [];
   const estimated = project.estimated_budget || 0;
-  const baseTotal = project.total_amount || estimated;
+  const baseTotal = project.base_amount || project.total_amount || estimated;
   const changeOrdersTotal = changeOrders.reduce((s, co) => s + (parseFloat(co.amount) || 0), 0);
   const currentTotal = baseTotal + changeOrdersTotal;
   const totalCollected = payments
@@ -94,7 +94,7 @@ export default function PaymentLog({ project, onSave }) {
     if (!newCO.description || !newCO.amount) return;
     const updated = [...changeOrders, { id: Date.now().toString(), description: newCO.description, amount: parseFloat(newCO.amount) || 0, date: newCO.date }];
     const newCOTotal = updated.reduce((s, co) => s + (parseFloat(co.amount) || 0), 0);
-    onSave({ change_orders: updated, total_amount: baseTotal + newCOTotal });
+    onSave({ change_orders: updated, total_amount: baseTotal + newCOTotal, base_amount: baseTotal });
     setNewCO(emptyCO);
     setShowCOForm(false);
   };
@@ -102,7 +102,7 @@ export default function PaymentLog({ project, onSave }) {
   const handleDeleteCO = (idx) => {
     const updated = changeOrders.filter((_, i) => i !== idx);
     const newCOTotal = updated.reduce((s, co) => s + (parseFloat(co.amount) || 0), 0);
-    onSave({ change_orders: updated, total_amount: baseTotal + newCOTotal });
+    onSave({ change_orders: updated, total_amount: baseTotal + newCOTotal, base_amount: baseTotal });
   };
 
   return (
@@ -121,7 +121,7 @@ export default function PaymentLog({ project, onSave }) {
       {/* Summary Tiles */}
       <div className="grid grid-cols-2 gap-2 mb-5">
         <EditableTile label="Estimated" value={estimated} onSave={v => onSave({ estimated_budget: v })} colorClass="text-slate-700" bgClass="bg-slate-50" />
-        <EditableTile label="Current Total (Base)" value={project.total_amount || estimated} onSave={v => onSave({ total_amount: v })} colorClass="text-blue-800" bgClass="bg-blue-50" />
+        <EditableTile label="Current Total" value={currentTotal} onSave={v => onSave({ base_amount: v })} colorClass="text-blue-800" bgClass="bg-blue-50" />
         <div className="bg-emerald-50 rounded-lg p-3 text-center">
           <p className="text-xs text-emerald-600 mb-1">Collected</p>
           <p className="text-sm font-bold text-emerald-700">${totalCollected.toLocaleString()}</p>

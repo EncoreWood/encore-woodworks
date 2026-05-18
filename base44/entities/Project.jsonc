@@ -229,6 +229,10 @@
     "estimated_budget": {
       "type": "number"
     },
+    "base_amount": {
+      "type": "number",
+      "description": "Base contract price before change orders"
+    },
     "total_amount": {
       "type": "number",
       "description": "Contract total amount (base price + change orders)"
