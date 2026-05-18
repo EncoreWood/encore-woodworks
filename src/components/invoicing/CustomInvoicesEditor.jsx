@@ -91,7 +91,7 @@ export default function CustomInvoicesEditor({ project, onSave }) {
   };
 
   const collected = calcCollected(invoices);
-  const budget = project.estimated_budget || 0;
+  const budget = project.total_amount || project.estimated_budget || 0;
   const remaining = budget - collected;
 
   return (
@@ -99,7 +99,7 @@ export default function CustomInvoicesEditor({ project, onSave }) {
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3 mb-2">
         <div className="bg-slate-50 rounded-lg p-3 text-center">
-          <p className="text-xs text-slate-500 mb-1">Est. Budget</p>
+          <p className="text-xs text-slate-500 mb-1">Total Amount</p>
           <p className="text-lg font-bold text-slate-900">${budget.toLocaleString()}</p>
         </div>
         <div className="bg-green-50 rounded-lg p-3 text-center">
