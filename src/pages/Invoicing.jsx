@@ -528,6 +528,7 @@ export default function Invoicing() {
                                     {(() => {
                                       const coTotal = (project.change_orders || []).reduce((s, co) => s + (co.amount || 0), 0);
                                       const currentTotal = (project.base_amount || project.total_amount || budget) + coTotal;
+                                      const remaining = status === "paid_in_full" ? 0 : currentTotal - collected;
                                       return (<>
                                         <div className="flex justify-between">
                                           <span className="text-slate-600 font-medium">Current Total:</span>
@@ -539,7 +540,7 @@ export default function Invoicing() {
                                         </div>
                                         <div className="flex justify-between">
                                           <span className="text-slate-600">Remaining:</span>
-                                          <span className="font-medium text-amber-600">${(currentTotal - collected).toLocaleString()}</span>
+                                          <span className="font-medium text-amber-600">${remaining.toLocaleString()}</span>
                                         </div>
                                       </>);
                                     })()}
