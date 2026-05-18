@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Plus, Trash2, X, Check, PlusCircle } from "lucide-react";
+import { DollarSign, Plus, Trash2, X, Check, PlusCircle, Pencil } from "lucide-react";
 import { format } from "date-fns";
 
 const PAYMENT_TYPES = ["Deposit", "Progress Payment", "Final Payment", "Other"];
@@ -19,6 +19,46 @@ const statusColors = {
 
 const emptyEntry = { type: "Deposit", amount: "", date: "", status: "Pending", note: "" };
 const emptyCO = { description: "", amount: "", date: new Date().toISOString().split("T")[0] };
+
+function EditableTile({ label, value, onSave, colorClass = "text-slate-700", bgClass = "bg-slate-50" }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const start = () => { setDraft(value || ""); setEditing(true); };
+  const save = () => { onSave(parseFloat(draft) || 0); setEditing(false); };
+  const cancel = () => setEditing(false);
+
+  if (editing) {
+    return (
+      <div className={`${bgClass} rounded-lg p-2 text-center`}>
+        <p className="text-xs text-slate-500 mb-1">{label}</p>
+        <div className="flex items-center gap-1 justify-center">
+          <span className="text-xs text-slate-400">$</span>
+          <input
+            type="number"
+            className="w-24 text-center text-sm font-bold border border-slate-300 rounded px-1 py-0.5 focus:outline-none focus:border-amber-400"
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") cancel(); }}
+            autoFocus
+          />
+        </div>
+        <div className="flex gap-1 justify-center mt-1">
+          <button onClick={save} className="text-emerald-600 hover:text-emerald-700"><Check className="w-3 h-3" /></button>
+          <button onClick={cancel} className="text-slate-400 hover:text-slate-600"><X className="w-3 h-3" /></button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${bgClass} rounded-lg p-3 text-center group cursor-pointer relative`} onClick={start}>
+      <p className="text-xs text-slate-500 mb-1">{label}</p>
+      <p className={`text-sm font-bold ${colorClass}`}>${(value || 0).toLocaleString()}</p>
+      <Pencil className="w-2.5 h-2.5 text-slate-400 absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+    </div>
+  );
+}
 
 export default function PaymentLog({ project, onSave }) {
   const [showForm, setShowForm] = useState(false);
@@ -78,14 +118,8 @@ export default function PaymentLog({ project, onSave }) {
 
       {/* Summary Tiles */}
       <div className="grid grid-cols-2 gap-2 mb-5">
-        <div className="bg-slate-50 rounded-lg p-3 text-center">
-          <p className="text-xs text-slate-500 mb-1">Estimated</p>
-          <p className="text-sm font-bold text-slate-700">${estimated.toLocaleString()}</p>
-        </div>
-        <div className="bg-blue-50 rounded-lg p-3 text-center">
-          <p className="text-xs text-blue-600 mb-1">Current Total</p>
-          <p className="text-sm font-bold text-blue-800">${currentTotal.toLocaleString()}</p>
-        </div>
+        <EditableTile label="Estimated" value={estimated} onSave={v => onSave({ estimated_budget: v })} colorClass="text-slate-700" bgClass="bg-slate-50" />
+        <EditableTile label="Current Total (Base)" value={project.total_amount || estimated} onSave={v => onSave({ total_amount: v })} colorClass="text-blue-800" bgClass="bg-blue-50" />
         <div className="bg-emerald-50 rounded-lg p-3 text-center">
           <p className="text-xs text-emerald-600 mb-1">Collected</p>
           <p className="text-sm font-bold text-emerald-700">${totalCollected.toLocaleString()}</p>
