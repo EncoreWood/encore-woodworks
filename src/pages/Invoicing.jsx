@@ -360,6 +360,22 @@ export default function Invoicing() {
 
         {/* Board Tab */}
         {activeTab === "board" && <>
+        {/* Total Remaining Summary */}
+        {(() => {
+          const totalRemaining = invoicingProjects.reduce((sum, p) => {
+            if (p.invoice_status === "paid_in_full") return sum;
+            const coTotal = (p.change_orders || []).reduce((s, co) => s + (co.amount || 0), 0);
+            const currentTotal = (p.base_amount || p.total_amount || p.estimated_budget || 0) + coTotal;
+            const collected = calcCollected(getEffectiveInvoices(p));
+            return sum + Math.max(0, currentTotal - collected);
+          }, 0);
+          return (
+            <div className="mb-6 inline-flex items-center gap-3 bg-white border border-slate-200 rounded-lg px-4 py-2.5 shadow-sm">
+              <span className="text-sm font-medium text-slate-600">Total Remaining:</span>
+              <span className="text-lg font-bold text-amber-600">${totalRemaining.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          );
+        })()}
         {/* Search */}
         <div className="mb-6">
           <div className="relative max-w-md">
