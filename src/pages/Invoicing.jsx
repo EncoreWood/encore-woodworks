@@ -592,8 +592,99 @@ export default function Invoicing() {
                 setViewingDetails(prev => ({ ...prev, custom_invoices: customInvoices }));
               };
 
+              const detailsCOs = viewingDetails.change_orders || [];
+              const detailsCOsTotal = detailsCOs.reduce((s, co) => s + (co.amount || 0), 0);
+
+              const [detailsCOForm, setDetailsCOForm] = [changeOrderForm, setChangeOrderForm];
+
+              const addDetailsCO = () => {
+                if (!detailsCOForm.description || !detailsCOForm.amount) return;
+                const newCO = { id: Date.now().toString(), description: detailsCOForm.description, amount: parseFloat(detailsCOForm.amount) || 0, date: detailsCOForm.date };
+                const updatedCOs = [...detailsCOs, newCO];
+                updateProjectMutation.mutate({ id: viewingDetails.id, data: { change_orders: updatedCOs }, _skipClose: true });
+                setViewingDetails(prev => ({ ...prev, change_orders: updatedCOs }));
+                setChangeOrderForm({ description: "", amount: "", date: new Date().toISOString().split("T")[0] });
+              };
+
+              const removeDetailsCO = (idx) => {
+                const updatedCOs = detailsCOs.filter((_, i) => i !== idx);
+                updateProjectMutation.mutate({ id: viewingDetails.id, data: { change_orders: updatedCOs }, _skipClose: true });
+                setViewingDetails(prev => ({ ...prev, change_orders: updatedCOs }));
+              };
+
+              const saveTotalAmount = (val) => {
+                updateProjectMutation.mutate({ id: viewingDetails.id, data: { total_amount: val }, _skipClose: true });
+                setViewingDetails(prev => ({ ...prev, total_amount: val }));
+              };
+
               return (
                 <div className="space-y-6 py-4">
+                  {/* Total Amount + Change Orders */}
+                  <Card className="p-6">
+                    <h3 className="font-semibold text-lg mb-4">Contract Total & Change Orders</h3>
+                    <div className="space-y-4">
+                      {/* Total Amount inline edit */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-slate-600 w-40 flex-shrink-0">Total Amount (Base):</span>
+                        <div className="relative flex-1 max-w-48">
+                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <Input
+                            type="number"
+                            className="pl-9"
+                            defaultValue={viewingDetails.total_amount || 0}
+                            onBlur={(e) => saveTotalAmount(parseFloat(e.target.value) || 0)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Existing COs */}
+                      {detailsCOs.length > 0 && (
+                        <div className="space-y-1">
+                          {detailsCOs.map((co, idx) => (
+                            <div key={co.id || idx} className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded px-3 py-1.5 text-sm">
+                              <div className="flex-1 min-w-0">
+                                <span className="font-medium text-slate-800">{co.description}</span>
+                                {co.date && <span className="text-xs text-slate-400 ml-2">{co.date}</span>}
+                              </div>
+                              <span className="font-semibold text-blue-700 mr-2">+${(co.amount || 0).toLocaleString()}</span>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400 hover:text-red-600" onClick={() => removeDetailsCO(idx)}>
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Running total */}
+                      {(viewingDetails.total_amount > 0 || detailsCOs.length > 0) && (
+                        <div className="flex justify-between items-center bg-slate-100 rounded-lg px-4 py-2 text-sm font-semibold">
+                          <span className="text-slate-600">Running Total (Base + COs):</span>
+                          <span className="text-slate-900">${((viewingDetails.total_amount || 0) + detailsCOsTotal).toLocaleString()}</span>
+                        </div>
+                      )}
+
+                      {/* Add CO form */}
+                      <div className="border border-dashed border-slate-300 rounded-lg p-3 space-y-2 bg-slate-50">
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Add Change Order</p>
+                        <Input
+                          placeholder="Description"
+                          value={detailsCOForm.description}
+                          onChange={(e) => setDetailsCOForm(f => ({ ...f, description: e.target.value }))}
+                        />
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <Input type="number" className="pl-9" placeholder="Amount" value={detailsCOForm.amount} onChange={(e) => setDetailsCOForm(f => ({ ...f, amount: e.target.value }))} />
+                          </div>
+                          <Input type="date" className="w-36" value={detailsCOForm.date} onChange={(e) => setDetailsCOForm(f => ({ ...f, date: e.target.value }))} />
+                        </div>
+                        <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700" disabled={!detailsCOForm.description || !detailsCOForm.amount} onClick={addDetailsCO}>
+                          <PlusCircle className="w-4 h-4 mr-2" /> Add Change Order
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+
                   <Card className="p-6">
                     <h3 className="font-semibold text-lg mb-4">Invoices</h3>
                     <CustomInvoicesEditor
