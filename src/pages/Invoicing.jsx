@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail, Edit3, Download, PlusCircle, LayoutDashboard, Calendar, CalendarClock } from "lucide-react";
+import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail, Edit3, Download, PlusCircle, LayoutDashboard, Calendar, CalendarClock, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 import ProposalViewer from "../components/proposals/ProposalViewer";
@@ -31,9 +31,12 @@ export default function Invoicing() {
   const [sending, setSending] = useState(false);
   const [editForm, setEditForm] = useState({
     estimated_budget: 0,
+    total_amount: 0,
     deposit_paid: 0,
     actual_cost: 0
   });
+  const [changeOrderForm, setChangeOrderForm] = useState({ description: "", amount: "", date: new Date().toISOString().split("T")[0] });
+  const [editingChangeOrderIdx, setEditingChangeOrderIdx] = useState(null);
   const [addingPayment, setAddingPayment] = useState(null);
   const [paymentForm, setPaymentForm] = useState({ amount: "", date: "", notes: "" });
   const [viewingPayments, setViewingPayments] = useState(null);
@@ -84,15 +87,18 @@ export default function Invoicing() {
     setEditingProject(project);
     setEditForm({
       estimated_budget: project.estimated_budget || 0,
+      total_amount: project.total_amount || 0,
       deposit_paid: project.deposit_paid || 0,
       actual_cost: project.actual_cost || 0
     });
+    setChangeOrderForm({ description: "", amount: "", date: new Date().toISOString().split("T")[0] });
+    setEditingChangeOrderIdx(null);
   };
 
   const handleSave = () => {
     updateProjectMutation.mutate({
       id: editingProject.id,
-      data: editForm
+      data: { estimated_budget: editForm.estimated_budget, total_amount: editForm.total_amount, deposit_paid: editForm.deposit_paid, actual_cost: editForm.actual_cost }
     });
   };
 
@@ -481,6 +487,21 @@ export default function Invoicing() {
                                 </CardHeader>
                                 <CardContent className="pt-0">
                                   <div className="space-y-2 text-sm">
+                                    {project.total_amount > 0 && (
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-600 font-medium">Total Amount:</span>
+                                        <span className="font-bold text-slate-900">${project.total_amount.toLocaleString()}</span>
+                                      </div>
+                                    )}
+                                    {(project.change_orders || []).length > 0 && (
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-600">Change Orders:</span>
+                                        <span className="font-medium text-blue-700">
+                                          +${(project.change_orders || []).reduce((s, co) => s + (co.amount || 0), 0).toLocaleString()}
+                                          <span className="text-xs text-slate-400 ml-1">({project.change_orders.length})</span>
+                                        </span>
+                                      </div>
+                                    )}
                                     <div className="flex justify-between">
                                       <span className="text-slate-600">Budget:</span>
                                       <span className="font-medium">${budget.toLocaleString()}</span>
@@ -939,41 +960,141 @@ export default function Invoicing() {
             <DialogHeader>
               <DialogTitle>Edit Financial Details</DialogTitle>
             </DialogHeader>
-            {editingProject && (
+            {editingProject && (() => {
+              const currentChangeOrders = editingProject.change_orders || [];
+              const changeOrdersTotal = currentChangeOrders.reduce((s, co) => s + (co.amount || 0), 0);
+              const computedTotal = editForm.total_amount + changeOrdersTotal;
+
+              const addChangeOrder = () => {
+                if (!changeOrderForm.description || !changeOrderForm.amount) return;
+                const newCO = { id: Date.now().toString(), description: changeOrderForm.description, amount: parseFloat(changeOrderForm.amount) || 0, date: changeOrderForm.date };
+                const updatedCOs = [...currentChangeOrders, newCO];
+                updateProjectMutation.mutate({ id: editingProject.id, data: { change_orders: updatedCOs }, _skipClose: true });
+                setEditingProject(prev => ({ ...prev, change_orders: updatedCOs }));
+                setChangeOrderForm({ description: "", amount: "", date: new Date().toISOString().split("T")[0] });
+              };
+
+              const removeChangeOrder = (idx) => {
+                const updatedCOs = currentChangeOrders.filter((_, i) => i !== idx);
+                updateProjectMutation.mutate({ id: editingProject.id, data: { change_orders: updatedCOs }, _skipClose: true });
+                setEditingProject(prev => ({ ...prev, change_orders: updatedCOs }));
+              };
+
+              return (
               <div className="space-y-4 py-4">
                 <div className="text-sm text-slate-600 mb-4">
                   <div className="font-semibold text-slate-900">{editingProject.project_name}</div>
                   <div>{editingProject.client_name}</div>
                 </div>
+
+                {/* Total Amount */}
+                <div className="space-y-2">
+                  <Label htmlFor="total_amount">Total Amount (Base Contract)</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input
+                      id="total_amount"
+                      type="number"
+                      className="pl-9"
+                      value={editForm.total_amount}
+                      onChange={(e) => setEditForm({ ...editForm, total_amount: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+
+                {/* Change Orders */}
+                <div className="space-y-2">
+                  <Label>Change Orders</Label>
+                  {currentChangeOrders.length > 0 && (
+                    <div className="space-y-1 mb-2">
+                      {currentChangeOrders.map((co, idx) => (
+                        <div key={co.id || idx} className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded px-3 py-1.5 text-sm">
+                          <div className="flex-1 min-w-0">
+                            <span className="font-medium text-slate-800">{co.description}</span>
+                            {co.date && <span className="text-xs text-slate-400 ml-2">{co.date}</span>}
+                          </div>
+                          <span className="font-semibold text-blue-700 mr-2">+${(co.amount || 0).toLocaleString()}</span>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400 hover:text-red-600" onClick={() => removeChangeOrder(idx)}>
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Add new change order */}
+                  <div className="border border-dashed border-slate-300 rounded-lg p-3 space-y-2 bg-slate-50">
+                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Add Change Order</p>
+                    <Input
+                      placeholder="Description"
+                      value={changeOrderForm.description}
+                      onChange={(e) => setChangeOrderForm(f => ({ ...f, description: e.target.value }))}
+                    />
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <Input
+                          type="number"
+                          className="pl-9"
+                          placeholder="Amount"
+                          value={changeOrderForm.amount}
+                          onChange={(e) => setChangeOrderForm(f => ({ ...f, amount: e.target.value }))}
+                        />
+                      </div>
+                      <Input
+                        type="date"
+                        className="w-36"
+                        value={changeOrderForm.date}
+                        onChange={(e) => setChangeOrderForm(f => ({ ...f, date: e.target.value }))}
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      className="w-full bg-blue-600 hover:bg-blue-700"
+                      disabled={!changeOrderForm.description || !changeOrderForm.amount}
+                      onClick={addChangeOrder}
+                    >
+                      <PlusCircle className="w-4 h-4 mr-2" /> Add Change Order
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Running total */}
+                {editForm.total_amount > 0 && (
+                  <div className="flex justify-between items-center bg-slate-100 rounded-lg px-4 py-2 text-sm font-semibold">
+                    <span className="text-slate-600">Running Total (Base + COs):</span>
+                    <span className="text-slate-900 text-base">${computedTotal.toLocaleString()}</span>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="budget">Estimated Budget</Label>
-                  <Input
-                    id="budget"
-                    type="number"
-                    value={editForm.estimated_budget}
-                    onChange={(e) => setEditForm({ ...editForm, estimated_budget: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="deposit">Deposit Paid</Label>
-                  <Input
-                    id="deposit"
-                    type="number"
-                    value={editForm.deposit_paid}
-                    onChange={(e) => setEditForm({ ...editForm, deposit_paid: parseFloat(e.target.value) || 0 })}
-                  />
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input
+                      id="budget"
+                      type="number"
+                      className="pl-9"
+                      value={editForm.estimated_budget}
+                      onChange={(e) => setEditForm({ ...editForm, estimated_budget: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="actual">Actual Cost</Label>
-                  <Input
-                    id="actual"
-                    type="number"
-                    value={editForm.actual_cost}
-                    onChange={(e) => setEditForm({ ...editForm, actual_cost: parseFloat(e.target.value) || 0 })}
-                  />
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input
+                      id="actual"
+                      type="number"
+                      className="pl-9"
+                      value={editForm.actual_cost}
+                      onChange={(e) => setEditForm({ ...editForm, actual_cost: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
                 </div>
               </div>
-            )}
+              );
+            })()}
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditingProject(null)}>
                 Cancel

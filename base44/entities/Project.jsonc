@@ -229,6 +229,32 @@
     "estimated_budget": {
       "type": "number"
     },
+    "total_amount": {
+      "type": "number",
+      "description": "Contract total amount (base price + change orders)"
+    },
+    "change_orders": {
+      "type": "array",
+      "description": "List of change orders added to this project",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "date": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    },
     "actual_cost": {
       "type": "number"
     },
