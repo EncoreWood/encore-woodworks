@@ -93,14 +93,16 @@ export default function PaymentLog({ project, onSave }) {
   const handleAddCO = () => {
     if (!newCO.description || !newCO.amount) return;
     const updated = [...changeOrders, { id: Date.now().toString(), description: newCO.description, amount: parseFloat(newCO.amount) || 0, date: newCO.date }];
-    onSave({ change_orders: updated });
+    const newCOTotal = updated.reduce((s, co) => s + (parseFloat(co.amount) || 0), 0);
+    onSave({ change_orders: updated, total_amount: baseTotal + newCOTotal });
     setNewCO(emptyCO);
     setShowCOForm(false);
   };
 
   const handleDeleteCO = (idx) => {
     const updated = changeOrders.filter((_, i) => i !== idx);
-    onSave({ change_orders: updated });
+    const newCOTotal = updated.reduce((s, co) => s + (parseFloat(co.amount) || 0), 0);
+    onSave({ change_orders: updated, total_amount: baseTotal + newCOTotal });
   };
 
   return (
