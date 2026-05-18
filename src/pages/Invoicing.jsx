@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Check, X, Pencil } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { base44 } from "@/api/base44Client";
@@ -18,6 +19,36 @@ import ProposalForm from "../components/proposals/ProposalForm";
 import { toast } from "sonner";
 import InvoicingCalendar from "../components/invoicing/InvoicingCalendar";
 import CustomInvoicesEditor, { getEffectiveInvoices, calcCollected } from "../components/invoicing/CustomInvoicesEditor";
+
+function FinEditTile({ label, value, onSave, colorClass = "text-slate-700", bgClass = "bg-slate-50" }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const start = () => { setDraft(value || ""); setEditing(true); };
+  const save = () => { onSave(parseFloat(draft) || 0); setEditing(false); };
+  const cancel = () => setEditing(false);
+  if (editing) {
+    return (
+      <div className={`${bgClass} rounded-lg p-2 text-center`}>
+        <p className="text-xs text-slate-500 mb-1">{label}</p>
+        <div className="flex items-center gap-1 justify-center">
+          <span className="text-xs text-slate-400">$</span>
+          <input type="number" className="w-24 text-center text-sm font-bold border border-slate-300 rounded px-1 py-0.5 focus:outline-none focus:border-amber-400" value={draft} onChange={e => setDraft(e.target.value)} onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") cancel(); }} autoFocus />
+        </div>
+        <div className="flex gap-1 justify-center mt-1">
+          <button onClick={save} className="text-emerald-600 hover:text-emerald-700"><Check className="w-3 h-3" /></button>
+          <button onClick={cancel} className="text-slate-400 hover:text-slate-600"><X className="w-3 h-3" /></button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className={`${bgClass} rounded-lg p-3 text-center group cursor-pointer relative`} onClick={start}>
+      <p className="text-xs text-slate-500 mb-1">{label}</p>
+      <p className={`text-sm font-bold ${colorClass}`}>${(value || 0).toLocaleString()}</p>
+      <Pencil className="w-2.5 h-2.5 text-slate-400 absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+    </div>
+  );
+}
 
 export default function Invoicing() {
   const [activeTab, setActiveTab] = useState("board");
@@ -617,81 +648,100 @@ export default function Invoicing() {
                 setViewingDetails(prev => ({ ...prev, total_amount: val }));
               };
 
+              // Computed financials
+              const estimated = viewingDetails.estimated_budget || 0;
+              const baseTotal = viewingDetails.total_amount || estimated;
+              const currentTotal = baseTotal + detailsCOsTotal;
+              const invoicesForCalc = getEffectiveInvoices(viewingDetails);
+              const collected = calcCollected(invoicesForCalc);
+              const remaining = currentTotal - collected;
+
               return (
                 <div className="space-y-6 py-4">
-                  {/* Total Amount + Change Orders */}
+                  {/* Financials Card — matches ProjectDetails */}
                   <Card className="p-6">
-                    <h3 className="font-semibold text-lg mb-4">Contract Total & Change Orders</h3>
-                    <div className="space-y-4">
-                      {/* Total Amount inline edit */}
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm text-slate-600 w-40 flex-shrink-0">Total Amount (Base):</span>
-                        <div className="relative flex-1 max-w-48">
-                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <Input
-                            type="number"
-                            className="pl-9"
-                            defaultValue={viewingDetails.total_amount || 0}
-                            onBlur={(e) => saveTotalAmount(parseFloat(e.target.value) || 0)}
-                          />
-                        </div>
-                      </div>
+                    <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                      <DollarSign className="w-5 h-5 text-emerald-500" /> Financials
+                    </h3>
 
-                      {/* Existing COs */}
+                    {/* Summary tiles */}
+                    <div className="grid grid-cols-2 gap-2 mb-5">
+                      {/* Estimated — editable */}
+                      <FinEditTile
+                        label="Estimated"
+                        value={estimated}
+                        onSave={(v) => { saveTotalAmount(v); updateProjectMutation.mutate({ id: viewingDetails.id, data: { estimated_budget: v }, _skipClose: true }); setViewingDetails(prev => ({ ...prev, estimated_budget: v })); }}
+                        colorClass="text-slate-700"
+                        bgClass="bg-slate-50"
+                      />
+                      {/* Current Total base — editable */}
+                      <FinEditTile
+                        label="Current Total (Base)"
+                        value={baseTotal}
+                        onSave={saveTotalAmount}
+                        colorClass="text-blue-800"
+                        bgClass="bg-blue-50"
+                      />
+                      <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                        <p className="text-xs text-emerald-600 mb-1">Collected</p>
+                        <p className="text-sm font-bold text-emerald-700">${collected.toLocaleString()}</p>
+                      </div>
+                      <div className={`rounded-lg p-3 text-center ${remaining > 0 ? "bg-amber-50" : "bg-slate-50"}`}>
+                        <p className="text-xs text-slate-500 mb-1">Remaining</p>
+                        <p className={`text-sm font-bold ${remaining > 0 ? "text-amber-700" : "text-slate-500"}`}>${remaining.toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    {/* Change Orders */}
+                    <div className="mb-5">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-semibold text-slate-700">
+                          Change Orders
+                          {detailsCOsTotal > 0 && <span className="ml-2 text-blue-600">+${detailsCOsTotal.toLocaleString()}</span>}
+                        </p>
+                      </div>
                       {detailsCOs.length > 0 && (
-                        <div className="space-y-1">
+                        <div className="space-y-1 mb-2">
                           {detailsCOs.map((co, idx) => (
-                            <div key={co.id || idx} className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded px-3 py-1.5 text-sm">
+                            <div key={co.id || idx} className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded px-3 py-1.5 text-sm group">
                               <div className="flex-1 min-w-0">
                                 <span className="font-medium text-slate-800">{co.description}</span>
                                 {co.date && <span className="text-xs text-slate-400 ml-2">{co.date}</span>}
                               </div>
                               <span className="font-semibold text-blue-700 mr-2">+${(co.amount || 0).toLocaleString()}</span>
-                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400 hover:text-red-600" onClick={() => removeDetailsCO(idx)}>
+                              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100" onClick={() => removeDetailsCO(idx)}>
                                 <Trash2 className="w-3 h-3" />
                               </Button>
                             </div>
                           ))}
                         </div>
                       )}
-
-                      {/* Running total */}
-                      {(viewingDetails.total_amount > 0 || detailsCOs.length > 0) && (
-                        <div className="flex justify-between items-center bg-slate-100 rounded-lg px-4 py-2 text-sm font-semibold">
-                          <span className="text-slate-600">Running Total (Base + COs):</span>
-                          <span className="text-slate-900">${((viewingDetails.total_amount || 0) + detailsCOsTotal).toLocaleString()}</span>
-                        </div>
-                      )}
-
                       {/* Add CO form */}
                       <div className="border border-dashed border-slate-300 rounded-lg p-3 space-y-2 bg-slate-50">
-                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Add Change Order</p>
-                        <Input
-                          placeholder="Description"
-                          value={detailsCOForm.description}
-                          onChange={(e) => setDetailsCOForm(f => ({ ...f, description: e.target.value }))}
-                        />
+                        <Input placeholder="Description" value={detailsCOForm.description} onChange={(e) => setDetailsCOForm(f => ({ ...f, description: e.target.value }))} className="h-8 text-sm" />
                         <div className="flex gap-2">
                           <div className="relative flex-1">
-                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <Input type="number" className="pl-9" placeholder="Amount" value={detailsCOForm.amount} onChange={(e) => setDetailsCOForm(f => ({ ...f, amount: e.target.value }))} />
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                            <Input type="number" className="pl-5 h-8 text-sm" placeholder="Amount" value={detailsCOForm.amount} onChange={(e) => setDetailsCOForm(f => ({ ...f, amount: e.target.value }))} />
                           </div>
-                          <Input type="date" className="w-36" value={detailsCOForm.date} onChange={(e) => setDetailsCOForm(f => ({ ...f, date: e.target.value }))} />
+                          <Input type="date" className="w-36 h-8 text-sm" value={detailsCOForm.date} onChange={(e) => setDetailsCOForm(f => ({ ...f, date: e.target.value }))} />
                         </div>
-                        <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700" disabled={!detailsCOForm.description || !detailsCOForm.amount} onClick={addDetailsCO}>
+                        <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 h-8" disabled={!detailsCOForm.description || !detailsCOForm.amount} onClick={addDetailsCO}>
                           <PlusCircle className="w-4 h-4 mr-2" /> Add Change Order
                         </Button>
                       </div>
                     </div>
-                  </Card>
 
-                  <Card className="p-6">
-                    <h3 className="font-semibold text-lg mb-4">Invoices</h3>
-                    <CustomInvoicesEditor
-                      key={viewingDetails.id}
-                      project={viewingDetails}
-                      onSave={saveCustomInvoices}
-                    />
+                    {/* Invoices */}
+                    <div className="border-t pt-4">
+                      <p className="text-sm font-semibold text-slate-700 mb-3">Invoices</p>
+                      <CustomInvoicesEditor
+                        key={viewingDetails.id}
+                        project={viewingDetails}
+                        onSave={saveCustomInvoices}
+                        hideSummary
+                      />
+                    </div>
                   </Card>
 
                   {proposal ? (

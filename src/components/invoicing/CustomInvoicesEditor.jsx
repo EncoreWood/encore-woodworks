@@ -61,7 +61,7 @@ export function calcCollected(invoices) {
   return (invoices || []).reduce((sum, inv) => sum + (inv.received_date ? (parseFloat(inv.amount) || 0) : 0), 0);
 }
 
-export default function CustomInvoicesEditor({ project, onSave }) {
+export default function CustomInvoicesEditor({ project, onSave, hideSummary = false }) {
   const initial = getEffectiveInvoices(project);
   const [invoices, setInvoices] = useState(initial.map(inv => ({ ...inv, id: inv.id || makeId() })));
   const [dirty, setDirty] = useState(false);
@@ -97,20 +97,22 @@ export default function CustomInvoicesEditor({ project, onSave }) {
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-3 mb-2">
-        <div className="bg-slate-50 rounded-lg p-3 text-center">
-          <p className="text-xs text-slate-500 mb-1">Total Amount</p>
-          <p className="text-lg font-bold text-slate-900">${budget.toLocaleString()}</p>
+      {!hideSummary && (
+        <div className="grid grid-cols-3 gap-3 mb-2">
+          <div className="bg-slate-50 rounded-lg p-3 text-center">
+            <p className="text-xs text-slate-500 mb-1">Total Amount</p>
+            <p className="text-lg font-bold text-slate-900">${budget.toLocaleString()}</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-3 text-center">
+            <p className="text-xs text-slate-500 mb-1">Collected</p>
+            <p className="text-lg font-bold text-green-700">${collected.toLocaleString()}</p>
+          </div>
+          <div className="bg-amber-50 rounded-lg p-3 text-center">
+            <p className="text-xs text-slate-500 mb-1">Remaining</p>
+            <p className="text-lg font-bold text-amber-700">${remaining.toLocaleString()}</p>
+          </div>
         </div>
-        <div className="bg-green-50 rounded-lg p-3 text-center">
-          <p className="text-xs text-slate-500 mb-1">Collected</p>
-          <p className="text-lg font-bold text-green-700">${collected.toLocaleString()}</p>
-        </div>
-        <div className="bg-amber-50 rounded-lg p-3 text-center">
-          <p className="text-xs text-slate-500 mb-1">Remaining</p>
-          <p className="text-lg font-bold text-amber-700">${remaining.toLocaleString()}</p>
-        </div>
-      </div>
+      )}
 
       {/* Invoice rows */}
       <div className="space-y-3">
