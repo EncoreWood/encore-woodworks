@@ -263,9 +263,16 @@ export default function Invoicing() {
   };
 
   const getStageTotal = (status, projectList) => {
+    if (status === "final_sent") {
+      return projectList.reduce((sum, p) => {
+        const coTotal = (p.change_orders || []).reduce((s, co) => s + (co.amount || 0), 0);
+        const currentTotal = (p.base_amount || p.total_amount || p.estimated_budget || 0) + coTotal;
+        const collected = calcCollected(getEffectiveInvoices(p));
+        return sum + Math.max(0, currentTotal - collected);
+      }, 0);
+    }
     const key = stageAmountKey[status];
-    const total = projectList.reduce((sum, p) => sum + (p[key] || p.estimated_budget || 0), 0);
-    return total;
+    return projectList.reduce((sum, p) => sum + (p[key] || p.estimated_budget || 0), 0);
   };
 
   const statusConfig = {
