@@ -326,7 +326,20 @@ export default function Kanban() {
                     return (
                       <div key={column.id} className="flex-shrink-0 w-full sm:w-80">
                         <div className="mb-3 flex items-center justify-between">
-                          <h2 className="font-semibold text-slate-700">{column.label}</h2>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <h2 className="font-semibold text-slate-700 truncate">{column.label}</h2>
+                            {columnProjects.length > 0 && (() => {
+                              const stageTotal = columnProjects.reduce((sum, p) => {
+                                const coTotal = (p.change_orders || []).reduce((s, co) => s + (co.amount || 0), 0);
+                                return sum + (p.base_amount || p.total_amount || p.estimated_budget || 0) + coTotal;
+                              }, 0);
+                              return stageTotal > 0 ? (
+                                <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 whitespace-nowrap">
+                                  ${stageTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                                </span>
+                              ) : null;
+                            })()}
+                          </div>
                           <div className="flex items-center gap-2">
                             <Badge variant="outline" className="text-xs">
                               {columnProjects.length}
