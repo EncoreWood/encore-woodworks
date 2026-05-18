@@ -337,7 +337,7 @@ export default function Invoicing() {
 
         {/* Invoicing Columns */}
          <DragDropContext onDragEnd={handleDragEnd}>
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+           <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
              {Object.entries(groupedProjects).map(([status, projectList]) => {
                const config = statusConfig[status];
                const Icon = config.icon;
