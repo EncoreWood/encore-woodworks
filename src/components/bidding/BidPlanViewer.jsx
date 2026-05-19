@@ -931,24 +931,26 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         )}
       </DialogContent>
 
-      {/* Calibration dialog */}
-      {pendingCalib && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60">
-          <div className="bg-white rounded-xl shadow-2xl p-5 w-80">
-            <h3 className="font-bold text-slate-900 mb-1">Calibrate Scale</h3>
-            <p className="text-sm text-slate-500 mb-3">Drew a line of <span className="font-bold">{pendingCalib.pixelDistNat.toFixed(0)} natural-px</span>. What real distance is this?</p>
-            <div className="flex items-center gap-2 mb-3">
-              <Input value={calibKnownFeet} onChange={e=>setCalibKnownFeet(e.target.value)} placeholder="e.g. 1" type="number" step="0.1" autoFocus onKeyDown={e=>e.key==="Enter"&&applyCalibration()}/>
-              <span className="text-sm text-slate-600 whitespace-nowrap">linear feet</span>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={applyCalibration} disabled={!calibKnownFeet} className="flex-1 bg-violet-600 hover:bg-violet-700">Calibrate</Button>
-              <Button variant="outline" onClick={()=>{setPendingCalib(null);setCalibKnownFeet("");}}>Cancel</Button>
-            </div>
+    </Dialog>
+
+    {/* Calibration dialog — outside Dialog to avoid focus trap / Escape conflict */}
+    {pendingCalib && (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60" onKeyDown={e=>{if(e.key==="Escape"){setPendingCalib(null);setCalibKnownFeet("");}}}>
+        <div className="bg-white rounded-xl shadow-2xl p-5 w-80">
+          <h3 className="font-bold text-slate-900 mb-1">Calibrate Scale</h3>
+          <p className="text-sm text-slate-500 mb-3">Drew a line of <span className="font-bold">{pendingCalib.pixelDistNat.toFixed(0)} natural-px</span>. What real distance is this?</p>
+          <div className="flex items-center gap-2 mb-3">
+            <Input value={calibKnownFeet} onChange={e=>setCalibKnownFeet(e.target.value)} placeholder="e.g. 1" type="number" step="0.1" autoFocus
+              onKeyDown={e=>{if(e.key==="Enter")applyCalibration();if(e.key==="Escape"){setPendingCalib(null);setCalibKnownFeet("");}}}/>
+            <span className="text-sm text-slate-600 whitespace-nowrap">linear feet</span>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={applyCalibration} disabled={!calibKnownFeet} className="flex-1 bg-violet-600 hover:bg-violet-700">Calibrate</Button>
+            <Button variant="outline" onClick={()=>{setPendingCalib(null);setCalibKnownFeet("");}}>Cancel</Button>
           </div>
         </div>
-      )}
-    </Dialog>
+      </div>
+    )}
 
     {/* Pending room — rendered outside Dialog to avoid focus trap */}
     {pendingRoom && (
