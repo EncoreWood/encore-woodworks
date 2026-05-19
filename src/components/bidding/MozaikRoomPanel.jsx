@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { X, Plus, Trash2, Download, AlertTriangle } from "lucide-react";
 
 function generateDXF(room, walls) {
@@ -104,11 +105,10 @@ export default function MozaikRoomPanel({ room, pxPerFtNat, projectName, onSave,
   const totalFt = walls.reduce((s, w) => s + w.lengthIn / 12, 0);
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+    <Dialog open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
           <h3 className="font-bold text-slate-900 text-base">Room Details — Mozaik Export</h3>
-          <button onClick={onClose}><X className="w-5 h-5 text-slate-400 hover:text-slate-700" /></button>
         </div>
 
         <div className="overflow-y-auto flex-1 p-4 space-y-4">
@@ -174,7 +174,7 @@ export default function MozaikRoomPanel({ room, pxPerFtNat, projectName, onSave,
           </Button>
           <Button variant="outline" onClick={handleSaveOnly} disabled={!name.trim()}>Save Room</Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
