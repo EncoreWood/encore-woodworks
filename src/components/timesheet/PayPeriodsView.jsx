@@ -50,7 +50,8 @@ export default function PayPeriodsView({ employeeEntries }) {
 
   const totalHours = periodEntries.reduce((s, e) => s + (e.hours_worked || 0), 0);
 
-  // OT is calculated per week (>40 hrs/week), not as a flat pay-period total
+  // OT is calculated per week (>40 hrs/week), matching the admin Payroll tab exactly:
+  // filter to period entries first, then group by calendar week.
   const weeklyTotals = {};
   periodEntries.forEach(entry => {
     const d = new Date(entry.date);
