@@ -470,7 +470,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
           onWheel={handleWheel}
           style={{ cursor: tool === "pan" ? "grab" : undefined, touchAction: "none" }}
         >
-          <div className="flex items-center justify-center min-h-full p-4">
+          <div className="flex items-center justify-center min-h-full p-4 px-64">
             <div className="relative inline-block" ref={pageContainerRef}>
               <Document
                 file={pdfUrl}
