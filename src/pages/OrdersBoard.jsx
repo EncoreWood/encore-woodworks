@@ -28,6 +28,8 @@ const orderColumns = [
 
 const statusColors = {
   not_ordered: "bg-slate-100 text-slate-700",
+  in_house: "bg-teal-100 text-teal-700",
+  partially_ordered: "bg-orange-100 text-orange-700",
   ordered: "bg-blue-100 text-blue-700",
   in_production: "bg-yellow-100 text-yellow-700",
   received: "bg-green-100 text-green-700",
@@ -361,7 +363,8 @@ export default function OrdersBoard() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="not_ordered">Not Ordered</SelectItem>
+                    <SelectItem value="in_house">In House</SelectItem>
+                    <SelectItem value="partially_ordered">Partially Ordered</SelectItem>
                     <SelectItem value="ordered">Ordered</SelectItem>
                     <SelectItem value="in_production">In Production</SelectItem>
                     <SelectItem value="received">Received</SelectItem>

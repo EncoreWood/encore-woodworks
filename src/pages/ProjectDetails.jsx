@@ -351,7 +351,7 @@ export default function ProjectDetails() {
                         <span className={cn("font-medium", project[phase.key] ? "text-emerald-700" : "text-slate-700")}>{phase.label}</span>
                         {phase.key === "materials_ordered" && (() => {
                           const ORDER_COLUMNS_COUNT = 9;
-                          const orderedCount = projectOrders.filter(o => o.status && o.status !== "not_ordered" && o.status !== "not_applicable").length;
+                          const orderedCount = projectOrders.filter(o => o.status && !["not_ordered", "not_applicable", "partially_ordered"].includes(o.status)).length;
                           const unorderedCount = ORDER_COLUMNS_COUNT - projectOrders.filter(o => o.status === "not_applicable").length - orderedCount;
                           return unorderedCount > 0 ? (
                             <span className="text-xs font-bold text-red-600 bg-red-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">{unorderedCount}</span>

@@ -63,7 +63,7 @@ export default function ProjectCard({ project }) {
     queryFn: () => base44.entities.ProjectOrder.filter({ project_id: project.id })
   });
   const ORDER_COLUMNS_COUNT = 9; // drawer_boxes, fronts, face_frame, panel_stock, case, internal_hardware, inserts, external_hardware, glass
-  const orderedCount = projectOrders.filter(o => o.status && o.status !== "not_ordered" && o.status !== "not_applicable").length;
+  const orderedCount = projectOrders.filter(o => o.status && !["not_ordered", "not_applicable", "partially_ordered"].includes(o.status)).length;
   const unorderedCount = ORDER_COLUMNS_COUNT - projectOrders.filter(o => o.status === "not_applicable").length - orderedCount;
 
   const completedTasks = tasks.filter(t => t.status === "completed").length;
