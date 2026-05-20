@@ -15,6 +15,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const [rotation, setRotation] = useState(90);
   const [tool, setTool] = useState("pan");
   const [isPointerDown, setIsPointerDown] = useState(false);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const scrollContainerRef = useRef(null);
   const panStartRef = useRef(null);
   const lastTouchDistRef = useRef(null);
@@ -45,6 +46,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const onPageLoadSuccess = () => setTimeout(syncCanvasSize, 50);
 
   useEffect(() => {
+    setPanOffset({ x: 0, y: 0 });
     setTimeout(syncCanvasSize, 100);
   }, [scale, rotation, pageNumber]);
 
@@ -57,10 +59,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
 
   // Scroll wheel panning (horizontal + vertical)
   const handleWheel = (e) => {
-    if (!scrollContainerRef.current) return;
     e.preventDefault();
-    scrollContainerRef.current.scrollLeft += e.deltaX;
-    scrollContainerRef.current.scrollTop += e.deltaY;
+    setPanOffset(prev => ({ x: prev.x - e.deltaX, y: prev.y - e.deltaY }));
   };
 
   // Touch handlers on the scroll container — fingers ALWAYS pan/pinch, regardless of tool
@@ -73,20 +73,21 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
-      panStartRef.current = null; // cancel single-finger pan if second finger joins
+      panStartRef.current = null;
     } else if (e.touches.length === 1) {
+      e.preventDefault();
       panStartRef.current = {
         x: e.touches[0].clientX,
         y: e.touches[0].clientY,
-        scrollLeft: scrollContainerRef.current?.scrollLeft || 0,
-        scrollTop: scrollContainerRef.current?.scrollTop || 0
+        offsetX: panOffset.x,
+        offsetY: panOffset.y
       };
     }
   };
   const handleTouchMove = (e) => {
     fingerCountRef.current = e.touches.length;
+    e.preventDefault();
     if (e.touches.length === 2) {
-      e.preventDefault();
       const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
       if (lastTouchDistRef.current) {
         const ratio = dist / lastTouchDistRef.current;
@@ -94,13 +95,9 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       }
       lastTouchDistRef.current = dist;
     } else if (e.touches.length === 1 && panStartRef.current) {
-      e.preventDefault();
       const dx = e.touches[0].clientX - panStartRef.current.x;
       const dy = e.touches[0].clientY - panStartRef.current.y;
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
-        scrollContainerRef.current.scrollTop = panStartRef.current.scrollTop - dy;
-      }
+      setPanOffset({ x: panStartRef.current.offsetX + dx, y: panStartRef.current.offsetY + dy });
     }
   };
   const handleTouchEnd = (e) => {
@@ -112,16 +109,13 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   // Mouse-only pan (for desktop)
   const handleMousePanDown = (e) => {
     if (e.button !== 0 || tool !== "pan") return;
-    panStartRef.current = { x: e.clientX, y: e.clientY, scrollLeft: scrollContainerRef.current?.scrollLeft || 0, scrollTop: scrollContainerRef.current?.scrollTop || 0 };
+    panStartRef.current = { x: e.clientX, y: e.clientY, offsetX: panOffset.x, offsetY: panOffset.y };
   };
   const handleMousePanMove = (e) => {
     if (tool !== "pan" || !panStartRef.current) return;
     const dx = e.clientX - panStartRef.current.x;
     const dy = e.clientY - panStartRef.current.y;
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollLeft = panStartRef.current.scrollLeft - dx;
-      scrollContainerRef.current.scrollTop = panStartRef.current.scrollTop - dy;
-    }
+    setPanOffset({ x: panStartRef.current.offsetX + dx, y: panStartRef.current.offsetY + dy });
   };
   const handleMousePanUp = () => { panStartRef.current = null; };
 
@@ -459,7 +453,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         {/* PDF + Canvas */}
         <div
           ref={scrollContainerRef}
-          className="flex-1 overflow-auto bg-slate-100 rounded-lg select-none"
+          className="flex-1 overflow-hidden bg-slate-100 rounded-lg select-none"
           onMouseDown={handleMousePanDown}
           onMouseMove={handleMousePanMove}
           onMouseUp={handleMousePanUp}
@@ -470,8 +464,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
           onWheel={handleWheel}
           style={{ cursor: tool === "pan" ? "grab" : undefined, touchAction: "none" }}
         >
-          <div className="flex items-center justify-center min-h-full p-4 px-64">
-            <div className="relative inline-block" ref={pageContainerRef}>
+          <div className="flex items-center justify-center w-full h-full">
+            <div className="relative inline-block" ref={pageContainerRef} style={{ transform: `translate(${panOffset.x}px, ${panOffset.y}px)`, transition: "none" }}>
               <Document
                 file={pdfUrl}
                 onLoadSuccess={onDocumentLoadSuccess}
