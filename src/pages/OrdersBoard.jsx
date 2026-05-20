@@ -54,7 +54,28 @@ export default function OrdersBoard() {
     queryKey: ["projects"],
     queryFn: () => base44.entities.Project.list()
   });
-  const projects = allProjects.filter(p => !p.archived);
+
+  const ACTIVE_STAGES = ["in_design", "in_production", "ready_for_install", "installing"];
+  const APPROVED_STAGES = ["approved"];
+  const COMPLETED_STAGES = ["completed"];
+
+  const filteredProjects = allProjects.filter(p =>
+    !p.archived &&
+    [...ACTIVE_STAGES, ...APPROVED_STAGES, ...COMPLETED_STAGES].includes(p.status)
+  );
+
+  const activeProjects = filteredProjects.filter(p => ACTIVE_STAGES.includes(p.status));
+  const approvedProjects = filteredProjects.filter(p => APPROVED_STAGES.includes(p.status));
+  const completedProjects = filteredProjects.filter(p => COMPLETED_STAGES.includes(p.status));
+
+  const stageLabelMap = {
+    in_design: "In Design",
+    in_production: "In Production",
+    ready_for_install: "Ready for Install",
+    installing: "Installing",
+    approved: "Approved",
+    completed: "Completed"
+  };
 
   const { data: orders = [], isLoading: loadingOrders } = useQuery({
     queryKey: ["projectOrders"],
@@ -221,78 +242,100 @@ export default function OrdersBoard() {
           </div>
         </div>
 
-        {/* Desktop Table */}
-        <Card className="hidden sm:block bg-white shadow-lg overflow-x-auto">
-          <div className="min-w-[1400px]">
-            <div className="grid grid-cols-[250px_repeat(9,_1fr)] border-b-2 border-slate-300 bg-slate-100">
-              <div className="p-4 font-bold text-slate-900 border-r-2 border-slate-300">Project</div>
-              {orderColumns.map((col) => (
-                <div key={col.id} className="p-4 font-bold text-slate-900 text-center border-r border-slate-200 text-sm">{col.label}</div>
-              ))}
+        {/* Group configs */}
+        {[
+          { label: "🔨 Active Jobs", projects: activeProjects, headerColor: "bg-amber-600 text-white", emptyMsg: "No active jobs" },
+          { label: "✅ Approved Jobs", projects: approvedProjects, headerColor: "bg-blue-600 text-white", emptyMsg: "No approved jobs" },
+          { label: "🏁 Completed Jobs", projects: completedProjects, headerColor: "bg-slate-500 text-white", emptyMsg: "No completed jobs" }
+        ].map(({ label, projects: groupProjects, headerColor, emptyMsg }) => (
+          <div key={label} className="mb-8">
+            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-bold mb-3 ${headerColor}`}>
+              {label}
+              <span className="bg-white/30 text-white text-xs px-2 py-0.5 rounded-full">{groupProjects.length}</span>
             </div>
-            {projects.map((project) => (
-              <div key={project.id} className="grid grid-cols-[250px_repeat(9,_1fr)] border-b border-slate-200 hover:bg-slate-50">
-                <div className="p-4 font-medium text-slate-900 border-r-2 border-slate-200" style={project.card_color ? { borderLeft: `4px solid ${project.card_color}` } : {}}>
-                  <div className="flex items-center gap-2">
-                    {project.card_color && <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: project.card_color }} />}
-                    <span className="font-semibold">{project.project_name}</span>
-                    <Link to={createPageUrl("Kanban") + `?project=${project.id}`} className="text-slate-400 hover:text-amber-600 transition-colors"><ExternalLink className="w-3.5 h-3.5" /></Link>
-                  </div>
-                  <div className="text-xs text-slate-500">{project.client_name}</div>
-                </div>
-                {orderColumns.map((col) => {
-                  const order = getOrder(project.id, col.id);
-                  return (
-                    <button key={col.id} onClick={() => handleCellClick(project, col.id)} className="p-3 border-r border-slate-200 hover:bg-amber-50 transition-colors text-left">
-                      {order ? (
-                        <div className="space-y-1">
-                          <div className={`text-xs px-2 py-1 rounded font-medium inline-block ${statusColors[order.status]}`}>{order.status.replace("_", " ").toUpperCase()}</div>
-                          {order.rooms?.length > 0 && <div className="text-xs text-slate-600">{order.rooms.length} room{order.rooms.length > 1 ? "s" : ""}</div>}
-                          {order.notes && <div className="text-xs text-slate-600 line-clamp-2">{order.notes}</div>}
-                          {order.files?.length > 0 && <div className="text-xs text-blue-600 flex items-center gap-1"><FileText className="w-3 h-3" />{order.files.length} file{order.files.length > 1 ? "s" : ""}</div>}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-slate-400">Click to add</div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        </Card>
 
-        {/* Mobile Card Layout */}
-        <div className="sm:hidden space-y-4">
-          {projects.map((project) => (
-            <Card key={project.id} className="bg-white shadow-sm overflow-hidden" style={project.card_color ? { borderLeft: `4px solid ${project.card_color}` } : {}}>
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-                <div>
-                  <div className="font-semibold text-slate-900">{project.project_name}</div>
-                  <div className="text-sm text-slate-500">{project.client_name}</div>
+            {/* Desktop Table */}
+            <Card className="hidden sm:block bg-white shadow-lg overflow-x-auto">
+              <div className="min-w-[1400px]">
+                <div className="grid grid-cols-[250px_repeat(9,_1fr)] border-b-2 border-slate-300 bg-slate-100">
+                  <div className="p-4 font-bold text-slate-900 border-r-2 border-slate-300">Project</div>
+                  {orderColumns.map((col) => (
+                    <div key={col.id} className="p-4 font-bold text-slate-900 text-center border-r border-slate-200 text-sm">{col.label}</div>
+                  ))}
                 </div>
-                <Link to={createPageUrl("Kanban") + `?project=${project.id}`} className="text-slate-400 hover:text-amber-600">
-                  <ExternalLink className="w-4 h-4" />
-                </Link>
-              </div>
-              <div className="divide-y divide-slate-100">
-                {orderColumns.map((col) => {
-                  const order = getOrder(project.id, col.id);
-                  if (!order) return null;
-                  return (
-                    <button key={col.id} onClick={() => handleCellClick(project, col.id)} className="w-full flex items-start justify-between p-3 hover:bg-amber-50 text-left">
-                      <span className="text-sm font-medium text-slate-700">{col.label}</span>
-                      <span className={`text-xs px-2 py-1 rounded font-medium ${statusColors[order.status]}`}>{order.status.replace(/_/g, " ")}</span>
-                    </button>
-                  );
-                })}
-                <button onClick={() => handleCellClick(project, orderColumns[0].id)} className="w-full p-3 text-sm text-amber-600 hover:bg-amber-50 text-left font-medium">
-                  + Add / Edit Orders
-                </button>
+                {groupProjects.length === 0 ? (
+                  <div className="p-6 text-center text-slate-400 text-sm">{emptyMsg}</div>
+                ) : groupProjects.map((project) => (
+                  <div key={project.id} className="grid grid-cols-[250px_repeat(9,_1fr)] border-b border-slate-200 hover:bg-slate-50">
+                    <div className="p-4 font-medium text-slate-900 border-r-2 border-slate-200" style={project.card_color ? { borderLeft: `4px solid ${project.card_color}` } : {}}>
+                      <div className="flex items-center gap-2">
+                        {project.card_color && <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: project.card_color }} />}
+                        <span className="font-semibold">{project.project_name}</span>
+                        <Link to={createPageUrl("Kanban") + `?project=${project.id}`} className="text-slate-400 hover:text-amber-600 transition-colors"><ExternalLink className="w-3.5 h-3.5" /></Link>
+                      </div>
+                      <div className="text-xs text-slate-500">{project.client_name}</div>
+                      <div className="text-xs mt-0.5">
+                        <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-medium">{stageLabelMap[project.status] || project.status}</span>
+                      </div>
+                    </div>
+                    {orderColumns.map((col) => {
+                      const order = getOrder(project.id, col.id);
+                      return (
+                        <button key={col.id} onClick={() => handleCellClick(project, col.id)} className="p-3 border-r border-slate-200 hover:bg-amber-50 transition-colors text-left">
+                          {order ? (
+                            <div className="space-y-1">
+                              <div className={`text-xs px-2 py-1 rounded font-medium inline-block ${statusColors[order.status]}`}>{order.status.replace(/_/g, " ").toUpperCase()}</div>
+                              {order.rooms?.length > 0 && <div className="text-xs text-slate-600">{order.rooms.length} room{order.rooms.length > 1 ? "s" : ""}</div>}
+                              {order.notes && <div className="text-xs text-slate-600 line-clamp-2">{order.notes}</div>}
+                              {order.files?.length > 0 && <div className="text-xs text-blue-600 flex items-center gap-1"><FileText className="w-3 h-3" />{order.files.length} file{order.files.length > 1 ? "s" : ""}</div>}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-slate-400">Click to add</div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </Card>
-          ))}
-        </div>
+
+            {/* Mobile Card Layout */}
+            <div className="sm:hidden space-y-4">
+              {groupProjects.length === 0 ? (
+                <p className="text-sm text-slate-400 px-2">{emptyMsg}</p>
+              ) : groupProjects.map((project) => (
+                <Card key={project.id} className="bg-white shadow-sm overflow-hidden" style={project.card_color ? { borderLeft: `4px solid ${project.card_color}` } : {}}>
+                  <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-slate-900">{project.project_name}</div>
+                      <div className="text-sm text-slate-500">{project.client_name}</div>
+                      <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">{stageLabelMap[project.status] || project.status}</span>
+                    </div>
+                    <Link to={createPageUrl("Kanban") + `?project=${project.id}`} className="text-slate-400 hover:text-amber-600">
+                      <ExternalLink className="w-4 h-4" />
+                    </Link>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {orderColumns.map((col) => {
+                      const order = getOrder(project.id, col.id);
+                      if (!order) return null;
+                      return (
+                        <button key={col.id} onClick={() => handleCellClick(project, col.id)} className="w-full flex items-start justify-between p-3 hover:bg-amber-50 text-left">
+                          <span className="text-sm font-medium text-slate-700">{col.label}</span>
+                          <span className={`text-xs px-2 py-1 rounded font-medium ${statusColors[order.status]}`}>{order.status.replace(/_/g, " ")}</span>
+                        </button>
+                      );
+                    })}
+                    <button onClick={() => handleCellClick(project, orderColumns[0].id)} className="w-full p-3 text-sm text-amber-600 hover:bg-amber-50 text-left font-medium">
+                      + Add / Edit Orders
+                    </button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        ))}
 
         {/* Edit Dialog */}
         <Dialog open={editDialog} onOpenChange={setEditDialog}>
