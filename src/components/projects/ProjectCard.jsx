@@ -57,6 +57,15 @@ export default function ProjectCard({ project }) {
     queryFn: () => base44.entities.Task.filter({ project_id: project.id })
   });
 
+  // Fetch orders to count unordered items
+  const { data: projectOrders = [] } = useQuery({
+    queryKey: ["projectOrders", project.id],
+    queryFn: () => base44.entities.ProjectOrder.filter({ project_id: project.id })
+  });
+  const ORDER_COLUMNS_COUNT = 9; // drawer_boxes, fronts, face_frame, panel_stock, case, internal_hardware, inserts, external_hardware, glass
+  const orderedCount = projectOrders.filter(o => o.status && o.status !== "not_ordered" && o.status !== "not_applicable").length;
+  const unorderedCount = ORDER_COLUMNS_COUNT - projectOrders.filter(o => o.status === "not_applicable").length - orderedCount;
+
   const completedTasks = tasks.filter(t => t.status === "completed").length;
 
   const createTaskMutation = useMutation({
@@ -255,6 +264,22 @@ export default function ProjectCard({ project }) {
           </div>
           <Progress value={progress} className="h-1.5 bg-slate-100" />
         </div>
+
+        {unorderedCount > 0 && (
+          <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
+            <span className="text-xs font-bold text-red-600 bg-red-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">{unorderedCount}</span>
+            <span className="text-xs text-red-700 font-medium">
+              {unorderedCount === 1 ? "item" : "items"} still need to be ordered
+            </span>
+            <Link
+              to={createPageUrl("OrdersBoard")}
+              onClick={(e) => e.stopPropagation()}
+              className="ml-auto text-xs text-red-600 hover:text-red-800 underline font-medium whitespace-nowrap"
+            >
+              View Orders
+            </Link>
+          </div>
+        )}
 
         {project.estimated_budget && (
           <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">

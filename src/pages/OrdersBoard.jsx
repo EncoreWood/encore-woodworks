@@ -271,7 +271,7 @@ export default function OrdersBoard() {
                       <div className="flex items-center gap-2">
                         {project.card_color && <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: project.card_color }} />}
                         <span className="font-semibold">{project.project_name}</span>
-                        <Link to={createPageUrl("Kanban") + `?project=${project.id}`} className="text-slate-400 hover:text-amber-600 transition-colors"><ExternalLink className="w-3.5 h-3.5" /></Link>
+                        <Link to={createPageUrl("ProjectDetails") + `?id=${project.id}`} className="text-slate-400 hover:text-amber-600 transition-colors"><ExternalLink className="w-3.5 h-3.5" /></Link>
                       </div>
                       <div className="text-xs text-slate-500">{project.client_name}</div>
                       <div className="text-xs mt-0.5">
@@ -312,7 +312,7 @@ export default function OrdersBoard() {
                       <div className="text-sm text-slate-500">{project.client_name}</div>
                       <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">{stageLabelMap[project.status] || project.status}</span>
                     </div>
-                    <Link to={createPageUrl("Kanban") + `?project=${project.id}`} className="text-slate-400 hover:text-amber-600">
+                    <Link to={createPageUrl("ProjectDetails") + `?id=${project.id}`} className="text-slate-400 hover:text-amber-600">
                       <ExternalLink className="w-4 h-4" />
                     </Link>
                   </div>
