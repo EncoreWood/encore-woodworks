@@ -347,7 +347,17 @@ export default function ProjectDetails() {
                     >
                       <Checkbox checked={project[phase.key]} className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600" />
                       <phase.icon className={cn("w-5 h-5", project[phase.key] ? "text-emerald-600" : "text-slate-400")} />
-                      <span className={cn("font-medium flex-1", project[phase.key] ? "text-emerald-700" : "text-slate-700")}>{phase.label}</span>
+                      <div className="flex-1 flex items-center gap-2">
+                        <span className={cn("font-medium", project[phase.key] ? "text-emerald-700" : "text-slate-700")}>{phase.label}</span>
+                        {phase.key === "materials_ordered" && (() => {
+                          const ORDER_COLUMNS_COUNT = 9;
+                          const orderedCount = projectOrders.filter(o => o.status && o.status !== "not_ordered" && o.status !== "not_applicable").length;
+                          const unorderedCount = ORDER_COLUMNS_COUNT - projectOrders.filter(o => o.status === "not_applicable").length - orderedCount;
+                          return unorderedCount > 0 ? (
+                            <span className="text-xs font-bold text-red-600 bg-red-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">{unorderedCount}</span>
+                          ) : null;
+                        })()}
+                      </div>
                       {phase.key === "materials_ordered" && (
                         <Link to={createPageUrl("OrdersBoard") + "?project=" + projectId}>
                           <Button size="sm" variant="outline" className="gap-2" onClick={(e) => e.stopPropagation()}>
@@ -368,19 +378,6 @@ export default function ProjectDetails() {
                         <Progress value={materialsOrderedProgress} className="h-1.5 bg-slate-200" />
                       </div>
                     )}
-                    {phase.key === "materials_ordered" && (() => {
-                      const ORDER_COLUMNS_COUNT = 9;
-                      const orderedCount = projectOrders.filter(o => o.status && o.status !== "not_ordered" && o.status !== "not_applicable").length;
-                      const unorderedCount = ORDER_COLUMNS_COUNT - projectOrders.filter(o => o.status === "not_applicable").length - orderedCount;
-                      return unorderedCount > 0 ? (
-                        <div className="ml-14 mt-2 flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
-                          <span className="text-xs font-bold text-red-600 bg-red-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">{unorderedCount}</span>
-                          <span className="text-xs text-red-700 font-medium">
-                            {unorderedCount === 1 ? "item" : "items"} still need to be ordered
-                          </span>
-                        </div>
-                      ) : null;
-                    })()}
                   </div>
                 ))}
               </div>
