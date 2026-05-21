@@ -99,6 +99,16 @@
       "default": 0,
       "description": "Bonus amount for this pay period"
     },
+    "archived": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this employee has been archived"
+    },
+    "archived_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the employee was archived"
+    },
     "files": {
       "type": "array",
       "description": "Employee files (documents, certificates, etc.)",
