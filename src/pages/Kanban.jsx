@@ -597,13 +597,27 @@ export default function Kanban() {
 
         {/* Stage View Dialog */}
         <Dialog open={!!stageView} onOpenChange={(open) => { if (!open) setStageView(null); }}>
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                {stageView?.column.label}
-                <Badge variant="outline" className="text-xs">
-                  {stageView ? getProjectsByStatus(stageView.column.id, stageView.tabKey).length : 0} projects
-                </Badge>
+              <DialogTitle className="flex items-center gap-3 flex-wrap">
+                <span>{stageView?.column.label}</span>
+                {stageView && (() => {
+                  const sp = getProjectsByStatus(stageView.column.id, stageView.tabKey);
+                  const total = sp.reduce((sum, p) => {
+                    const co = (p.change_orders || []).reduce((s, c) => s + (c.amount || 0), 0);
+                    return sum + (p.base_amount || p.total_amount || p.estimated_budget || 0) + co;
+                  }, 0);
+                  return (
+                    <>
+                      <Badge variant="outline" className="text-xs">{sp.length} projects</Badge>
+                      {total > 0 && (
+                        <span className="text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5">
+                          Total: ${total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </span>
+                      )}
+                    </>
+                  );
+                })()}
               </DialogTitle>
             </DialogHeader>
             {stageView && (() => {
@@ -612,32 +626,61 @@ export default function Kanban() {
                 return <p className="text-slate-500 text-sm py-4 text-center">No projects in this stage.</p>;
               }
               return (
-                <div className="space-y-3 mt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                   {stageProjects.map(project => (
                     <Link key={project.id} to={createPageUrl("ProjectDetails") + "?id=" + project.id} onClick={() => setStageView(null)}>
-                      <div
-                        className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
-                        style={project.card_color ? { borderLeft: `4px solid ${project.card_color}`, backgroundColor: project.card_color + "12" } : {}}
+                      <Card
+                        className="p-4 cursor-pointer hover:shadow-md transition-all overflow-hidden"
+                        style={project.card_color ? { borderLeft: `4px solid ${project.card_color}`, backgroundColor: project.card_color + "18" } : {}}
                       >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-semibold text-slate-900 truncate">{project.project_name}</p>
+                        <div className="space-y-3">
+                          <div>
+                            <h3 className="font-semibold text-slate-900 mb-1 line-clamp-1">{project.project_name}</h3>
                             <Badge className={`text-xs border-0 ${priorityColors[project.priority]}`}>{project.priority}</Badge>
                           </div>
-                          <div className="flex items-center gap-4 mt-1 text-xs text-slate-500 flex-wrap">
-                            {project.client_name && <span className="flex items-center gap-1"><User className="w-3 h-3" />{project.client_name}</span>}
-                            {project.address && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{project.address}</span>}
-                            {project.estimated_completion && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{format(new Date(project.estimated_completion), "MMM d, yyyy")}</span>}
+                          <div className="space-y-2 text-xs text-slate-600">
+                            {project.client_name && <div className="flex items-center gap-2"><User className="w-3 h-3 flex-shrink-0" /><span className="truncate">{project.client_name}</span></div>}
+                            {project.address && <div className="flex items-center gap-2"><MapPin className="w-3 h-3 flex-shrink-0" /><span className="truncate">{project.address}</span></div>}
+                            {project.estimated_completion && <div className="flex items-center gap-2"><Calendar className="w-3 h-3 flex-shrink-0" /><span>{format(new Date(project.estimated_completion), "MMM d")}</span></div>}
+                            {(() => {
+                              const co = (project.change_orders || []).reduce((s, c) => s + (c.amount || 0), 0);
+                              const val = (project.base_amount || project.total_amount || project.estimated_budget || 0) + co;
+                              return val > 0 ? <div className="flex items-center gap-2"><DollarSign className="w-3 h-3 flex-shrink-0" /><span>${val.toLocaleString()}</span></div> : null;
+                            })()}
                           </div>
                           {(project.project_manager_name || project.shop_manager_name) && (
-                            <div className="flex gap-3 mt-1 text-xs text-slate-500">
-                              {project.project_manager_name && <span>PM: {project.project_manager_name}</span>}
-                              {project.shop_manager_name && <span>SM: {project.shop_manager_name}</span>}
+                            <div className="pt-2 border-t border-slate-100 space-y-1 text-xs">
+                              {project.project_manager_name && <div><span className="text-slate-500 font-medium">PM: </span><span className="text-slate-700">{project.project_manager_name}</span></div>}
+                              {project.shop_manager_name && <div><span className="text-slate-500 font-medium">SM: </span><span className="text-slate-700">{project.shop_manager_name}</span></div>}
                             </div>
                           )}
+                          {project.rooms && project.rooms.length > 0 && (
+                            <div className="pt-2 border-t border-slate-100">
+                              <span className="text-xs text-slate-500">{project.rooms.length} room{project.rooms.length !== 1 ? 's' : ''}</span>
+                            </div>
+                          )}
+                          {(() => {
+                            const projectTasks = getProjectTasks(project.id);
+                            const completedTasks = projectTasks.filter(t => t.status === "completed").length;
+                            return projectTasks.length > 0 ? (
+                              <div className="pt-2 border-t border-slate-100">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs font-medium text-slate-600">Tasks ({completedTasks}/{projectTasks.length})</span>
+                                </div>
+                                <div className="space-y-1">
+                                  {projectTasks.slice(0, 2).map(task => (
+                                    <div key={task.id} className="flex items-center gap-1.5 text-xs">
+                                      {task.status === "completed" ? <CheckCircle2 className="w-3 h-3 text-emerald-600 flex-shrink-0" /> : <Circle className="w-3 h-3 text-slate-400 flex-shrink-0" />}
+                                      <span className={cn("truncate flex-1", task.status === "completed" ? "line-through text-slate-400" : "text-slate-600")}>{task.title}</span>
+                                    </div>
+                                  ))}
+                                  {projectTasks.length > 2 && <p className="text-xs text-slate-400">+{projectTasks.length - 2} more</p>}
+                                </div>
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
-                        <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                      </div>
+                      </Card>
                     </Link>
                   ))}
                 </div>
