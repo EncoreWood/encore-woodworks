@@ -75,7 +75,8 @@ export default function CalendarPage() {
     { id: "tasks", label: "Tasks", icon: "✓" },
     { id: "presenter", label: "Presenters", icon: "👤" },
     { id: "cleaning", label: "Cleaning", icon: "✨" },
-    { id: "vacations", label: "Vacations", icon: "🏖️" }
+    { id: "vacations", label: "Vacations", icon: "🏖️" },
+    { id: "birthdays", label: "Birthdays", icon: "🎂" }
   ];
 
   const { data: projects = [], isLoading } = useQuery({
@@ -392,6 +393,16 @@ export default function CalendarPage() {
     return isWithinInterval(date, { start: s, end: e });
   });
 
+  const getBirthdaysForDate = (date) => {
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return employees.filter(e => {
+      if (!e.birthday) return false;
+      const [, bMonth, bDay] = e.birthday.split("-").map(Number);
+      return bMonth === month && bDay === day;
+    });
+  };
+
   const getActiveProjectsForDay = (date) => {
     const spanning = getProjectsSpanningDate(date);
     const installSpanning = getInstallProjectsSpanningDate(date);
@@ -508,6 +519,7 @@ export default function CalendarPage() {
     const deliveryCount = getDeliveriesForDate(date).length;
     const assignedTaskCount = getAssignedTasksForDate(date).filter(t => t.status !== "completed").length;
     const generalMeetingCount = getGeneralMeetingsForDate(date).length;
+    const birthdays = getBirthdaysForDate(date);
 
     return (
       <div className="w-full flex flex-col gap-0.5 p-1.5" style={{ minHeight: "140px" }}>
@@ -563,6 +575,9 @@ export default function CalendarPage() {
           )}
           {generalMeetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
             <div className="text-[9px] px-1 py-0.5 bg-rose-500 text-white rounded font-medium">{generalMeetingCount}G</div>
+          )}
+          {birthdays.length > 0 && (activeFilter === "all" || activeFilter === "birthdays") && (
+            <div className="text-[9px] px-1 py-0.5 bg-pink-400 text-white rounded font-medium">🎂{birthdays.length}</div>
           )}
         </div>
       </div>
@@ -695,7 +710,8 @@ export default function CalendarPage() {
               const deliveries = getDeliveriesForDate(date);
               const myAssignedTasks = getAssignedTasksForDate(date);
               const generalMeetingsDay = getGeneralMeetingsForDate(date);
-              const isEmpty = !presenter && activeProjects.length === 0 && meetings.length === 0 && cleanings.length === 0 && vacs.length === 0 && dayTasks.length === 0 && weeklyCleanings.length === 0 && installs.length === 0 && deliveries.length === 0 && myAssignedTasks.length === 0 && generalMeetingsDay.length === 0;
+              const birthdaysDay = getBirthdaysForDate(date);
+              const isEmpty = !presenter && activeProjects.length === 0 && meetings.length === 0 && cleanings.length === 0 && vacs.length === 0 && dayTasks.length === 0 && weeklyCleanings.length === 0 && installs.length === 0 && deliveries.length === 0 && myAssignedTasks.length === 0 && generalMeetingsDay.length === 0 && birthdaysDay.length === 0;
               
 
               return (
@@ -883,6 +899,14 @@ export default function CalendarPage() {
                       {m.location && <p className="text-[10px] text-rose-600 truncate">📍 {m.location}</p>}
                       {m.description && <p className="text-[10px] text-slate-500 truncate">{m.description}</p>}
                       {m.attendees?.length > 0 && <p className="text-[10px] text-slate-500 truncate">👥 {m.attendees.join(", ")}</p>}
+                    </div>
+                  ))}
+
+                  {(activeFilter === "all" || activeFilter === "birthdays") && birthdaysDay.map((emp) => (
+                    <div key={emp.id} className="p-2.5 bg-pink-50 rounded-lg border border-pink-200 text-sm">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-pink-900 mb-0.5">🎂 Birthday!</div>
+                      <p className="text-xs text-pink-700 font-medium">{emp.full_name}</p>
+                      {emp.position && <p className="text-[10px] text-pink-500">{emp.position}</p>}
                     </div>
                   ))}
 
