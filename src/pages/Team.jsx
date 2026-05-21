@@ -127,6 +127,18 @@ export default function Team() {
     }
   });
 
+  const archiveEmployeeMutation = useMutation({
+    mutationFn: ({ id, archive }) => base44.entities.Employee.update(id, {
+      archived: archive,
+      archived_date: archive ? format(new Date(), "yyyy-MM-dd") : null
+    }),
+    onSuccess: (_, { archive }) => {
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      setShowEmployeeDetails(false);
+      toast.success(archive ? "Employee archived" : "Employee restored");
+    }
+  });
+
   const handleEdit = (employee) => {
     setEditingEmployee(employee);
     setShowEmployeeForm(true);
@@ -281,6 +293,11 @@ export default function Team() {
                 }}
                 onEdit={handleEdit}
                 onAssignTask={handleAssignTask}
+                onArchive={(emp) => {
+                  if (confirm(`${emp.archived ? 'Restore' : 'Archive'} ${emp.full_name}?`)) {
+                    archiveEmployeeMutation.mutate({ id: emp.id, archive: !emp.archived });
+                  }
+                }}
               />
             );
           })}
