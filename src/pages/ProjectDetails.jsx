@@ -117,25 +117,29 @@ export default function ProjectDetails() {
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", projectId],
     queryFn: () => base44.entities.Project.filter({ id: projectId }).then((res) => res[0]),
-    enabled: !!projectId
+    enabled: !!projectId,
+    staleTime: 30000
   });
 
   const { data: proposal } = useQuery({
     queryKey: ["proposal", projectId],
     queryFn: () => base44.entities.Proposal.filter({ project_id: projectId }).then((res) => res[0]),
-    enabled: !!projectId
+    enabled: !!projectId,
+    staleTime: 30000
   });
 
   const { data: projectOrders = [] } = useQuery({
     queryKey: ["projectOrders", projectId],
     queryFn: () => base44.entities.ProjectOrder.filter({ project_id: projectId }),
-    enabled: !!projectId
+    enabled: !!projectId,
+    staleTime: 30000
   });
 
   const { data: linkedBids = [] } = useQuery({
     queryKey: ["bids_for_project", projectId],
     queryFn: () => base44.entities.Bid.filter({ project_id: projectId }),
-    enabled: !!projectId
+    enabled: !!projectId,
+    staleTime: 30000
   });
 
   const updateMutation = useMutation({
