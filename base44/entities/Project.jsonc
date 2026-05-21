@@ -318,6 +318,11 @@
       "type": "boolean",
       "default": false
     },
+    "allow_weekend_display": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, this project will be shown on weekends in the calendar"
+    },
     "notes": {
       "type": "string"
     },
