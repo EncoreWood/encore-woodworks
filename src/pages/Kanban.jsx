@@ -56,6 +56,7 @@ export default function Kanban() {
   const [editingTab, setEditingTab] = useState(null); // { tabKey, columns }
   const [moveProjectDialog, setMoveProjectDialog] = useState(null); // { project }
   const [moveTarget, setMoveTarget] = useState({ tab: "", status: "" });
+  const [stageView, setStageView] = useState(null); // { column, tabKey }
 
   const defaultColumnsByTab = {
     "pre-production": [
@@ -325,9 +326,9 @@ export default function Kanban() {
                     const columnProjects = getProjectsByStatus(column.id, tabKey);
                     return (
                       <div key={column.id} className="flex-shrink-0 w-full sm:w-80">
-                        <div className="mb-3 flex items-center justify-between">
+                      <div className="mb-3 flex items-center justify-between" onClick={() => setStageView({ column, tabKey })} style={{ cursor: "pointer" }}>
                           <div className="flex items-center gap-2 min-w-0">
-                            <h2 className="font-semibold text-slate-700 truncate">{column.label}</h2>
+                            <h2 className="font-semibold text-slate-700 truncate hover:text-amber-700 transition-colors">{column.label}</h2>
                             {columnProjects.length > 0 && (() => {
                               const stageTotal = columnProjects.reduce((sum, p) => {
                                 const coTotal = (p.change_orders || []).reduce((s, co) => s + (co.amount || 0), 0);
@@ -345,7 +346,8 @@ export default function Kanban() {
                               {columnProjects.length}
                             </Badge>
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setNewProjectStatus(column.id);
                                 setShowProjectForm(true);
                               }}
@@ -592,6 +594,57 @@ export default function Kanban() {
             </TabsContent>
           ))}
         </Tabs>
+
+        {/* Stage View Dialog */}
+        <Dialog open={!!stageView} onOpenChange={(open) => { if (!open) setStageView(null); }}>
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {stageView?.column.label}
+                <Badge variant="outline" className="text-xs">
+                  {stageView ? getProjectsByStatus(stageView.column.id, stageView.tabKey).length : 0} projects
+                </Badge>
+              </DialogTitle>
+            </DialogHeader>
+            {stageView && (() => {
+              const stageProjects = getProjectsByStatus(stageView.column.id, stageView.tabKey);
+              if (stageProjects.length === 0) {
+                return <p className="text-slate-500 text-sm py-4 text-center">No projects in this stage.</p>;
+              }
+              return (
+                <div className="space-y-3 mt-2">
+                  {stageProjects.map(project => (
+                    <Link key={project.id} to={createPageUrl("ProjectDetails") + "?id=" + project.id} onClick={() => setStageView(null)}>
+                      <div
+                        className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:bg-slate-50 transition-colors"
+                        style={project.card_color ? { borderLeft: `4px solid ${project.card_color}`, backgroundColor: project.card_color + "12" } : {}}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-semibold text-slate-900 truncate">{project.project_name}</p>
+                            <Badge className={`text-xs border-0 ${priorityColors[project.priority]}`}>{project.priority}</Badge>
+                          </div>
+                          <div className="flex items-center gap-4 mt-1 text-xs text-slate-500 flex-wrap">
+                            {project.client_name && <span className="flex items-center gap-1"><User className="w-3 h-3" />{project.client_name}</span>}
+                            {project.address && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{project.address}</span>}
+                            {project.estimated_completion && <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{format(new Date(project.estimated_completion), "MMM d, yyyy")}</span>}
+                          </div>
+                          {(project.project_manager_name || project.shop_manager_name) && (
+                            <div className="flex gap-3 mt-1 text-xs text-slate-500">
+                              {project.project_manager_name && <span>PM: {project.project_manager_name}</span>}
+                              {project.shop_manager_name && <span>SM: {project.shop_manager_name}</span>}
+                            </div>
+                          )}
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              );
+            })()}
+          </DialogContent>
+        </Dialog>
 
         {/* Chat Dialog */}
         <Dialog open={chatDialogOpen} onOpenChange={setChatDialogOpen}>
