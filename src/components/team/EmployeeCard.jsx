@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Users, Mail, Phone, Briefcase, Calendar, Cake, Pencil, ListTodo, ShieldCheck, FileText, Paperclip } from "lucide-react";
+import { User, Users, Mail, Phone, Briefcase, Calendar, Cake, Pencil, ListTodo, ShieldCheck, FileText, Paperclip, Archive, ArchiveRestore } from "lucide-react";
 import { format } from "date-fns";
 
 const departmentColors = {
@@ -12,7 +12,7 @@ const departmentColors = {
   management: "bg-amber-100 text-amber-700"
 };
 
-export default function EmployeeCard({ employee, tasks = [], presentations = [], cleanings = [], onClick, onEdit, onAssignTask }) {
+export default function EmployeeCard({ employee, tasks = [], presentations = [], cleanings = [], onClick, onEdit, onAssignTask, onArchive }) {
   const upcomingItems = [
     ...tasks.slice(0, 2).map(t => ({ type: 'task', data: t })),
     ...presentations.slice(0, 1).map(p => ({ type: 'presentation', data: p })),
@@ -66,6 +66,20 @@ export default function EmployeeCard({ employee, tasks = [], presentations = [],
           >
             <Pencil className="w-4 h-4" />
           </Button>
+          {onArchive && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                onArchive(employee);
+              }}
+              className={employee.archived ? "text-green-500 hover:text-green-700" : "text-slate-400 hover:text-red-500"}
+              title={employee.archived ? "Restore" : "Archive"}
+            >
+              {employee.archived ? <ArchiveRestore className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+            </Button>
+          )}
         </div>
       </div>
 
