@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
 import RoomsEditor from "./RoomsEditor";
 import FileUploader from "./FileUploader";
@@ -59,6 +60,7 @@ const initialFormState = {
   available_wood_types: ["Maple", "Oak", "Cherry", "Walnut", "Birch", "Hickory", "Pine", "Alder", "Ash", "Mahogany"],
   notes: "",
   project_url: "",
+  allow_weekend_display: false,
   files: [],
   rooms: []
 };
@@ -254,9 +256,21 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
                </Select>
               </div>
               </div>
+
+              {/* Show on Weekends */}
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+               <Checkbox
+                 id="allow_weekend_display"
+                 checked={formData.allow_weekend_display || false}
+                 onCheckedChange={(checked) => handleChange("allow_weekend_display", checked)}
+               />
+               <Label htmlFor="allow_weekend_display" className="cursor-pointer font-normal text-slate-700">
+                 Show on weekends in calendar
+               </Label>
+              </div>
               </div>
 
-          {/* Client Info */}
+              {/* Client Info */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Client Information</h3>
 

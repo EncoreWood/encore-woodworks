@@ -530,6 +530,8 @@ export default function CalendarPage() {
           )}
         </div>
         {(activeFilter === "all" || activeFilter === "projects") && spanningProjects.map((project) => {
+          const dow = date.getDay();
+          if ((dow === 0 || dow === 6) && !project.allow_weekend_display) return null;
           const overdue = isProjectOverdue(project);
           const sc = statusConfig[project.status];
           const bgClass = overdue ? "bg-red-600" : (project.status === "side_projects" ? "" : (!project.card_color ? (sc?.color || "bg-slate-400") : ""));
@@ -545,6 +547,8 @@ export default function CalendarPage() {
           );
         })}
         {(activeFilter === "all" || activeFilter === "projects") && installProjects.map((project) => {
+          const dow = date.getDay();
+          if ((dow === 0 || dow === 6) && !project.allow_weekend_display) return null;
           const bgClass = project.status === "side_projects" ? "" : (!project.card_color ? (statusConfig[project.status]?.color || "bg-slate-400") : "");
           const bgStyle = project.status === "side_projects" ? { backgroundColor: "#374151" } : (project.card_color ? { backgroundColor: project.card_color } : {});
           return (
@@ -727,6 +731,8 @@ export default function CalendarPage() {
                   )}
 
                   {(activeFilter === "all" || activeFilter === "projects") && activeProjects.map((project) => {
+                    const dow = date.getDay();
+                    if ((dow === 0 || dow === 6) && !project.allow_weekend_display) return null;
                     const overdue = isProjectOverdue(project);
                     const isInstall = installsOnDay.some(p => p.id === project.id);
                     const sc = statusConfig[project.status];
