@@ -13,6 +13,7 @@ import AssignTaskDialog from "../components/team/AssignTaskDialog";
 import { toast } from "sonner";
 
 export default function Team() {
+  const [activeTab, setActiveTab] = useState('active');
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
   const [assigningEmployee, setAssigningEmployee] = useState(null);
@@ -273,9 +274,29 @@ export default function Team() {
           </Card>
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('active')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'active' ? 'bg-amber-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Active ({employees.filter(e => !e.archived).length})
+          </button>
+          <button
+            onClick={() => setActiveTab('archived')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'archived' ? 'bg-slate-600 text-white shadow' : 'bg-white text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Archived ({employees.filter(e => e.archived).length})
+          </button>
+        </div>
+
         {/* Employee Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {employees.map((employee) => {
+          {employees.filter(e => activeTab === 'active' ? !e.archived : e.archived).map((employee) => {
             const employeeTasks = tasks.filter(task => task.assignee === employee.full_name && !task.completed);
             const employeePresentations = presenters.filter(p => p.presenter_name === employee.full_name);
             const employeeCleanings = bathroomCleanings.filter(c => c.assigned_to?.includes(employee.full_name));
@@ -303,7 +324,7 @@ export default function Team() {
           })}
         </div>
 
-        {employees.length === 0 && (
+        {employees.filter(e => activeTab === 'active' ? !e.archived : e.archived).length === 0 && (
           <Card className="p-12 bg-white border-0 shadow-sm text-center">
             <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-slate-900 mb-2">No employees yet</h3>
