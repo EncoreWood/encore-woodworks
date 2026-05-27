@@ -1,0 +1,59 @@
+{
+  "name": "Supplier",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Supplier name"
+    },
+    "website_url": {
+      "type": "string",
+      "description": "Main website URL"
+    },
+    "ordering_url": {
+      "type": "string",
+      "description": "Direct ordering/login URL"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "wood",
+        "hardware",
+        "finishes",
+        "cabinet_components",
+        "countertops",
+        "tools",
+        "general"
+      ],
+      "description": "Supplier category"
+    },
+    "contact_name": {
+      "type": "string",
+      "description": "Primary contact name"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Phone number"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email address"
+    },
+    "account_number": {
+      "type": "string",
+      "description": "Account or customer number"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    },
+    "favorite": {
+      "type": "boolean",
+      "default": false,
+      "description": "Mark as favorite for quick access"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

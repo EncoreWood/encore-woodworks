@@ -1,0 +1,43 @@
+{
+  "name": "MeetingTask",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the meeting"
+    },
+    "task": {
+      "type": "string",
+      "description": "Task description"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Task completion status"
+    },
+    "assignee": {
+      "type": "string",
+      "description": "Person assigned to the task"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "meeting",
+        "task_board",
+        "other"
+      ],
+      "default": "meeting",
+      "description": "Where this task was created from"
+    },
+    "show_in_meeting": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to display in morning meeting"
+    }
+  },
+  "required": [
+    "date",
+    "task"
+  ]
+}

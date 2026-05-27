@@ -1,0 +1,67 @@
+{
+  "name": "SOP",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "SOP title"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Office",
+        "Face Frame",
+        "Spray",
+        "Build",
+        "Cut"
+      ],
+      "description": "SOP category"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the procedure"
+    },
+    "steps": {
+      "type": "array",
+      "description": "Step-by-step instructions",
+      "items": {
+        "type": "object",
+        "properties": {
+          "step_number": {
+            "type": "number"
+          },
+          "instruction": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "description": "Attached files (photos, diagrams, etc.)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "created_by": {
+      "type": "string",
+      "description": "User who created this SOP"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "title",
+    "category"
+  ]
+}

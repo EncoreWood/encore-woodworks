@@ -1,0 +1,26 @@
+{
+  "name": "BathroomCleaning",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Cleaning date"
+    },
+    "assigned_to": {
+      "type": "array",
+      "description": "Team members assigned to cleaning",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "date",
+    "assigned_to"
+  ]
+}

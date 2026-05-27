@@ -1,0 +1,55 @@
+{
+  "name": "Document",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Document name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Document description"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "File URL"
+    },
+    "file_type": {
+      "type": "string",
+      "description": "File type/extension"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "contract",
+        "invoice",
+        "proposal",
+        "specification",
+        "drawing",
+        "photo",
+        "other"
+      ],
+      "default": "other",
+      "description": "Document category"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Associated project ID (optional)"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Associated project name (optional)"
+    },
+    "tags": {
+      "type": "array",
+      "description": "Document tags",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "name",
+    "file_url"
+  ]
+}

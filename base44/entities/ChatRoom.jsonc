@@ -1,0 +1,28 @@
+{
+  "name": "ChatRoom",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Chat room name"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Associated project ID"
+    },
+    "description": {
+      "type": "string",
+      "description": "Chat room description"
+    },
+    "employees": {
+      "type": "array",
+      "description": "List of employee emails in this chat room",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

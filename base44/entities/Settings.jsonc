@@ -1,0 +1,77 @@
+{
+  "name": "Settings",
+  "type": "object",
+  "properties": {
+    "setting_type": {
+      "type": "string",
+      "enum": [
+        "pto_calculation"
+      ],
+      "description": "Type of setting"
+    },
+    "hours_per_year": {
+      "type": "number",
+      "description": "Total PTO hours per year"
+    },
+    "accrual_method": {
+      "type": "string",
+      "enum": [
+        "per_paycheck",
+        "per_hour",
+        "annual"
+      ],
+      "default": "per_hour",
+      "description": "How PTO is accrued"
+    },
+    "accrual_rate": {
+      "type": "number",
+      "description": "PTO hours earned per hour worked"
+    },
+    "pay_period_start_day": {
+      "type": "number",
+      "default": 16,
+      "description": "Day of month pay period starts (e.g., 16)"
+    },
+    "pay_period_end_day": {
+      "type": "number",
+      "default": 15,
+      "description": "Day of month pay period ends (e.g., 15)"
+    },
+    "pay_period_days": {
+      "type": "number",
+      "default": 30,
+      "description": "Number of days in pay period"
+    },
+    "work_days": {
+      "type": "array",
+      "description": "Work days (1=Monday, 7=Sunday)",
+      "items": {
+        "type": "number"
+      },
+      "default": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "work_start_time": {
+      "type": "string",
+      "default": "07:00",
+      "description": "Daily work start time (HH:MM)"
+    },
+    "work_end_time": {
+      "type": "string",
+      "default": "17:30",
+      "description": "Daily work end time (HH:MM)"
+    },
+    "lunch_break_minutes": {
+      "type": "number",
+      "default": 30,
+      "description": "Lunch break duration in minutes"
+    }
+  },
+  "required": [
+    "setting_type"
+  ]
+}

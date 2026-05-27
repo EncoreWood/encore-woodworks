@@ -1,0 +1,33 @@
+{
+  "name": "DashboardSettings",
+  "type": "object",
+  "properties": {
+    "section": {
+      "type": "string",
+      "enum": [
+        "stats",
+        "projects",
+        "google_sheet",
+        "book_of_month"
+      ],
+      "description": "Dashboard section name"
+    },
+    "visible_to_users": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether regular users can see this section"
+    },
+    "visible_to_admins": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether admins can see this section"
+    },
+    "value": {
+      "type": "string",
+      "description": "Generic string value (e.g. book title)"
+    }
+  },
+  "required": [
+    "section"
+  ]
+}

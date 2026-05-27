@@ -1,0 +1,27 @@
+{
+  "name": "FormResponse",
+  "type": "object",
+  "properties": {
+    "form_id": {
+      "type": "string",
+      "description": "Reference to Form ID"
+    },
+    "form_name": {
+      "type": "string",
+      "description": "Form name"
+    },
+    "responses": {
+      "type": "object",
+      "description": "Field responses as key-value pairs"
+    },
+    "submitted_by": {
+      "type": "string",
+      "description": "User who submitted"
+    }
+  },
+  "required": [
+    "form_id",
+    "form_name",
+    "responses"
+  ]
+}

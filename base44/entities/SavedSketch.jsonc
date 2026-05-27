@@ -1,0 +1,31 @@
+{
+  "name": "SavedSketch",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Template name"
+    },
+    "canvas_json": {
+      "type": "string",
+      "description": "Fabric.js canvas JSON"
+    },
+    "thumbnail_url": {
+      "type": "string",
+      "description": "PNG thumbnail URL"
+    },
+    "is_shared": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this template is shared with all users"
+    },
+    "owner_email": {
+      "type": "string",
+      "description": "Email of the user who saved this template"
+    }
+  },
+  "required": [
+    "name",
+    "canvas_json"
+  ]
+}

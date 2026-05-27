@@ -1,0 +1,43 @@
+{
+  "name": "ReviewQuestion",
+  "type": "object",
+  "properties": {
+    "question_text": {
+      "type": "string",
+      "description": "The review question text"
+    },
+    "question_type": {
+      "type": "string",
+      "enum": [
+        "Rating 1-5",
+        "Rating 1-10",
+        "Yes/No",
+        "Text",
+        "Multiple Choice"
+      ],
+      "default": "Rating 1-5",
+      "description": "Type of question"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Performance",
+        "Communication",
+        "Teamwork",
+        "Reliability",
+        "Growth",
+        "Other"
+      ],
+      "default": "Performance",
+      "description": "Question category"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this question is active"
+    }
+  },
+  "required": [
+    "question_text"
+  ]
+}

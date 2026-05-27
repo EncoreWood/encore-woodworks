@@ -1,0 +1,66 @@
+{
+  "name": "Presentation",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Client name"
+    },
+    "address": {
+      "type": "string",
+      "description": "Project address"
+    },
+    "cabinet_style": {
+      "type": "string",
+      "description": "Cabinet style"
+    },
+    "wood_species": {
+      "type": "string",
+      "description": "Wood species"
+    },
+    "finish": {
+      "type": "string",
+      "description": "Finish type"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "ready",
+        "sent"
+      ],
+      "default": "draft",
+      "description": "Presentation status"
+    },
+    "shared_link_token": {
+      "type": "string",
+      "description": "Unique token for shareable link"
+    },
+    "sent_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date presentation was marked as sent"
+    },
+    "proposal_id": {
+      "type": "string",
+      "description": "Linked Proposal ID"
+    },
+    "bid_id": {
+      "type": "string",
+      "description": "Linked Bid ID"
+    }
+  },
+  "required": [
+    "project_id",
+    "project_name",
+    "client_name"
+  ]
+}

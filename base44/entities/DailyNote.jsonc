@@ -1,0 +1,43 @@
+{
+  "name": "DailyNote",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date for this note"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "announcement",
+        "teach_item"
+      ],
+      "description": "Type of note"
+    },
+    "content": {
+      "type": "string",
+      "description": "Text content (for announcements)"
+    },
+    "label": {
+      "type": "string",
+      "description": "Label (for teach items)"
+    },
+    "url": {
+      "type": "string",
+      "description": "URL or file link (for teach items)"
+    },
+    "item_type": {
+      "type": "string",
+      "enum": [
+        "link",
+        "file"
+      ],
+      "description": "Teach item type"
+    }
+  },
+  "required": [
+    "date",
+    "type"
+  ]
+}

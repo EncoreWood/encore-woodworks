@@ -1,0 +1,33 @@
+{
+  "name": "FinancialEntry",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the financial entry"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Expenses",
+        "Overhead",
+        "Other"
+      ],
+      "description": "Category of the entry"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Amount in dollars"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "date",
+    "category",
+    "amount"
+  ]
+}

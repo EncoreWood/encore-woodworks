@@ -1,0 +1,53 @@
+{
+  "name": "Vacation",
+  "type": "object",
+  "properties": {
+    "employee_id": {
+      "type": "string",
+      "description": "Reference to Employee ID"
+    },
+    "employee_name": {
+      "type": "string",
+      "description": "Employee name"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Vacation start date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Vacation end date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "denied"
+      ],
+      "default": "pending",
+      "description": "Vacation status"
+    },
+    "use_pto": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to use PTO hours for this vacation"
+    },
+    "pto_hours_used": {
+      "type": "number",
+      "description": "Number of PTO hours used"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Vacation notes"
+    }
+  },
+  "required": [
+    "employee_id",
+    "employee_name",
+    "start_date",
+    "end_date"
+  ]
+}

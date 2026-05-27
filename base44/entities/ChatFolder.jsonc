@@ -1,0 +1,48 @@
+{
+  "name": "ChatFolder",
+  "type": "object",
+  "properties": {
+    "room_id": {
+      "type": "string",
+      "description": "Chat room ID this folder belongs to"
+    },
+    "name": {
+      "type": "string",
+      "description": "Folder name"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "files",
+        "photos"
+      ],
+      "description": "Folder type"
+    },
+    "files": {
+      "type": "array",
+      "description": "Files in this folder",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "File name"
+          },
+          "url": {
+            "type": "string",
+            "description": "File URL"
+          },
+          "uploaded_by": {
+            "type": "string",
+            "description": "User who uploaded the file"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "room_id",
+    "name",
+    "type"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "user",
+        "client"
+      ],
+      "default": "user"
+    },
+    "client_project_id": {
+      "type": "string",
+      "description": "For role=client: the linked project ID"
+    }
+  },
+  "required": [
+    "client_project_id"
+  ]
+}

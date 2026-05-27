@@ -1,0 +1,51 @@
+{
+  "name": "ChatMessage",
+  "type": "object",
+  "properties": {
+    "room_id": {
+      "type": "string",
+      "description": "Chat room ID"
+    },
+    "message": {
+      "type": "string",
+      "description": "Message content"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "User's name"
+    },
+    "reply_to_id": {
+      "type": "string",
+      "description": "ID of the message being replied to"
+    },
+    "attachments": {
+      "type": "array",
+      "description": "Attached files and photos",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "File name"
+          },
+          "url": {
+            "type": "string",
+            "description": "File URL"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "file",
+              "photo"
+            ],
+            "description": "Attachment type"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "room_id",
+    "message"
+  ]
+}

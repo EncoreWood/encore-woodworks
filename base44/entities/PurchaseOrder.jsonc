@@ -1,0 +1,83 @@
+{
+  "name": "PurchaseOrder",
+  "type": "object",
+  "properties": {
+    "order_number": {
+      "type": "string",
+      "description": "Purchase order number"
+    },
+    "supplier": {
+      "type": "string",
+      "description": "Supplier name"
+    },
+    "order_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date order was placed"
+    },
+    "expected_delivery_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Expected delivery date"
+    },
+    "actual_delivery_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Actual delivery date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "ordered",
+        "shipped",
+        "received",
+        "cancelled"
+      ],
+      "default": "pending",
+      "description": "Order status"
+    },
+    "items": {
+      "type": "array",
+      "description": "Items in this purchase order",
+      "items": {
+        "type": "object",
+        "properties": {
+          "item_name": {
+            "type": "string",
+            "description": "Item name"
+          },
+          "quantity": {
+            "type": "number",
+            "description": "Quantity ordered"
+          },
+          "unit": {
+            "type": "string",
+            "description": "Unit of measurement"
+          },
+          "price_per_unit": {
+            "type": "number",
+            "description": "Price per unit"
+          }
+        }
+      }
+    },
+    "total_cost": {
+      "type": "number",
+      "description": "Total order cost"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Order notes"
+    },
+    "invoice_file": {
+      "type": "string",
+      "description": "Invoice file URL"
+    }
+  },
+  "required": [
+    "supplier",
+    "order_date",
+    "status"
+  ]
+}

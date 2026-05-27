@@ -1,0 +1,63 @@
+{
+  "name": "Form",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Form name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Form description"
+    },
+    "fields": {
+      "type": "array",
+      "description": "Form fields",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Field ID"
+          },
+          "label": {
+            "type": "string",
+            "description": "Field label"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "textarea",
+              "number",
+              "email",
+              "date",
+              "select",
+              "checkbox"
+            ],
+            "description": "Field type"
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Is field required"
+          },
+          "options": {
+            "type": "array",
+            "description": "Options for select fields",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Is form active"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

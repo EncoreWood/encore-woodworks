@@ -1,0 +1,135 @@
+{
+  "name": "Proposal",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for reference"
+    },
+    "job_name": {
+      "type": "string",
+      "description": "Job name"
+    },
+    "address": {
+      "type": "string",
+      "description": "Project address"
+    },
+    "cabinet_style": {
+      "type": "string",
+      "description": "Cabinet style (e.g., Face Frame Inset)"
+    },
+    "wood_species": {
+      "type": "string",
+      "description": "Wood species"
+    },
+    "door_style": {
+      "type": "string",
+      "description": "Door style"
+    },
+    "handles": {
+      "type": "string",
+      "description": "Handle type"
+    },
+    "drawerbox": {
+      "type": "string",
+      "description": "Drawerbox type"
+    },
+    "drawer_glides": {
+      "type": "string",
+      "description": "Drawer glide type"
+    },
+    "hinges": {
+      "type": "string",
+      "description": "Hinge type"
+    },
+    "rooms": {
+      "type": "array",
+      "description": "Room line items",
+      "items": {
+        "type": "object",
+        "properties": {
+          "room_name": {
+            "type": "string",
+            "description": "Room name"
+          },
+          "finish": {
+            "type": "string",
+            "description": "Finish type"
+          },
+          "items_of_recognition": {
+            "type": "string",
+            "description": "Notable items or features"
+          },
+          "price": {
+            "type": "number",
+            "description": "Price for this room"
+          }
+        }
+      }
+    },
+    "options": {
+      "type": "array",
+      "description": "Optional items",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Option description"
+          },
+          "price": {
+            "type": "number",
+            "description": "Option price"
+          },
+          "selected": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this option is selected"
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "description": "Proposal files and attachments",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "File name"
+          },
+          "url": {
+            "type": "string",
+            "description": "File URL"
+          }
+        }
+      }
+    },
+    "standard_total": {
+      "type": "number",
+      "description": "Total for standard rooms"
+    },
+    "overall_total": {
+      "type": "number",
+      "description": "Overall project total"
+    },
+    "payment_terms": {
+      "type": "string",
+      "description": "Payment terms and schedule",
+      "default": "Payment Schedule\n50% Deposit required before Job Production Starts\n40% Payment will be required upon Completion of cabinet Production\nFinal 10% Will be due at completion of Installation"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "project_id",
+    "project_name"
+  ]
+}

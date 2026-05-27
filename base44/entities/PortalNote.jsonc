@@ -1,0 +1,36 @@
+{
+  "name": "PortalNote",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "room_file_id": {
+      "type": "string",
+      "description": "RoomFile record ID this note is attached to"
+    },
+    "note_text": {
+      "type": "string"
+    },
+    "author_name": {
+      "type": "string"
+    },
+    "author_type": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "client"
+      ],
+      "default": "admin"
+    },
+    "is_visible_to_client": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "project_id",
+    "note_text",
+    "author_name"
+  ]
+}

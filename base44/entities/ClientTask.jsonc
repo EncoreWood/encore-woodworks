@@ -1,0 +1,67 @@
+{
+  "name": "ClientTask",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string"
+    },
+    "room_name": {
+      "type": "string",
+      "description": "Room this task belongs to (optional)"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "task_type": {
+      "type": "string",
+      "enum": [
+        "Room Sign-Off",
+        "Review & Approve",
+        "Provide Info",
+        "General"
+      ],
+      "default": "General"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "In Progress",
+        "Completed"
+      ],
+      "default": "Pending"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "requires_signature": {
+      "type": "boolean",
+      "default": false
+    },
+    "signature_data": {
+      "type": "string",
+      "description": "Base64 PNG of signature"
+    },
+    "signed_by": {
+      "type": "string"
+    },
+    "signed_at": {
+      "type": "string"
+    },
+    "admin_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "project_id",
+    "title"
+  ]
+}

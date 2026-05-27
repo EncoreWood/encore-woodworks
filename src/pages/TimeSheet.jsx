@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,8 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Clock, Plus, Trash2, Play, Square, Settings, Circle,
-  Calendar, RefreshCw, Pencil, Briefcase, ArrowLeftRight,
-  CheckCircle2, UtensilsCrossed, ChevronDown, ChevronRight, Timer
+  Calendar, Pencil, Briefcase, ArrowLeftRight,
+  UtensilsCrossed, ChevronDown, ChevronRight
 } from "lucide-react";
 import { format, addWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isWithinInterval } from "date-fns";
 import VacationRequestForm from "../components/team/VacationRequestForm";
@@ -20,7 +20,6 @@ import PayPeriodsView from "../components/timesheet/PayPeriodsView";
 import PayrollTab from "../components/timesheet/PayrollTab";
 import { cn } from "@/lib/utils";
 
-// ─── Live elapsed time hook ────────────────────────────────────────────────────
 function useElapsedTime(clockInTime) {
   const [elapsed, setElapsed] = useState("00:00:00");
   useEffect(() => {
@@ -54,7 +53,6 @@ function calculateHours(clockIn, clockOut) {
   return ((outH * 60 + outM - inH * 60 - inM) / 60).toFixed(2);
 }
 
-// ─── Day Row (weekly log) ──────────────────────────────────────────────────────
 const typeColors = {
   work: "bg-blue-100 text-blue-800",
   pto: "bg-yellow-100 text-yellow-800",
@@ -141,7 +139,7 @@ function DayRow({ date, entries, isToday, isAdmin, onEdit, onDelete }) {
                 </div>
                 <div className="flex items-center gap-3 mt-0.5 text-sm text-slate-600">
                   <span className="font-mono text-xs text-slate-700">
-                    {to12hr(entry.clock_in) || "—"} → {entry.clock_out
+                    {to12hr(entry.clock_in) || "—"} {"→"} {entry.clock_out
                       ? to12hr(entry.clock_out)
                       : <span className="text-green-600 animate-pulse font-semibold">Active</span>
                     }
@@ -189,7 +187,6 @@ function DayRow({ date, entries, isToday, isAdmin, onEdit, onDelete }) {
   );
 }
 
-// ─── Main ClockWidget (hero card for non-admin) ───────────────────────────────
 function ClockWidget({ isClockedIn, elapsedTime, currentProjectName, todayHours, onClockIn, onClockOut, onSwitch, loading }) {
   return (
     <div className={cn(
@@ -198,20 +195,15 @@ function ClockWidget({ isClockedIn, elapsedTime, currentProjectName, todayHours,
         ? "bg-gradient-to-br from-green-600 to-emerald-700 text-white"
         : "bg-gradient-to-br from-slate-700 to-slate-900 text-white"
     )}>
-      {/* Status dot */}
       <div className="flex items-center justify-center gap-2 mb-4">
         <span className={cn("w-3 h-3 rounded-full", isClockedIn ? "bg-green-200 animate-pulse" : "bg-slate-500")} />
         <span className="text-sm font-semibold uppercase tracking-widest opacity-80">
           {isClockedIn ? "Clocked In" : "Clocked Out"}
         </span>
       </div>
-
-      {/* Big elapsed timer */}
       <div className="font-mono text-6xl font-bold tracking-tight mb-2 tabular-nums">
         {isClockedIn ? elapsedTime : "--:--:--"}
       </div>
-
-      {/* Project name */}
       {isClockedIn && currentProjectName && (
         <div className="flex items-center justify-center gap-2 mb-5 opacity-90">
           <Briefcase className="w-4 h-4" />
@@ -220,8 +212,6 @@ function ClockWidget({ isClockedIn, elapsedTime, currentProjectName, todayHours,
       )}
       {isClockedIn && !currentProjectName && <div className="mb-5" />}
       {!isClockedIn && <div className="mb-5" />}
-
-      {/* Today's hours pill */}
       {todayHours > 0 && (
         <div className="inline-flex items-center gap-1.5 bg-white/20 rounded-full px-4 py-1.5 text-sm font-semibold mb-6">
           <Clock className="w-4 h-4" />
@@ -229,48 +219,33 @@ function ClockWidget({ isClockedIn, elapsedTime, currentProjectName, todayHours,
         </div>
       )}
       {todayHours === 0 && <div className="mb-6" />}
-
-      {/* Buttons */}
       {isClockedIn ? (
         <div className="flex gap-3 justify-center">
-          <button
-            onClick={onClockOut}
-            disabled={loading}
-            className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-lg transition-all active:scale-95 disabled:opacity-60"
-          >
-            <Square className="w-5 h-5" />
-            Clock Out
+          <button onClick={onClockOut} disabled={loading}
+            className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-lg transition-all active:scale-95 disabled:opacity-60">
+            <Square className="w-5 h-5" /> Clock Out
           </button>
-          <button
-            onClick={onSwitch}
-            disabled={loading}
-            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-semibold text-base px-6 py-4 rounded-2xl transition-all active:scale-95 disabled:opacity-60"
-          >
-            <ArrowLeftRight className="w-5 h-5" />
-            Switch
+          <button onClick={onSwitch} disabled={loading}
+            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white font-semibold text-base px-6 py-4 rounded-2xl transition-all active:scale-95 disabled:opacity-60">
+            <ArrowLeftRight className="w-5 h-5" /> Switch
           </button>
         </div>
       ) : (
-        <button
-          onClick={onClockIn}
-          disabled={loading}
-          className="flex items-center gap-3 mx-auto bg-white text-slate-900 font-bold text-xl px-12 py-5 rounded-2xl shadow-lg transition-all active:scale-95 hover:bg-green-50 disabled:opacity-60"
-        >
-          <Play className="w-6 h-6 text-green-600" />
-          Clock In
+        <button onClick={onClockIn} disabled={loading}
+          className="flex items-center gap-3 mx-auto bg-white text-slate-900 font-bold text-xl px-12 py-5 rounded-2xl shadow-lg transition-all active:scale-95 hover:bg-green-50 disabled:opacity-60">
+          <Play className="w-6 h-6 text-green-600" /> Clock In
         </button>
       )}
     </div>
   );
 }
 
-// ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function TimeSheet() {
   const queryClient = useQueryClient();
 
   const [currentUser, setCurrentUser] = useState(null);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [clockInTime, setClockInTime] = useState(null); // ms timestamp
+  const [clockInTime, setClockInTime] = useState(null);
   const [openTimeEntryId, setOpenTimeEntryId] = useState(null);
   const [currentProjectName, setCurrentProjectName] = useState(null);
   const [showClockInModal, setShowClockInModal] = useState(false);
@@ -298,7 +273,6 @@ export default function TimeSheet() {
 
   const elapsedTime = useElapsedTime(clockInTime);
 
-  // ── Queries ────────────────────────────────────────────────────────────────
   const { data: employees = [] } = useQuery({
     queryKey: ["employees"],
     queryFn: () => base44.entities.Employee.list()
@@ -325,7 +299,6 @@ export default function TimeSheet() {
     queryFn: () => base44.entities.Vacation.list()
   });
 
-  // Real-time
   useEffect(() => {
     const unsub = base44.entities.TimeEntry.subscribe(() => {
       queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
@@ -333,7 +306,6 @@ export default function TimeSheet() {
     return unsub;
   }, [queryClient]);
 
-  // ── Bootstrap current user + open entry ───────────────────────────────────
   useEffect(() => {
     if (!employees.length) return;
     const init = async () => {
@@ -357,7 +329,6 @@ export default function TimeSheet() {
     init();
   }, [employees]);
 
-  // ── Mutations ──────────────────────────────────────────────────────────────
   const createEntryMutation = useMutation({
     mutationFn: (data) => base44.entities.TimeEntry.create(data),
     onSuccess: () => {
@@ -384,7 +355,6 @@ export default function TimeSheet() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["settings"] })
   });
 
-  // ── Clock actions ──────────────────────────────────────────────────────────
   const doClockIn = async ({ project_id, project_name }) => {
     if (!selectedEmployee) return;
     setClockLoading(true);
@@ -439,7 +409,6 @@ export default function TimeSheet() {
     queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
   };
 
-  // ── Derived data ───────────────────────────────────────────────────────────
   const todayStr = format(new Date(), "yyyy-MM-dd");
   const employeeEntries = selectedEmployee ? timeEntries.filter(e => e.employee_id === selectedEmployee.id) : [];
   const todayCompletedHours = employeeEntries.filter(e => e.date === todayStr && e.entry_type === "work" && e.clock_out)
@@ -456,7 +425,6 @@ export default function TimeSheet() {
     e.date <= format(weekEnd, "yyyy-MM-dd")
   ).reduce((s, e) => s + (e.hours_worked || 0), 0);
 
-  // Pay period helpers
   const getPayPeriodDates = () => {
     const startDay = settings[0]?.pay_period_start_day || 16;
     const endDay = settings[0]?.pay_period_end_day || 15;
@@ -524,7 +492,7 @@ export default function TimeSheet() {
     <div className="min-h-screen bg-slate-100 pb-10">
       <div className="max-w-2xl mx-auto px-4 pt-6 space-y-6">
 
-        {/* ── Header ── */}
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Time Sheet</h1>
@@ -539,13 +507,23 @@ export default function TimeSheet() {
             >
               <SelectTrigger className="w-44 h-9 text-sm"><SelectValue placeholder="Employee..." /></SelectTrigger>
               <SelectContent>
-                {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
+                {employees.filter(e => !e.archived).map(e => (
+                  <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>
+                ))}
+                {employees.some(e => e.archived) && (
+                  <>
+                    <div className="px-2 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wide border-t mt-1 pt-2">Archived</div>
+                    {employees.filter(e => e.archived).map(e => (
+                      <SelectItem key={e.id} value={e.id}>{e.full_name} (archived)</SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
           )}
         </div>
 
-        {/* ── Tabs ── */}
+        {/* Tabs */}
         <Tabs value={currentTab} onValueChange={setCurrentTab}>
           <TabsList className={`grid w-full ${isAdmin ? "grid-cols-6" : "grid-cols-2"}`}>
             {isAdmin && <TabsTrigger value="overview">Team</TabsTrigger>}
@@ -556,11 +534,10 @@ export default function TimeSheet() {
             {isAdmin && <TabsTrigger value="settings"><Settings className="w-3.5 h-3.5" /></TabsTrigger>}
           </TabsList>
 
-          {/* ── TIME CARD TAB ── */}
+          {/* TIME CARD TAB */}
           <TabsContent value="timecard" className="space-y-5 mt-5">
             {selectedEmployee ? (
               <>
-                {/* Hero clock widget */}
                 <ClockWidget
                   isClockedIn={!!clockInTime}
                   elapsedTime={elapsedTime}
@@ -571,8 +548,6 @@ export default function TimeSheet() {
                   onSwitch={() => setShowSwitchModal(true)}
                   loading={clockLoading}
                 />
-
-                {/* Week nav + log */}
                 <Card className="border-0 shadow-sm">
                   <CardContent className="pt-4 space-y-3">
                     <div className="flex items-center justify-between flex-wrap gap-2">
@@ -586,7 +561,7 @@ export default function TimeSheet() {
                       <div className="flex items-center gap-2">
                         <span className={cn("text-sm font-bold px-3 py-1 rounded-full",
                           weekTotal > 40 ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-700")}>
-                          {weekTotal.toFixed(2)} hrs {weekTotal > 40 ? `(+${(weekTotal-40).toFixed(2)} OT)` : ""}
+                          {weekTotal.toFixed(2)} hrs {weekTotal > 40 ? `(+${(weekTotal - 40).toFixed(2)} OT)` : ""}
                         </span>
                         {isAdmin && (
                           <Button size="sm" variant="outline" onClick={() => { setFormData({ clock_in: "", clock_out: "", entry_type: "work", notes: "", date: format(weekStart, "yyyy-MM-dd") }); setShowAddEntry(true); }} className="gap-1">
@@ -595,7 +570,6 @@ export default function TimeSheet() {
                         )}
                       </div>
                     </div>
-
                     <div className="space-y-2">
                       {weekDays.map(day => {
                         const ds = format(day, "yyyy-MM-dd");
@@ -614,8 +588,6 @@ export default function TimeSheet() {
                     </div>
                   </CardContent>
                 </Card>
-
-                {/* Pay periods view */}
                 <Card className="border-0 shadow-sm">
                   <CardHeader className="pb-2"><CardTitle className="text-base">Pay Periods</CardTitle></CardHeader>
                   <CardContent>
@@ -631,7 +603,7 @@ export default function TimeSheet() {
             )}
           </TabsContent>
 
-          {/* ── TEAM OVERVIEW TAB (admin) ── */}
+          {/* TEAM OVERVIEW TAB */}
           {isAdmin && (
             <TabsContent value="overview" className="space-y-5 mt-5">
               <div className="flex items-center justify-between flex-wrap gap-3">
@@ -667,7 +639,6 @@ export default function TimeSheet() {
                   ))}
                 </div>
               )}
-
               <Card className="border-0 shadow-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
@@ -690,7 +661,6 @@ export default function TimeSheet() {
                   )}
                 </CardContent>
               </Card>
-
               <Card className="border-0 shadow-sm">
                 <CardHeader className="pb-3"><CardTitle className="text-base">Hours This Period</CardTitle></CardHeader>
                 <CardContent>
@@ -706,7 +676,7 @@ export default function TimeSheet() {
                         </tr>
                       </thead>
                       <tbody>
-                        {employees.map(emp => {
+                        {employees.filter(e => !e.archived).map(emp => {
                           const hrs = getEmployeeHoursForPeriod(emp.id);
                           const ci = getClockedInEmployees().find(e => e.employee.id === emp.id);
                           return (
@@ -735,7 +705,7 @@ export default function TimeSheet() {
             </TabsContent>
           )}
 
-          {/* ── VACATION TAB ── */}
+          {/* VACATION TAB */}
           <TabsContent value="vacation" className="space-y-5 mt-5">
             {isAdmin && (
               <div className="flex justify-end">
@@ -759,7 +729,7 @@ export default function TimeSheet() {
                   {employees.map(emp => (
                     <button key={emp.id} onClick={() => setSelectedEmployee(emp)}
                       className={`w-full text-left p-3 rounded-lg border transition-all text-sm ${selectedEmployee?.id === emp.id ? "bg-amber-50 border-amber-300 font-semibold text-amber-900" : "border-slate-200 hover:bg-slate-50 text-slate-700"}`}>
-                      {emp.full_name}
+                      {emp.full_name}{emp.archived ? " (archived)" : ""}
                     </button>
                   ))}
                 </CardContent>
@@ -767,21 +737,21 @@ export default function TimeSheet() {
             )}
           </TabsContent>
 
-          {/* ── PAYROLL TAB (admin) ── */}
+          {/* PAYROLL TAB */}
           {isAdmin && (
             <TabsContent value="payroll" className="mt-5">
               <PayrollTab employees={employees} timeEntries={timeEntries} vacations={allVacations} accrualRate={settings[0]?.accrual_rate || 0.0192} />
             </TabsContent>
           )}
 
-          {/* ── DATA TAB (admin) ── */}
+          {/* DATA TAB */}
           {isAdmin && (
             <TabsContent value="data" className="mt-5">
               <TimeDataTab timeEntries={timeEntries} employees={employees} projects={projects} />
             </TabsContent>
           )}
 
-          {/* ── SETTINGS TAB (admin) ── */}
+          {/* SETTINGS TAB */}
           {isAdmin && (
             <TabsContent value="settings" className="mt-5 space-y-5">
               <Card className="border-0 shadow-sm">
@@ -799,7 +769,6 @@ export default function TimeSheet() {
                   </div>
                 </CardContent>
               </Card>
-
               <Card className="border-0 shadow-sm">
                 <CardHeader><CardTitle>Lunch Deduction</CardTitle></CardHeader>
                 <CardContent>
@@ -809,7 +778,6 @@ export default function TimeSheet() {
                   <p className="text-xs text-slate-500 mt-1">Deducted automatically when total day ≥ 5 hours.</p>
                 </CardContent>
               </Card>
-
               <Card className="border-0 shadow-sm">
                 <CardHeader><CardTitle>PTO Accrual</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
@@ -825,7 +793,6 @@ export default function TimeSheet() {
                   </div>
                 </CardContent>
               </Card>
-
               <Button onClick={() => updateSettingsMutation.mutate(settingsData)} className="w-full bg-amber-600 hover:bg-amber-700" size="lg">
                 {updateSettingsMutation.isPending ? "Saving..." : "Save Settings"}
               </Button>
@@ -834,7 +801,7 @@ export default function TimeSheet() {
         </Tabs>
       </div>
 
-      {/* ── Modals ── */}
+      {/* Modals */}
       <ClockInModal open={showClockInModal} onOpenChange={setShowClockInModal} projects={projects}
         onConfirm={doClockIn} title="Clock In" confirmLabel="Clock In" confirmClass="bg-green-600 hover:bg-green-700" />
 
@@ -879,7 +846,11 @@ export default function TimeSheet() {
               <label className="text-sm font-medium text-slate-700">Employee</label>
               <Select value={adminVacForm.employee_id} onValueChange={v => setAdminVacForm(p => ({ ...p, employee_id: v }))}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
-                <SelectContent>{employees.map(e => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {employees.map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.full_name}{e.archived ? " (archived)" : ""}</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div>

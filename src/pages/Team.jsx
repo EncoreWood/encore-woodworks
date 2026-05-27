@@ -47,6 +47,11 @@ export default function Team() {
     queryFn: () => base44.entities.BathroomCleaning.list("-date")
   });
 
+  const { data: cleaningSchedules = [] } = useQuery({
+    queryKey: ["cleaningSchedules"],
+    queryFn: () => base44.entities.CleaningSchedule.list()
+  });
+
   const createEmployeeMutation = useMutation({
     mutationFn: async (data) => {
       const employee = await base44.entities.Employee.create(data);
@@ -129,15 +134,48 @@ export default function Team() {
   });
 
   const archiveEmployeeMutation = useMutation({
-    mutationFn: ({ id, archive }) => base44.entities.Employee.update(id, {
-      archived: archive,
-      archived_date: archive ? format(new Date(), "yyyy-MM-dd") : null
-    }),
+    mutationFn: async ({ id, archive, employeeName }) => {
+      await base44.entities.Employee.update(id, {
+        archived: archive,
+        archived_date: archive ? format(new Date(), "yyyy-MM-dd") : null
+      });
+
+      if (archive && employeeName) {
+        const todayStr = format(new Date(), "yyyy-MM-dd");
+
+        // Remove from future presenter slots
+        const futurePresenters = presenters.filter(p => p.presenter_name === employeeName && p.date >= todayStr);
+        await Promise.all(futurePresenters.map(p => base44.entities.MeetingPresenter.delete(p.id)));
+
+        // Remove from cleaning schedules (permanent pair + rotating)
+        const scheduleUpdates = cleaningSchedules
+          .filter(cs => cs.permanent_pair?.includes(employeeName) || cs.rotating_person?.includes(employeeName))
+          .map(cs => {
+            const updates = {};
+            if (cs.permanent_pair?.includes(employeeName))
+              updates.permanent_pair = cs.permanent_pair.filter(n => n !== employeeName);
+            if (cs.rotating_person?.includes(employeeName))
+              updates.rotating_person = cs.rotating_person.split(", ").filter(n => n.trim() !== employeeName).join(", ");
+            return base44.entities.CleaningSchedule.update(cs.id, updates);
+          });
+        await Promise.all(scheduleUpdates);
+
+        // Remove from future bathroom cleaning assignments
+        const futureCleanings = bathroomCleanings.filter(c => c.date >= todayStr && c.assigned_to?.includes(employeeName));
+        await Promise.all(futureCleanings.map(c =>
+          base44.entities.BathroomCleaning.update(c.id, { assigned_to: c.assigned_to.filter(n => n !== employeeName) })
+        ));
+      }
+    },
     onSuccess: (_, { archive }) => {
       queryClient.invalidateQueries({ queryKey: ["employees"] });
+      queryClient.invalidateQueries({ queryKey: ["presenters"] });
+      queryClient.invalidateQueries({ queryKey: ["cleaningSchedules"] });
+      queryClient.invalidateQueries({ queryKey: ["bathroomCleanings"] });
       setShowEmployeeDetails(false);
-      toast.success(archive ? "Employee archived" : "Employee restored");
-    }
+      toast.success(archive ? "Employee removed and associations cleaned up" : "Employee restored");
+    },
+    onError: () => toast.error("Failed to update employee")
   });
 
   const handleEdit = (employee) => {
@@ -315,8 +353,10 @@ export default function Team() {
                 onEdit={handleEdit}
                 onAssignTask={handleAssignTask}
                 onArchive={(emp) => {
-                  if (confirm(`${emp.archived ? 'Restore' : 'Archive'} ${emp.full_name}?`)) {
-                    archiveEmployeeMutation.mutate({ id: emp.id, archive: !emp.archived });
+                  if (confirm(`${emp.archived ? 'Restore' : 'Remove'} ${emp.full_name}?${
+                    !emp.archived ? ' This will remove them from future meeting rotations, cleaning schedules, and mark their time cards as archived.' : ''
+                  }`)) {
+                    archiveEmployeeMutation.mutate({ id: emp.id, archive: !emp.archived, employeeName: emp.full_name });
                   }
                 }}
               />
@@ -645,7 +685,8 @@ export default function Team() {
                 })()}
 
                 {/* Actions */}
-                <div className="border-t pt-4 flex gap-2">
+                <div className="border-t pt-4 flex flex-col gap-2">
+                  <div className="flex gap-2">
                   <Button
                     onClick={() => {
                       setShowEmployeeDetails(false);
@@ -666,6 +707,21 @@ export default function Team() {
                   >
                     <ListTodo className="w-4 h-4 mr-2" />
                     Assign Task
+                  </Button>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className={viewingEmployee.archived ? "text-emerald-600 border-emerald-300 hover:bg-emerald-50" : "text-red-600 border-red-300 hover:bg-red-50"}
+                    disabled={archiveEmployeeMutation.isPending}
+                    onClick={() => {
+                      if (confirm(`${viewingEmployee.archived ? 'Restore' : 'Remove'} ${viewingEmployee.full_name}?${
+                        !viewingEmployee.archived ? ' This will remove them from future meeting rotations and cleaning schedules. Their time cards will remain archived and accessible.' : ''
+                      }`)) {
+                        archiveEmployeeMutation.mutate({ id: viewingEmployee.id, archive: !viewingEmployee.archived, employeeName: viewingEmployee.full_name });
+                      }
+                    }}
+                  >
+                    {archiveEmployeeMutation.isPending ? "Processing..." : viewingEmployee.archived ? "Restore Employee" : "Remove from Team"}
                   </Button>
                 </div>
               </div>

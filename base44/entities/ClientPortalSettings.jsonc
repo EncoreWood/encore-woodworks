@@ -1,0 +1,52 @@
+{
+  "name": "ClientPortalSettings",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Linked project ID"
+    },
+    "client_email": {
+      "type": "string",
+      "description": "Client user email"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "welcome_message": {
+      "type": "string"
+    },
+    "show_status": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_milestones": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_presentations": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_documents": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_photos": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_financials": {
+      "type": "boolean",
+      "default": false
+    },
+    "show_messages": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "project_id"
+  ]
+}

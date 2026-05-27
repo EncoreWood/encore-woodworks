@@ -1,0 +1,67 @@
+{
+  "name": "Inventory",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Item name"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "wood",
+        "hardware",
+        "finishes",
+        "tools",
+        "supplies",
+        "other"
+      ],
+      "description": "Inventory category"
+    },
+    "quantity": {
+      "type": "number",
+      "description": "Current quantity"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unit of measurement (e.g., board ft, pieces, gallons)"
+    },
+    "min_quantity": {
+      "type": "number",
+      "description": "Minimum quantity before reorder"
+    },
+    "price_per_unit": {
+      "type": "number",
+      "description": "Cost per unit"
+    },
+    "supplier": {
+      "type": "string",
+      "description": "Supplier name"
+    },
+    "location": {
+      "type": "string",
+      "description": "Storage location in shop"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "in_stock",
+        "low_stock",
+        "reorder",
+        "discontinued"
+      ],
+      "default": "in_stock",
+      "description": "Item status"
+    }
+  },
+  "required": [
+    "name",
+    "category",
+    "quantity",
+    "unit"
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "name": "ProjectOrder",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for easy reference"
+    },
+    "order_type": {
+      "type": "string",
+      "enum": [
+        "drawer_boxes",
+        "fronts",
+        "face_frame",
+        "panel_stock",
+        "case",
+        "internal_hardware",
+        "inserts",
+        "external_hardware",
+        "glass"
+      ],
+      "description": "Type of order"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "not_ordered",
+        "ordered",
+        "in_production",
+        "received",
+        "installed",
+        "not_applicable"
+      ],
+      "default": "not_ordered",
+      "description": "Order status"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Order notes and details"
+    },
+    "rooms": {
+      "type": "array",
+      "description": "Rooms this order applies to with room-specific notes",
+      "items": {
+        "type": "object",
+        "properties": {
+          "room_name": {
+            "type": "string",
+            "description": "Name of the room"
+          },
+          "room_index": {
+            "type": "number",
+            "description": "Index of room in project"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Room-specific notes for this order"
+          }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "description": "Order files (specs, invoices, etc.)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "File name"
+          },
+          "url": {
+            "type": "string",
+            "description": "File URL"
+          }
+        }
+      }
+    },
+    "ordered_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date ordered"
+    },
+    "expected_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Expected delivery date"
+    },
+    "received_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date received"
+    }
+  },
+  "required": [
+    "project_id",
+    "project_name",
+    "order_type"
+  ]
+}

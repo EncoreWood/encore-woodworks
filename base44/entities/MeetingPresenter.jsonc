@@ -1,0 +1,23 @@
+{
+  "name": "MeetingPresenter",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of the meeting"
+    },
+    "time": {
+      "type": "string",
+      "description": "Time of the meeting"
+    },
+    "presenter_name": {
+      "type": "string",
+      "description": "Name of the person presenting the meeting"
+    }
+  },
+  "required": [
+    "date",
+    "presenter_name"
+  ]
+}

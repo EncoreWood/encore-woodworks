@@ -1,0 +1,53 @@
+{
+  "name": "BidPricingConfig",
+  "type": "object",
+  "properties": {
+    "style_key": {
+      "type": "string",
+      "enum": [
+        "basic_euro",
+        "high_end_euro",
+        "basic_face_frame",
+        "mid_face_frame",
+        "high_end_face_frame"
+      ]
+    },
+    "style_label": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string",
+      "description": "Short description shown on the style card"
+    },
+    "bases_lf": {
+      "type": "number"
+    },
+    "uppers_lf": {
+      "type": "number"
+    },
+    "tall_lf": {
+      "type": "number"
+    },
+    "wood_species": {
+      "type": "string"
+    },
+    "door_style": {
+      "type": "string"
+    },
+    "handles": {
+      "type": "string"
+    },
+    "drawerbox": {
+      "type": "string"
+    },
+    "drawer_glides": {
+      "type": "string"
+    },
+    "hinges": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "style_key"
+  ]
+}

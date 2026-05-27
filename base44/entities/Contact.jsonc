@@ -1,0 +1,33 @@
+{
+  "name": "Contact",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Contact's full name"
+    },
+    "contact_type": {
+      "type": "string",
+      "description": "Type of contact (GC, Home Owner, Designer, or custom)"
+    },
+    "email": {
+      "type": "string",
+      "description": "Email address"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Phone number"
+    },
+    "company_tag": {
+      "type": "string",
+      "description": "Company tag to link contacts from the same company"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

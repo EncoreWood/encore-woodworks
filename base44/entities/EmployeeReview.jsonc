@@ -1,0 +1,60 @@
+{
+  "name": "EmployeeReview",
+  "type": "object",
+  "properties": {
+    "employee_email": {
+      "type": "string",
+      "description": "Employee's email address"
+    },
+    "employee_name": {
+      "type": "string",
+      "description": "Employee's full name"
+    },
+    "employee_id": {
+      "type": "string",
+      "description": "Reference to Employee ID"
+    },
+    "review_type": {
+      "type": "string",
+      "enum": [
+        "self",
+        "manager"
+      ],
+      "description": "Type of review"
+    },
+    "review_period": {
+      "type": "string",
+      "enum": [
+        "H1",
+        "H2"
+      ],
+      "description": "Review period (H1 = Jan-Jun, H2 = Jul-Dec)"
+    },
+    "year": {
+      "type": "integer",
+      "description": "Year of review"
+    },
+    "answers": {
+      "type": "object",
+      "description": "Review answers keyed by question ID",
+      "additionalProperties": true
+    },
+    "is_submitted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the review has been submitted"
+    },
+    "submitted_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the review was submitted"
+    }
+  },
+  "required": [
+    "employee_email",
+    "employee_name",
+    "review_type",
+    "review_period",
+    "year"
+  ]
+}

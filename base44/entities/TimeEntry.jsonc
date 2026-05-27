@@ -1,0 +1,65 @@
+{
+  "name": "TimeEntry",
+  "type": "object",
+  "properties": {
+    "employee_id": {
+      "type": "string",
+      "description": "Reference to Employee ID"
+    },
+    "employee_name": {
+      "type": "string",
+      "description": "Employee name"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of time entry"
+    },
+    "clock_in": {
+      "type": "string",
+      "description": "Clock in time (HH:MM)"
+    },
+    "clock_out": {
+      "type": "string",
+      "description": "Clock out time (HH:MM)"
+    },
+    "hours_worked": {
+      "type": "number",
+      "description": "Total hours worked"
+    },
+    "entry_type": {
+      "type": "string",
+      "enum": [
+        "work",
+        "pto",
+        "vacation",
+        "sick"
+      ],
+      "default": "work",
+      "description": "Type of time entry"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for this time entry"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    },
+    "approved": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the entry has been approved"
+    }
+  },
+  "required": [
+    "employee_id",
+    "employee_name",
+    "date",
+    "entry_type"
+  ]
+}
