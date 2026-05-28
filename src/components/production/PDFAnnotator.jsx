@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,71 +8,87 @@ import "react-pdf/dist/esm/Page/TextLayer.css";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
+// ─── Coordinate helpers ────────────────────────────────────────────────────────
+// Annotations are stored NORMALIZED (0–1 relative to canvas dims at time of creation).
+// This makes them scale-independent: correct at any zoom level.
+function normPt(pt, w, h) { return { x: pt.x / w, y: pt.y / h }; }
+function denormPt(pt, w, h) { return { x: pt.x * w, y: pt.y * h }; }
+
+const HIGHLIGHT_COLORS = [
+  { label: "Base",  color: "#d97706", hex: "rgba(251,191,36,0.25)" },
+  { label: "Upper", color: "#3b82f6", hex: "rgba(147,197,253,0.3)" },
+  { label: "Tall",  color: "#ef4444", hex: "rgba(252,165,165,0.3)" },
+  { label: "Misc",  color: "#6b7280", hex: "rgba(209,213,219,0.45)" },
+];
+
 export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", hideDownload = false }) {
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(0.5);
   const [rotation, setRotation] = useState(90);
-  const [tool, setTool] = useState("pan");
+  const [tool, setTool] = useState("pen");
   const [isPointerDown, setIsPointerDown] = useState(false);
+
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const panOffsetRef = useRef({ x: 0, y: 0 });
-  const updatePanOffset = (newOffset) => {
-    panOffsetRef.current = newOffset;
-    setPanOffset(newOffset);
-  };
+  const updatePanOffset = (o) => { panOffsetRef.current = o; setPanOffset(o); };
+
   const scrollContainerRef = useRef(null);
   const panStartRef = useRef(null);
   const lastTouchDistRef = useRef(null);
-  const fingerCountRef = useRef(0); // track active finger touches
+  const fingerCountRef = useRef(0);
+
   const [annList, setAnnList] = useState(annotations);
-  const [currentPath, setCurrentPath] = useState([]);
-  const [currentLine, setCurrentLine] = useState(null);
-  const [textInput, setTextInput] = useState(null);
+  const [currentPath, setCurrentPath] = useState([]);   // normalized points
+  const [currentLine, setCurrentLine] = useState(null); // normalized {start,end}
+  const [textInput, setTextInput] = useState(null);     // pixel pos for input placement
   const [textValue, setTextValue] = useState("");
+
   const canvasRef = useRef(null);
   const pageContainerRef = useRef(null);
   const [color, setColor] = useState("#e53e3e");
   const [highlightColor, setHighlightColor] = useState("#f59e0b");
   const [aiNotes, setAiNotes] = useState(initialNotes);
   const [canvasSize, setCanvasSize] = useState({ width: 595, height: 842 });
+  const canvasSizeRef = useRef({ width: 595, height: 842 });
 
   useEffect(() => { setAiNotes(initialNotes); }, [initialNotes]);
   useEffect(() => { setAnnList(annotations); }, [annotations]);
 
-  const syncCanvasSize = () => {
+  const syncCanvasSize = useCallback(() => {
     const pageEl = pageContainerRef.current?.querySelector(".react-pdf__Page__canvas");
     if (pageEl) {
-      setCanvasSize({ width: pageEl.offsetWidth, height: pageEl.offsetHeight });
+      const s = { width: pageEl.offsetWidth, height: pageEl.offsetHeight };
+      canvasSizeRef.current = s;
+      setCanvasSize(s);
     }
-  };
-
-  const onDocumentLoadSuccess = ({ numPages }) => setNumPages(numPages);
-  const onPageLoadSuccess = () => setTimeout(syncCanvasSize, 50);
+  }, []);
 
   useEffect(() => {
-    panOffsetRef.current = { x: 0, y: 0 };
-    setPanOffset({ x: 0, y: 0 });
+    updatePanOffset({ x: 0, y: 0 });
     setTimeout(syncCanvasSize, 100);
-  }, [scale, rotation, pageNumber]);
+  }, [scale, rotation, pageNumber, syncCanvasSize]);
 
+  // ── Get canvas-relative position (pixels) ──────────────────────────────────
   const getPos = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const clientX = e.clientX ?? (e.touches?.[0]?.clientX ?? 0);
+    const clientY = e.clientY ?? (e.touches?.[0]?.clientY ?? 0);
+    return { x: clientX - rect.left, y: clientY - rect.top };
   };
 
-  // Scroll wheel panning (horizontal + vertical)
+  // ── Wheel pan ──────────────────────────────────────────────────────────────
   const handleWheel = (e) => {
     e.preventDefault();
-    const newOffset = { x: panOffsetRef.current.x - e.deltaX, y: panOffsetRef.current.y - e.deltaY };
-    updatePanOffset(newOffset);
+    updatePanOffset({ x: panOffsetRef.current.x - e.deltaX, y: panOffsetRef.current.y - e.deltaY });
   };
 
-  // Touch handlers on the scroll container — fingers ALWAYS pan/pinch, regardless of tool
-  // Canvas has pointerEvents:none for touch so fingers pass through to here
+  // ── Touch handlers: finger = pan/pinch; stylus = draw (let through to pointer) ──
   const handleTouchStart = (e) => {
+    // If any touch is from Apple Pencil, don't pan — let pointer events handle it
+    if ([...e.touches].some(t => t.touchType === "stylus")) return;
     fingerCountRef.current = e.touches.length;
     if (e.touches.length === 2) {
       e.preventDefault();
@@ -90,7 +106,9 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       };
     }
   };
+
   const handleTouchMove = (e) => {
+    if ([...e.touches].some(t => t.touchType === "stylus")) return;
     fingerCountRef.current = e.touches.length;
     e.preventDefault();
     if (e.touches.length === 2) {
@@ -106,26 +124,14 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       updatePanOffset({ x: panStartRef.current.offsetX + dx, y: panStartRef.current.offsetY + dy });
     }
   };
+
   const handleTouchEnd = (e) => {
+    if ([...e.changedTouches].some(t => t.touchType === "stylus")) return;
     fingerCountRef.current = e.touches.length;
     lastTouchDistRef.current = null;
     panStartRef.current = null;
   };
 
-  // Mouse-only pan (for desktop)
-  const handleMousePanDown = (e) => {
-    if (e.button !== 0 || tool !== "pan") return;
-    panStartRef.current = { x: e.clientX, y: e.clientY, offsetX: panOffsetRef.current.x, offsetY: panOffsetRef.current.y };
-  };
-  const handleMousePanMove = (e) => {
-    if (tool !== "pan" || !panStartRef.current) return;
-    const dx = e.clientX - panStartRef.current.x;
-    const dy = e.clientY - panStartRef.current.y;
-    updatePanOffset({ x: panStartRef.current.offsetX + dx, y: panStartRef.current.offsetY + dy });
-  };
-  const handleMousePanUp = () => { panStartRef.current = null; };
-
-  // Attach touch listeners imperatively with passive:false so preventDefault works on iOS/iPad
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
@@ -137,24 +143,37 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       el.removeEventListener("touchmove", handleTouchMove);
       el.removeEventListener("touchend", handleTouchEnd);
     };
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Pointer handlers (mouse + Apple Pencil / stylus) ──────────────────────
   const handlePointerDown = (e) => {
-    // Only handle pencil (Apple Pencil) and mouse — fingers are handled by touch events
+    // Finger touches are handled by touch events above; ignore them here
     if (e.pointerType === "touch") return;
-    if (tool === "pan") return;
+
+    const pos = getPos(e);
+    const { width: w, height: h } = canvasSizeRef.current;
+
+    // Pan tool: drag to pan (works for mouse and stylus)
+    if (tool === "pan") {
+      e.preventDefault();
+      panStartRef.current = { x: e.clientX, y: e.clientY, offsetX: panOffsetRef.current.x, offsetY: panOffsetRef.current.y };
+      canvasRef.current?.setPointerCapture(e.pointerId);
+      return;
+    }
+
     e.preventDefault();
     canvasRef.current?.setPointerCapture(e.pointerId);
-    const pos = getPos(e);
+    const npos = normPt(pos, w, h);
+
     if (tool === "pen") {
       setIsPointerDown(true);
-      setCurrentPath([pos]);
+      setCurrentPath([npos]);
     } else if (tool === "eraser") {
       setIsPointerDown(true);
       eraseAt(pos);
     } else if (tool === "arrow" || tool === "line" || tool === "highlight") {
       setIsPointerDown(true);
-      setCurrentLine({ start: pos, end: pos });
+      setCurrentLine({ start: npos, end: npos });
     } else if (tool === "text") {
       setTextInput(pos);
       setTextValue("");
@@ -163,42 +182,62 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
 
   const handlePointerMove = (e) => {
     if (e.pointerType === "touch") return;
+
+    // Pan
+    if (tool === "pan" && panStartRef.current) {
+      const dx = e.clientX - panStartRef.current.x;
+      const dy = e.clientY - panStartRef.current.y;
+      updatePanOffset({ x: panStartRef.current.offsetX + dx, y: panStartRef.current.offsetY + dy });
+      return;
+    }
+
     if (!isPointerDown) return;
-    if (tool === "pan") return;
     e.preventDefault();
     const pos = getPos(e);
+    const { width: w, height: h } = canvasSizeRef.current;
+    const npos = normPt(pos, w, h);
+
     if (tool === "pen") {
-      setCurrentPath(prev => [...prev, pos]);
+      setCurrentPath(prev => [...prev, npos]);
     } else if (tool === "eraser") {
       eraseAt(pos);
     } else if (tool === "arrow" || tool === "line" || tool === "highlight") {
-      setCurrentLine(prev => prev ? { ...prev, end: pos } : null);
+      setCurrentLine(prev => prev ? { ...prev, end: npos } : null);
     }
   };
 
   const handlePointerUp = (e) => {
     if (e.pointerType === "touch") return;
-    if (tool === "pan") return;
+    if (tool === "pan") { panStartRef.current = null; return; }
     e.preventDefault();
+
     const pos = getPos(e);
+    const { width: w, height: h } = canvasSizeRef.current;
+    const npos = normPt(pos, w, h);
+
     if (tool === "pen" && currentPath.length > 1) {
       setAnnList(prev => [...prev, { type: "pen", points: currentPath, color, page: pageNumber }]);
       setCurrentPath([]);
     } else if ((tool === "arrow" || tool === "line") && currentLine) {
-      const dist = Math.hypot(pos.x - currentLine.start.x, pos.y - currentLine.start.y);
+      const dp = denormPt(currentLine.start, w, h);
+      const ep = denormPt(npos, w, h);
+      const dist = Math.hypot(ep.x - dp.x, ep.y - dp.y);
       if (dist > 5) {
-        setAnnList(prev => [...prev, { type: tool, start: currentLine.start, end: pos, color, page: pageNumber }]);
+        setAnnList(prev => [...prev, { type: tool, start: currentLine.start, end: npos, color, page: pageNumber }]);
       }
       setCurrentLine(null);
     } else if (tool === "highlight" && currentLine) {
-      const w = Math.abs(pos.x - currentLine.start.x);
-      const h = Math.abs(pos.y - currentLine.start.y);
-      if (w > 5 && h > 5) {
+      const ds = denormPt(currentLine.start, w, h);
+      const de = denormPt(npos, w, h);
+      const rw = Math.abs(de.x - ds.x);
+      const rh = Math.abs(de.y - ds.y);
+      if (rw > 5 && rh > 5) {
         setAnnList(prev => [...prev, {
           type: "highlight",
-          x: Math.min(currentLine.start.x, pos.x),
-          y: Math.min(currentLine.start.y, pos.y),
-          w, h,
+          x: Math.min(currentLine.start.x, npos.x),
+          y: Math.min(currentLine.start.y, npos.y),
+          w: Math.abs(npos.x - currentLine.start.x),
+          h: Math.abs(npos.y - currentLine.start.y),
           color: highlightColor,
           page: pageNumber
         }]);
@@ -208,23 +247,37 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     setIsPointerDown(false);
   };
 
+  // ── Erase: compare in pixel space ─────────────────────────────────────────
   const eraseAt = ({ x, y }) => {
+    const { width: w, height: h } = canvasSizeRef.current;
     const t = 18;
     setAnnList(prev => prev.filter(ann => {
       if (ann.page !== pageNumber) return true;
-      if (ann.type === "highlight") return !(x >= ann.x && x <= ann.x + ann.w && y >= ann.y && y <= ann.y + ann.h);
-      if (ann.type === "pen") return !ann.points.some(pt => Math.hypot(pt.x - x, pt.y - y) < t);
-      if (ann.type === "arrow" || ann.type === "line") {
-        return Math.hypot(ann.start.x - x, ann.start.y - y) >= t && Math.hypot(ann.end.x - x, ann.end.y - y) >= t;
+      if (ann.type === "highlight") {
+        const ax = ann.x * w, ay = ann.y * h, aw = ann.w * w, ah = ann.h * h;
+        return !(x >= ax && x <= ax + aw && y >= ay && y <= ay + ah);
       }
-      if (ann.type === "text") return Math.hypot(ann.x - x, ann.y - y) >= t * 2;
+      if (ann.type === "pen") {
+        return !ann.points.some(pt => Math.hypot(pt.x * w - x, pt.y * h - y) < t);
+      }
+      if (ann.type === "arrow" || ann.type === "line") {
+        return Math.hypot(ann.start.x * w - x, ann.start.y * h - y) >= t &&
+               Math.hypot(ann.end.x * w - x, ann.end.y * h - y) >= t;
+      }
+      if (ann.type === "text") return Math.hypot(ann.x * w - x, ann.y * h - y) >= t * 2;
       return true;
     }));
   };
 
   const commitText = () => {
     if (textInput && textValue.trim()) {
-      setAnnList(prev => [...prev, { type: "text", x: textInput.x, y: textInput.y, text: textValue.trim(), color, page: pageNumber }]);
+      const { width: w, height: h } = canvasSizeRef.current;
+      setAnnList(prev => [...prev, {
+        type: "text",
+        x: textInput.x / w,
+        y: textInput.y / h,
+        text: textValue.trim(), color, page: pageNumber
+      }]);
     }
     setTextInput(null);
     setTextValue("");
@@ -242,6 +295,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const clearAll = () => setAnnList([]);
   const handleSave = () => { onSave(annList, aiNotes); onOpenChange(false); };
 
+  // ── Draw arrow helper (pixel coords) ──────────────────────────────────────
   const drawArrow = (ctx, from, to, withHead) => {
     ctx.beginPath();
     ctx.moveTo(from.x, from.y);
@@ -259,12 +313,15 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     }
   };
 
+  // ── Render canvas ──────────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
+    const { width: W, height: H } = canvasSize;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    // Draw saved annotations (stored normalized → convert to pixels)
     annList.filter(a => a.page === pageNumber).forEach(ann => {
       ctx.strokeStyle = ann.color;
       ctx.fillStyle = ann.color;
@@ -273,95 +330,99 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       ctx.lineJoin = "round";
 
       if (ann.type === "highlight") {
-        // Parse the hex color to get rgba with opacity
-        const hexColor = ann.color;
-        const r = parseInt(hexColor.slice(1,3),16);
-        const g = parseInt(hexColor.slice(3,5),16);
-        const b = parseInt(hexColor.slice(5,7),16);
+        const ax = ann.x * W, ay = ann.y * H, aw = ann.w * W, ah = ann.h * H;
+        const r = parseInt(ann.color.slice(1,3),16);
+        const g = parseInt(ann.color.slice(3,5),16);
+        const b = parseInt(ann.color.slice(5,7),16);
         ctx.fillStyle = `rgba(${r},${g},${b},0.35)`;
         ctx.strokeStyle = `rgba(${r},${g},${b},0.7)`;
         ctx.lineWidth = 1.5;
-        ctx.fillRect(ann.x, ann.y, ann.w, ann.h);
-        ctx.strokeRect(ann.x, ann.y, ann.w, ann.h);
-        // Label
+        ctx.fillRect(ax, ay, aw, ah);
+        ctx.strokeRect(ax, ay, aw, ah);
         const hlLabel = HIGHLIGHT_COLORS.find(c => c.color === ann.color)?.label;
         if (hlLabel) {
           ctx.font = "bold 10px sans-serif";
           ctx.fillStyle = `rgba(${r},${g},${b},1)`;
-          ctx.fillText(hlLabel, ann.x + 3, ann.y + 12);
+          ctx.fillText(hlLabel, ax + 3, ay + 12);
         }
       } else if (ann.type === "pen") {
         ctx.beginPath();
-        ann.points.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
+        ann.points.forEach((pt, i) => {
+          const px = pt.x * W, py = pt.y * H;
+          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        });
         ctx.stroke();
-      } else if (ann.type === "arrow") {
-        drawArrow(ctx, ann.start, ann.end, true);
-      } else if (ann.type === "line") {
-        drawArrow(ctx, ann.start, ann.end, false);
+      } else if (ann.type === "arrow" || ann.type === "line") {
+        drawArrow(ctx,
+          { x: ann.start.x * W, y: ann.start.y * H },
+          { x: ann.end.x * W,   y: ann.end.y * H },
+          ann.type === "arrow"
+        );
       } else if (ann.type === "text") {
+        const tx = ann.x * W, ty = ann.y * H;
         ctx.font = "bold 13px sans-serif";
         const metrics = ctx.measureText(ann.text);
         ctx.fillStyle = "rgba(255,255,255,0.85)";
-        ctx.fillRect(ann.x - 3, ann.y - 15, metrics.width + 6, 19);
+        ctx.fillRect(tx - 3, ty - 15, metrics.width + 6, 19);
         ctx.strokeStyle = ann.color;
         ctx.lineWidth = 1;
-        ctx.strokeRect(ann.x - 3, ann.y - 15, metrics.width + 6, 19);
+        ctx.strokeRect(tx - 3, ty - 15, metrics.width + 6, 19);
         ctx.fillStyle = ann.color;
-        ctx.fillText(ann.text, ann.x, ann.y);
+        ctx.fillText(ann.text, tx, ty);
       }
     });
 
-    // Current pen stroke preview
+    // Live pen stroke preview (normalized → pixels)
     if (currentPath.length > 1) {
       ctx.strokeStyle = color;
       ctx.lineWidth = 2.5;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();
-      currentPath.forEach((pt, i) => i === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
+      currentPath.forEach((pt, i) => {
+        const px = pt.x * W, py = pt.y * H;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      });
       ctx.stroke();
     }
 
-    // Current arrow/line preview
+    // Live arrow/line preview
     if (currentLine && (tool === "arrow" || tool === "line")) {
       ctx.strokeStyle = color;
       ctx.lineWidth = 2.5;
       ctx.lineCap = "round";
-      drawArrow(ctx, currentLine.start, currentLine.end, tool === "arrow");
+      drawArrow(ctx,
+        { x: currentLine.start.x * W, y: currentLine.start.y * H },
+        { x: currentLine.end.x * W,   y: currentLine.end.y * H },
+        tool === "arrow"
+      );
     }
 
-    // Current highlight preview
+    // Live highlight preview
     if (currentLine && tool === "highlight") {
       const r = parseInt(highlightColor.slice(1,3),16);
       const g = parseInt(highlightColor.slice(3,5),16);
       const b = parseInt(highlightColor.slice(5,7),16);
-      const x = Math.min(currentLine.start.x, currentLine.end.x);
-      const y = Math.min(currentLine.start.y, currentLine.end.y);
-      const w = Math.abs(currentLine.end.x - currentLine.start.x);
-      const h = Math.abs(currentLine.end.y - currentLine.start.y);
+      const x = Math.min(currentLine.start.x, currentLine.end.x) * W;
+      const y = Math.min(currentLine.start.y, currentLine.end.y) * H;
+      const rw = Math.abs(currentLine.end.x - currentLine.start.x) * W;
+      const rh = Math.abs(currentLine.end.y - currentLine.start.y) * H;
       ctx.fillStyle = `rgba(${r},${g},${b},0.35)`;
       ctx.strokeStyle = `rgba(${r},${g},${b},0.8)`;
       ctx.lineWidth = 1.5;
-      ctx.fillRect(x, y, w, h);
-      ctx.strokeRect(x, y, w, h);
+      ctx.fillRect(x, y, rw, rh);
+      ctx.strokeRect(x, y, rw, rh);
     }
   }, [annList, currentPath, currentLine, pageNumber, color, highlightColor, canvasSize, tool]);
 
-  const HIGHLIGHT_COLORS = [
-    { label: "Base",   color: "#d97706", hex: "rgba(251,191,36,0.25)" },
-    { label: "Upper",  color: "#3b82f6", hex: "rgba(147,197,253,0.3)" },
-    { label: "Tall",   color: "#ef4444", hex: "rgba(252,165,165,0.3)" },
-    { label: "Misc",   color: "#6b7280", hex: "rgba(209,213,219,0.45)" },
-  ];
-
   const toolConfig = [
-    { key: "pan", label: "Pan / Zoom", icon: Hand, activeClass: "bg-sky-600 hover:bg-sky-700" },
-    { key: "pen", label: "Draw", icon: Pencil, activeClass: "bg-amber-600 hover:bg-amber-700" },
+    { key: "pan",       label: "Pan",       icon: Hand,       activeClass: "bg-sky-600 hover:bg-sky-700" },
+    { key: "pen",       label: "Draw",      icon: Pencil,     activeClass: "bg-amber-600 hover:bg-amber-700" },
     { key: "highlight", label: "Highlight", icon: Highlighter, activeClass: "bg-yellow-500 hover:bg-yellow-600" },
-    { key: "arrow", label: "Arrow", icon: ArrowRight, activeClass: "bg-blue-600 hover:bg-blue-700" },
-    { key: "line", label: "Line", icon: Minus, activeClass: "bg-green-600 hover:bg-green-700" },
-    { key: "text", label: "Text Note", icon: Type, activeClass: "bg-purple-600 hover:bg-purple-700" },
-    { key: "eraser", label: "Eraser", icon: Eraser, activeClass: "bg-slate-600 hover:bg-slate-700" },
+    { key: "arrow",     label: "Arrow",     icon: ArrowRight, activeClass: "bg-blue-600 hover:bg-blue-700" },
+    { key: "line",      label: "Line",      icon: Minus,      activeClass: "bg-green-600 hover:bg-green-700" },
+    { key: "text",      label: "Text",      icon: Type,       activeClass: "bg-purple-600 hover:bg-purple-700" },
+    { key: "eraser",    label: "Eraser",    icon: Eraser,     activeClass: "bg-slate-600 hover:bg-slate-700" },
   ];
 
   const cursorStyle = tool === "pan" ? (panStartRef.current ? "grabbing" : "grab") : tool === "text" ? "text" : tool === "highlight" ? "cell" : "crosshair";
@@ -429,11 +490,11 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
 
           <div className="border-l h-6 mx-1" />
 
-          <Button variant="outline" size="sm" onClick={() => setScale(s => Math.max(0.5, s - 0.1))}>
+          <Button variant="outline" size="sm" onClick={() => setScale(s => Math.max(0.3, s - 0.15))}>
             <ZoomOut className="w-4 h-4" />
           </Button>
           <span className="text-sm text-slate-600 w-10 text-center">{Math.round(scale * 100)}%</span>
-          <Button variant="outline" size="sm" onClick={() => setScale(s => Math.min(2.5, s + 0.1))}>
+          <Button variant="outline" size="sm" onClick={() => setScale(s => Math.min(3, s + 0.15))}>
             <ZoomIn className="w-4 h-4" />
           </Button>
           <Button variant="outline" size="sm" onClick={() => setRotation(r => (r + 90) % 360)}>
@@ -457,7 +518,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
           </div>
         </div>
 
-        {/* Notes for AI */}
+        {/* Notes field */}
         {showNotesField && (
           <div className="pb-3 border-b">
             <label className="text-xs font-semibold text-slate-500 mb-1 block">Notes for AI (included in analysis)</label>
@@ -474,18 +535,18 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         <div
           ref={scrollContainerRef}
           className="flex-1 overflow-hidden bg-slate-100 rounded-lg select-none"
-          onMouseDown={handleMousePanDown}
-          onMouseMove={handleMousePanMove}
-          onMouseUp={handleMousePanUp}
-          onMouseLeave={handleMousePanUp}
           onWheel={handleWheel}
-          style={{ cursor: tool === "pan" ? "grab" : undefined, touchAction: "none" }}
+          style={{ touchAction: "none" }}
         >
           <div className="flex items-center justify-center w-full h-full">
-            <div className="relative inline-block" ref={pageContainerRef} style={{ transform: `translate(${panOffset.x}px, ${panOffset.y}px)`, transition: "none" }}>
+            <div
+              className="relative inline-block"
+              ref={pageContainerRef}
+              style={{ transform: `translate(${panOffset.x}px, ${panOffset.y}px)`, transition: "none" }}
+            >
               <Document
                 file={pdfUrl}
-                onLoadSuccess={onDocumentLoadSuccess}
+                onLoadSuccess={({ numPages }) => setNumPages(numPages)}
                 loading={<div className="flex items-center justify-center p-8 text-slate-500">Loading PDF...</div>}
               >
                 <Page
@@ -494,14 +555,20 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                   rotate={rotation}
                   renderTextLayer={false}
                   renderAnnotationLayer={false}
-                  onLoadSuccess={onPageLoadSuccess}
+                  onLoadSuccess={() => setTimeout(syncCanvasSize, 50)}
                 />
               </Document>
 
+              {/* Annotation canvas — always captures pointer events (mouse + stylus) */}
               <canvas
                 ref={canvasRef}
                 className="absolute top-0 left-0"
-                style={{ cursor: cursorStyle, touchAction: "none", pointerEvents: tool === "pan" ? "none" : "auto" }}
+                style={{
+                  cursor: cursorStyle,
+                  touchAction: "none",
+                  // Always capture stylus/mouse; fingers fall through via touch handlers
+                  pointerEvents: "auto",
+                }}
                 width={canvasSize.width}
                 height={canvasSize.height}
                 onPointerDown={handlePointerDown}
