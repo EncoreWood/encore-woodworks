@@ -24,6 +24,13 @@ export default function CleaningScheduleWidget({ showCheckboxes = false, compact
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: MST_TZ }));
   const weekMonday = getWeekMonday(now);
 
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees"],
+    queryFn: () => base44.entities.Employee.list(),
+  });
+
+  const archivedNames = new Set(employees.filter(e => e.archived).map(e => e.full_name));
+
   const { data: schedules = [] } = useQuery({
     queryKey: ["cleaningSchedules"],
     queryFn: () => base44.entities.CleaningSchedule.list("-week_start", 10),
@@ -52,7 +59,7 @@ export default function CleaningScheduleWidget({ showCheckboxes = false, compact
         sorted.forEach(cs => {
           if (cs.rotating_person) {
             cs.rotating_person.split(", ").map(s => s.trim()).filter(Boolean).forEach(p => {
-              if (!rotatingPool.includes(p)) rotatingPool.push(p);
+              if (!rotatingPool.includes(p) && !archivedNames.has(p)) rotatingPool.push(p);
             });
           }
         });
@@ -93,16 +100,18 @@ export default function CleaningScheduleWidget({ showCheckboxes = false, compact
   const day1Date = getDateForDayName(thisWeek.week_start, thisWeek.day1_of_week);
   const day2Date = getDateForDayName(thisWeek.week_start, thisWeek.day2_of_week);
 
-  const day1People = thisWeek.day1_sub
+  const day1People = (thisWeek.day1_sub
     ? [...(thisWeek.permanent_pair || []).filter(n => n !== thisWeek.day1_sub_for), thisWeek.day1_sub]
-    : (thisWeek.permanent_pair || []);
+    : (thisWeek.permanent_pair || [])
+  ).filter(n => !archivedNames.has(n));
 
   const rotatingPair = thisWeek.rotating_person
     ? thisWeek.rotating_person.split(", ").map(s => s.trim()).filter(Boolean)
     : [];
-  const day2People = thisWeek.day2_sub
+  const day2People = (thisWeek.day2_sub
     ? [...rotatingPair.filter(n => n !== thisWeek.day2_sub_for), thisWeek.day2_sub]
-    : rotatingPair;
+    : rotatingPair
+  ).filter(n => !archivedNames.has(n));
 
   const allDone = thisWeek.completed_day1 && thisWeek.completed_day2;
 
