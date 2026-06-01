@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -15,7 +16,6 @@ import {
 
 export default function AccountSettings() {
   const [currentUser, setCurrentUser] = useState(null);
-  const [employeeRecord, setEmployeeRecord] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -24,34 +24,40 @@ export default function AccountSettings() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees"],
+    queryFn: () => base44.entities.Employee.list(),
+    staleTime: 5 * 60 * 1000,
+  });
+
   useEffect(() => {
-    const load = async () => {
-      const user = await base44.auth.me();
+    base44.auth.me().then(user => {
+      if (!user) return;
       setCurrentUser(user);
-      setEditName(user?.full_name || "");
-      const emps = await base44.entities.Employee.list();
-      const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
-      if (emp) {
-        setEmployeeRecord(emp);
-        setEditPhone(emp.phone || "");
-      }
-    };
-    load();
+      setEditName(user.full_name || "");
+    });
   }, []);
 
-  const handleLogout = () => {
-    base44.auth.logout(createPageUrl("Dashboard"));
-  };
+  const employeeRecord = currentUser
+    ? employees.find(e => e.user_email === currentUser.email || e.email === currentUser.email) ?? null
+    : null;
+
+  useEffect(() => {
+    if (employeeRecord) setEditPhone(employeeRecord.phone || "");
+  }, [employeeRecord?.id]);
+
+  const [localEmployeeRecord, setLocalEmployeeRecord] = useState(null);
+  const resolvedEmployee = localEmployeeRecord ?? employeeRecord;
+
+  const profilePhoto = resolvedEmployee?.profile_image;
+
+  const handleLogout = () => base44.auth.logout(createPageUrl("Dashboard"));
 
   const handleSave = async () => {
+    if (!resolvedEmployee) return;
     setSaving(true);
-    if (employeeRecord) {
-      await base44.entities.Employee.update(employeeRecord.id, {
-        phone: editPhone,
-        full_name: editName,
-      });
-      setEmployeeRecord(prev => ({ ...prev, phone: editPhone, full_name: editName }));
-    }
+    await base44.entities.Employee.update(resolvedEmployee.id, { phone: editPhone, full_name: editName });
+    setLocalEmployeeRecord(prev => ({ ...(prev ?? resolvedEmployee), phone: editPhone, full_name: editName }));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
     setSaving(false);
@@ -59,15 +65,13 @@ export default function AccountSettings() {
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0];
-    if (!file || !employeeRecord) return;
+    if (!file || !resolvedEmployee) return;
     setUploadingPhoto(true);
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    await base44.entities.Employee.update(employeeRecord.id, { profile_image: file_url });
-    setEmployeeRecord(prev => ({ ...prev, profile_image: file_url }));
+    await base44.entities.Employee.update(resolvedEmployee.id, { profile_image: file_url });
+    setLocalEmployeeRecord(prev => ({ ...(prev ?? resolvedEmployee), profile_image: file_url }));
     setUploadingPhoto(false);
   };
-
-  const profilePhoto = employeeRecord?.profile_image;
 
   return (
     <PageSlideWrapper>
@@ -96,7 +100,7 @@ export default function AccountSettings() {
                 )}
                 <label className="absolute bottom-0 right-0 w-7 h-7 bg-slate-800 rounded-full flex items-center justify-center cursor-pointer hover:bg-slate-700 transition-colors">
                   {uploadingPhoto ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" /> : <Camera className="w-3.5 h-3.5 text-white" />}
-                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto || !employeeRecord} />
+                  <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploadingPhoto || !resolvedEmployee} />
                 </label>
               </div>
               <div>
@@ -115,29 +119,29 @@ export default function AccountSettings() {
               <div>
                 <Label htmlFor="edit_name">Display Name</Label>
                 <Input
-                  id="edit_name"
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  placeholder="Your name"
-                  disabled={!employeeRecord}
+                 id="edit_name"
+                 value={editName}
+                 onChange={e => setEditName(e.target.value)}
+                 placeholder="Your name"
+                 disabled={!resolvedEmployee}
                 />
               </div>
               <div>
                 <Label htmlFor="edit_phone">Phone</Label>
                 <Input
-                  id="edit_phone"
-                  value={editPhone}
-                  onChange={e => setEditPhone(e.target.value)}
-                  placeholder="(555) 123-4567"
-                  disabled={!employeeRecord}
+                 id="edit_phone"
+                 value={editPhone}
+                 onChange={e => setEditPhone(e.target.value)}
+                 placeholder="(555) 123-4567"
+                 disabled={!resolvedEmployee}
                 />
               </div>
-              {!employeeRecord && (
+              {!resolvedEmployee && (
                 <p className="text-xs text-slate-400">No employee record linked to your account — contact an admin to edit your profile.</p>
               )}
               <Button
                 onClick={handleSave}
-                disabled={saving || !employeeRecord}
+                disabled={saving || !resolvedEmployee}
                 className="w-full bg-amber-600 hover:bg-amber-700 text-white"
               >
                 {saving ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving...</> : saved ? "Saved!" : <><Save className="w-4 h-4 mr-2" />Save Changes</>}
