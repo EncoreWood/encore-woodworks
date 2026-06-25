@@ -816,21 +816,24 @@ export default function MorningMeeting() {
 
           {/* Compliments */}
           {(() => {
-            const yesterday = format(subDays(selectedDate, 1), "yyyy-MM-dd");
-            const yesterdayCompliments = compliments.filter(c => c.date === yesterday);
-            const recentCompliments = compliments.filter(c => c.share_in_meeting).slice(0, 5);
-            const displayCompliments = yesterdayCompliments.length > 0 ? yesterdayCompliments : recentCompliments;
-            const isShowingYesterday = yesterdayCompliments.length > 0;
+            // Use previous workday so Monday meetings show Friday's compliments (not Sunday's)
+            const dayOfWeek = selectedDate.getDay();
+            const prevWorkday = dayOfWeek === 1 ? subDays(selectedDate, 3) : subDays(selectedDate, 1);
+            const prevWorkdayStr = format(prevWorkday, "yyyy-MM-dd");
+            const prevWorkdayCompliments = compliments.filter(c => c.date === prevWorkdayStr);
+            const recentCompliments = compliments.slice(0, 5);
+            const displayCompliments = prevWorkdayCompliments.length > 0 ? prevWorkdayCompliments : recentCompliments;
+            const isShowingPrevWorkday = prevWorkdayCompliments.length > 0;
             return (
-              <SectionCard title="Well Done! 🎉" icon={Sparkles} color="amber" count={displayCompliments.length} defaultOpen={isShowingYesterday}>
+              <SectionCard title="Well Done! 🎉" icon={Sparkles} color="amber" count={displayCompliments.length} defaultOpen={isShowingPrevWorkday}>
                 {displayCompliments.length === 0 ? (
                   <div className="flex items-center justify-center gap-2 py-4 text-slate-400">
-                    <span className="text-sm">No compliments shared yesterday. Give one from the Production board!</span>
+                    <span className="text-sm">No compliments yet. Give one from the Production board!</span>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {!isShowingYesterday && (
-                      <p className="text-xs text-slate-400 text-center mb-2">Showing recent compliments (none submitted yesterday)</p>
+                    {!isShowingPrevWorkday && (
+                      <p className="text-xs text-slate-400 text-center mb-2">Showing recent compliments (none from {format(prevWorkday, "EEEE")})</p>
                     )}
                     {displayCompliments.map(c => (
                       <div key={c.id} className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
