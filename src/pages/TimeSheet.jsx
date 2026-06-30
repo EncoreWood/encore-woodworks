@@ -726,10 +726,10 @@ export default function TimeSheet() {
               <Card className="border-0 shadow-sm">
                 <CardHeader className="pb-2"><CardTitle className="text-sm">View by Employee</CardTitle></CardHeader>
                 <CardContent className="space-y-2 max-h-60 overflow-y-auto">
-                  {employees.map(emp => (
+                  {employees.filter(e => !e.archived).map(emp => (
                     <button key={emp.id} onClick={() => setSelectedEmployee(emp)}
                       className={`w-full text-left p-3 rounded-lg border transition-all text-sm ${selectedEmployee?.id === emp.id ? "bg-amber-50 border-amber-300 font-semibold text-amber-900" : "border-slate-200 hover:bg-slate-50 text-slate-700"}`}>
-                      {emp.full_name}{emp.archived ? " (archived)" : ""}
+                      {emp.full_name}
                     </button>
                   ))}
                 </CardContent>
@@ -847,8 +847,8 @@ export default function TimeSheet() {
               <Select value={adminVacForm.employee_id} onValueChange={v => setAdminVacForm(p => ({ ...p, employee_id: v }))}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select..." /></SelectTrigger>
                 <SelectContent>
-                  {employees.map(e => (
-                    <SelectItem key={e.id} value={e.id}>{e.full_name}{e.archived ? " (archived)" : ""}</SelectItem>
+                  {employees.filter(e => !e.archived).map(e => (
+                    <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
