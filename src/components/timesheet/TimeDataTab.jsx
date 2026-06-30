@@ -68,7 +68,7 @@ export default function TimeDataTab({ timeEntries, employees, projects }) {
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Employees</SelectItem>
-              {employees.map(e => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
+              {employees.filter(e => !e.archived).map(e => <SelectItem key={e.id} value={e.id}>{e.full_name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

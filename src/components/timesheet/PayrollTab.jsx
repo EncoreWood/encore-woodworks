@@ -233,7 +233,7 @@ export default function PayrollTab({ employees, timeEntries, vacations = [], acc
 
   // Grand total
   let grandTotal = 0;
-  const activeEmployees = employees.filter(e => e.full_name && e.full_name !== "Encore Shop");
+  const activeEmployees = employees.filter(e => e.full_name && e.full_name !== "Encore Shop" && !e.archived);
 
   activeEmployees.forEach(emp => {
     const empEntries = timeEntries.filter(e => e.employee_id === emp.id);
