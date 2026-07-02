@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { User, MapPin, Calendar, DollarSign, MessageCircle, Plus, CheckCircle2, Circle, Settings, Pencil, Trash2, ArrowRight, GripVertical, Palette, ClipboardList, Archive } from "lucide-react";
+import { User, MapPin, Calendar, DollarSign, MessageCircle, Plus, CheckCircle2, Circle, Settings, Pencil, Trash2, ArrowRight, GripVertical, Palette, ClipboardList, Archive, ChevronUp, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
@@ -885,6 +885,34 @@ export default function Kanban() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        onClick={() => {
+                          if (idx === 0) return;
+                          const updated = [...editingTab.columns];
+                          [updated[idx - 1], updated[idx]] = [updated[idx], updated[idx - 1]];
+                          setEditingTab({ ...editingTab, columns: updated });
+                        }}
+                        disabled={idx === 0}
+                        className="text-slate-500 hover:text-slate-800 disabled:opacity-30"
+                        title="Move up"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (idx === editingTab.columns.length - 1) return;
+                          const updated = [...editingTab.columns];
+                          [updated[idx + 1], updated[idx]] = [updated[idx], updated[idx + 1]];
+                          setEditingTab({ ...editingTab, columns: updated });
+                        }}
+                        disabled={idx === editingTab.columns.length - 1}
+                        className="text-slate-500 hover:text-slate-800 disabled:opacity-30"
+                        title="Move down"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                    </div>
                     <button
                       onClick={() => {
                         const updated = editingTab.columns.filter((_, i) => i !== idx);
