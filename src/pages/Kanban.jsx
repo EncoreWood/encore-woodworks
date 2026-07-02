@@ -928,7 +928,7 @@ export default function Kanban() {
                   variant="outline"
                   size="sm"
                   className="w-full"
-                  onClick={() => setEditingTab({ ...editingTab, columns: [...editingTab.columns, { id: "inquiry", label: "New Stage", color: "bg-slate-100" }] })}
+                  onClick={() => setEditingTab({ ...editingTab, columns: [...editingTab.columns, { id: "stage_" + Date.now(), label: "New Stage", color: "bg-slate-100" }] })}
                 >
                   <Plus className="w-3 h-3 mr-1" /> Add Stage
                 </Button>
