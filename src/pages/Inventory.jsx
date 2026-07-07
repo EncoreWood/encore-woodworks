@@ -241,6 +241,7 @@ export default function Inventory() {
                   </CardHeader>
                   <CardContent>
                     {/* Desktop Table */}
+                    <p className="hidden sm:block text-xs text-slate-400 mb-2 italic">Double-click any cell to edit</p>
                     <div className="hidden sm:block overflow-x-auto">
                       <table className="w-full">
                         <thead>
@@ -302,15 +303,21 @@ export default function Inventory() {
                               if (!cell && cell !== 0) return null;
                               const isStatus = header === "Status";
                               const isNotes = header === "Notes";
+                              const isEditing = editingCell?.sheetName === sheetName && editingCell?.rowIndex === rowIndex && editingCell?.colIndex === cellIndex;
                               return (
                                 <div key={cellIndex} className="flex items-start justify-between gap-2 text-sm">
                                   <span className="text-slate-500 font-medium shrink-0">{header}:</span>
-                                  {isStatus ? (
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(cell)}`}>{cell}</span>
+                                  {isEditing ? (
+                                    <div className="flex gap-1 flex-1">
+                                      <Input value={editValue} onChange={(e) => setEditValue(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }} className="h-7 text-sm" autoFocus />
+                                      <Button size="sm" onClick={saveEdit} className="h-7 px-2 bg-green-600 hover:bg-green-700">Save</Button>
+                                    </div>
+                                  ) : isStatus ? (
+                                    <span onClick={() => startEdit(sheetName, rowIndex, cellIndex, cell)} className={`cursor-pointer px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(cell)}`}>{cell}</span>
                                   ) : isNotes && supplierLink ? (
                                     <a href={supplierLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-amber-600 font-medium text-right">{cell}<ExternalLink className="w-3 h-3 shrink-0" /></a>
                                   ) : (
-                                    <span className="text-slate-800 text-right">{cell}</span>
+                                    <span onClick={() => startEdit(sheetName, rowIndex, cellIndex, cell)} className="cursor-pointer hover:bg-slate-200 px-1.5 py-0.5 rounded text-slate-800 text-right">{cell}</span>
                                   )}
                                 </div>
                               );
