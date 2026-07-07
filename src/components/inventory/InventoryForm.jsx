@@ -109,7 +109,18 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700">Location</label>
-              <Input value={form.location} onChange={e => setForm(p => ({ ...p, location: e.target.value }))} className="mt-1" />
+              <Select value={form.location || "none"} onValueChange={v => setForm(p => ({ ...p, location: v === "none" ? "" : v }))}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select location" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  <SelectItem value="Cut">Cut</SelectItem>
+                  <SelectItem value="Face Frame">Face Frame</SelectItem>
+                  <SelectItem value="Spray">Spray</SelectItem>
+                  <SelectItem value="Build">Build</SelectItem>
+                  <SelectItem value="Install">Install</SelectItem>
+                  <SelectItem value="Office">Office</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div>

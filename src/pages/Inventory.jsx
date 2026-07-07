@@ -33,11 +33,13 @@ const statusLabel = {
 const categoryLabel = {
   wood: "Wood", hardware: "Hardware", finishes: "Finishes", tools: "Tools", supplies: "Supplies", other: "Other",
 };
+const LOCATIONS = ["all", "Cut", "Face Frame", "Spray", "Build", "Install", "Office"];
 
 export default function Inventory() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
+  const [activeLocation, setActiveLocation] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [qrItem, setQrItem] = useState(null);
@@ -82,6 +84,7 @@ export default function Inventory() {
   const filtered = useMemo(() => {
     return items.filter(i => {
       if (activeCategory !== "all" && i.category !== activeCategory) return false;
+      if (activeLocation !== "all" && i.location !== activeLocation) return false;
       if (searchTerm) {
         const s = searchTerm.toLowerCase();
         return i.name?.toLowerCase().includes(s) || i.supplier?.toLowerCase().includes(s) || i.location?.toLowerCase().includes(s);
@@ -156,6 +159,17 @@ export default function Inventory() {
                   </button>
                 ))}
               </div>
+            </div>
+            <div className="flex gap-1 flex-wrap">
+              {LOCATIONS.map(loc => (
+                <button
+                  key={loc}
+                  onClick={() => setActiveLocation(loc)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${activeLocation === loc ? "bg-slate-800 text-white" : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"}`}
+                >
+                  {loc === "all" ? "All Locations" : loc}
+                </button>
+              ))}
             </div>
 
             {/* Desktop Table */}
