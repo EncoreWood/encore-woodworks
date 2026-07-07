@@ -60,7 +60,7 @@ const typeColors = {
   sick: "bg-red-100 text-red-800"
 };
 
-function DayRow({ date, entries, isToday, isAdmin, onEdit, onDelete }) {
+function DayRow({ date, entries, isToday, isAdmin, onEdit, onDelete, onDeductLunch }) {
   const [expanded, setExpanded] = useState(isToday);
   const dateStr = format(date, "yyyy-MM-dd");
   const workEntries = entries.filter(e => e.entry_type === "work");
@@ -69,6 +69,8 @@ function DayRow({ date, entries, isToday, isAdmin, onEdit, onDelete }) {
   const hasActive = workEntries.some(e => !e.clock_out);
   const hasEntries = entries.length > 0;
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  const lunchDeducted = workEntries.some(e => e.notes?.includes("[−30 min lunch]"));
+  const canDeductLunch = isAdmin && !lunchDeducted && totalHours >= 5 && workEntries.some(e => e.clock_out);
 
   return (
     <div className={cn(
@@ -119,6 +121,16 @@ function DayRow({ date, entries, isToday, isAdmin, onEdit, onDelete }) {
 
       {expanded && hasEntries && (
         <div className="border-t border-slate-100 divide-y divide-slate-50 bg-white">
+          {canDeductLunch && (
+            <div className="px-4 py-2 bg-orange-50 flex items-center justify-between">
+              <span className="text-xs text-orange-700 font-medium flex items-center gap-1">
+                <UtensilsCrossed className="w-3 h-3" /> No lunch deducted
+              </span>
+              <Button size="sm" variant="outline" className="h-7 text-xs border-orange-300 text-orange-700 hover:bg-orange-100" onClick={() => onDeductLunch(dateStr, workEntries)}>
+                Subtract 30 min Lunch
+              </Button>
+            </div>
+          )}
           {workEntries.map((entry, idx) => (
             <div key={entry.id} className="flex items-center gap-3 px-4 py-2.5">
               <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
@@ -473,6 +485,26 @@ export default function TimeSheet() {
     });
   };
 
+  const handleDeductLunch = async (dateStr, workEntries) => {
+    const completed = workEntries.filter(e => e.clock_out && e.hours_worked != null);
+    if (completed.length === 0) return;
+    const PREFERRED = ["General", "Individual Lean", "Group Lean"];
+    let target = null;
+    for (const pref of PREFERRED) {
+      const found = completed.find(e => e.project_name === pref);
+      if (found) { target = found; break; }
+    }
+    if (!target) {
+      target = completed.reduce((best, e) => (e.hours_worked || 0) > (best.hours_worked || 0) ? e : best);
+    }
+    const newHours = Math.max(0, (target.hours_worked || 0) - 0.5);
+    await base44.entities.TimeEntry.update(target.id, {
+      hours_worked: parseFloat(newHours.toFixed(2)),
+      notes: (target.notes ? target.notes + " " : "") + "[−30 min lunch]"
+    });
+    queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
+  };
+
   const handleOpenEdit = (entry) => {
     setEditingEntry(entry);
     setEditForm({ clock_in: entry.clock_in || "", clock_out: entry.clock_out || "", notes: entry.notes || "" });
@@ -582,6 +614,7 @@ export default function TimeSheet() {
                             isAdmin={isAdmin}
                             onEdit={handleOpenEdit}
                             onDelete={(id) => deleteEntryMutation.mutate(id)}
+                            onDeductLunch={handleDeductLunch}
                           />
                         );
                       })}
