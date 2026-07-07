@@ -1,0 +1,46 @@
+{
+  "name": "InventoryLog",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "description": "Reference to Inventory item ID"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Item name at time of action"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "Check In",
+        "Check Out"
+      ],
+      "description": "Type of stock action"
+    },
+    "quantity": {
+      "type": "number",
+      "description": "Quantity moved in or out"
+    },
+    "performed_by": {
+      "type": "string",
+      "description": "Full name of logged-in user who performed the action"
+    },
+    "performed_at": {
+      "type": "string",
+      "description": "ISO datetime of when the action occurred"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional notes"
+    }
+  },
+  "required": [
+    "item_id",
+    "item_name",
+    "action",
+    "quantity",
+    "performed_by",
+    "performed_at"
+  ]
+}
