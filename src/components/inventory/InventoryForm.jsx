@@ -5,15 +5,22 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { ImagePlus, Loader2, X, Settings2 } from "lucide-react";
+import CategoryManager from "@/components/inventory/CategoryManager";
 
 export default function InventoryForm({ open, onOpenChange, editingItem, onSave }) {
   const [form, setForm] = useState({
-    name: "", category: "other", quantity: "", unit: "", min_quantity: "",
+    name: "", category: "", quantity: "", unit: "", min_quantity: "",
     price_per_unit: "", supplier: "", location: "", notes: "", status: "in_stock", image_url: "",
   });
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showCatManager, setShowCatManager] = useState(false);
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["inventoryCategories"],
+    queryFn: () => base44.entities.InventoryCategory.list("sort_order"),
+  });
 
   const handleImageUpload = async (file) => {
     if (!file) return;
@@ -49,7 +56,7 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
         image_url: editingItem.image_url || "",
       });
     } else {
-      setForm({ name: "", category: "other", quantity: "", unit: "", min_quantity: "", price_per_unit: "", supplier: "", location: "", notes: "", status: "in_stock", image_url: "" });
+      setForm({ name: "", category: categories[0]?.name || "", quantity: "", unit: "", min_quantity: "", price_per_unit: "", supplier: "", location: "", notes: "", status: "in_stock", image_url: "" });
     }
   }, [editingItem, open]);
 
@@ -79,17 +86,17 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm font-medium text-slate-700">Category *</label>
-              <Select value={form.category} onValueChange={v => setForm(p => ({ ...p, category: v }))}>
-                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="wood">Wood</SelectItem>
-                  <SelectItem value="hardware">Hardware</SelectItem>
-                  <SelectItem value="finishes">Finishes</SelectItem>
-                  <SelectItem value="tools">Tools</SelectItem>
-                  <SelectItem value="supplies">Supplies</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex gap-1.5 mt-1">
+                <Select value={form.category} onValueChange={v => setForm(p => ({ ...p, category: v }))}>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="Select..." /></SelectTrigger>
+                  <SelectContent>
+                    {categories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button type="button" variant="outline" size="icon" onClick={() => setShowCatManager(true)} title="Manage categories">
+                  <Settings2 className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700">Status</label>
@@ -184,6 +191,7 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
           </div>
         </div>
       </DialogContent>
+      <CategoryManager open={showCatManager} onOpenChange={setShowCatManager} />
     </Dialog>
   );
 }

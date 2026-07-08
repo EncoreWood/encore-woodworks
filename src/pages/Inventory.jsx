@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Search, Plus, QrCode, Printer, Pencil, Trash2, Download, Package } from "lucide-react";
+import { RefreshCw, Search, Plus, QrCode, Printer, Pencil, Trash2, Download, Package, Settings } from "lucide-react";
 import { format } from "date-fns";
 import InventoryForm from "@/components/inventory/InventoryForm";
 import QRCodeDialog from "@/components/inventory/QRCodeDialog";
 import PrintAllLabels from "@/components/inventory/PrintAllLabels";
 import InventoryHistory from "@/components/inventory/InventoryHistory";
+import CategoryManager from "@/components/inventory/CategoryManager";
 
 function recalcStatus(quantity, min_quantity) {
   if (quantity <= 0) return "reorder";
@@ -30,9 +31,7 @@ const statusLabel = {
   reorder: "Reorder",
   discontinued: "Discontinued",
 };
-const categoryLabel = {
-  wood: "Wood", hardware: "Hardware", finishes: "Finishes", tools: "Tools", supplies: "Supplies", other: "Other",
-};
+const catLabel = (cat) => cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : "";
 const LOCATIONS = ["all", "Cut", "Face Frame", "Spray", "Build", "Install", "Office"];
 
 export default function Inventory() {
@@ -44,10 +43,16 @@ export default function Inventory() {
   const [editingItem, setEditingItem] = useState(null);
   const [qrItem, setQrItem] = useState(null);
   const [showPrintAll, setShowPrintAll] = useState(false);
+  const [showCatManager, setShowCatManager] = useState(false);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["inventory"],
     queryFn: () => base44.entities.Inventory.list(),
+  });
+
+  const { data: categoryDefs = [] } = useQuery({
+    queryKey: ["inventoryCategories"],
+    queryFn: () => base44.entities.InventoryCategory.list("sort_order"),
   });
 
   const createMutation = useMutation({
@@ -77,9 +82,11 @@ export default function Inventory() {
   };
 
   const categories = useMemo(() => {
-    const set = new Set(items.map(i => i.category).filter(Boolean));
+    const entityCats = (categoryDefs || []).map(c => c.name);
+    const itemCats = items.map(i => i.category).filter(Boolean);
+    const set = new Set([...entityCats, ...itemCats]);
     return ["all", ...Array.from(set)];
-  }, [items]);
+  }, [items, categoryDefs]);
 
   const filtered = useMemo(() => {
     return items.filter(i => {
@@ -128,6 +135,9 @@ export default function Inventory() {
             <Button variant="outline" onClick={() => setShowPrintAll(true)} className="bg-white gap-1.5">
               <Printer className="w-4 h-4" /> Print QR Labels
             </Button>
+            <Button variant="outline" onClick={() => setShowCatManager(true)} className="bg-white gap-1.5">
+              <Settings className="w-4 h-4" /> Categories
+            </Button>
             <Button onClick={() => { setEditingItem(null); setShowForm(true); }} className="bg-amber-600 hover:bg-amber-700 gap-1.5">
               <Plus className="w-4 h-4" /> Add Item
             </Button>
@@ -155,7 +165,7 @@ export default function Inventory() {
                     onClick={() => setActiveCategory(cat)}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${activeCategory === cat ? "bg-amber-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"}`}
                   >
-                    {cat === "all" ? "All" : categoryLabel[cat] || cat}
+                    {cat === "all" ? "All" : catLabel(cat)}
                   </button>
                 ))}
               </div>
@@ -198,7 +208,7 @@ export default function Inventory() {
                               : <div className="w-10 h-10 rounded-lg bg-slate-100 inline-flex items-center justify-center"><Package className="w-4 h-4 text-slate-300" /></div>}
                           </td>
                           <td className="py-2.5 px-3 text-sm font-medium text-slate-900">{item.name}</td>
-                          <td className="py-2.5 px-3 text-sm text-slate-600">{categoryLabel[item.category] || item.category}</td>
+                          <td className="py-2.5 px-3 text-sm text-slate-600">{catLabel(item.category)}</td>
                           <td className="py-2.5 px-3 text-sm text-right font-mono font-semibold text-slate-700">{item.quantity} {item.unit}</td>
                           <td className="py-2.5 px-3 text-sm text-slate-600">{item.location || "—"}</td>
                           <td className="py-2.5 px-3">
@@ -243,7 +253,7 @@ export default function Inventory() {
                       : <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 mr-2"><Package className="w-5 h-5 text-slate-300" /></div>}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-slate-900 text-sm truncate">{item.name}</p>
-                      <p className="text-xs text-slate-500">{categoryLabel[item.category] || item.category} · {item.location || "No location"}</p>
+                      <p className="text-xs text-slate-500">{catLabel(item.category)} · {item.location || "No location"}</p>
                     </div>
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${statusStyles[item.status]}`}>{statusLabel[item.status]}</span>
                   </div>
@@ -277,6 +287,7 @@ export default function Inventory() {
       <InventoryForm open={showForm} onOpenChange={setShowForm} editingItem={editingItem} onSave={handleSave} />
       <QRCodeDialog item={qrItem} open={!!qrItem} onOpenChange={(open) => { if (!open) setQrItem(null); }} />
       <PrintAllLabels items={items} open={showPrintAll} onOpenChange={setShowPrintAll} />
+      <CategoryManager open={showCatManager} onOpenChange={setShowCatManager} />
     </div>
   );
 }

@@ -8,15 +8,7 @@
     },
     "category": {
       "type": "string",
-      "enum": [
-        "wood",
-        "hardware",
-        "finishes",
-        "tools",
-        "supplies",
-        "other"
-      ],
-      "description": "Inventory category"
+      "description": "Inventory category (managed via InventoryCategory entity)"
     },
     "quantity": {
       "type": "number",
