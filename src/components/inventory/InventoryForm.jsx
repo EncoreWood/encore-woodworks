@@ -10,7 +10,7 @@ import CategoryManager from "@/components/inventory/CategoryManager";
 
 export default function InventoryForm({ open, onOpenChange, editingItem, onSave }) {
   const [form, setForm] = useState({
-    name: "", category: "", quantity: "", unit: "", min_quantity: "",
+    name: "", item_sku: "", category: "", quantity: "", unit: "", min_quantity: "",
     price_per_unit: "", supplier: "", location: "", notes: "", status: "in_stock", image_url: "",
   });
   const [saving, setSaving] = useState(false);
@@ -44,6 +44,7 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
     if (editingItem) {
       setForm({
         name: editingItem.name || "",
+        item_sku: editingItem.item_sku || "",
         category: editingItem.category || "other",
         quantity: editingItem.quantity ?? "",
         unit: editingItem.unit || "",
@@ -56,7 +57,7 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
         image_url: editingItem.image_url || "",
       });
     } else {
-      setForm({ name: "", category: categories[0]?.name || "", quantity: "", unit: "", min_quantity: "", price_per_unit: "", supplier: "", location: "", notes: "", status: "in_stock", image_url: "" });
+      setForm({ name: "", item_sku: "", category: categories[0]?.name || "", quantity: "", unit: "", min_quantity: "", price_per_unit: "", supplier: "", location: "", notes: "", status: "in_stock", image_url: "" });
     }
   }, [editingItem, open, categories]);
 
@@ -88,6 +89,10 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
           <div>
             <label className="text-sm font-medium text-slate-700">Name *</label>
             <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="mt-1" autoFocus />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700">Item ID / SKU</label>
+            <Input value={form.item_sku} onChange={e => setForm(p => ({ ...p, item_sku: e.target.value }))} placeholder="e.g. CAB-001" className="mt-1 font-mono" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

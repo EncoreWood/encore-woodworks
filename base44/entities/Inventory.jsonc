@@ -6,6 +6,10 @@
       "type": "string",
       "description": "Item name"
     },
+    "item_sku": {
+      "type": "string",
+      "description": "User-editable item ID / SKU shown on QR labels"
+    },
     "category": {
       "type": "string",
       "description": "Inventory category (managed via InventoryCategory entity)"

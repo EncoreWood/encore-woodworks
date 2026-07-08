@@ -27,8 +27,8 @@ export default function QRCodeDialog({ item, open, onOpenChange }) {
         ${imgHtml}
       </div>
       <h2>${item.name}</h2>
+      ${item.item_sku ? `<p style="font-family:monospace;font-weight:bold;">ID: ${item.item_sku}</p>` : ""}
       <p>${item.location || ""}</p>
-      <p>Qty: ${item.quantity} ${item.unit || ""}</p>
       </body></html>
     `);
     printWindow.document.close();
@@ -50,8 +50,8 @@ export default function QRCodeDialog({ item, open, onOpenChange }) {
           </div>
           <div className="text-center">
             <p className="font-semibold text-slate-900">{item.name}</p>
+            {item.item_sku && <p className="text-sm font-mono font-semibold text-slate-700">ID: {item.item_sku}</p>}
             {item.location && <p className="text-sm text-slate-500">{item.location}</p>}
-            <p className="text-sm text-slate-500">{item.quantity} {item.unit}</p>
           </div>
           <Button onClick={handlePrint} className="w-full bg-amber-600 hover:bg-amber-700 gap-2">
             <Printer className="w-4 h-4" /> Print Label

@@ -18,8 +18,8 @@ export default function PrintAllLabels({ items, open, onOpenChange }) {
           ${imgHtml}
           <div class="label-text">
             <div class="label-name">${item.name}</div>
+            ${item.item_sku ? `<div class="label-meta" style="font-family:monospace;font-weight:bold;">ID: ${item.item_sku}</div>` : ""}
             <div class="label-meta">${item.location || ""}</div>
-            <div class="label-meta">Qty: ${item.quantity} ${item.unit || ""}</div>
           </div>
         </div>`;
     }).join("");
