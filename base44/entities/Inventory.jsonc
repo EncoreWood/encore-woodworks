@@ -34,6 +34,10 @@
       "type": "string",
       "description": "Supplier name"
     },
+    "supplier_link": {
+      "type": "string",
+      "description": "Direct URL to this item on the supplier's website"
+    },
     "location": {
       "type": "string",
       "description": "Storage location in shop"
