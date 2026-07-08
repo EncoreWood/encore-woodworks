@@ -16,7 +16,15 @@
     },
     "rotating_person": {
       "type": "string",
-      "description": "The person rotating in for the second cleaning day"
+      "description": "The two people assigned to the second cleaning day this week (comma-separated)"
+    },
+    "rotation_pool": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of employee names in the cleaning rotation pool",
+      "default": []
     },
     "day1_of_week": {
       "type": "string",
@@ -50,7 +58,11 @@
     },
     "day2_sub": {
       "type": "string",
-      "description": "Substitute for day 2 (replaces the rotating person)"
+      "description": "Substitute for day 2 (replaces one of the rotating pair)"
+    },
+    "day2_sub_for": {
+      "type": "string",
+      "description": "Who the day2 sub is replacing"
     },
     "notes": {
       "type": "string",

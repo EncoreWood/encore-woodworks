@@ -1,24 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { format, startOfWeek, addDays } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, Plus, X, Check, RotateCcw } from "lucide-react";
+import { Pencil, Plus, X, Check } from "lucide-react";
+import { getWeekMonday, getDateForDayName, getRotationPool, computeRotatingPair } from "./cleaningRotation";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
-function getWeekMonday(date) {
-  const d = startOfWeek(date, { weekStartsOn: 1 });
-  return format(d, "yyyy-MM-dd");
-}
-
-function getDateForDayName(weekStart, dayName) {
-  const days = { Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4 };
-  const offset = days[dayName] ?? 0;
-  const base = new Date(weekStart + "T00:00:00");
-  return format(addDays(base, offset), "MMM d");
-}
 
 export default function CleaningScheduleEditor() {
   const queryClient = useQueryClient();
@@ -42,15 +30,7 @@ export default function CleaningScheduleEditor() {
     queryFn: () => base44.entities.CleaningSchedule.list("-week_start", 20),
   });
 
-  // Build the rotating pool from all stored schedules
-  const rotatingPool = [];
-  schedules.forEach(cs => {
-    if (cs.rotating_person) {
-      cs.rotating_person.split(", ").map(s => s.trim()).filter(Boolean).forEach(p => {
-        if (!rotatingPool.includes(p) && !archivedNames.has(p)) rotatingPool.push(p);
-      });
-    }
-  });
+  const pool = getRotationPool(schedules, archivedNames);
 
   // Find or project this week's schedule
   let thisWeek = schedules.find(s => s.week_start === weekMonday);
@@ -59,42 +39,17 @@ export default function CleaningScheduleEditor() {
     const sorted = [...schedules].filter(s => s.week_start).sort((a, b) => a.week_start.localeCompare(b.week_start));
     const lastCs = sorted[sorted.length - 1];
     if (lastCs) {
-      const lastMon = new Date(lastCs.week_start + "T00:00:00");
-      const thisMon = new Date(weekMonday + "T00:00:00");
-      const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-      const weeksAhead = Math.round((thisMon - lastMon) / msPerWeek);
-      if (weeksAhead > 0 && rotatingPool.length >= 2) {
-        const lastRotPair = lastCs.rotating_person
-          ? lastCs.rotating_person.split(", ").map(s => s.trim()).filter(Boolean)
-          : [];
-        const lastP1Idx = rotatingPool.indexOf(lastRotPair[0]);
-        const globalIdx = (lastP1Idx < 0 ? 0 : lastP1Idx) + weeksAhead * 2;
-        const p1 = rotatingPool[globalIdx % rotatingPool.length];
-        const p2 = rotatingPool[(globalIdx + 1) % rotatingPool.length];
-        thisWeek = {
-          id: null,
-          week_start: weekMonday,
-          permanent_pair: lastCs.permanent_pair || [],
-          rotating_person: p1 === p2 ? p1 : `${p1}, ${p2}`,
-          day1_of_week: lastCs.day1_of_week,
-          day2_of_week: lastCs.day2_of_week,
-          notes: lastCs.notes,
-          completed_day1: false,
-          completed_day2: false,
-        };
-      } else if (lastCs) {
-        thisWeek = {
-          id: null,
-          week_start: weekMonday,
-          permanent_pair: lastCs.permanent_pair || [],
-          rotating_person: lastCs.rotating_person || "",
-          day1_of_week: lastCs.day1_of_week,
-          day2_of_week: lastCs.day2_of_week,
-          notes: lastCs.notes,
-          completed_day1: false,
-          completed_day2: false,
-        };
-      }
+      thisWeek = {
+        id: null,
+        week_start: weekMonday,
+        permanent_pair: lastCs.permanent_pair || [],
+        rotating_person: lastCs.rotating_person || "",
+        day1_of_week: lastCs.day1_of_week || "Monday",
+        day2_of_week: lastCs.day2_of_week || "Wednesday",
+        notes: lastCs.notes,
+        completed_day1: false,
+        completed_day2: false,
+      };
     }
   }
 
@@ -106,19 +61,15 @@ export default function CleaningScheduleEditor() {
 
   const startEdit = () => {
     const day1People = thisWeek?.permanent_pair || [];
-    const day2People = thisWeek?.rotating_person
-      ? thisWeek.rotating_person.split(", ").map(s => s.trim()).filter(Boolean)
-      : [];
+    const computedPair = computeRotatingPair(schedules, weekMonday, pool, archivedNames);
     setEditDay1People(day1People.length > 0 ? day1People : [""]);
-    setEditDay2People(day2People.length > 0 ? day2People : [""]);
+    setEditDay2People(computedPair.length > 0 ? [...computedPair] : [""]);
     setEditDay1OfWeek(thisWeek?.day1_of_week || "Monday");
-    setEditDay2OfWeek(thisWeek?.day2_of_week || "Friday");
+    setEditDay2OfWeek(thisWeek?.day2_of_week || "Wednesday");
     setEditing(true);
   };
 
-  const cancelEdit = () => {
-    setEditing(false);
-  };
+  const cancelEdit = () => setEditing(false);
 
   const saveMutation = useMutation({
     mutationFn: async (data) => {
@@ -145,21 +96,22 @@ export default function CleaningScheduleEditor() {
       rotating_person: rotatingPair.join(", "),
       day1_of_week: editDay1OfWeek,
       day2_of_week: editDay2OfWeek,
+      rotation_pool: pool,
     });
   };
 
-  // Pool management — add/remove from rotating pool by updating the current week
+  // Pool management — update rotation_pool on the current week's record
   const poolMutation = useMutation({
-    mutationFn: async ({ rotating_person, permanent_pair }) => {
+    mutationFn: async ({ rotation_pool }) => {
       if (thisWeek?.id) {
-        return base44.entities.CleaningSchedule.update(thisWeek.id, { rotating_person, permanent_pair });
+        return base44.entities.CleaningSchedule.update(thisWeek.id, { rotation_pool });
       } else {
         return base44.entities.CleaningSchedule.create({
           week_start: weekMonday,
-          rotating_person,
-          permanent_pair,
+          rotation_pool,
+          permanent_pair: thisWeek?.permanent_pair || [],
           day1_of_week: thisWeek?.day1_of_week || "Monday",
-          day2_of_week: thisWeek?.day2_of_week || "Friday",
+          day2_of_week: thisWeek?.day2_of_week || "Wednesday",
         });
       }
     },
@@ -167,27 +119,12 @@ export default function CleaningScheduleEditor() {
   });
 
   const addToPool = (name) => {
-    if (!name || rotatingPool.includes(name)) return;
-    const currentRot = thisWeek?.rotating_person
-      ? thisWeek.rotating_person.split(", ").map(s => s.trim()).filter(Boolean)
-      : [];
-    const newRot = [...currentRot, name].join(", ");
-    poolMutation.mutate({
-      rotating_person: newRot,
-      permanent_pair: thisWeek?.permanent_pair || [],
-    });
+    if (!name || pool.includes(name)) return;
+    poolMutation.mutate({ rotation_pool: [...pool, name] });
   };
 
   const removeFromPool = (name) => {
-    const currentRot = thisWeek?.rotating_person
-      ? thisWeek.rotating_person.split(", ").map(s => s.trim()).filter(Boolean)
-      : [];
-    // Remove from current week's rotating_person
-    const newRot = currentRot.filter(p => p !== name).join(", ");
-    poolMutation.mutate({
-      rotating_person: newRot,
-      permanent_pair: thisWeek?.permanent_pair || [],
-    });
+    poolMutation.mutate({ rotation_pool: pool.filter(p => p !== name) });
   };
 
   if (!thisWeek) {
@@ -282,15 +219,16 @@ export default function CleaningScheduleEditor() {
     );
   }
 
-  // Read-only display with edit button
+  // Read-only display
   const day1People = (thisWeek.day1_sub
     ? [...(thisWeek.permanent_pair || []).filter(n => n !== thisWeek.day1_sub_for), thisWeek.day1_sub]
     : (thisWeek.permanent_pair || [])
   ).filter(n => !archivedNames.has(n));
 
+  const computedPair = computeRotatingPair(schedules, weekMonday, pool, archivedNames);
   const day2People = (thisWeek.day2_sub
-    ? [...(thisWeek.rotating_person ? thisWeek.rotating_person.split(", ").map(s => s.trim()).filter(Boolean) : []).filter(n => n !== thisWeek.day2_sub_for), thisWeek.day2_sub]
-    : (thisWeek.rotating_person ? thisWeek.rotating_person.split(", ").map(s => s.trim()).filter(Boolean) : [])
+    ? [...computedPair.filter(n => n !== thisWeek.day2_sub_for), thisWeek.day2_sub]
+    : computedPair
   ).filter(n => !archivedNames.has(n));
 
   return (
@@ -327,17 +265,17 @@ export default function CleaningScheduleEditor() {
         </div>
       </div>
 
-      {/* Rotating pool management */}
+      {/* Rotation pool management */}
       <div className="border-t border-slate-200 pt-3 space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">Rotation Pool</span>
-          <span className="text-xs text-slate-400">{rotatingPool.length} members</span>
+          <span className="text-xs text-slate-400">{pool.length} members</span>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {rotatingPool.length === 0 && (
+          {pool.length === 0 && (
             <p className="text-xs text-slate-400 italic">No one in the rotation pool yet.</p>
           )}
-          {rotatingPool.map(name => (
+          {pool.map(name => (
             <div key={name} className="flex items-center gap-1 bg-slate-100 rounded-full pl-3 pr-1 py-1">
               <span className="text-xs font-medium text-slate-700">{name}</span>
               <button
@@ -351,13 +289,13 @@ export default function CleaningScheduleEditor() {
           ))}
         </div>
         {/* Add to pool */}
-        <AddToPoolButton employees={activeEmployees} rotatingPool={rotatingPool} onAdd={addToPool} />
+        <AddToPoolButton employees={activeEmployees} pool={pool} onAdd={addToPool} />
       </div>
     </div>
   );
 }
 
-function AddToPoolButton({ employees, rotatingPool, onAdd }) {
+function AddToPoolButton({ employees, pool, onAdd }) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState("");
 
@@ -369,7 +307,7 @@ function AddToPoolButton({ employees, rotatingPool, onAdd }) {
     );
   }
 
-  const available = employees.filter(e => !rotatingPool.includes(e.full_name));
+  const available = employees.filter(e => !pool.includes(e.full_name));
 
   return (
     <div className="flex items-center gap-2">

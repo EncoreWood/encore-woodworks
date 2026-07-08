@@ -1,22 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { format, startOfWeek, addDays } from "date-fns";
+import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Sparkles, CheckCircle2 } from "lucide-react";
-
-// Returns Monday of the week containing `date`
-function getWeekMonday(date) {
-  const d = startOfWeek(date, { weekStartsOn: 1 });
-  return format(d, "yyyy-MM-dd");
-}
-
-// Given a week_start (Monday) and a day name, return the actual date string
-function getDateForDayName(weekStart, dayName) {
-  const days = { Monday: 0, Tuesday: 1, Wednesday: 2, Thursday: 3, Friday: 4 };
-  const offset = days[dayName] ?? 0;
-  const base = new Date(weekStart + "T00:00:00");
-  return format(addDays(base, offset), "MMM d");
-}
+import { CheckCircle2 } from "lucide-react";
+import { getWeekMonday, getDateForDayName, getRotationPool, computeRotatingPair } from "./cleaningRotation";
 
 export default function CleaningScheduleWidget({ showCheckboxes = false, compact = false, todayOnly = false }) {
   const queryClient = useQueryClient();
@@ -33,7 +20,7 @@ export default function CleaningScheduleWidget({ showCheckboxes = false, compact
 
   const { data: schedules = [] } = useQuery({
     queryKey: ["cleaningSchedules"],
-    queryFn: () => base44.entities.CleaningSchedule.list("-week_start", 10),
+    queryFn: () => base44.entities.CleaningSchedule.list("-week_start", 20),
   });
 
   const updateMutation = useMutation({
@@ -41,49 +28,26 @@ export default function CleaningScheduleWidget({ showCheckboxes = false, compact
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["cleaningSchedules"] }),
   });
 
+  const pool = getRotationPool(schedules, archivedNames);
+
   // Find this week's schedule (exact match first)
   let thisWeek = schedules.find(s => s.week_start === weekMonday);
 
-  // If no exact match, project perpetually from the last stored schedule
+  // If no exact match, project from the last stored schedule
   if (!thisWeek && schedules.length > 0) {
     const sorted = [...schedules].filter(s => s.week_start).sort((a, b) => a.week_start.localeCompare(b.week_start));
     const lastCs = sorted[sorted.length - 1];
     if (lastCs) {
-      const lastMon = new Date(lastCs.week_start + "T00:00:00");
-      const thisMon = new Date(weekMonday + "T00:00:00");
-      const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-      const weeksAhead = Math.round((thisMon - lastMon) / msPerWeek);
-      if (weeksAhead > 0) {
-        // Build rotating pool from all stored schedules
-        const rotatingPool = [];
-        sorted.forEach(cs => {
-          if (cs.rotating_person) {
-            cs.rotating_person.split(", ").map(s => s.trim()).filter(Boolean).forEach(p => {
-              if (!rotatingPool.includes(p) && !archivedNames.has(p)) rotatingPool.push(p);
-            });
-          }
-        });
-        if (rotatingPool.length >= 2) {
-          const lastRotPair = lastCs.rotating_person
-            ? lastCs.rotating_person.split(", ").map(s => s.trim()).filter(Boolean)
-            : [];
-          const lastP1Idx = rotatingPool.indexOf(lastRotPair[0]);
-          const globalIdx = (lastP1Idx < 0 ? 0 : lastP1Idx) + weeksAhead * 2;
-          const p1 = rotatingPool[globalIdx % rotatingPool.length];
-          const p2 = rotatingPool[(globalIdx + 1) % rotatingPool.length];
-          thisWeek = {
-            id: null,
-            week_start: weekMonday,
-            permanent_pair: lastCs.permanent_pair,
-            rotating_person: p1 === p2 ? p1 : `${p1}, ${p2}`,
-            day1_of_week: lastCs.day1_of_week,
-            day2_of_week: lastCs.day2_of_week,
-            notes: lastCs.notes,
-            completed_day1: false,
-            completed_day2: false,
-          };
-        }
-      }
+      thisWeek = {
+        id: null,
+        week_start: weekMonday,
+        permanent_pair: lastCs.permanent_pair || [],
+        day1_of_week: lastCs.day1_of_week || "Monday",
+        day2_of_week: lastCs.day2_of_week || "Wednesday",
+        notes: lastCs.notes,
+        completed_day1: false,
+        completed_day2: false,
+      };
     }
   }
 
@@ -105,17 +69,14 @@ export default function CleaningScheduleWidget({ showCheckboxes = false, compact
     : (thisWeek.permanent_pair || [])
   ).filter(n => !archivedNames.has(n));
 
-  const rotatingPair = thisWeek.rotating_person
-    ? thisWeek.rotating_person.split(", ").map(s => s.trim()).filter(Boolean)
-    : [];
+  const computedPair = computeRotatingPair(schedules, weekMonday, pool, archivedNames);
   const day2People = (thisWeek.day2_sub
-    ? [...rotatingPair.filter(n => n !== thisWeek.day2_sub_for), thisWeek.day2_sub]
-    : rotatingPair
+    ? [...computedPair.filter(n => n !== thisWeek.day2_sub_for), thisWeek.day2_sub]
+    : computedPair
   ).filter(n => !archivedNames.has(n));
 
   const allDone = thisWeek.completed_day1 && thisWeek.completed_day2;
 
-  // When todayOnly, determine which cleaning slot (if any) falls on today
   const todayName = format(now, "EEEE");
   const day1IsToday = todayOnly && (thisWeek.day1_of_week === todayName);
   const day2IsToday = todayOnly && (thisWeek.day2_of_week === todayName);
