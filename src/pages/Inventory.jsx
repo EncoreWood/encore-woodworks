@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Search, Plus, QrCode, Printer, Pencil, Trash2, Download, Package, Settings } from "lucide-react";
+import { RefreshCw, Search, Plus, QrCode, Printer, Pencil, Trash2, Download, Package, Settings, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import InventoryForm from "@/components/inventory/InventoryForm";
 import QRCodeDialog from "@/components/inventory/QRCodeDialog";
@@ -50,6 +50,7 @@ export default function Inventory() {
   const [qrItem, setQrItem] = useState(null);
   const [showPrintAll, setShowPrintAll] = useState(false);
   const [showCatManager, setShowCatManager] = useState(false);
+  const [refreshingPrices, setRefreshingPrices] = useState(false);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["inventory"],
@@ -128,6 +129,19 @@ export default function Inventory() {
     document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); a.remove();
   };
 
+  const handleRefreshPrices = async () => {
+    setRefreshingPrices(true);
+    try {
+      const { data } = await base44.functions.invoke('updatePricesFromLinks', { limit: 25 });
+      alert(`Checked ${data.checked} items: ${data.updated} prices updated, ${data.unchanged} unchanged, ${data.failed} couldn't be found.`);
+      if (data.updated > 0) queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    } catch (err) {
+      alert('Failed to refresh prices: ' + (err.message || 'Unknown error'));
+    } finally {
+      setRefreshingPrices(false);
+    }
+  };
+
   if (isLoading && items.length === 0) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center">
@@ -148,6 +162,9 @@ export default function Inventory() {
           <div className="flex gap-2">
             <Button variant="outline" onClick={exportToCSV} className="bg-white gap-1.5">
               <Download className="w-4 h-4" /> CSV
+            </Button>
+            <Button variant="outline" onClick={handleRefreshPrices} disabled={refreshingPrices} className="bg-white gap-1.5">
+              <TrendingUp className="w-4 h-4" /> {refreshingPrices ? "Refreshing..." : "Refresh Prices"}
             </Button>
             <Button variant="outline" onClick={() => setShowPrintAll(true)} className="bg-white gap-1.5">
               <Printer className="w-4 h-4" /> Print QR Labels
