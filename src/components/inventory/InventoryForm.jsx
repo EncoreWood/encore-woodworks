@@ -117,7 +117,7 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
                 <SelectContent>
                   <SelectItem value="in_stock">Full Stock</SelectItem>
                   <SelectItem value="low_stock">Low Stock</SelectItem>
-                  <SelectItem value="reorder">Reorder</SelectItem>
+                  <SelectItem value="needs_ordered">Needs Ordered</SelectItem>
                   <SelectItem value="discontinued">Discontinued</SelectItem>
                 </SelectContent>
               </Select>

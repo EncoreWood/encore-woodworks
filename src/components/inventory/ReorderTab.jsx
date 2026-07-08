@@ -28,7 +28,7 @@ export default function ReorderTab() {
   });
 
   const reorderWurthItems = useMemo(() => {
-    return items.filter(i => i.status === "reorder" && isWurthSupplier(i));
+    return items.filter(i => i.status === "needs_ordered" && isWurthSupplier(i));
   }, [items]);
 
   const suggestedQty = (item) => {
@@ -80,7 +80,7 @@ export default function ReorderTab() {
     <div className="space-y-4">
       {/* Header + Actions */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <p className="text-sm text-slate-500">{reorderWurthItems.length} items need reorder from Wurth</p>
+        <p className="text-sm text-slate-500">{reorderWurthItems.length} items need ordered from Wurth</p>
         <div className="flex gap-2">
           <a href="https://www.wurthlac.com" target="_blank" rel="noopener noreferrer">
             <Button variant="outline" className="bg-white gap-1.5">
@@ -125,7 +125,7 @@ export default function ReorderTab() {
         <Card className="bg-white shadow-sm">
           <CardContent className="pt-12 pb-12 text-center text-slate-400">
             <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
-            No Wurth items need reordering right now.
+            No Wurth items need ordering right now.
           </CardContent>
         </Card>
       ) : (

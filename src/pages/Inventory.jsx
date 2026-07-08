@@ -15,7 +15,7 @@ import CategoryManager from "@/components/inventory/CategoryManager";
 import ReorderTab from "@/components/inventory/ReorderTab";
 
 function recalcStatus(quantity, min_quantity) {
-  if (quantity <= 0) return "reorder";
+  if (quantity <= 0) return "needs_ordered";
   if (min_quantity && quantity < min_quantity) return "low_stock";
   return "in_stock";
 }
@@ -23,13 +23,13 @@ function recalcStatus(quantity, min_quantity) {
 const statusStyles = {
   in_stock: "bg-green-100 text-green-800",
   low_stock: "bg-orange-100 text-orange-800",
-  reorder: "bg-red-100 text-red-800",
+  needs_ordered: "bg-red-100 text-red-800",
   discontinued: "bg-gray-100 text-gray-800",
 };
 const statusLabel = {
   in_stock: "Full Stock",
   low_stock: "Low Stock",
-  reorder: "Reorder",
+  needs_ordered: "Needs Ordered",
   discontinued: "Discontinued",
 };
 const catLabel = (cat) => cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : "";
@@ -182,7 +182,7 @@ export default function Inventory() {
         <Tabs defaultValue="items">
           <TabsList className="bg-white border border-slate-200">
             <TabsTrigger value="items" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white">Items</TabsTrigger>
-            <TabsTrigger value="reorders" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white">Reorders</TabsTrigger>
+            <TabsTrigger value="reorders" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white">Needs Ordered</TabsTrigger>
             <TabsTrigger value="history" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white">History</TabsTrigger>
           </TabsList>
 

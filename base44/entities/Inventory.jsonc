@@ -58,7 +58,7 @@
       "enum": [
         "in_stock",
         "low_stock",
-        "reorder",
+        "needs_ordered",
         "discontinued"
       ],
       "default": "in_stock",
