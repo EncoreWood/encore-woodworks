@@ -225,6 +225,7 @@ export default function Inventory() {
                           <td className="py-2.5 px-3 text-sm font-medium text-slate-900">{item.name}</td>
                           <td className="py-2.5 px-3 text-sm text-slate-600">{catLabel(item.category)}</td>
                           <td className="py-2.5 px-3 text-sm text-right font-mono font-semibold text-slate-700">{item.quantity} {item.unit}</td>
+                          <td className="py-2.5 px-3 text-sm text-right font-mono text-slate-700">{item.price_per_unit != null ? `$${Number(item.price_per_unit).toFixed(2)}` : "—"}</td>
                           <td className="py-2.5 px-3 text-sm text-slate-600">
                             {(() => {
                               const sup = item.supplier ? supplierMap[item.supplier] : null;
