@@ -32,6 +32,7 @@ import ProjectForm from "../components/projects/ProjectForm";
 import AppointmentTab from "../components/calendar/AppointmentTab";
 import DesignMeetingTab from "../components/calendar/DesignMeetingTab";
 import CleaningScheduleEditor from "@/components/dashboard/CleaningScheduleEditor";
+import { getWeekMonday, getRotationPool, computeRotatingPair } from "@/components/dashboard/cleaningRotation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const statusConfig = {
@@ -88,6 +89,7 @@ export default function CalendarPage() {
   const { data: designMeetings = [] } = useQuery({ queryKey: ["designMeetings"], queryFn: () => base44.entities.DesignMeeting.list() });
   const { data: tasks = [] } = useQuery({ queryKey: ["tasks"], queryFn: () => base44.entities.MeetingTask.list() });
   const { data: employees = [] } = useQuery({ queryKey: ["employees"], queryFn: () => base44.entities.Employee.list() });
+  const archivedNames = new Set(employees.filter(e => e.archived).map(e => e.full_name));
   const { data: contacts = [] } = useQuery({ queryKey: ["contacts"], queryFn: () => base44.entities.Contact.list() });
   const { data: bathroomCleanings = [] } = useQuery({ queryKey: ["bathroomCleanings"], queryFn: () => base44.entities.BathroomCleaning.list() });
   const { data: vacations = [] } = useQuery({ queryKey: ["vacations"], queryFn: () => base44.entities.Vacation.list() });
@@ -184,6 +186,7 @@ export default function CalendarPage() {
         week_start: weekStr,
         permanent_pair: genPair,
         rotating_person: rotatingPair.join(", "),
+        rotation_pool: genRotators,
         day1_of_week: genDay1,
         day2_of_week: genDay2,
         notes: genNotes || undefined
@@ -198,99 +201,51 @@ export default function CalendarPage() {
   const DAY_NAME_TO_OFFSET = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5 };
 
   // Returns cleaning entries for a specific date, with which "slot" (day1/day2) it is.
-  // For dates beyond the last stored week, the rotation continues perpetually by cycling.
+  // Uses the shared rotation logic that respects rotation_pool and filters archived members.
   const getCleaningScheduleForDate = (date) => {
     if (cleaningSchedules.length === 0) return [];
 
-    // First check if an explicit stored record covers this date
-    const results = [];
-    for (const cs of cleaningSchedules) {
-      if (!cs.week_start) continue;
-      const weekMon = new Date(cs.week_start + "T00:00:00");
-      if (cs.day1_of_week) {
-        const d1 = new Date(weekMon);
-        d1.setDate(weekMon.getDate() + (DAY_NAME_TO_OFFSET[cs.day1_of_week] - 1));
-        if (isSameDay(date, d1)) results.push({ cs, slot: "day1" });
-      }
-      if (cs.day2_of_week) {
-        const d2 = new Date(weekMon);
-        d2.setDate(weekMon.getDate() + (DAY_NAME_TO_OFFSET[cs.day2_of_week] - 1));
-        if (isSameDay(date, d2)) results.push({ cs, slot: "day2" });
-      }
-    }
-    if (results.length > 0) return results;
+    const weekMonday = getWeekMonday(date);
+    const pool = getRotationPool(cleaningSchedules, archivedNames);
 
-    // If date is beyond last stored week, project the rotation perpetually
     const sorted = [...cleaningSchedules]
       .filter(cs => cs.week_start)
       .sort((a, b) => a.week_start.localeCompare(b.week_start));
 
-    const lastCs = sorted[sorted.length - 1];
-    if (!lastCs) return [];
-
-    const lastWeekMon = new Date(lastCs.week_start + "T00:00:00");
-    // Find Monday of the target date's week
-    const dayOfWeek = date.getDay(); // 0=Sun
-    const targetMon = new Date(date);
-    targetMon.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-    targetMon.setHours(0, 0, 0, 0);
-
-    // Only project forward beyond stored weeks
-    if (targetMon <= lastWeekMon) return [];
-
-    const msPerWeek = 7 * 24 * 60 * 60 * 1000;
-    const weeksAhead = Math.round((targetMon - lastWeekMon) / msPerWeek);
-    if (weeksAhead <= 0) return [];
-
-    // Build rotating pool from all stored schedules (extract unique rotating persons)
-    const rotatingPool = [];
-    sorted.forEach(cs => {
-      if (cs.rotating_person) {
-        cs.rotating_person.split(", ").map(s => s.trim()).filter(Boolean).forEach(p => {
-          if (!rotatingPool.includes(p)) rotatingPool.push(p);
-        });
+    // Find the reference schedule (exact match, or last one at/before this week)
+    const exactMatch = sorted.find(cs => cs.week_start === weekMonday);
+    let baseCs = exactMatch;
+    if (!baseCs) {
+      for (let i = sorted.length - 1; i >= 0; i--) {
+        if (sorted[i].week_start <= weekMonday) { baseCs = sorted[i]; break; }
       }
-    });
+    }
+    if (!baseCs) baseCs = sorted[sorted.length - 1];
+    if (!baseCs) return [];
 
-    if (rotatingPool.length < 2) return [];
-
-    // Figure out what rotation index the last stored schedule used
-    const lastRotPair = lastCs.rotating_person
-      ? lastCs.rotating_person.split(", ").map(s => s.trim()).filter(Boolean)
-      : [];
-    const lastP1 = lastRotPair[0];
-    const lastP1Idx = rotatingPool.indexOf(lastP1);
-    // Work out the global rotation index for the target week
-    const globalIdx = (lastP1Idx < 0 ? 0 : lastP1Idx) + weeksAhead * 2;
-    const p1 = rotatingPool[globalIdx % rotatingPool.length];
-    const p2 = rotatingPool[(globalIdx + 1) % rotatingPool.length];
-    const projectedRotating = p1 === p2 ? p1 : `${p1}, ${p2}`;
-
-    // Build a virtual cs for this projected week
+    const pair = computeRotatingPair(cleaningSchedules, weekMonday, pool, archivedNames);
     const virtualCs = {
-      id: `virtual-${format(targetMon, "yyyy-MM-dd")}`,
-      week_start: format(targetMon, "yyyy-MM-dd"),
-      permanent_pair: lastCs.permanent_pair,
-      rotating_person: projectedRotating,
-      day1_of_week: lastCs.day1_of_week,
-      day2_of_week: lastCs.day2_of_week,
-      notes: lastCs.notes,
-      completed_day1: false,
-      completed_day2: false,
+      ...baseCs,
+      id: exactMatch?.id || `virtual-${weekMonday}`,
+      week_start: weekMonday,
+      rotating_person: pair.join(", "),
+      completed_day1: exactMatch?.completed_day1 || false,
+      completed_day2: exactMatch?.completed_day2 || false,
     };
 
-    const projResults = [];
+    const results = [];
+    const weekMonDate = new Date(weekMonday + "T00:00:00");
     if (virtualCs.day1_of_week) {
-      const d1 = new Date(targetMon);
-      d1.setDate(targetMon.getDate() + (DAY_NAME_TO_OFFSET[virtualCs.day1_of_week] - 1));
-      if (isSameDay(date, d1)) projResults.push({ cs: virtualCs, slot: "day1" });
+      const d1 = new Date(weekMonDate);
+      d1.setDate(weekMonDate.getDate() + (DAY_NAME_TO_OFFSET[virtualCs.day1_of_week] - 1));
+      if (isSameDay(date, d1)) results.push({ cs: virtualCs, slot: "day1" });
     }
     if (virtualCs.day2_of_week) {
-      const d2 = new Date(targetMon);
-      d2.setDate(targetMon.getDate() + (DAY_NAME_TO_OFFSET[virtualCs.day2_of_week] - 1));
-      if (isSameDay(date, d2)) projResults.push({ cs: virtualCs, slot: "day2" });
+      const d2 = new Date(weekMonDate);
+      d2.setDate(weekMonDate.getDate() + (DAY_NAME_TO_OFFSET[virtualCs.day2_of_week] - 1));
+      if (isSameDay(date, d2)) results.push({ cs: virtualCs, slot: "day2" });
     }
-    return projResults;
+    return results;
   };
 
   const createProjectMutation = useMutation({
@@ -1195,139 +1150,65 @@ export default function CalendarPage() {
               <CleaningScheduleEditor />
             </div>
 
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">All Schedules</h4>
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">Next 3 Rotations</h4>
             {cleaningSchedules.length === 0 && (
               <p className="text-sm text-slate-400 text-center py-8 italic">No cleaning schedules yet. Click "Generate Schedule" to create one.</p>
             )}
-            {[...cleaningSchedules]
-              .sort((a, b) => (a.week_start || "").localeCompare(b.week_start || ""))
-              .map(cs => {
-                const isPast = cs.week_start && new Date(cs.week_start + "T00:00:00") < startOfDay(new Date());
-                const isSubbing = editingSchedule?.id === cs.id && editingSchedule?._subSlot;
-                const isEditingFull = editingSchedule?.id === cs.id && !editingSchedule?._subSlot;
-                const rotPair = cs.rotating_person ? cs.rotating_person.split(", ").map(s => s.trim()).filter(Boolean) : [];
-                const day1People = cs.day1_sub
-                  ? [...(cs.permanent_pair || []).filter(n => n !== cs.day1_sub_for), cs.day1_sub]
-                  : (cs.permanent_pair || []);
-                const day2People = cs.day2_sub
-                  ? [...rotPair.filter(n => n !== cs.day2_sub_for), cs.day2_sub]
-                  : rotPair;
+            {(() => {
+              const pool = getRotationPool(cleaningSchedules, archivedNames);
+              if (pool.length < 2) {
+                return <p className="text-sm text-slate-400 text-center py-4 italic">Rotation pool needs at least 2 members.</p>;
+              }
+              const thisWeekMon = getWeekMonday(new Date());
+              return [0, 1, 2].map(weekOffset => {
+                const weekDate = new Date(thisWeekMon + "T00:00:00");
+                weekDate.setDate(weekDate.getDate() + weekOffset * 7);
+                const weekStr = format(weekDate, "yyyy-MM-dd");
+                const pair = computeRotatingPair(cleaningSchedules, weekStr, pool, archivedNames);
+                const exactMatch = cleaningSchedules.find(cs => cs.week_start === weekStr);
+                const refCs = exactMatch || [...cleaningSchedules].filter(cs => cs.week_start).sort((a, b) => a.week_start.localeCompare(b.week_start)).pop();
+                if (!refCs) return null;
+                const day1People = (exactMatch?.day1_sub
+                  ? [...(refCs.permanent_pair || []).filter(n => n !== exactMatch.day1_sub_for), exactMatch.day1_sub]
+                  : (refCs.permanent_pair || [])
+                ).filter(n => !archivedNames.has(n));
+                const day2People = (exactMatch?.day2_sub
+                  ? [...pair.filter(n => n !== exactMatch.day2_sub_for), exactMatch.day2_sub]
+                  : pair
+                ).filter(n => !archivedNames.has(n));
+                const isCurrent = weekOffset === 0;
 
                 return (
-                  <div key={cs.id} className={`p-3 rounded-lg border ${isPast ? "bg-slate-50 border-slate-200 opacity-60" : "bg-teal-50 border-teal-200"}`}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="font-semibold text-sm text-teal-900">
-                            Week of {cs.week_start ? format(new Date(cs.week_start + "T00:00:00"), "MMM d, yyyy") : "—"}
-                          </span>
-                          {isPast && <span className="text-[10px] text-slate-400 bg-slate-200 px-1.5 rounded">Past</span>}
-                        </div>
-
-                        {/* Day 1 */}
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[11px] font-medium text-slate-600 w-20 flex-shrink-0">{cs.day1_of_week || "Day 1"}:</span>
-                          <div className="flex flex-wrap gap-1 flex-1">
-                            {day1People.map(p => (
-                              <span key={p} className={`text-[10px] px-1.5 py-0.5 rounded-full ${p === cs.day1_sub ? "bg-amber-100 text-amber-800 border border-amber-300" : "bg-teal-100 text-teal-800"}`}>
-                                {p}{p === cs.day1_sub ? " (sub)" : ""}
-                              </span>
-                            ))}
-                          </div>
-                          <span className={`text-[10px] ${cs.completed_day1 ? "text-green-600 font-semibold" : "text-slate-400"}`}>{cs.completed_day1 ? "✓" : ""}</span>
-                        </div>
-
-                        {/* Day 2 */}
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-medium text-slate-600 w-20 flex-shrink-0">{cs.day2_of_week || "Day 2"}:</span>
-                          <div className="flex flex-wrap gap-1 flex-1">
-                            {day2People.map(p => (
-                              <span key={p} className={`text-[10px] px-1.5 py-0.5 rounded-full ${p === cs.day2_sub ? "bg-amber-100 text-amber-800 border border-amber-300" : !cs.day2_sub ? "bg-purple-100 text-purple-800" : "bg-teal-100 text-teal-800"}`}>
-                                {p}{p === cs.day2_sub ? " (sub)" : ""}
-                              </span>
-                            ))}
-                          </div>
-                          <span className={`text-[10px] ${cs.completed_day2 ? "text-green-600 font-semibold" : "text-slate-400"}`}>{cs.completed_day2 ? "✓" : ""}</span>
-                        </div>
-
-                        {cs.notes && <p className="text-[11px] text-slate-500 mt-1">{cs.notes}</p>}
-                      </div>
-
-                      {!isSubbing && !isEditingFull && (
-                        <div className="flex gap-1 flex-shrink-0">
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-amber-600 hover:bg-amber-50" onClick={() => setEditingSchedule({ ...cs, _subSlot: "day1" })}>Sub D1</Button>
-                          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-amber-600 hover:bg-amber-50" onClick={() => setEditingSchedule({ ...cs, _subSlot: "day2" })}>Sub D2</Button>
-                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-slate-300 hover:text-red-500" onClick={() => deleteCleaningScheduleMutation.mutate(cs.id)}>✕</Button>
-                        </div>
-                      )}
+                  <div key={weekStr} className={`p-3 rounded-lg border ${isCurrent ? "bg-teal-50 border-teal-300" : "bg-white border-slate-200"}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-semibold text-sm text-teal-900">
+                        Week of {format(weekDate, "MMM d")}
+                      </span>
+                      {isCurrent && <span className="text-[10px] text-teal-700 bg-teal-200 px-1.5 rounded font-semibold">This Week</span>}
                     </div>
-
-                    {/* Sub editor */}
-                    {isSubbing && (
-                      <div className="mt-2 pt-2 border-t border-teal-200 space-y-2">
-                        <p className="text-xs font-semibold text-amber-700">
-                          Sub for {editingSchedule._subSlot === "day1" ? (cs.day1_of_week || "Day 1") : (cs.day2_of_week || "Day 2")}
-                        </p>
-                        {editingSchedule._subSlot === "day1" && (
-                          <div>
-                            <Label className="text-xs">Who is unavailable?</Label>
-                            <div className="flex flex-wrap gap-1.5 mt-1">
-                              {(cs.permanent_pair || []).map(p => (
-                                <button key={p}
-                                  onClick={() => setEditingSchedule(prev => ({ ...prev, day1_sub_for: prev.day1_sub_for === p ? "" : p }))}
-                                  className={`px-2 py-0.5 rounded-full text-xs border transition-all ${editingSchedule.day1_sub_for === p ? "bg-red-100 text-red-800 border-red-300" : "bg-white text-slate-600 border-slate-300"}`}
-                                >{p}</button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        <div>
-                          <Label className="text-xs">Substitute</Label>
-                          <div className="flex flex-wrap gap-1.5 mt-1">
-                            {employees.filter(e => {
-                              const allPair = cs.permanent_pair || [];
-                              if (editingSchedule._subSlot === "day2") return !allPair.includes(e.full_name) && e.full_name !== cs.rotating_person;
-                              return !allPair.includes(e.full_name);
-                            }).map(emp => (
-                              <button key={emp.id}
-                                onClick={() => setEditingSchedule(prev => {
-                                  const key = prev._subSlot === "day1" ? "day1_sub" : "day2_sub";
-                                  return { ...prev, [key]: prev[key] === emp.full_name ? "" : emp.full_name };
-                                })}
-                                className={`px-2 py-0.5 rounded-full text-xs border transition-all ${
-                                  (editingSchedule._subSlot === "day1" ? editingSchedule.day1_sub : editingSchedule.day2_sub) === emp.full_name
-                                    ? "bg-amber-500 text-white border-amber-500"
-                                    : "bg-white text-slate-600 border-slate-300"
-                                }`}
-                              >{emp.full_name}</button>
-                            ))}
-                            <button
-                              onClick={() => setEditingSchedule(prev => {
-                                const key = prev._subSlot === "day1" ? "day1_sub" : "day2_sub";
-                                return { ...prev, [key]: "", day1_sub_for: "" };
-                              })}
-                              className="px-2 py-0.5 rounded-full text-xs border bg-white text-slate-400 border-slate-200 hover:border-red-300 hover:text-red-500"
-                            >Clear sub</button>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" className="h-7 text-xs bg-teal-600 hover:bg-teal-700" onClick={() => {
-                            const saveData = {};
-                            if (editingSchedule._subSlot === "day1") {
-                              saveData.day1_sub = editingSchedule.day1_sub || null;
-                              saveData.day1_sub_for = editingSchedule.day1_sub_for || null;
-                            } else {
-                              saveData.day2_sub = editingSchedule.day2_sub || null;
-                            }
-                            updateCleaningScheduleMutation.mutate({ id: cs.id, data: saveData });
-                          }}>Save</Button>
-                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingSchedule(null)}>Cancel</Button>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-medium text-slate-600 w-20 flex-shrink-0">{refCs.day1_of_week || "Day 1"}:</span>
+                        <div className="flex flex-wrap gap-1 flex-1">
+                          {day1People.map(p => (
+                            <span key={p} className="text-[10px] px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-800">{p}</span>
+                          ))}
                         </div>
                       </div>
-                    )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-medium text-slate-600 w-20 flex-shrink-0">{refCs.day2_of_week || "Day 2"}:</span>
+                        <div className="flex flex-wrap gap-1 flex-1">
+                          {day2People.map(p => (
+                            <span key={p} className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-800">{p}</span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    {refCs.notes && <p className="text-[11px] text-slate-500 mt-1">{refCs.notes}</p>}
                   </div>
                 );
-              })}
+              });
+            })()}
           </div>
         </DialogContent>
       </Dialog>
