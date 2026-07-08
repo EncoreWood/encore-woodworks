@@ -190,9 +190,11 @@ export default function Inventory() {
                     <thead>
                       <tr className="border-b-2 border-slate-300">
                         <th className="text-center py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Image</th>
+                        <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Item ID</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Name</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Category</th>
                         <th className="text-right py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Qty</th>
+                        <th className="text-right py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Price/Unit</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Location</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Status</th>
                         <th className="text-center py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">QR</th>
@@ -207,9 +209,11 @@ export default function Inventory() {
                               ? <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded-lg object-cover inline-block" />
                               : <div className="w-10 h-10 rounded-lg bg-slate-100 inline-flex items-center justify-center"><Package className="w-4 h-4 text-slate-300" /></div>}
                           </td>
+                          <td className="py-2.5 px-3 text-xs font-mono text-slate-500 whitespace-nowrap">{item.id?.slice(-8)}</td>
                           <td className="py-2.5 px-3 text-sm font-medium text-slate-900">{item.name}</td>
                           <td className="py-2.5 px-3 text-sm text-slate-600">{catLabel(item.category)}</td>
                           <td className="py-2.5 px-3 text-sm text-right font-mono font-semibold text-slate-700">{item.quantity} {item.unit}</td>
+                          <td className="py-2.5 px-3 text-sm text-right font-mono text-slate-700">{item.price_per_unit != null ? `$${Number(item.price_per_unit).toFixed(2)}` : "—"}</td>
                           <td className="py-2.5 px-3 text-sm text-slate-600">{item.location || "—"}</td>
                           <td className="py-2.5 px-3">
                             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[item.status]}`}>{statusLabel[item.status]}</span>
@@ -254,6 +258,8 @@ export default function Inventory() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-slate-900 text-sm truncate">{item.name}</p>
                       <p className="text-xs text-slate-500">{catLabel(item.category)} · {item.location || "No location"}</p>
+                      <p className="text-xs font-mono text-slate-400">ID: {item.id?.slice(-8)}</p>
+                      {item.price_per_unit != null && <p className="text-xs text-slate-600">${Number(item.price_per_unit).toFixed(2)}/{item.unit || "ea"}</p>}
                     </div>
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${statusStyles[item.status]}`}>{statusLabel[item.status]}</span>
                   </div>
