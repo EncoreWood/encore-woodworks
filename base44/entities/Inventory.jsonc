@@ -61,7 +61,6 @@
   "required": [
     "name",
     "category",
-    "quantity",
-    "unit"
+    "quantity"
   ]
 }

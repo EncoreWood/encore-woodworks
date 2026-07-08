@@ -58,20 +58,26 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
     } else {
       setForm({ name: "", category: categories[0]?.name || "", quantity: "", unit: "", min_quantity: "", price_per_unit: "", supplier: "", location: "", notes: "", status: "in_stock", image_url: "" });
     }
-  }, [editingItem, open]);
+  }, [editingItem, open, categories]);
 
   const handleSave = async () => {
     if (!form.name || !form.category || form.quantity === "") return;
     setSaving(true);
-    const payload = {
-      ...form,
-      quantity: parseFloat(form.quantity) || 0,
-      min_quantity: form.min_quantity ? parseFloat(form.min_quantity) : null,
-      price_per_unit: form.price_per_unit ? parseFloat(form.price_per_unit) : null,
-    };
-    await onSave(payload);
-    setSaving(false);
-    onOpenChange(false);
+    try {
+      const payload = {
+        ...form,
+        quantity: parseFloat(form.quantity) || 0,
+        min_quantity: form.min_quantity ? parseFloat(form.min_quantity) : null,
+        price_per_unit: form.price_per_unit ? parseFloat(form.price_per_unit) : null,
+      };
+      await onSave(payload);
+      onOpenChange(false);
+    } catch (err) {
+      console.error("Save failed:", err);
+      alert("Failed to save item: " + (err?.message || "Unknown error"));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
