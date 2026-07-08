@@ -40,6 +40,12 @@ const getItemSuppliers = (item) => {
   return [];
 };
 
+const getItemLocations = (item) => {
+  if (Array.isArray(item.locations) && item.locations.length) return item.locations;
+  if (item.location) return [item.location];
+  return [];
+};
+
 export default function Inventory() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
@@ -109,10 +115,10 @@ export default function Inventory() {
   const filtered = useMemo(() => {
     return items.filter(i => {
       if (activeCategory !== "all" && i.category !== activeCategory) return false;
-      if (activeLocation !== "all" && i.location !== activeLocation) return false;
+      if (activeLocation !== "all" && !getItemLocations(i).includes(activeLocation)) return false;
       if (searchTerm) {
         const s = searchTerm.toLowerCase();
-        return i.name?.toLowerCase().includes(s) || i.location?.toLowerCase().includes(s) || getItemSuppliers(i).some(sup => sup.name?.toLowerCase().includes(s));
+        return i.name?.toLowerCase().includes(s) || getItemLocations(i).some(l => l.toLowerCase().includes(s)) || getItemSuppliers(i).some(sup => sup.name?.toLowerCase().includes(s));
       }
       return true;
     });
@@ -120,7 +126,7 @@ export default function Inventory() {
 
   const exportToCSV = () => {
     const headers = ["Name", "Item ID", "Category", "Quantity", "Unit", "Min Qty", "Price/Unit", "Supplier", "Location", "Status", "Notes"];
-    const rows = filtered.map(i => [i.name, i.item_sku, i.category, i.quantity, i.unit, i.min_quantity, i.price_per_unit, getItemSuppliers(i).map(s => s.name).join("; "), i.location, statusLabel[i.status], i.notes]);
+    const rows = filtered.map(i => [i.name, i.item_sku, i.category, i.quantity, i.unit, i.min_quantity, i.price_per_unit, getItemSuppliers(i).map(s => s.name).join("; "), getItemLocations(i).join("; "), statusLabel[i.status], i.notes]);
     const csv = [headers.join(","), ...rows.map(r => r.map(c => `"${c ?? ""}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -266,7 +272,12 @@ export default function Inventory() {
                               );
                             })()}
                           </td>
-                          <td className="py-2.5 px-3 text-sm text-slate-600">{item.location || "—"}</td>
+                          <td className="py-2.5 px-3 text-sm text-slate-600">
+                            {(() => {
+                              const locs = getItemLocations(item);
+                              return locs.length > 0 ? locs.join(", ") : "—";
+                            })()}
+                          </td>
                           <td className="py-2.5 px-3">
                             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[item.status]}`}>{statusLabel[item.status]}</span>
                           </td>
@@ -309,7 +320,7 @@ export default function Inventory() {
                       : <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 mr-2"><Package className="w-5 h-5 text-slate-300" /></div>}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-slate-900 text-sm truncate">{item.name}</p>
-                      <p className="text-xs text-slate-500">{catLabel(item.category)} · {item.location || "No location"}</p>
+                      <p className="text-xs text-slate-500">{catLabel(item.category)} · {getItemLocations(item).length > 0 ? getItemLocations(item).join(", ") : "No location"}</p>
                       {item.item_sku && <p className="text-xs font-mono text-slate-600">Item ID: {item.item_sku}</p>}
                       {item.price_per_unit != null && <p className="text-xs text-slate-600">${Number(item.price_per_unit).toFixed(2)}/{item.unit || "ea"}</p>}
                       {getItemSuppliers(item).length > 0 && (

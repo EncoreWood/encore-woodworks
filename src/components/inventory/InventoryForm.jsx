@@ -12,7 +12,7 @@ import SupplierEditor from "@/components/inventory/SupplierEditor";
 export default function InventoryForm({ open, onOpenChange, editingItem, onSave }) {
   const [form, setForm] = useState({
     name: "", item_sku: "", category: "", quantity: "", unit: "", min_quantity: "",
-    price_per_unit: "", suppliers: [], location: "", notes: "", status: "in_stock", image_url: "",
+    price_per_unit: "", suppliers: [], locations: [], notes: "", status: "in_stock", image_url: "",
   });
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -52,13 +52,13 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
         min_quantity: editingItem.min_quantity ?? "",
         price_per_unit: editingItem.price_per_unit ?? "",
         suppliers: Array.isArray(editingItem.suppliers) ? editingItem.suppliers : (editingItem.supplier ? [{ name: editingItem.supplier, link: editingItem.supplier_link || "" }] : []),
-        location: editingItem.location || "",
+        locations: Array.isArray(editingItem.locations) ? editingItem.locations : (editingItem.location ? [editingItem.location] : []),
         notes: editingItem.notes || "",
         status: editingItem.status || "in_stock",
         image_url: editingItem.image_url || "",
       });
     } else {
-      setForm({ name: "", item_sku: "", category: categories[0]?.name || "", quantity: "", unit: "", min_quantity: "", price_per_unit: "", suppliers: [], location: "", notes: "", status: "in_stock", image_url: "" });
+      setForm({ name: "", item_sku: "", category: categories[0]?.name || "", quantity: "", unit: "", min_quantity: "", price_per_unit: "", suppliers: [], locations: [], notes: "", status: "in_stock", image_url: "" });
     }
   }, [editingItem, open, categories]);
 
@@ -142,20 +142,26 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
               <label className="text-sm font-medium text-slate-700">Price/Unit</label>
               <Input type="number" step="0.01" value={form.price_per_unit} onChange={e => setForm(p => ({ ...p, price_per_unit: e.target.value }))} className="mt-1" />
             </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700">Location</label>
-              <Select value={form.location || "none"} onValueChange={v => setForm(p => ({ ...p, location: v === "none" ? "" : v }))}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select location" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="Cut">Cut</SelectItem>
-                  <SelectItem value="Face Frame">Face Frame</SelectItem>
-                  <SelectItem value="Spray">Spray</SelectItem>
-                  <SelectItem value="Build">Build</SelectItem>
-                  <SelectItem value="Install">Install</SelectItem>
-                  <SelectItem value="Office">Office</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="col-span-2">
+              <label className="text-sm font-medium text-slate-700">Locations</label>
+              <div className="flex flex-wrap gap-1.5 mt-1">
+                {["Cut", "Face Frame", "Spray", "Build", "Install", "Office"].map(loc => {
+                  const active = Array.isArray(form.locations) && form.locations.includes(loc);
+                  return (
+                    <button
+                      key={loc}
+                      type="button"
+                      onClick={() => setForm(p => {
+                        const current = Array.isArray(p.locations) ? p.locations : [];
+                        return { ...p, locations: active ? current.filter(l => l !== loc) : [...current, loc] };
+                      })}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${active ? "bg-amber-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}
+                    >
+                      {loc}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
           <div>
