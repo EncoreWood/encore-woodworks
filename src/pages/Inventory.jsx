@@ -12,6 +12,7 @@ import QRCodeDialog from "@/components/inventory/QRCodeDialog";
 import PrintAllLabels from "@/components/inventory/PrintAllLabels";
 import InventoryHistory from "@/components/inventory/InventoryHistory";
 import CategoryManager from "@/components/inventory/CategoryManager";
+import ReorderTab from "@/components/inventory/ReorderTab";
 
 function recalcStatus(quantity, min_quantity) {
   if (quantity <= 0) return "reorder";
@@ -181,6 +182,7 @@ export default function Inventory() {
         <Tabs defaultValue="items">
           <TabsList className="bg-white border border-slate-200">
             <TabsTrigger value="items" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white">Items</TabsTrigger>
+            <TabsTrigger value="reorders" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white">Reorders</TabsTrigger>
             <TabsTrigger value="history" className="data-[state=active]:bg-amber-600 data-[state=active]:text-white">History</TabsTrigger>
           </TabsList>
 
@@ -341,6 +343,11 @@ export default function Inventory() {
                 </div>
               )}
             </div>
+          </TabsContent>
+
+          {/* REORDERS TAB */}
+          <TabsContent value="reorders">
+            <ReorderTab />
           </TabsContent>
 
           {/* HISTORY TAB */}

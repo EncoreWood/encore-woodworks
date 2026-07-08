@@ -24,7 +24,7 @@ import ProductionPlanning from './pages/ProductionPlanning';
 import MistakeReport from './pages/MistakeReport';
 import InventoryScan from './pages/InventoryScan';
 import ClientPortal from './pages/ClientPortal';
-import ReorderBoard from './pages/ReorderBoard';
+
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -82,7 +82,6 @@ const AuthenticatedApp = () => {
       <Route path="/MistakeReport" element={<LayoutWrapper currentPageName="MistakeReport"><MistakeReport /></LayoutWrapper>} />
       <Route path="/InventoryScan" element={<InventoryScan />} />
       <Route path="/ClientPortal" element={<ClientPortal />} />
-      <Route path="/ReorderBoard" element={<LayoutWrapper currentPageName="ReorderBoard"><ReorderBoard /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

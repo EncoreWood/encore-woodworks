@@ -88,7 +88,6 @@ export default function Layout({ children, currentPageName }) {
           { name: "Tools", icon: Wrench, iconName: "Wrench", page: "Tools" },
           { name: "Inventory", icon: Coffee, iconName: "Coffee", page: "Inventory" },
           { name: "Purchase Orders", icon: Package, iconName: "Package", page: "PurchaseOrders" },
-          { name: "Reorder Board", icon: ShoppingCart, iconName: "ShoppingCart", page: "ReorderBoard" },
           { name: "Suppliers", icon: Truck, iconName: "Truck", page: "Suppliers" },
           { name: "Encore Docs", icon: FileText, iconName: "FileText", page: "EncoreDocs" },
           { name: "Assignments", icon: Clipboard, iconName: "Clipboard", page: "Assignments" },
