@@ -436,6 +436,11 @@ export default function TimeSheet() {
     e.date >= format(weekStart, "yyyy-MM-dd") &&
     e.date <= format(weekEnd, "yyyy-MM-dd")
   ).reduce((s, e) => s + (e.hours_worked || 0), 0);
+  const weekPtoTotal = employeeEntries.filter(e =>
+    e.entry_type !== "work" &&
+    e.date >= format(weekStart, "yyyy-MM-dd") &&
+    e.date <= format(weekEnd, "yyyy-MM-dd")
+  ).reduce((s, e) => s + (e.hours_worked || 0), 0);
 
   const getPayPeriodDates = () => {
     const startDay = settings[0]?.pay_period_start_day || 16;
@@ -591,10 +596,17 @@ export default function TimeSheet() {
                         <Button variant="outline" size="sm" onClick={() => setWeekOffset(w => w + 1)} disabled={weekOffset >= 0}>Next →</Button>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={cn("text-sm font-bold px-3 py-1 rounded-full",
-                          weekTotal > 40 ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-700")}>
-                          {weekTotal.toFixed(2)} hrs {weekTotal > 40 ? `(+${(weekTotal - 40).toFixed(2)} OT)` : ""}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={cn("text-sm font-bold px-3 py-1 rounded-full",
+                            weekTotal > 40 ? "bg-orange-100 text-orange-700" : "bg-slate-100 text-slate-700")}>
+                            {weekTotal.toFixed(2)} hrs {weekTotal > 40 ? `(+${(weekTotal - 40).toFixed(2)} OT)` : ""}
+                          </span>
+                          {weekPtoTotal > 0 && (
+                            <span className="text-sm font-bold px-3 py-1 rounded-full bg-purple-100 text-purple-700">
+                              {weekPtoTotal.toFixed(2)} PTO/Vac
+                            </span>
+                          )}
+                        </div>
                         {isAdmin && (
                           <Button size="sm" variant="outline" onClick={() => { setFormData({ clock_in: "", clock_out: "", entry_type: "work", notes: "", date: format(weekStart, "yyyy-MM-dd") }); setShowAddEntry(true); }} className="gap-1">
                             <Plus className="w-3.5 h-3.5" /> Add
