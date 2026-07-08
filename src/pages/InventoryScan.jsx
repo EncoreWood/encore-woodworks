@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowDownCircle, ArrowUpCircle, Edit3, Delete, Check, Package } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Edit3, Delete, Check, Package, ScanLine } from "lucide-react";
 
 function recalcStatus(quantity, min_quantity) {
   if (quantity <= 0) return "reorder";
@@ -161,13 +161,22 @@ export default function InventoryScan() {
 
         {/* Success Message */}
         {success && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-            <Check className="w-6 h-6 text-green-600 mx-auto mb-1" />
-            <p className="text-sm font-semibold text-green-800">
-              {success.action} of {success.quantity} {item.unit || "units"} recorded
-            </p>
-            <p className="text-xs text-green-600 mt-0.5">New stock: {success.newQty} {item.unit || ""}</p>
-            <button onClick={() => setSuccess(null)} className="text-xs text-green-700 underline mt-2">Dismiss</button>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center space-y-3">
+            <div>
+              <Check className="w-6 h-6 text-green-600 mx-auto mb-1" />
+              <p className="text-sm font-semibold text-green-800">
+                {success.action} of {success.quantity} {item.unit || "units"} recorded
+              </p>
+              <p className="text-xs text-green-600 mt-0.5">New stock: {success.newQty} {item.unit || ""}</p>
+            </div>
+            <button
+              onClick={() => { setSuccess(null); setItem(null); setAction(null); setQty(""); setNotes(""); window.history.replaceState({}, "", "/InventoryScan"); }}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm shadow active:scale-95 transition-all touch-manipulation"
+            >
+              <ScanLine className="w-5 h-5" />
+              Scan Another Item
+            </button>
+            <button onClick={() => setSuccess(null)} className="text-xs text-green-700 underline">Dismiss</button>
           </div>
         )}
 
