@@ -60,6 +60,10 @@
     "qr_code_url": {
       "type": "string",
       "description": "Generated QR code image URL encoding the scan page link for this item"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Item photo/image shown on QR code labels"
     }
   },
   "required": [

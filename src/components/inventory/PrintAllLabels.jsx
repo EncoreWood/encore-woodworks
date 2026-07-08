@@ -10,10 +10,12 @@ export default function PrintAllLabels({ items, open, onOpenChange }) {
     const printWindow = window.open("", "_blank", "width=850,height=1100");
     const labels = items.map(item => {
       const url = `${window.location.origin}/InventoryScan?item=${item.id}`;
-      const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(url)}`;
+      const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=${encodeURIComponent(url)}`;
+      const imgHtml = item.image_url ? `<img src="${item.image_url}" class="item-img" />` : "";
       return `
         <div class="label">
-          <img src="${qrSrc}" width="80" height="80" />
+          <img src="${qrSrc}" width="70" height="70" />
+          ${imgHtml}
           <div class="label-text">
             <div class="label-name">${item.name}</div>
             <div class="label-meta">${item.location || ""}</div>
@@ -35,6 +37,7 @@ export default function PrintAllLabels({ items, open, onOpenChange }) {
           border:1px dashed #ddd;
         }
         .label img { flex-shrink:0; }
+        .label .item-img { width:50px; height:50px; object-fit:cover; border-radius:4px; }
         .label-text { min-width:0; flex:1; }
         .label-name { font-size:10px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .label-meta { font-size:8px; color:#666; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

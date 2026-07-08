@@ -179,6 +179,7 @@ export default function Inventory() {
                   <table className="w-full">
                     <thead>
                       <tr className="border-b-2 border-slate-300">
+                        <th className="text-center py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Image</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Name</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Category</th>
                         <th className="text-right py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Qty</th>
@@ -191,6 +192,11 @@ export default function Inventory() {
                     <tbody>
                       {filtered.map(item => (
                         <tr key={item.id} className="border-b border-slate-100 hover:bg-amber-50 transition-colors">
+                          <td className="py-2.5 px-3 text-center">
+                            {item.image_url
+                              ? <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded-lg object-cover inline-block" />
+                              : <div className="w-10 h-10 rounded-lg bg-slate-100 inline-flex items-center justify-center"><Package className="w-4 h-4 text-slate-300" /></div>}
+                          </td>
                           <td className="py-2.5 px-3 text-sm font-medium text-slate-900">{item.name}</td>
                           <td className="py-2.5 px-3 text-sm text-slate-600">{categoryLabel[item.category] || item.category}</td>
                           <td className="py-2.5 px-3 text-sm text-right font-mono font-semibold text-slate-700">{item.quantity} {item.unit}</td>
@@ -232,6 +238,9 @@ export default function Inventory() {
               {filtered.map(item => (
                 <div key={item.id} className="border border-slate-200 rounded-lg p-3 bg-white space-y-2">
                   <div className="flex items-start justify-between">
+                    {item.image_url
+                      ? <img src={item.image_url} alt={item.name} className="w-12 h-12 rounded-lg object-cover flex-shrink-0 mr-2" />
+                      : <div className="w-12 h-12 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0 mr-2"><Package className="w-5 h-5 text-slate-300" /></div>}
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-slate-900 text-sm truncate">{item.name}</p>
                       <p className="text-xs text-slate-500">{categoryLabel[item.category] || item.category} · {item.location || "No location"}</p>

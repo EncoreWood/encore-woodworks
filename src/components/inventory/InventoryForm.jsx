@@ -5,13 +5,28 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
+import { ImagePlus, Loader2, X } from "lucide-react";
 
 export default function InventoryForm({ open, onOpenChange, editingItem, onSave }) {
   const [form, setForm] = useState({
     name: "", category: "other", quantity: "", unit: "", min_quantity: "",
-    price_per_unit: "", supplier: "", location: "", notes: "", status: "in_stock",
+    price_per_unit: "", supplier: "", location: "", notes: "", status: "in_stock", image_url: "",
   });
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const handleImageUpload = async (file) => {
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setForm(p => ({ ...p, image_url: file_url }));
+    } catch (err) {
+      console.error("Image upload failed:", err);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const { data: suppliers = [] } = useQuery({
     queryKey: ["suppliers"],
@@ -31,9 +46,10 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
         location: editingItem.location || "",
         notes: editingItem.notes || "",
         status: editingItem.status || "in_stock",
+        image_url: editingItem.image_url || "",
       });
     } else {
-      setForm({ name: "", category: "other", quantity: "", unit: "", min_quantity: "", price_per_unit: "", supplier: "", location: "", notes: "", status: "in_stock" });
+      setForm({ name: "", category: "other", quantity: "", unit: "", min_quantity: "", price_per_unit: "", supplier: "", location: "", notes: "", status: "in_stock", image_url: "" });
     }
   }, [editingItem, open]);
 
@@ -132,6 +148,29 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
                 {suppliers.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+          <div>
+            <label className="text-sm font-medium text-slate-700">Item Image</label>
+            <div className="mt-1 flex items-center gap-3">
+              {form.image_url ? (
+                <div className="relative">
+                  <img src={form.image_url} alt="Item" className="w-20 h-20 rounded-lg object-cover border border-slate-200" />
+                  <button
+                    type="button"
+                    onClick={() => setForm(p => ({ ...p, image_url: "" }))}
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center shadow"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <label className={`flex flex-col items-center justify-center w-20 h-20 rounded-lg border-2 border-dashed border-slate-300 cursor-pointer hover:border-amber-500 hover:bg-amber-50 transition-colors ${uploadingImage ? "opacity-50 pointer-events-none" : ""}`}>
+                  {uploadingImage ? <Loader2 className="w-5 h-5 text-slate-400 animate-spin" /> : <ImagePlus className="w-5 h-5 text-slate-400" />}
+                  <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ""; }} />
+                </label>
+              )}
+              <p className="text-xs text-slate-400">Shows on QR code labels</p>
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium text-slate-700">Notes</label>

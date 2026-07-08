@@ -9,28 +9,30 @@ export default function QRCodeDialog({ item, open, onOpenChange }) {
   const scanUrl = `${window.location.origin}/InventoryScan?item=${item.id}`;
 
   const handlePrint = () => {
-    const printWindow = window.open("", "_blank", "width=400,height=500");
+    const printWindow = window.open("", "_blank", "width=400,height=600");
+    const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(scanUrl)}`;
+    const imgHtml = item.image_url
+      ? `<img src="${item.image_url}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;" />`
+      : "";
     printWindow.document.write(`
       <html><head><title>QR - ${item.name}</title>
       <style>
         body { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; margin:0; font-family:Arial,sans-serif; }
         h2 { font-size:18px; margin:8px 0 4px; }
         p { font-size:12px; color:#666; margin:0; }
+        .row { display:flex; gap:12px; align-items:center; margin-bottom:8px; }
       </style></head><body>
-      <div id="qr"></div>
+      <div class="row">
+        <img src="${qrSrc}" width="180" height="180" />
+        ${imgHtml}
+      </div>
       <h2>${item.name}</h2>
       <p>${item.location || ""}</p>
       <p>Qty: ${item.quantity} ${item.unit || ""}</p>
       </body></html>
     `);
-    // Generate QR as SVG string
-    const svgEl = document.querySelector("#qr-svg-clone");
-    printWindow.document.body.innerHTML = printWindow.document.body.innerHTML;
-    // Use a simple approach: write the QR via the library's toString
-    const qrContainer = printWindow.document.getElementById("qr");
-    qrContainer.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(scanUrl)}" width="200" height="200" />`;
     printWindow.document.close();
-    setTimeout(() => { printWindow.print(); }, 800);
+    setTimeout(() => { printWindow.print(); }, 1000);
   };
 
   return (
@@ -38,8 +40,13 @@ export default function QRCodeDialog({ item, open, onOpenChange }) {
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle>QR Code</DialogTitle></DialogHeader>
         <div className="flex flex-col items-center gap-3">
-          <div className="p-4 bg-white border-2 border-slate-200 rounded-xl">
-            <QRCodeSVG value={scanUrl} size={200} includeMargin={true} />
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-white border-2 border-slate-200 rounded-xl">
+              <QRCodeSVG value={scanUrl} size={160} includeMargin={true} />
+            </div>
+            {item.image_url && (
+              <img src={item.image_url} alt={item.name} className="w-24 h-24 rounded-xl object-cover border-2 border-slate-200" />
+            )}
           </div>
           <div className="text-center">
             <p className="font-semibold text-slate-900">{item.name}</p>
