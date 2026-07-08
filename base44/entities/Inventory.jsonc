@@ -45,12 +45,9 @@
         }
       }
     },
-    "locations": {
-      "type": "array",
-      "description": "Storage locations in shop (item can be in multiple locations)",
-      "items": {
-        "type": "string"
-      }
+    "location": {
+      "type": "string",
+      "description": "Storage location in shop"
     },
     "notes": {
       "type": "string",
