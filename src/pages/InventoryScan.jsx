@@ -4,8 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowDownCircle, ArrowUpCircle, Edit3, Delete, Check, Package, ScanLine } from "lucide-react";
-import QRScanner from "@/components/inventory/QRScanner";
+import { ArrowDownCircle, ArrowUpCircle, Edit3, Delete, Check, Package, Search } from "lucide-react";
 
 function recalcStatus(quantity, min_quantity) {
   if (quantity <= 0) return "reorder";
@@ -43,7 +42,9 @@ export default function InventoryScan() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(null);
-  const [showScanner, setShowScanner] = useState(false);
+  const [showItemPicker, setShowItemPicker] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const urlParams = new URLSearchParams(window.location.search);
   const itemId = urlParams.get("item");
@@ -79,24 +80,20 @@ export default function InventoryScan() {
     }
   };
 
-  const handleScanResult = (rawValue) => {
-    setShowScanner(false);
-    // Extract item ID from scanned URL (format: .../InventoryScan?item=ID)
+  const openItemPicker = async () => {
+    setShowItemPicker(true);
     try {
-      const url = new URL(rawValue);
-      const id = url.searchParams.get("item");
-      if (id) {
-        loadItemById(id);
-      } else {
-        // Not a valid scan URL, just close scanner
-      }
-    } catch {
-      // rawValue isn't a URL — could be a raw ID
-      if (rawValue && rawValue.length > 5) {
-        loadItemById(rawValue);
-      }
+      const items = await base44.entities.Inventory.list('-name', 500);
+      setInventoryItems(items);
+    } catch (err) {
+      console.error(err);
     }
   };
+
+  const filteredItems = inventoryItems.filter(i =>
+    i.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    i.item_sku?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleSubmit = async () => {
     const quantity = parseFloat(qty);
@@ -204,11 +201,11 @@ export default function InventoryScan() {
               <p className="text-xs text-green-600 mt-0.5">New stock: {success.newQty} {item.unit || ""}</p>
             </div>
             <button
-              onClick={() => { setSuccess(null); setAction(null); setQty(""); setNotes(""); setShowScanner(true); }}
+              onClick={() => { setSuccess(null); setAction(null); setQty(""); setNotes(""); openItemPicker(); }}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm shadow active:scale-95 transition-all touch-manipulation"
             >
-              <ScanLine className="w-5 h-5" />
-              Scan Another Item
+              <Package className="w-5 h-5" />
+              Update Another Item
             </button>
             <button onClick={() => setSuccess(null)} className="text-xs text-green-700 underline">Dismiss</button>
           </div>
@@ -276,9 +273,51 @@ export default function InventoryScan() {
         </Dialog>
       </div>
 
-      {showScanner && (
-        <QRScanner onScan={handleScanResult} onClose={() => setShowScanner(false)} />
-      )}
+      <Dialog open={showItemPicker} onOpenChange={setShowItemPicker}>
+        <DialogContent className="max-w-md max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Select an Item</DialogTitle>
+          </DialogHeader>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name or SKU..."
+              className="pl-9"
+              autoFocus
+            />
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-1 -mx-1 px-1">
+            {filteredItems.map((invItem) => (
+              <button
+                key={invItem.id}
+                onClick={() => {
+                  setShowItemPicker(false);
+                  setSearchQuery("");
+                  loadItemById(invItem.id);
+                }}
+                className="w-full flex items-center justify-between gap-3 p-3 rounded-lg hover:bg-slate-100 active:scale-95 transition-all text-left touch-manipulation"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-900 truncate">{invItem.name}</p>
+                  <p className="text-xs text-slate-500 truncate">
+                    {invItem.item_sku && `${invItem.item_sku} · `}
+                    {invItem.category || "Uncategorized"}
+                  </p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="font-bold text-slate-900">{invItem.quantity}</p>
+                  <p className="text-xs text-slate-500">{invItem.unit || "units"}</p>
+                </div>
+              </button>
+            ))}
+            {filteredItems.length === 0 && (
+              <p className="text-center text-sm text-slate-400 py-8">No items found</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
