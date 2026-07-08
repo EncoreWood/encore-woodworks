@@ -55,6 +55,17 @@ export default function Inventory() {
     queryFn: () => base44.entities.InventoryCategory.list("sort_order"),
   });
 
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ["suppliers"],
+    queryFn: () => base44.entities.Supplier.list(),
+  });
+
+  const supplierMap = useMemo(() => {
+    const m = {};
+    for (const s of suppliers) m[s.name] = s;
+    return m;
+  }, [suppliers]);
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Inventory.create(data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inventory"] }),
@@ -195,6 +206,7 @@ export default function Inventory() {
                         <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Category</th>
                         <th className="text-right py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Qty</th>
                         <th className="text-right py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Price/Unit</th>
+                        <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Supplier</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Location</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Status</th>
                         <th className="text-center py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">QR</th>
@@ -213,7 +225,14 @@ export default function Inventory() {
                           <td className="py-2.5 px-3 text-sm font-medium text-slate-900">{item.name}</td>
                           <td className="py-2.5 px-3 text-sm text-slate-600">{catLabel(item.category)}</td>
                           <td className="py-2.5 px-3 text-sm text-right font-mono font-semibold text-slate-700">{item.quantity} {item.unit}</td>
-                          <td className="py-2.5 px-3 text-sm text-right font-mono text-slate-700">{item.price_per_unit != null ? `$${Number(item.price_per_unit).toFixed(2)}` : "—"}</td>
+                          <td className="py-2.5 px-3 text-sm text-slate-600">
+                            {(() => {
+                              const sup = item.supplier ? supplierMap[item.supplier] : null;
+                              const url = sup?.website_url || sup?.ordering_url;
+                              if (url) return <a href={url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{item.supplier}</a>;
+                              return item.supplier || "—";
+                            })()}
+                          </td>
                           <td className="py-2.5 px-3 text-sm text-slate-600">{item.location || "—"}</td>
                           <td className="py-2.5 px-3">
                             <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${statusStyles[item.status]}`}>{statusLabel[item.status]}</span>
@@ -260,7 +279,14 @@ export default function Inventory() {
                       <p className="text-xs text-slate-500">{catLabel(item.category)} · {item.location || "No location"}</p>
                       {item.item_sku && <p className="text-xs font-mono text-slate-600">Item ID: {item.item_sku}</p>}
                       {item.price_per_unit != null && <p className="text-xs text-slate-600">${Number(item.price_per_unit).toFixed(2)}/{item.unit || "ea"}</p>}
-                    </div>
+                      {item.supplier && (() => {
+                        const sup = supplierMap[item.supplier];
+                        const url = sup?.website_url || sup?.ordering_url;
+                        return url
+                          ? <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">{item.supplier}</a>
+                          : <p className="text-xs text-slate-500">{item.supplier}</p>;
+                      })()}
+                      </div>
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${statusStyles[item.status]}`}>{statusLabel[item.status]}</span>
                   </div>
                   <div className="flex items-center justify-between">
