@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowDownCircle, ArrowUpCircle, X, Delete, Check, Package } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Edit3, Delete, Check, Package } from "lucide-react";
 
 function recalcStatus(quantity, min_quantity) {
   if (quantity <= 0) return "reorder";
@@ -69,7 +69,11 @@ export default function InventoryScan() {
     if (!quantity || quantity <= 0 || !item || !action || !user) return;
     setSubmitting(true);
     try {
-      const newQty = action === "Check In" ? item.quantity + quantity : Math.max(0, item.quantity - quantity);
+      const newQty = action === "Check In"
+      ? item.quantity + quantity
+      : action === "Check Out"
+        ? Math.max(0, item.quantity - quantity)
+        : quantity;
       const newStatus = recalcStatus(newQty, item.min_quantity);
 
       await base44.entities.InventoryLog.create({
@@ -169,20 +173,29 @@ export default function InventoryScan() {
 
         {/* Action Buttons */}
         {!action && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => { setAction("Check In"); setQty(""); }}
+                className="flex flex-col items-center justify-center gap-2 py-8 rounded-2xl bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-lg active:scale-95 transition-all touch-manipulation"
+              >
+                <ArrowDownCircle className="w-10 h-10" />
+                Check In
+              </button>
+              <button
+                onClick={() => { setAction("Check Out"); setQty(""); }}
+                className="flex flex-col items-center justify-center gap-2 py-8 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-lg shadow-lg active:scale-95 transition-all touch-manipulation"
+              >
+                <ArrowUpCircle className="w-10 h-10" />
+                Check Out
+              </button>
+            </div>
             <button
-              onClick={() => { setAction("Check In"); setQty(""); }}
-              className="flex flex-col items-center justify-center gap-2 py-8 rounded-2xl bg-green-600 hover:bg-green-700 text-white font-bold text-lg shadow-lg active:scale-95 transition-all touch-manipulation"
+              onClick={() => { setAction("Update Stock"); setQty(String(item.quantity ?? "")); }}
+              className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl bg-slate-700 hover:bg-slate-800 text-white font-bold text-base shadow-lg active:scale-95 transition-all touch-manipulation"
             >
-              <ArrowDownCircle className="w-10 h-10" />
-              Check In
-            </button>
-            <button
-              onClick={() => { setAction("Check Out"); setQty(""); }}
-              className="flex flex-col items-center justify-center gap-2 py-8 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-bold text-lg shadow-lg active:scale-95 transition-all touch-manipulation"
-            >
-              <ArrowUpCircle className="w-10 h-10" />
-              Check Out
+              <Edit3 className="w-6 h-6" />
+              Update Current Stock
             </button>
           </div>
         )}
@@ -192,13 +205,15 @@ export default function InventoryScan() {
           <DialogContent className="max-w-sm">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                {action === "Check In" ? <ArrowDownCircle className="w-5 h-5 text-green-600" /> : <ArrowUpCircle className="w-5 h-5 text-red-600" />}
+                {action === "Check In" ? <ArrowDownCircle className="w-5 h-5 text-green-600" /> : action === "Check Out" ? <ArrowUpCircle className="w-5 h-5 text-red-600" /> : <Edit3 className="w-5 h-5 text-slate-600" />}
                 {action}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
               <div>
-                <label className="text-sm font-medium text-slate-700">Quantity ({item.unit || "units"})</label>
+                <label className="text-sm font-medium text-slate-700">
+                  {action === "Update Stock" ? `New stock level (${item.unit || "units"})` : `Quantity (${item.unit || "units"})`}
+                </label>
                 <Input value={qty} readOnly placeholder="0" className="mt-1 text-center text-2xl font-bold h-14" />
               </div>
               <NumberPad value={qty} setValue={setQty} />
@@ -209,7 +224,7 @@ export default function InventoryScan() {
               <Button
                 onClick={handleSubmit}
                 disabled={!qty || parseFloat(qty) <= 0 || submitting}
-                className={`w-full h-12 text-base font-bold gap-2 ${action === "Check In" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
+                className={`w-full h-12 text-base font-bold gap-2 ${action === "Check In" ? "bg-green-600 hover:bg-green-700" : action === "Check Out" ? "bg-red-600 hover:bg-red-700" : "bg-slate-700 hover:bg-slate-800"}`}
               >
                 {submitting ? "Saving..." : <>Confirm {action}</>}
               </Button>
