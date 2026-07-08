@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function SupplierEditor({ value = [], suppliers = [], onChange }) {
-  const rows = Array.isArray(value) ? value.filter(r => r && (r.name || r.link)) : [];
+  const rows = Array.isArray(value) ? value.filter(r => r && typeof r === "object") : [];
 
   const addRow = () => onChange([...rows, { name: "", link: "" }]);
   const updateRow = (idx, patch) => onChange(rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
