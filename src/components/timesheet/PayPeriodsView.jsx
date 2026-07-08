@@ -8,7 +8,7 @@ function to12hr(time24) {
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, "0")} ${period}`;
 }
-import { ChevronLeft, ChevronRight, Clock, TrendingUp } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, TrendingUp, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -48,6 +48,20 @@ export default function PayPeriodsView({ employeeEntries }) {
     e.entry_type === "work" && e.date >= startStr && e.date <= endStr
   );
 
+  // PTO / Vacation / Sick entries for this pay period
+  const ptoEntries = employeeEntries.filter(e =>
+    e.entry_type !== "work" && e.date >= startStr && e.date <= endStr
+  );
+  const ptoHours = ptoEntries.filter(e => e.entry_type === "pto").reduce((s, e) => s + (e.hours_worked || 0), 0);
+  const vacationHours = ptoEntries.filter(e => e.entry_type === "vacation").reduce((s, e) => s + (e.hours_worked || 0), 0);
+  const sickHours = ptoEntries.filter(e => e.entry_type === "sick").reduce((s, e) => s + (e.hours_worked || 0), 0);
+  const totalPtoVacation = ptoHours + vacationHours + sickHours;
+
+  // All entries (work + PTO/vacation) for the weekly breakdown
+  const allPeriodEntries = employeeEntries.filter(e =>
+    e.date >= startStr && e.date <= endStr
+  );
+
   const totalHours = periodEntries.reduce((s, e) => s + (e.hours_worked || 0), 0);
 
   // OT is calculated per week (>40 hrs/week), matching the admin Payroll tab exactly:
@@ -65,7 +79,7 @@ export default function PayPeriodsView({ employeeEntries }) {
 
   // Group by week within the period
   const weekGroups = {};
-  periodEntries.forEach(entry => {
+  allPeriodEntries.forEach(entry => {
     const d = new Date(entry.date);
     // Find week start (Monday) for this entry
     const dow = (d.getDay() + 6) % 7; // 0=Mon
@@ -104,7 +118,7 @@ export default function PayPeriodsView({ employeeEntries }) {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <Clock className="w-4 h-4 text-blue-600" />
@@ -126,19 +140,37 @@ export default function PayPeriodsView({ employeeEntries }) {
           </div>
           <p className="text-2xl font-bold text-green-800">{new Set(periodEntries.map(e => e.date)).size}</p>
         </div>
+        <div className={`border rounded-xl px-4 py-3 ${totalPtoVacation > 0 ? "bg-purple-50 border-purple-200" : "bg-slate-50 border-slate-200"}`}>
+          <div className="flex items-center gap-2 mb-1">
+            <Calendar className={`w-4 h-4 ${totalPtoVacation > 0 ? "text-purple-600" : "text-slate-400"}`} />
+            <p className={`text-xs font-semibold uppercase tracking-wide ${totalPtoVacation > 0 ? "text-purple-700" : "text-slate-500"}`}>PTO/Vacation</p>
+          </div>
+          <p className={`text-2xl font-bold ${totalPtoVacation > 0 ? "text-purple-800" : "text-slate-400"}`}>{totalPtoVacation.toFixed(2)}</p>
+          {totalPtoVacation > 0 && (
+            <p className="text-xs text-purple-500 mt-0.5">
+              {ptoHours > 0 && `PTO ${ptoHours.toFixed(1)}`}
+              {ptoHours > 0 && vacationHours > 0 && " · "}
+              {vacationHours > 0 && `Vac ${vacationHours.toFixed(1)}`}
+              {(ptoHours > 0 || vacationHours > 0) && sickHours > 0 && " · "}
+              {sickHours > 0 && `Sick ${sickHours.toFixed(1)}`}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Week breakdown */}
       {weeks.length === 0 ? (
-        <div className="text-center py-10 text-slate-400 text-sm">No work entries for this pay period.</div>
+        <div className="text-center py-10 text-slate-400 text-sm">No entries for this pay period.</div>
       ) : (
         <div className="space-y-3">
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Breakdown by Week</p>
           {weeks.map(({ weekStart, entries }) => {
             const weekEnd = new Date(weekStart);
             weekEnd.setDate(weekStart.getDate() + 6);
-            const weekTotal = entries.reduce((s, e) => s + (e.hours_worked || 0), 0);
-            const weekOT = Math.max(0, weekTotal - 40);
+            const workTotal = entries.filter(e => e.entry_type === "work").reduce((s, e) => s + (e.hours_worked || 0), 0);
+            const ptoTotal = entries.filter(e => e.entry_type !== "work").reduce((s, e) => s + (e.hours_worked || 0), 0);
+            const weekTotal = workTotal;
+            const weekOT = Math.max(0, workTotal - 40);
 
             // Group entries by day
             const byDay = {};
@@ -155,12 +187,17 @@ export default function PayPeriodsView({ employeeEntries }) {
                     {format(weekStart, "MMM d")} – {format(weekEnd, "MMM d")}
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className={`text-sm font-bold px-3 py-0.5 rounded-full ${weekTotal >= 40 ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-700"}`}>
-                      {weekTotal.toFixed(2)} hrs
+                    <span className={`text-sm font-bold px-3 py-0.5 rounded-full ${workTotal >= 40 ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-700"}`}>
+                      {workTotal.toFixed(2)} hrs
                     </span>
                     {weekOT > 0 && (
                       <span className="text-xs font-semibold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">
                         +{weekOT.toFixed(2)} OT
+                      </span>
+                    )}
+                    {ptoTotal > 0 && (
+                      <span className="text-xs font-semibold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">
+                        {ptoTotal.toFixed(2)} PTO/Vac
                       </span>
                     )}
                   </div>
@@ -169,17 +206,29 @@ export default function PayPeriodsView({ employeeEntries }) {
                 {/* Day rows */}
                 <div className="divide-y divide-slate-100 bg-white">
                   {Object.entries(byDay).sort(([a], [b]) => a.localeCompare(b)).map(([dateStr, dayEntries]) => {
-                    const dayTotal = dayEntries.reduce((s, e) => s + (e.hours_worked || 0), 0);
+                    const workDayTotal = dayEntries.filter(e => e.entry_type === "work").reduce((s, e) => s + (e.hours_worked || 0), 0);
+                    const ptoDayTotal = dayEntries.filter(e => e.entry_type !== "work").reduce((s, e) => s + (e.hours_worked || 0), 0);
+                    const dayTotal = workDayTotal + ptoDayTotal;
                     const d = new Date(dateStr + "T00:00:00");
+                    const typeColors = {
+                      pto: "bg-yellow-50 text-yellow-700 border-yellow-200",
+                      vacation: "bg-purple-50 text-purple-700 border-purple-200",
+                      sick: "bg-red-50 text-red-700 border-red-200",
+                    };
+                    const typeLabels = { pto: "PTO", vacation: "Vacation", sick: "Sick" };
                     return (
                       <div key={dateStr} className="flex items-center gap-3 px-4 py-2">
                         <div className="w-24 flex-shrink-0">
                           <p className="text-xs font-semibold text-slate-700">{format(d, "EEE, MMM d")}</p>
                         </div>
                         <div className="flex-1 flex flex-wrap gap-1">
-                          {dayEntries.map(e => (
+                          {dayEntries.map(e => e.entry_type === "work" ? (
                             <span key={e.id} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full font-mono">
                               {to12hr(e.clock_in) || "?"} → {e.clock_out ? to12hr(e.clock_out) : "active"}{e.project_name ? ` · ${e.project_name}` : ""}
+                            </span>
+                          ) : (
+                            <span key={e.id} className={`text-xs border px-2 py-0.5 rounded-full font-medium ${typeColors[e.entry_type] || "bg-slate-50 text-slate-700 border-slate-200"}`}>
+                              {typeLabels[e.entry_type] || e.entry_type}{e.hours_worked ? ` · ${e.hours_worked.toFixed(1)}h` : ""}
                             </span>
                           ))}
                         </div>
