@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ArrowDownCircle, ArrowUpCircle, Edit3, Delete, Check, Package, ScanLine } from "lucide-react";
+import QRScanner from "@/components/inventory/QRScanner";
 
 function recalcStatus(quantity, min_quantity) {
   if (quantity <= 0) return "reorder";
@@ -42,6 +43,7 @@ export default function InventoryScan() {
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(null);
+  const [showScanner, setShowScanner] = useState(false);
 
   const urlParams = new URLSearchParams(window.location.search);
   const itemId = urlParams.get("item");
@@ -63,6 +65,38 @@ export default function InventoryScan() {
     };
     load();
   }, [itemId]);
+
+  const loadItemById = async (id) => {
+    setLoading(true);
+    try {
+      const data = await base44.entities.Inventory.get(id);
+      setItem(data);
+    } catch (err) {
+      console.error(err);
+      setItem(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleScanResult = (rawValue) => {
+    setShowScanner(false);
+    // Extract item ID from scanned URL (format: .../InventoryScan?item=ID)
+    try {
+      const url = new URL(rawValue);
+      const id = url.searchParams.get("item");
+      if (id) {
+        loadItemById(id);
+      } else {
+        // Not a valid scan URL, just close scanner
+      }
+    } catch {
+      // rawValue isn't a URL — could be a raw ID
+      if (rawValue && rawValue.length > 5) {
+        loadItemById(rawValue);
+      }
+    }
+  };
 
   const handleSubmit = async () => {
     const quantity = parseFloat(qty);
@@ -170,7 +204,7 @@ export default function InventoryScan() {
               <p className="text-xs text-green-600 mt-0.5">New stock: {success.newQty} {item.unit || ""}</p>
             </div>
             <button
-              onClick={() => { setSuccess(null); setItem(null); setAction(null); setQty(""); setNotes(""); window.history.replaceState({}, "", "/InventoryScan"); }}
+              onClick={() => { setSuccess(null); setAction(null); setQty(""); setNotes(""); setShowScanner(true); }}
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm shadow active:scale-95 transition-all touch-manipulation"
             >
               <ScanLine className="w-5 h-5" />
@@ -241,6 +275,10 @@ export default function InventoryScan() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {showScanner && (
+        <QRScanner onScan={handleScanResult} onClose={() => setShowScanner(false)} />
+      )}
     </div>
   );
 }
