@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Search, Plus, QrCode, Printer, Pencil, Trash2, Download, Package, Settings, TrendingUp } from "lucide-react";
+import { RefreshCw, Search, Plus, QrCode, Printer, Pencil, Trash2, Download, Package, Settings, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import InventoryForm from "@/components/inventory/InventoryForm";
 import QRCodeDialog from "@/components/inventory/QRCodeDialog";
@@ -52,6 +52,7 @@ export default function Inventory() {
   const [showPrintAll, setShowPrintAll] = useState(false);
   const [showCatManager, setShowCatManager] = useState(false);
   const [refreshingPrices, setRefreshingPrices] = useState(false);
+  const [showCategories, setShowCategories] = useState(false);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["inventory"],
@@ -194,16 +195,30 @@ export default function Inventory() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search inventory..." className="pl-9 bg-white" />
               </div>
-              <div className="flex gap-1 flex-wrap">
-                {categories.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${activeCategory === cat ? "bg-amber-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"}`}
-                  >
-                    {cat === "all" ? "All" : catLabel(cat)}
-                  </button>
-                ))}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => setShowCategories(s => !s)}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 flex items-center gap-1.5 transition-all"
+                >
+                  {showCategories ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  {showCategories ? "Hide" : "Categories"}
+                </button>
+                <span className="px-3 py-1.5 rounded-lg text-sm font-medium bg-amber-600 text-white">
+                  {activeCategory === "all" ? "All" : catLabel(activeCategory)}
+                </span>
+                {showCategories && (
+                  <div className="flex gap-1 flex-wrap">
+                    {categories.filter(cat => cat !== activeCategory).map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => { setActiveCategory(cat); setShowCategories(false); }}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${activeCategory === cat ? "bg-amber-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"}`}
+                      >
+                        {cat === "all" ? "All" : catLabel(cat)}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex gap-1 flex-wrap">
