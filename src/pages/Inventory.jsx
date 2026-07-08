@@ -34,6 +34,12 @@ const statusLabel = {
 const catLabel = (cat) => cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : "";
 const LOCATIONS = ["all", "Cut", "Face Frame", "Spray", "Build", "Install", "Office"];
 
+const getItemSuppliers = (item) => {
+  if (Array.isArray(item.suppliers) && item.suppliers.length) return item.suppliers;
+  if (item.supplier) return [{ name: item.supplier, link: item.supplier_link || "" }];
+  return [];
+};
+
 export default function Inventory() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
@@ -105,7 +111,7 @@ export default function Inventory() {
       if (activeLocation !== "all" && i.location !== activeLocation) return false;
       if (searchTerm) {
         const s = searchTerm.toLowerCase();
-        return i.name?.toLowerCase().includes(s) || i.supplier?.toLowerCase().includes(s) || i.location?.toLowerCase().includes(s);
+        return i.name?.toLowerCase().includes(s) || i.location?.toLowerCase().includes(s) || getItemSuppliers(i).some(sup => sup.name?.toLowerCase().includes(s));
       }
       return true;
     });
@@ -113,7 +119,7 @@ export default function Inventory() {
 
   const exportToCSV = () => {
     const headers = ["Name", "Item ID", "Category", "Quantity", "Unit", "Min Qty", "Price/Unit", "Supplier", "Location", "Status", "Notes"];
-    const rows = filtered.map(i => [i.name, i.item_sku, i.category, i.quantity, i.unit, i.min_quantity, i.price_per_unit, i.supplier, i.location, statusLabel[i.status], i.notes]);
+    const rows = filtered.map(i => [i.name, i.item_sku, i.category, i.quantity, i.unit, i.min_quantity, i.price_per_unit, getItemSuppliers(i).map(s => s.name).join("; "), i.location, statusLabel[i.status], i.notes]);
     const csv = [headers.join(","), ...rows.map(r => r.map(c => `"${c ?? ""}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -227,9 +233,21 @@ export default function Inventory() {
                           <td className="py-2.5 px-3 text-sm text-right font-mono font-semibold text-slate-700">{item.quantity} {item.unit}</td>
                           <td className="py-2.5 px-3 text-sm text-right font-mono text-slate-700">{item.price_per_unit != null ? `$${Number(item.price_per_unit).toFixed(2)}` : "—"}</td>
                           <td className="py-2.5 px-3 text-sm text-slate-600">
-                            {item.supplier_link
-                              ? <a href={item.supplier_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{item.supplier}</a>
-                              : item.supplier || "—"}
+                            {(() => {
+                              const sups = getItemSuppliers(item);
+                              if (sups.length === 0) return "—";
+                              return (
+                                <div className="flex flex-col gap-0.5">
+                                  {sups.map((s, i) => (
+                                    <span key={i}>
+                                      {s.link
+                                        ? <a href={s.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{s.name}</a>
+                                        : s.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="py-2.5 px-3 text-sm text-slate-600">{item.location || "—"}</td>
                           <td className="py-2.5 px-3">
@@ -277,9 +295,14 @@ export default function Inventory() {
                       <p className="text-xs text-slate-500">{catLabel(item.category)} · {item.location || "No location"}</p>
                       {item.item_sku && <p className="text-xs font-mono text-slate-600">Item ID: {item.item_sku}</p>}
                       {item.price_per_unit != null && <p className="text-xs text-slate-600">${Number(item.price_per_unit).toFixed(2)}/{item.unit || "ea"}</p>}
-                      {item.supplier && (item.supplier_link
-                        ? <a href={item.supplier_link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">{item.supplier}</a>
-                        : <p className="text-xs text-slate-500">{item.supplier}</p>
+                      {getItemSuppliers(item).length > 0 && (
+                        <div className="flex flex-col gap-0.5">
+                          {getItemSuppliers(item).map((s, i) => (
+                            s.link
+                              ? <a key={i} href={s.link} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">{s.name}</a>
+                              : <p key={i} className="text-xs text-slate-500">{s.name}</p>
+                          ))}
+                        </div>
                       )}
                       </div>
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${statusStyles[item.status]}`}>{statusLabel[item.status]}</span>

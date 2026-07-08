@@ -7,11 +7,12 @@ import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { ImagePlus, Loader2, X, Settings2 } from "lucide-react";
 import CategoryManager from "@/components/inventory/CategoryManager";
+import SupplierEditor from "@/components/inventory/SupplierEditor";
 
 export default function InventoryForm({ open, onOpenChange, editingItem, onSave }) {
   const [form, setForm] = useState({
     name: "", item_sku: "", category: "", quantity: "", unit: "", min_quantity: "",
-    price_per_unit: "", supplier: "", supplier_link: "", location: "", notes: "", status: "in_stock", image_url: "",
+    price_per_unit: "", suppliers: [], location: "", notes: "", status: "in_stock", image_url: "",
   });
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -50,15 +51,14 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
         unit: editingItem.unit || "",
         min_quantity: editingItem.min_quantity ?? "",
         price_per_unit: editingItem.price_per_unit ?? "",
-        supplier: editingItem.supplier || "",
-        supplier_link: editingItem.supplier_link || "",
+        suppliers: Array.isArray(editingItem.suppliers) ? editingItem.suppliers : (editingItem.supplier ? [{ name: editingItem.supplier, link: editingItem.supplier_link || "" }] : []),
         location: editingItem.location || "",
         notes: editingItem.notes || "",
         status: editingItem.status || "in_stock",
         image_url: editingItem.image_url || "",
       });
     } else {
-      setForm({ name: "", item_sku: "", category: categories[0]?.name || "", quantity: "", unit: "", min_quantity: "", price_per_unit: "", supplier: "", supplier_link: "", location: "", notes: "", status: "in_stock", image_url: "" });
+      setForm({ name: "", item_sku: "", category: categories[0]?.name || "", quantity: "", unit: "", min_quantity: "", price_per_unit: "", suppliers: [], location: "", notes: "", status: "in_stock", image_url: "" });
     }
   }, [editingItem, open, categories]);
 
@@ -159,21 +159,11 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
             </div>
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700">Supplier</label>
-            <Select value={form.supplier} onValueChange={v => setForm(p => ({ ...p, supplier: v }))}>
-              <SelectTrigger className="mt-1"><SelectValue placeholder="None" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={null}>None</SelectItem>
-                {suppliers.map(s => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          {form.supplier && (
-            <div>
-              <label className="text-sm font-medium text-slate-700">Supplier Item Link</label>
-              <Input value={form.supplier_link} onChange={e => setForm(p => ({ ...p, supplier_link: e.target.value }))} placeholder="https://..." className="mt-1" />
+            <label className="text-sm font-medium text-slate-700">Suppliers</label>
+            <div className="mt-1">
+              <SupplierEditor value={form.suppliers} suppliers={suppliers} onChange={v => setForm(p => ({ ...p, suppliers: v }))} />
             </div>
-          )}
+          </div>
           <div>
             <label className="text-sm font-medium text-slate-700">Item Image</label>
             <div className="mt-1 flex items-center gap-3">

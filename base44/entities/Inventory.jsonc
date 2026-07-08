@@ -30,13 +30,20 @@
       "type": "number",
       "description": "Cost per unit"
     },
-    "supplier": {
-      "type": "string",
-      "description": "Supplier name"
-    },
-    "supplier_link": {
-      "type": "string",
-      "description": "Direct URL to this item on the supplier's website"
+    "suppliers": {
+      "type": "array",
+      "description": "List of suppliers with their direct item purchase links",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "link": {
+            "type": "string"
+          }
+        }
+      }
     },
     "location": {
       "type": "string",
