@@ -39,21 +39,71 @@ export default function VacationRequestForm({ employee, currentUser }) {
     queryFn: () => base44.entities.Settings.filter({ setting_type: "pto_calculation" })
   });
 
-  const createVacationMutation = useMutation({
-    mutationFn: (data) => base44.entities.Vacation.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vacations"] });
-      setShowDialog(false);
-      setFormData({ start_date: "", end_date: "", use_pto: false, notes: "" });
-    }
-  });
+  const createTimeEntriesForVacation = async (vacation) => {
+    const workDays = settings[0]?.work_days || [1, 2, 3, 4];
+    const workStartTime = settings[0]?.work_start_time || "07:00";
+    const workEndTime = settings[0]?.work_end_time || "17:30";
+    const lunchBreak = settings[0]?.lunch_break_minutes || 30;
 
-  const deleteVacationMutation = useMutation({
-    mutationFn: (id) => base44.entities.Vacation.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vacations"] });
+    const [sH, sM] = workStartTime.split(":").map(Number);
+    const [eH, eM] = workEndTime.split(":").map(Number);
+    const hoursPerDay = ((eH * 60 + eM) - (sH * 60 + sM) - lunchBreak) / 60;
+
+    const days = eachDayOfInterval({ start: new Date(vacation.start_date), end: new Date(vacation.end_date) });
+    const workDayList = days.filter(day => {
+      const dow = day.getDay() === 0 ? 7 : day.getDay();
+      return workDays.includes(dow);
+    });
+
+    const entryType = vacation.use_pto ? "pto" : "vacation";
+    const perDayHours = vacation.use_pto && workDayList.length > 0
+      ? (vacation.pto_hours_used || 0) / workDayList.length
+      : hoursPerDay;
+
+    const noteStr = `Vacation ${vacation.id}`;
+    const entries = workDayList.map(day => ({
+      employee_id: vacation.employee_id,
+      employee_name: vacation.employee_name,
+      date: format(day, "yyyy-MM-dd"),
+      entry_type: entryType,
+      hours_worked: parseFloat(perDayHours.toFixed(2)),
+      notes: noteStr,
+      approved: true
+    }));
+
+    if (entries.length > 0) {
+      await base44.entities.TimeEntry.bulkCreate(entries);
+      queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
     }
-  });
+  };
+
+  const deleteTimeEntriesForVacation = async (vacation) => {
+    const allEntries = await base44.entities.TimeEntry.filter({ employee_id: vacation.employee_id });
+    const noteStr = `Vacation ${vacation.id}`;
+    const toDelete = allEntries.filter(e => e.notes === noteStr && (e.entry_type === "pto" || e.entry_type === "vacation"));
+    for (const entry of toDelete) {
+      await base44.entities.TimeEntry.delete(entry.id);
+    }
+    queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
+  };
+
+  const handleApproveVacation = async (vacation) => {
+    await base44.entities.Vacation.update(vacation.id, { status: "approved" });
+    await createTimeEntriesForVacation(vacation);
+    queryClient.invalidateQueries({ queryKey: ["vacations"] });
+  };
+
+  const handleDenyVacation = async (vacation) => {
+    await base44.entities.Vacation.update(vacation.id, { status: "denied" });
+    await deleteTimeEntriesForVacation(vacation);
+    queryClient.invalidateQueries({ queryKey: ["vacations"] });
+  };
+
+  const handleDeleteVacation = async (vacation) => {
+    await deleteTimeEntriesForVacation(vacation);
+    await base44.entities.Vacation.delete(vacation.id);
+    queryClient.invalidateQueries({ queryKey: ["vacations"] });
+  };
 
   const calculatePTO = () => {
     if (!employee) return { earned: 0, used: 0, available: 0 };
@@ -116,7 +166,7 @@ export default function VacationRequestForm({ employee, currentUser }) {
     return days * hoursPerDay;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!employee || !formData.start_date || !formData.end_date) return;
 
     const hoursNeeded = calculateHoursNeeded();
@@ -127,16 +177,25 @@ export default function VacationRequestForm({ employee, currentUser }) {
       return;
     }
 
-    createVacationMutation.mutate({
+    const status = currentUser?.role === "admin" ? "approved" : "pending";
+    const vacation = await base44.entities.Vacation.create({
       employee_id: employee.id,
       employee_name: employee.full_name,
       start_date: formData.start_date,
       end_date: formData.end_date,
       use_pto: formData.use_pto,
       pto_hours_used: formData.use_pto ? hoursNeeded : 0,
-      status: currentUser?.role === "admin" ? "approved" : "pending",
+      status,
       notes: formData.notes || undefined
     });
+
+    if (status === "approved") {
+      await createTimeEntriesForVacation(vacation);
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["vacations"] });
+    setShowDialog(false);
+    setFormData({ start_date: "", end_date: "", use_pto: false, notes: "" });
   };
 
   const pto = calculatePTO();
@@ -217,16 +276,23 @@ export default function VacationRequestForm({ employee, currentUser }) {
                       <p className="text-xs text-slate-600 mt-1">{vacation.notes}</p>
                     )}
                   </div>
-                  {(vacation.status === "pending" || currentUser?.role === "admin") && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deleteVacationMutation.mutate(vacation.id)}
-                      className="text-red-600"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {vacation.status === "pending" && currentUser?.role === "admin" && (
+                      <>
+                        <Button variant="ghost" size="sm" onClick={() => handleApproveVacation(vacation)} className="text-green-600 hover:bg-green-50 text-xs">
+                          Approve
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDenyVacation(vacation)} className="text-red-600 hover:bg-red-50 text-xs">
+                          Deny
+                        </Button>
+                      </>
+                    )}
+                    {(vacation.status === "pending" || currentUser?.role === "admin") && (
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteVacation(vacation)} className="text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))
             )}
@@ -308,7 +374,7 @@ export default function VacationRequestForm({ employee, currentUser }) {
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={!formData.start_date || !formData.end_date || createVacationMutation.isPending}
+                disabled={!formData.start_date || !formData.end_date}
                 className="bg-amber-600 hover:bg-amber-700"
               >
                 Submit Request
