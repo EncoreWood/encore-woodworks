@@ -91,7 +91,7 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
             <Input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="mt-1" autoFocus />
           </div>
           <div>
-            <label className="text-sm font-medium text-slate-700">Item ID / SKU</label>
+            <label className="text-sm font-medium text-slate-700">Item ID</label>
             <Input value={form.item_sku} onChange={e => setForm(p => ({ ...p, item_sku: e.target.value }))} placeholder="e.g. CAB-001" className="mt-1 font-mono" />
           </div>
           <div className="grid grid-cols-2 gap-3">

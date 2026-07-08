@@ -98,11 +98,11 @@ export default function Inventory() {
       }
       return true;
     });
-  }, [items, activeCategory, searchTerm]);
+  }, [items, activeCategory, activeLocation, searchTerm]);
 
   const exportToCSV = () => {
-    const headers = ["Name", "Item ID", "SKU", "Category", "Quantity", "Unit", "Min Qty", "Price/Unit", "Supplier", "Location", "Status", "Notes"];
-    const rows = filtered.map(i => [i.name, i.id, i.item_sku, i.category, i.quantity, i.unit, i.min_quantity, i.price_per_unit, i.supplier, i.location, statusLabel[i.status], i.notes]);
+    const headers = ["Name", "Item ID", "Category", "Quantity", "Unit", "Min Qty", "Price/Unit", "Supplier", "Location", "Status", "Notes"];
+    const rows = filtered.map(i => [i.name, i.item_sku, i.category, i.quantity, i.unit, i.min_quantity, i.price_per_unit, i.supplier, i.location, statusLabel[i.status], i.notes]);
     const csv = [headers.join(","), ...rows.map(r => r.map(c => `"${c ?? ""}"`).join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -191,7 +191,6 @@ export default function Inventory() {
                       <tr className="border-b-2 border-slate-300">
                         <th className="text-center py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Image</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Item ID</th>
-                        <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">SKU</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Name</th>
                         <th className="text-left py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Category</th>
                         <th className="text-right py-2 px-3 text-sm font-semibold text-slate-900 bg-slate-100">Qty</th>
@@ -210,7 +209,6 @@ export default function Inventory() {
                               ? <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded-lg object-cover inline-block" />
                               : <div className="w-10 h-10 rounded-lg bg-slate-100 inline-flex items-center justify-center"><Package className="w-4 h-4 text-slate-300" /></div>}
                           </td>
-                          <td className="py-2.5 px-3 text-xs font-mono text-slate-500 whitespace-nowrap">{item.id?.slice(-8)}</td>
                           <td className="py-2.5 px-3 text-sm font-mono text-slate-700 whitespace-nowrap">{item.item_sku || "—"}</td>
                           <td className="py-2.5 px-3 text-sm font-medium text-slate-900">{item.name}</td>
                           <td className="py-2.5 px-3 text-sm text-slate-600">{catLabel(item.category)}</td>
@@ -260,8 +258,7 @@ export default function Inventory() {
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-slate-900 text-sm truncate">{item.name}</p>
                       <p className="text-xs text-slate-500">{catLabel(item.category)} · {item.location || "No location"}</p>
-                      <p className="text-xs font-mono text-slate-400">ID: {item.id?.slice(-8)}</p>
-                      {item.item_sku && <p className="text-xs font-mono text-slate-600">SKU: {item.item_sku}</p>}
+                      {item.item_sku && <p className="text-xs font-mono text-slate-600">Item ID: {item.item_sku}</p>}
                       {item.price_per_unit != null && <p className="text-xs text-slate-600">${Number(item.price_per_unit).toFixed(2)}/{item.unit || "ea"}</p>}
                     </div>
                     <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${statusStyles[item.status]}`}>{statusLabel[item.status]}</span>
