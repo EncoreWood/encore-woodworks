@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import ProjectForm from "../components/projects/ProjectForm";
 import AppointmentTab from "../components/calendar/AppointmentTab";
 import DesignMeetingTab from "../components/calendar/DesignMeetingTab";
+import CleaningScheduleEditor from "@/components/dashboard/CleaningScheduleEditor";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 const statusConfig = {
@@ -1188,6 +1189,13 @@ export default function CalendarPage() {
             </div>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+            {/* Current week editor — manage people & rotation pool */}
+            <div className="mb-3 p-3 rounded-lg border border-amber-200 bg-amber-50/50">
+              <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wide mb-2">This Week — Manage & Swap</h4>
+              <CleaningScheduleEditor />
+            </div>
+
+            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-1">All Schedules</h4>
             {cleaningSchedules.length === 0 && (
               <p className="text-sm text-slate-400 text-center py-8 italic">No cleaning schedules yet. Click "Generate Schedule" to create one.</p>
             )}

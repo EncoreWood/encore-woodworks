@@ -18,7 +18,7 @@ function getDateForDayName(weekStart, dayName) {
   return format(addDays(base, offset), "MMM d");
 }
 
-export default function CleaningScheduleWidget({ showCheckboxes = false, compact = false }) {
+export default function CleaningScheduleWidget({ showCheckboxes = false, compact = false, todayOnly = false }) {
   const queryClient = useQueryClient();
   const MST_TZ = "America/Denver";
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: MST_TZ }));
@@ -115,53 +115,70 @@ export default function CleaningScheduleWidget({ showCheckboxes = false, compact
 
   const allDone = thisWeek.completed_day1 && thisWeek.completed_day2;
 
+  // When todayOnly, determine which cleaning slot (if any) falls on today
+  const todayName = format(now, "EEEE");
+  const day1IsToday = todayOnly && (thisWeek.day1_of_week === todayName);
+  const day2IsToday = todayOnly && (thisWeek.day2_of_week === todayName);
+  if (todayOnly && !day1IsToday && !day2IsToday) {
+    return (
+      <div className={`${compact ? "text-xs text-slate-400 italic" : "text-sm text-slate-400 text-center py-3 italic"}`}>
+        No cleaning scheduled for today.
+      </div>
+    );
+  }
+
+  const showDay1 = !todayOnly || day1IsToday;
+  const showDay2 = !todayOnly || day2IsToday;
+
   return (
     <div className={compact ? "space-y-2" : "space-y-3"}>
-      {allDone && (
+      {allDone && (!todayOnly || showDay1 || showDay2) && (
         <div className="flex items-center gap-1.5 text-green-600 text-xs font-semibold">
           <CheckCircle2 className="w-3.5 h-3.5" /> All cleaning done this week!
         </div>
       )}
 
-      {/* Day 1 */}
-      <div className={`flex items-center gap-3 p-2.5 rounded-lg border ${thisWeek.completed_day1 ? "bg-green-50 border-green-200" : "bg-teal-50 border-teal-200"}`}>
-        {showCheckboxes && thisWeek.id && (
-          <Checkbox
-            checked={!!thisWeek.completed_day1}
-            onCheckedChange={(v) => updateMutation.mutate({ id: thisWeek.id, data: { completed_day1: !!v } })}
-            className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
-          />
-        )}
-        <div className="flex-1 min-w-0">
-          <p className={`text-xs font-semibold ${thisWeek.completed_day1 ? "text-green-700" : "text-teal-700"}`}>
-            {day1Label} ({day1Date})
-          </p>
-          <p className={`text-sm font-medium ${thisWeek.completed_day1 ? "text-green-800 line-through opacity-60" : "text-slate-800"}`}>
-            {day1People.join(" · ") || "—"}
-          </p>
+      {showDay1 && (
+        <div className={`flex items-center gap-3 p-2.5 rounded-lg border ${thisWeek.completed_day1 ? "bg-green-50 border-green-200" : "bg-teal-50 border-teal-200"}`}>
+          {showCheckboxes && thisWeek.id && (
+            <Checkbox
+              checked={!!thisWeek.completed_day1}
+              onCheckedChange={(v) => updateMutation.mutate({ id: thisWeek.id, data: { completed_day1: !!v } })}
+              className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className={`text-xs font-semibold ${thisWeek.completed_day1 ? "text-green-700" : "text-teal-700"}`}>
+              {day1Label} ({day1Date})
+            </p>
+            <p className={`text-sm font-medium ${thisWeek.completed_day1 ? "text-green-800 line-through opacity-60" : "text-slate-800"}`}>
+              {day1People.join(" · ") || "—"}
+            </p>
+          </div>
+          {thisWeek.completed_day1 && !showCheckboxes && <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />}
         </div>
-        {thisWeek.completed_day1 && !showCheckboxes && <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />}
-      </div>
+      )}
 
-      {/* Day 2 */}
-      <div className={`flex items-center gap-3 p-2.5 rounded-lg border ${thisWeek.completed_day2 ? "bg-green-50 border-green-200" : "bg-purple-50 border-purple-200"}`}>
-        {showCheckboxes && thisWeek.id && (
-          <Checkbox
-            checked={!!thisWeek.completed_day2}
-            onCheckedChange={(v) => updateMutation.mutate({ id: thisWeek.id, data: { completed_day2: !!v } })}
-            className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
-          />
-        )}
-        <div className="flex-1 min-w-0">
-          <p className={`text-xs font-semibold ${thisWeek.completed_day2 ? "text-green-700" : "text-purple-700"}`}>
-            {day2Label} ({day2Date})
-          </p>
-          <p className={`text-sm font-medium ${thisWeek.completed_day2 ? "text-green-800 line-through opacity-60" : "text-slate-800"}`}>
-            {day2People.join(" · ") || "—"}
-          </p>
+      {showDay2 && (
+        <div className={`flex items-center gap-3 p-2.5 rounded-lg border ${thisWeek.completed_day2 ? "bg-green-50 border-green-200" : "bg-purple-50 border-purple-200"}`}>
+          {showCheckboxes && thisWeek.id && (
+            <Checkbox
+              checked={!!thisWeek.completed_day2}
+              onCheckedChange={(v) => updateMutation.mutate({ id: thisWeek.id, data: { completed_day2: !!v } })}
+              className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600"
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className={`text-xs font-semibold ${thisWeek.completed_day2 ? "text-green-700" : "text-purple-700"}`}>
+              {day2Label} ({day2Date})
+            </p>
+            <p className={`text-sm font-medium ${thisWeek.completed_day2 ? "text-green-800 line-through opacity-60" : "text-slate-800"}`}>
+              {day2People.join(" · ") || "—"}
+            </p>
+          </div>
+          {thisWeek.completed_day2 && !showCheckboxes && <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />}
         </div>
-        {thisWeek.completed_day2 && !showCheckboxes && <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />}
-      </div>
+      )}
     </div>
   );
 }

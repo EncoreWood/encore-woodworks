@@ -19,7 +19,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { startOfWeek } from "date-fns";
 import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
-import CleaningScheduleEditor from "@/components/dashboard/CleaningScheduleEditor";
 import WeeklyTopicPopup from "@/components/meeting/WeeklyTopicPopup";
 import TodaysScheduleDropdown from "@/components/meeting/TodaysScheduleDropdown";
 import { format, addDays, subDays } from "date-fns";
@@ -1059,11 +1058,7 @@ export default function MorningMeeting() {
 
           {/* Cleaning Schedule */}
           <SectionCard title="Cleaning Schedule — This Week" icon={Sparkles} color="slate" defaultOpen={true}>
-            <CleaningScheduleWidget showCheckboxes={false} />
-            <div className="mt-4 pt-4 border-t border-slate-200">
-              <h4 className="text-sm font-bold text-slate-700 mb-2">Manage Schedule</h4>
-              <CleaningScheduleEditor />
-            </div>
+            <CleaningScheduleWidget showCheckboxes={false} todayOnly />
           </SectionCard>
 
           {/* 6. Tasks, Action Items — meeting tasks + global tasks */}
