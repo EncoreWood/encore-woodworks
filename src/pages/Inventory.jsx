@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Search, Plus, QrCode, Printer, Pencil, Trash2, Download, Package, Settings, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
+import { RefreshCw, Search, Plus, QrCode, Printer, Pencil, Trash2, Download, Package, Settings, TrendingUp, ChevronDown, ChevronUp, ImagePlus } from "lucide-react";
 import { format } from "date-fns";
 import InventoryForm from "@/components/inventory/InventoryForm";
 import QRCodeDialog from "@/components/inventory/QRCodeDialog";
@@ -53,6 +53,8 @@ export default function Inventory() {
   const [showCatManager, setShowCatManager] = useState(false);
   const [refreshingPrices, setRefreshingPrices] = useState(false);
   const [showCategories, setShowCategories] = useState(false);
+  const [generatingImages, setGeneratingImages] = useState(false);
+  const [imageGenProgress, setImageGenProgress] = useState("");
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["inventory"],
@@ -131,6 +133,29 @@ export default function Inventory() {
     document.body.appendChild(a); a.click(); URL.revokeObjectURL(url); a.remove();
   };
 
+  const handleGenerateImages = async () => {
+    const missing = items.filter(i => !i.image_url);
+    if (missing.length === 0) { alert("All items already have images."); return; }
+    if (!confirm(`Generate images for ${missing.length} items missing images? This will take a few seconds per item.`)) return;
+    setGeneratingImages(true);
+    let done = 0, failed = 0;
+    for (const item of missing) {
+      setImageGenProgress(`Generating ${done + failed + 1}/${missing.length}: ${item.name}...`);
+      try {
+        const prompt = `A clean product photo of ${item.name}${item.item_sku ? ` (SKU: ${item.item_sku})` : ""} on a plain white background, centered, well-lit, e-commerce style, no text overlay`;
+        const { data } = await base44.integrations.Core.GenerateImage({ prompt });
+        if (data?.url) {
+          await base44.entities.Inventory.update(item.id, { image_url: data.url });
+          done++;
+        } else { failed++; }
+      } catch { failed++; }
+    }
+    setImageGenProgress("");
+    setGeneratingImages(false);
+    queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    alert(`Done! Generated ${done} images${failed > 0 ? `, ${failed} failed` : ""}.`);
+  };
+
   const handleRefreshPrices = async () => {
     setRefreshingPrices(true);
     try {
@@ -164,6 +189,9 @@ export default function Inventory() {
           <div className="flex gap-2">
             <Button variant="outline" onClick={exportToCSV} className="bg-white gap-1.5">
               <Download className="w-4 h-4" /> CSV
+            </Button>
+            <Button variant="outline" onClick={handleGenerateImages} disabled={generatingImages} className="bg-white gap-1.5">
+              <ImagePlus className="w-4 h-4" /> {generatingImages ? (imageGenProgress || "Generating...") : "Generate Images"}
             </Button>
             <Button variant="outline" onClick={handleRefreshPrices} disabled={refreshingPrices} className="bg-white gap-1.5">
               <TrendingUp className="w-4 h-4" /> {refreshingPrices ? "Refreshing..." : "Refresh Prices"}
