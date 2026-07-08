@@ -9,26 +9,35 @@ export default function QRCodeDialog({ item, open, onOpenChange }) {
   const scanUrl = `${window.location.origin}/InventoryScan?item=${item.id}`;
 
   const handlePrint = () => {
-    const printWindow = window.open("", "_blank", "width=400,height=600");
-    const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(scanUrl)}`;
+    const printWindow = window.open("", "_blank", "width=400,height=300");
+    const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(scanUrl)}`;
     const imgHtml = item.image_url
-      ? `<img src="${item.image_url}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;" />`
+      ? `<img src="${item.image_url}" style="width:100px;height:100px;object-fit:cover;border-radius:6px;" />`
       : "";
     printWindow.document.write(`
       <html><head><title>QR - ${item.name}</title>
       <style>
-        body { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; margin:0; font-family:Arial,sans-serif; }
-        h2 { font-size:18px; margin:8px 0 4px; }
-        p { font-size:12px; color:#666; margin:0; }
-        .row { display:flex; gap:12px; align-items:center; margin-bottom:8px; }
+        @page { size: 4in 2in; margin: 0; }
+        body { margin:0; font-family:Arial,sans-serif; }
+        .label {
+          width:4in; height:2in; box-sizing:border-box;
+          display:flex; align-items:center; gap:10px;
+          padding:8px 10px; overflow:hidden;
+        }
+        .label img { flex-shrink:0; }
+        .label-text { min-width:0; flex:1; }
+        h2 { font-size:16px; margin:0 0 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        p { font-size:12px; color:#555; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       </style></head><body>
-      <div class="row">
-        <img src="${qrSrc}" width="180" height="180" />
+      <div class="label">
+        <img src="${qrSrc}" width="150" height="150" />
         ${imgHtml}
+        <div class="label-text">
+          <h2>${item.name}</h2>
+          ${item.item_sku ? `<p style="font-family:monospace;font-weight:bold;color:#333;">ID: ${item.item_sku}</p>` : ""}
+          <p>${item.location || ""}</p>
+        </div>
       </div>
-      <h2>${item.name}</h2>
-      ${item.item_sku ? `<p style="font-family:monospace;font-weight:bold;">ID: ${item.item_sku}</p>` : ""}
-      <p>${item.location || ""}</p>
       </body></html>
     `);
     printWindow.document.close();

@@ -10,11 +10,11 @@ export default function PrintAllLabels({ items, open, onOpenChange }) {
     const printWindow = window.open("", "_blank", "width=850,height=1100");
     const labels = items.map(item => {
       const url = `${window.location.origin}/InventoryScan?item=${item.id}`;
-      const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=${encodeURIComponent(url)}`;
+      const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
       const imgHtml = item.image_url ? `<img src="${item.image_url}" class="item-img" />` : "";
       return `
         <div class="label">
-          <img src="${qrSrc}" width="70" height="70" />
+          <img src="${qrSrc}" width="150" height="150" />
           ${imgHtml}
           <div class="label-text">
             <div class="label-name">${item.name}</div>
@@ -27,20 +27,20 @@ export default function PrintAllLabels({ items, open, onOpenChange }) {
     printWindow.document.write(`
       <html><head><title>QR Labels</title>
       <style>
-        @page { size: letter; margin: 0.5in 0.1875in; }
+        @page { size: 4in 2in; margin: 0; }
         body { margin:0; font-family:Arial,sans-serif; }
         .labels { display:flex; flex-wrap:wrap; gap:0; }
         .label {
-          width:2.625in; height:1in; box-sizing:border-box;
-          display:flex; align-items:center; gap:6px;
-          padding:4px 8px; overflow:hidden;
-          border:1px dashed #ddd;
+          width:4in; height:2in; box-sizing:border-box;
+          display:flex; align-items:center; gap:10px;
+          padding:8px 10px; overflow:hidden;
+          page-break-inside:avoid; page-break-after:always;
         }
         .label img { flex-shrink:0; }
-        .label .item-img { width:50px; height:50px; object-fit:cover; border-radius:4px; }
+        .label .item-img { width:100px; height:100px; object-fit:cover; border-radius:6px; }
         .label-text { min-width:0; flex:1; }
-        .label-name { font-size:10px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .label-meta { font-size:8px; color:#666; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .label-name { font-size:16px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .label-meta { font-size:12px; color:#555; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
       </style></head><body>
       <div class="labels">${labels}</div>
       </body></html>
@@ -55,7 +55,7 @@ export default function PrintAllLabels({ items, open, onOpenChange }) {
         <DialogHeader><DialogTitle>Print All QR Labels</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-slate-600">
-            Generates a printable sheet of QR code labels for all {items.length} inventory items, formatted for Avery 5160 label sheets (3 columns × 10 rows).
+            Generates QR code labels for all {items.length} inventory items, sized 4" wide × 2" tall — one label per page.
           </p>
           <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-lg">
             {items.slice(0, 9).map(item => (
