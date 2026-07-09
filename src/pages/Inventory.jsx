@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Search, Plus, QrCode, Printer, Pencil, Trash2, Download, Package, Settings, TrendingUp, ChevronDown, ChevronUp, ImagePlus } from "lucide-react";
+import { RefreshCw, Search, Plus, QrCode, Printer, Pencil, Trash2, Download, Package, Settings, TrendingUp, ChevronDown, ChevronUp, ImagePlus, ScanLine } from "lucide-react";
 import { format } from "date-fns";
 import InventoryForm from "@/components/inventory/InventoryForm";
 import QRCodeDialog from "@/components/inventory/QRCodeDialog";
@@ -187,6 +187,11 @@ export default function Inventory() {
             <p className="text-sm text-slate-500">{items.length} items</p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" asChild className="bg-white gap-1.5">
+              <a href="https://wurthlac.com/" target="_blank" rel="noopener noreferrer">
+                <ScanLine className="w-4 h-4" /> Wurth Scan
+              </a>
+            </Button>
             <Button variant="outline" onClick={exportToCSV} className="bg-white gap-1.5">
               <Download className="w-4 h-4" /> CSV
             </Button>
