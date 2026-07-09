@@ -267,7 +267,7 @@ export default function Inventory() {
             </div>
 
             {/* Desktop Table */}
-            <Card className="bg-white shadow-sm hidden sm:block">
+            <Card className="bg-white shadow-sm hidden lg:block">
               <CardContent className="pt-4">
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -349,8 +349,8 @@ export default function Inventory() {
               </CardContent>
             </Card>
 
-            {/* Mobile Cards */}
-            <div className="sm:hidden space-y-2">
+            {/* Mobile/Tablet Cards */}
+            <div className="lg:hidden space-y-2">
               {filtered.map(item => (
                 <div key={item.id} className="border border-slate-200 rounded-lg p-3 bg-white space-y-2">
                   <div className="flex items-start justify-between">
