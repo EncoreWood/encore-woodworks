@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Search, Plus, QrCode, Printer, Pencil, Trash2, Download, Package, Settings, TrendingUp, ChevronDown, ChevronUp, ImagePlus, ScanLine } from "lucide-react";
+import { RefreshCw, Search, Plus, QrCode, Printer, Pencil, Trash2, Download, Package, Settings, TrendingUp, ChevronDown, ChevronUp, ImagePlus, ScanLine, BellRing } from "lucide-react";
 import { format } from "date-fns";
 import InventoryForm from "@/components/inventory/InventoryForm";
 import QRCodeDialog from "@/components/inventory/QRCodeDialog";
@@ -55,6 +55,7 @@ export default function Inventory() {
   const [showCategories, setShowCategories] = useState(false);
   const [generatingImages, setGeneratingImages] = useState(false);
   const [imageGenProgress, setImageGenProgress] = useState("");
+  const [showNeedsOrdered, setShowNeedsOrdered] = useState(false);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["inventory"],
@@ -112,6 +113,7 @@ export default function Inventory() {
 
   const filtered = useMemo(() => {
     return items.filter(i => {
+      if (showNeedsOrdered && i.status !== "needs_ordered") return false;
       if (activeCategory !== "all" && i.category !== activeCategory) return false;
       if (activeLocation !== "all" && i.location !== activeLocation) return false;
       if (searchTerm) {
@@ -120,7 +122,7 @@ export default function Inventory() {
       }
       return true;
     });
-  }, [items, activeCategory, activeLocation, searchTerm]);
+  }, [items, activeCategory, activeLocation, searchTerm, showNeedsOrdered]);
 
   const exportToCSV = () => {
     const headers = ["Name", "Item ID", "Category", "Quantity", "Unit", "Min Qty", "Price/Unit", "Supplier", "Location", "Status", "Notes"];
@@ -253,6 +255,14 @@ export default function Inventory() {
                   </div>
                 )}
               </div>
+            </div>
+            <div className="flex gap-1 flex-wrap">
+              <button
+                onClick={() => setShowNeedsOrdered(s => !s)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${showNeedsOrdered ? "bg-red-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"}`}
+              >
+                <BellRing className="w-3.5 h-3.5" /> Needs Ordered
+              </button>
             </div>
             <div className="flex gap-1 flex-wrap">
               {LOCATIONS.map(loc => (
