@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square,   Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon, ArrowLeftRight, ArchiveX, ShoppingCart as ShoppingCartIcon } from "lucide-react";
+import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square,   Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon, ArrowLeftRight, ArchiveX, ShoppingCart as ShoppingCartIcon, ListTodo } from "lucide-react";
 import MobileTabBar from "@/components/MobileTabBar";
 import ClockInModal from "@/components/timesheet/ClockInModal";
 import { cn } from "@/lib/utils";
@@ -49,6 +49,7 @@ export default function Layout({ children, currentPageName }) {
   const [showSwitchModal, setShowSwitchModal] = useState(false);
   const [currentProjectName, setCurrentProjectName] = useState(null);
   const [todayCompletedHours, setTodayCompletedHours] = useState(0);
+  const [pendingTaskCount, setPendingTaskCount] = useState(0);
 
   const defaultNavGroups = {
     dashboard: {
@@ -104,6 +105,7 @@ export default function Layout({ children, currentPageName }) {
         { name: "Chat", icon: MessageSquare, iconName: "MessageSquare", page: "ChatBoard" },
         { name: "Forms", icon: FileText, iconName: "FileText", page: "Forms" },
           { name: "Struggles & Solutions", icon: FileText, iconName: "FileText", page: "StrugglesSolutions" },
+          { name: "My Assignments", icon: ListTodo, iconName: "ListTodo", page: "MyAssignments" },
           { name: "Privacy Policy", icon: FileText, iconName: "FileText", page: "PrivacyPolicy" }
       ]
     },
@@ -126,7 +128,7 @@ export default function Layout({ children, currentPageName }) {
   const iconMap = {
     KanbanIcon, LayoutDashboard, Calendar, Factory, Coffee, Users, MessageSquare,
     Package, Clipboard, ShoppingCart, FileText: FileTextIcon, Wrench, Truck, Home, Building2, 
-    PieChart, BarChart3, Hammer, Archive, StickyNote, ArchiveX, ShoppingCart: ShoppingCartIcon
+    PieChart, BarChart3, Hammer, Archive, StickyNote, ArchiveX, ShoppingCart: ShoppingCartIcon, ListTodo
   };
 
   const loadNavGroups = () => {
@@ -442,6 +444,17 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   useEffect(() => {
+    if (!currentUser) return;
+    base44.entities.Task.list("-created_date", 200).then(tasks => {
+      const count = tasks.filter(t =>
+        (t.assigned_to_email === currentUser.email || t.assigned_to === currentUser.full_name)
+        && t.status !== "completed"
+      ).length;
+      setPendingTaskCount(count);
+    }).catch(() => {});
+  }, [currentUser]);
+
+  useEffect(() => {
     if (!clockInTime) return;
     const interval = setInterval(() => {
       const now = new Date();
@@ -528,7 +541,7 @@ export default function Layout({ children, currentPageName }) {
     setOpenTimeEntryId(null);
   };
 
-  const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy"]);
+  const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments"]);
 
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: "#d1d5db" }}>
@@ -645,6 +658,11 @@ export default function Layout({ children, currentPageName }) {
                       >
                         <item.icon className="w-4 h-4 flex-shrink-0" />
                         <span>{item.name}</span>
+                        {item.page === "MyAssignments" && pendingTaskCount > 0 && (
+                          <span className="ml-auto min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                            {pendingTaskCount}
+                          </span>
+                        )}
                       </Link>
                     ))}
                   </div>
@@ -769,6 +787,11 @@ export default function Layout({ children, currentPageName }) {
                           >
                             <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
                             <span>{item.name}</span>
+                            {item.page === "MyAssignments" && pendingTaskCount > 0 && (
+                              <span className="ml-auto min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                                {pendingTaskCount}
+                              </span>
+                            )}
                           </Link>
                         ))}
                       </div>

@@ -10,7 +10,6 @@ import { format } from "date-fns";
 import EmployeeCard from "../components/team/EmployeeCard";
 import EmployeeForm from "../components/team/EmployeeForm";
 import AssignTaskDialog from "../components/team/AssignTaskDialog";
-import UserAssignmentBoard from "../components/team/UserAssignmentBoard";
 import { toast } from "sonner";
 
 export default function Team() {
@@ -332,9 +331,6 @@ export default function Team() {
             Archived ({employees.filter(e => e.archived).length})
           </button>
         </div>
-
-        {/* My Assignment Board */}
-        <UserAssignmentBoard />
 
         {/* Employee Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
