@@ -111,6 +111,8 @@ export default function Inventory() {
     return ["all", ...Array.from(set)];
   }, [items, categoryDefs]);
 
+  const needsOrderedCount = useMemo(() => items.filter(i => i.status === "needs_ordered").length, [items]);
+
   const filtered = useMemo(() => {
     return items.filter(i => {
       if (showNeedsOrdered && i.status !== "needs_ordered") return false;
@@ -259,9 +261,14 @@ export default function Inventory() {
             <div className="flex gap-1 flex-wrap">
               <button
                 onClick={() => setShowNeedsOrdered(s => !s)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${showNeedsOrdered ? "bg-red-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"}`}
+                className={`relative px-3 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${showNeedsOrdered ? "bg-red-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"}`}
               >
                 <BellRing className="w-3.5 h-3.5" /> Needs Ordered
+                {needsOrderedCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold border-2 border-white shadow">
+                    {needsOrderedCount}
+                  </span>
+                )}
               </button>
             </div>
             <div className="flex gap-1 flex-wrap">
