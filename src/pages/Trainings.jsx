@@ -5,7 +5,6 @@ import { Plus, GraduationCap, Search, Pencil, Trash2, Loader2, Clock, Video, Set
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import TrainingForm from "@/components/trainings/TrainingForm";
 import TrainingViewer from "@/components/trainings/TrainingViewer";
@@ -79,11 +78,6 @@ export default function Trainings() {
       queryClient.invalidateQueries({ queryKey: ["trainings"] });
       setShowForm(false);
     },
-  });
-
-  const moveMutation = useMutation({
-    mutationFn: ({ id, category }) => base44.entities.Training.update(id, { category }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trainings"] }),
   });
 
   const deleteMutation = useMutation({
@@ -191,16 +185,6 @@ export default function Trainings() {
                       {training.estimated_time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{training.estimated_time}</span>}
                       {training.video_url && <span className="flex items-center gap-1"><Video className="w-3 h-3" />Video</span>}
                     </div>
-                    {isAdmin && categories.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-slate-100" onClick={e => e.stopPropagation()}>
-                        <Select value={training.category || ""} onValueChange={(v) => moveMutation.mutate({ id: training.id, category: v })}>
-                          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Section" /></SelectTrigger>
-                          <SelectContent>
-                            {categories.map(c => <SelectItem key={c.id || c.name} value={c.name}>{c.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
                     {training.assigned_to?.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-slate-100">
                         <p className="text-xs font-medium text-slate-400 mb-1">Assigned to</p>

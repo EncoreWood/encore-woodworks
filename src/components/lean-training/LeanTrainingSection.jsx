@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import LeanTrainingForm from "@/components/lean-training/LeanTrainingForm";
 import LeanTrainingViewer from "@/components/lean-training/LeanTrainingViewer";
 import LeanTrainingCategoryManager from "@/components/lean-training/LeanTrainingCategoryManager";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const CATEGORY_COLORS = [
   "bg-blue-100 text-blue-700",
@@ -66,11 +65,6 @@ export default function LeanTrainingSection({ currentUser }) {
       queryClient.invalidateQueries({ queryKey: ["leanTrainings"] });
       setShowForm(false);
     },
-  });
-
-  const moveMutation = useMutation({
-    mutationFn: ({ id, category }) => base44.entities.LeanTraining.update(id, { category }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leanTrainings"] }),
   });
 
   const deleteMutation = useMutation({
@@ -176,16 +170,6 @@ export default function LeanTrainingSection({ currentUser }) {
                     </span>
                   )}
                 </div>
-                {isAdmin && categories.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-slate-100" onClick={e => e.stopPropagation()}>
-                    <Select value={training.category || ""} onValueChange={(v) => moveMutation.mutate({ id: training.id, category: v })}>
-                      <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Section" /></SelectTrigger>
-                      <SelectContent>
-                        {categories.map(c => <SelectItem key={c.id || c.name} value={c.name}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
                 <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
                   <span className="text-xs text-slate-400">
                     {completion ? `Best score: ${completion.score}%` : "Not started"}
