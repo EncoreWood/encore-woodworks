@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import QuizEditor from "@/components/trainings/QuizEditor";
+import SectionsEditor from "@/components/trainings/SectionsEditor";
 
 const DIFFICULTIES = [
   { value: "beginner", label: "Beginner" },
@@ -24,6 +25,7 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
     content: "",
     assigned_to: [],
     quiz: [],
+    sections: [],
     passing_score: 80,
     status: "active",
   });
@@ -40,6 +42,7 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
         content: editingTraining.content || "",
         assigned_to: editingTraining.assigned_to || [],
         quiz: editingTraining.quiz || [],
+        sections: editingTraining.sections || [],
         passing_score: editingTraining.passing_score ?? 80,
         status: editingTraining.status || "active",
       });
@@ -54,6 +57,7 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
         content: "",
         assigned_to: [],
         quiz: [],
+        sections: [],
         passing_score: 80,
         status: "active",
       });
@@ -80,12 +84,28 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
         options: q.options.filter(o => o.trim()).map(o => o.trim()),
         correct_answer: Math.min(q.correct_answer, q.options.filter(o => o.trim()).length - 1),
       }));
-    onSave({ ...form, quiz: cleanQuiz });
+    const cleanSections = (form.sections || [])
+      .filter(s => s.title.trim() || s.video_url.trim() || s.content.trim() || (s.quiz || []).length > 0)
+      .map(s => ({
+        ...s,
+        id: s.id || Date.now().toString() + Math.random(),
+        title: s.title.trim(),
+        quiz: (s.quiz || [])
+          .filter(q => q.question.trim() && q.options.filter(o => o.trim()).length >= 2)
+          .map(q => ({
+            ...q,
+            id: q.id || Date.now().toString() + Math.random(),
+            question: q.question.trim(),
+            options: q.options.filter(o => o.trim()).map(o => o.trim()),
+            correct_answer: Math.min(q.correct_answer, q.options.filter(o => o.trim()).length - 1),
+          })),
+      }));
+    onSave({ ...form, quiz: cleanQuiz, sections: cleanSections });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editingTraining ? "Edit Training" : "New Training"}</DialogTitle>
         </DialogHeader>
@@ -143,6 +163,12 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
             trainingTitle={form.title}
             trainingDescription={form.description}
             videoUrl={form.video_url}
+          />
+
+          <SectionsEditor
+            sections={form.sections}
+            onChange={(sections) => setForm({ ...form, sections })}
+            trainingTitle={form.title}
           />
 
           <div>

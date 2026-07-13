@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Play, CheckCircle2, XCircle, RotateCcw, Award, Video, Clock, FileText } from "lucide-react";
+import { Play, CheckCircle2, XCircle, RotateCcw, Award, Video, Clock, FileText, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function getVideoEmbed(url) {
@@ -11,6 +11,104 @@ function getVideoEmbed(url) {
   const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
   if (vimeoMatch) return { type: "iframe", src: `https://player.vimeo.com/video/${vimeoMatch[1]}` };
   return { type: "video", src: url };
+}
+
+function SectionBlock({ section, idx, passingScore }) {
+  const [answers, setAnswers] = useState({});
+  const [score, setScore] = useState(null);
+
+  useEffect(() => {
+    setAnswers({});
+    setScore(null);
+  }, [section.id]);
+
+  const video = getVideoEmbed(section.video_url);
+  const quiz = section.quiz || [];
+  const hasQuiz = quiz.length > 0;
+  const allAnswered = quiz.every((_, i) => answers[i] !== undefined);
+
+  const handleSubmit = () => {
+    const correct = quiz.filter((q, i) => answers[i] === q.correct_answer).length;
+    const pct = Math.round((correct / quiz.length) * 100);
+    setScore({ correct, total: quiz.length, pct, passed: pct >= passingScore });
+  };
+
+  return (
+    <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0">{idx + 1}</div>
+        <h3 className="font-bold text-slate-900">{section.title || `Section ${idx + 1}`}</h3>
+      </div>
+
+      {section.description && <p className="text-sm text-slate-600 mb-3 ml-9">{section.description}</p>}
+
+      {video && (
+        <div className="rounded-lg overflow-hidden bg-black aspect-video mb-3">
+          {video.type === "iframe" ? (
+            <iframe src={video.src} className="w-full h-full" allowFullScreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" />
+          ) : (
+            <video src={video.src} controls className="w-full h-full" />
+          )}
+        </div>
+      )}
+
+      {section.content && (
+        <div className="mb-3 ml-9">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1 flex items-center gap-1"><FileText className="w-3 h-3" /> Material</p>
+          <div className="text-sm text-slate-700 whitespace-pre-wrap bg-white rounded-lg p-3 border border-slate-100">{section.content}</div>
+        </div>
+      )}
+
+      {hasQuiz && (
+        <div className="ml-9 space-y-3">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Section Quiz</p>
+          {score ? (
+            <div className={cn("rounded-lg p-4 text-center", score.passed ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200")}>
+              {score.passed ? <CheckCircle2 className="w-8 h-8 mx-auto mb-1 text-green-600" /> : <XCircle className="w-8 h-8 mx-auto mb-1 text-red-500" />}
+              <p className={cn("text-lg font-bold", score.passed ? "text-green-700" : "text-red-700")}>
+                {score.passed ? "Passed!" : "Not Passed"}
+              </p>
+              <p className="text-sm text-slate-600">Score: {score.correct}/{score.total} ({score.pct}%)</p>
+              <Button onClick={() => { setAnswers({}); setScore(null); }} variant="outline" size="sm" className="mt-2 gap-1">
+                <RotateCcw className="w-3.5 h-3.5" /> Retake
+              </Button>
+            </div>
+          ) : (
+            <>
+              {quiz.map((q, qIdx) => (
+                <div key={q.id || qIdx} className="space-y-2">
+                  <p className="font-medium text-slate-800 text-sm">{qIdx + 1}. {q.question}</p>
+                  {q.image_url && <img src={q.image_url} alt="Question" className="max-h-48 rounded-lg border border-slate-200" />}
+                  <div className="space-y-1.5">
+                    {q.options.map((opt, oIdx) => (
+                      <button
+                        key={oIdx}
+                        type="button"
+                        onClick={() => setAnswers(prev => ({ ...prev, [qIdx]: oIdx }))}
+                        className={cn(
+                          "w-full text-left px-3 py-2.5 rounded-lg border text-sm transition-all flex items-center gap-2",
+                          answers[qIdx] === oIdx ? "border-indigo-500 bg-indigo-50 text-indigo-900 font-medium" : "border-slate-200 hover:bg-slate-50 text-slate-700"
+                        )}
+                      >
+                        <div className={cn("w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center", answers[qIdx] === oIdx ? "border-indigo-600 bg-indigo-600" : "border-slate-300")}>
+                          {answers[qIdx] === oIdx && <div className="w-2 h-2 rounded-full bg-white" />}
+                        </div>
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <Button onClick={handleSubmit} disabled={!allAnswered} className="w-full bg-indigo-600 hover:bg-indigo-700">
+                Submit Section Quiz
+              </Button>
+              {!allAnswered && <p className="text-xs text-slate-400 text-center">Answer all questions to submit</p>}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function TrainingViewer({ open, onOpenChange, training }) {
@@ -79,6 +177,14 @@ export default function TrainingViewer({ open, onOpenChange, training }) {
               <Button onClick={() => setPhase("quiz")} className="w-full bg-indigo-600 hover:bg-indigo-700 gap-2">
                 <Play className="w-4 h-4" /> Start Quiz ({quiz.length} questions)
               </Button>
+            )}
+            {training.sections?.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-1"><Layers className="w-3 h-3" /> Sections</p>
+                {training.sections.map((section, sIdx) => (
+                  <SectionBlock key={section.id || sIdx} section={section} idx={sIdx} passingScore={passingScore} />
+                ))}
+              </div>
             )}
             {training.assigned_to?.length > 0 && (
               <div className="pt-3 border-t border-slate-100">

@@ -85,6 +85,61 @@
           }
         }
       }
+    },
+    "sections": {
+      "type": "array",
+      "description": "Training sections, each with optional video and quiz",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "video_url": {
+            "type": "string",
+            "description": "Video URL for this section"
+          },
+          "content": {
+            "type": "string",
+            "description": "Training material / steps for this section"
+          },
+          "quiz": {
+            "type": "array",
+            "description": "Quiz questions for this section",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "question": {
+                  "type": "string"
+                },
+                "options": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "correct_answer": {
+                  "type": "number",
+                  "description": "Index of correct option"
+                },
+                "image_url": {
+                  "type": "string",
+                  "description": "Optional image for the question"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "required": [

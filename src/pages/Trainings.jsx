@@ -184,6 +184,7 @@ export default function Trainings() {
                     <div className="flex flex-wrap gap-2 text-xs text-slate-500">
                       {training.estimated_time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{training.estimated_time}</span>}
                       {training.video_url && <span className="flex items-center gap-1"><Video className="w-3 h-3" />Video</span>}
+                      {training.sections?.length > 0 && <span className="flex items-center gap-1 text-indigo-500 font-medium">{training.sections.length} section{training.sections.length > 1 ? "s" : ""}</span>}
                     </div>
                     {training.assigned_to?.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-slate-100">
