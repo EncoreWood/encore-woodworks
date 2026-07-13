@@ -1,20 +1,22 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Home, Factory, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Home, Factory, MessageSquare, Clock, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { base44 } from "@/api/base44Client";
 
 const ALL_TABS = [
+  { label: "Time", icon: Clock, page: "TimeSheet", scope: ["TimeSheet"] },
   { label: "Dashboard", icon: LayoutDashboard, page: "Dashboard", scope: ["Dashboard"] },
   { label: "Projects", icon: Home, page: "Kanban", scope: ["Kanban", "ProjectDetails"] },
   { label: "Shop", icon: Factory, page: "ShopProduction", scope: ["ShopProduction"] },
   { label: "Chat", icon: MessageSquare, page: "ChatBoard", scope: ["ChatBoard"] },
+  { label: "More", icon: Menu, page: "__more__", scope: [] },
 ];
 
-const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy"]);
+const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet"]);
 
-export default function MobileTabBar({ currentPageName }) {
+export default function MobileTabBar({ currentPageName, onOpenMenu }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [tabs, setTabs] = useState(ALL_TABS);
@@ -27,13 +29,19 @@ export default function MobileTabBar({ currentPageName }) {
       const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
       if (emp) {
         const allowed = new Set(emp.allowed_pages || []);
-        setTabs(ALL_TABS.filter(tab => tab.scope.some(p => allowed.has(p) || ALWAYS_ALLOWED.has(p))));
+        setTabs(ALL_TABS.filter(tab =>
+          tab.page === "__more__" ||
+          tab.scope.some(p => allowed.has(p) || ALWAYS_ALLOWED.has(p))
+        ));
+      } else {
+        setTabs(ALL_TABS.filter(tab =>
+          tab.page === "__more__" || tab.scope.some(p => ALWAYS_ALLOWED.has(p))
+        ));
       }
     };
     load();
   }, []);
 
-  // Save current URL to owning tab's storage slot
   useEffect(() => {
     for (const tab of tabs) {
       if (tab.scope.includes(currentPageName)) {
@@ -44,6 +52,10 @@ export default function MobileTabBar({ currentPageName }) {
   }, [currentPageName, location, tabs]);
 
   const handleTabPress = (tab) => {
+    if (tab.page === "__more__") {
+      onOpenMenu?.();
+      return;
+    }
     const saved = sessionStorage.getItem(`tab_last_${tab.page}`);
     const current = location.pathname + location.search;
     const target = saved && saved !== current ? saved : createPageUrl(tab.page);

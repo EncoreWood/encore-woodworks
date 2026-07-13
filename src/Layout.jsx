@@ -542,7 +542,7 @@ export default function Layout({ children, currentPageName }) {
     setOpenTimeEntryId(null);
   };
 
-  const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings"]);
+  const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet"]);
 
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: "#d1d5db" }}>
@@ -624,7 +624,7 @@ export default function Layout({ children, currentPageName }) {
             if (!currentUser) return null;
             const visibleItems = currentUser.role === "admin"
               ? group.items
-              : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page));
+              : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page) || ALWAYS_ALLOWED.has(item.page));
             if (visibleItems.length === 0) return null;
             return (
               <div key={groupKey}>
@@ -746,7 +746,7 @@ export default function Layout({ children, currentPageName }) {
       </main>
 
       {/* Mobile Tab Bar */}
-      <MobileTabBar currentPageName={currentPageName} />
+      <MobileTabBar currentPageName={currentPageName} onOpenMenu={() => setMobileNavOpen(true)} />
 
       {/* Mobile Nav Drawer — slides in from left, collapsible arrow tab */}
       {mobileNavOpen && (
@@ -769,7 +769,7 @@ export default function Layout({ children, currentPageName }) {
                   if (groupKey === "admin" && currentUser.role !== "admin") return null;
                   const visibleItems = currentUser.role === "admin"
                     ? group.items
-                    : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page));
+                    : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page) || ALWAYS_ALLOWED.has(item.page));
                   if (visibleItems.length === 0) return null;
                   return (
                     <div key={groupKey}>
