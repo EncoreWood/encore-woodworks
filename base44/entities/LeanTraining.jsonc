@@ -49,6 +49,10 @@
           "correct_answer": {
             "type": "number",
             "description": "Index of correct option"
+          },
+          "image_url": {
+            "type": "string",
+            "description": "Optional image for the question"
           }
         }
       }

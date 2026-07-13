@@ -109,6 +109,9 @@ export default function LeanTrainingViewer({ open, onOpenChange, training, curre
                 <p className="font-medium text-slate-800 text-sm">
                   {qIdx + 1}. {q.question}
                 </p>
+                {q.image_url && (
+                  <img src={q.image_url} alt="Question" className="max-h-48 rounded-lg border border-slate-200 mt-2" />
+                )}
                 <div className="space-y-1.5">
                   {q.options.map((opt, oIdx) => (
                     <button
@@ -174,6 +177,9 @@ export default function LeanTrainingViewer({ open, onOpenChange, training, curre
                       {isCorrect ? <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />}
                       <div>
                         <p className="font-medium text-slate-800">{qIdx + 1}. {q.question}</p>
+                        {q.image_url && (
+                          <img src={q.image_url} alt="Question" className="max-h-48 rounded-lg border border-slate-200 mt-2" />
+                        )}
                         {!isCorrect && (
                           <p className="text-xs text-slate-500 mt-1">
                             Your answer: <span className="text-red-600">{q.options[userAnswer] || "No answer"}</span> · Correct: <span className="text-green-600">{q.options[q.correct_answer]}</span>

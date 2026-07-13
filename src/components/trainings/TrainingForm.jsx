@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import QuizEditor from "@/components/trainings/QuizEditor";
 
 const CATEGORIES = [
   { value: "area", label: "Area" },
@@ -31,6 +32,8 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
     video_url: "",
     content: "",
     assigned_to: [],
+    quiz: [],
+    passing_score: 80,
     status: "active",
   });
 
@@ -45,6 +48,8 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
         video_url: editingTraining.video_url || "",
         content: editingTraining.content || "",
         assigned_to: editingTraining.assigned_to || [],
+        quiz: editingTraining.quiz || [],
+        passing_score: editingTraining.passing_score ?? 80,
         status: editingTraining.status || "active",
       });
     } else {
@@ -57,6 +62,8 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
         video_url: "",
         content: "",
         assigned_to: [],
+        quiz: [],
+        passing_score: 80,
         status: "active",
       });
     }
@@ -73,7 +80,16 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
 
   const handleSubmit = () => {
     if (!form.title.trim()) return;
-    onSave(form);
+    const cleanQuiz = form.quiz
+      .filter(q => q.question.trim() && q.options.filter(o => o.trim()).length >= 2)
+      .map(q => ({
+        ...q,
+        id: q.id || Date.now().toString() + Math.random(),
+        question: q.question.trim(),
+        options: q.options.filter(o => o.trim()).map(o => o.trim()),
+        correct_answer: Math.min(q.correct_answer, q.options.filter(o => o.trim()).length - 1),
+      }));
+    onSave({ ...form, quiz: cleanQuiz });
   };
 
   return (
@@ -125,6 +141,18 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
             <Label>Training Content / Steps</Label>
             <Textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })} placeholder="Detailed training material, steps, safety notes, etc." rows={4} />
           </div>
+          <div>
+            <Label>Passing Score (%)</Label>
+            <Input type="number" min="1" max="100" value={form.passing_score} onChange={e => setForm({ ...form, passing_score: parseInt(e.target.value) || 80 })} />
+          </div>
+
+          <QuizEditor
+            quiz={form.quiz}
+            onChange={(quiz) => setForm({ ...form, quiz })}
+            trainingTitle={form.title}
+            trainingDescription={form.description}
+          />
+
           <div>
             <Label>Assigned To</Label>
             <div className="border rounded-lg p-2 max-h-32 overflow-y-auto space-y-0.5">

@@ -60,6 +60,40 @@
     "estimated_time": {
       "type": "string",
       "description": "Estimated time to complete (e.g., '30 min')"
+    },
+    "passing_score": {
+      "type": "number",
+      "default": 80,
+      "description": "Percentage needed to pass the quiz"
+    },
+    "quiz": {
+      "type": "array",
+      "description": "Quiz questions for this training",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "correct_answer": {
+            "type": "number",
+            "description": "Index of correct option"
+          },
+          "image_url": {
+            "type": "string",
+            "description": "Optional image for the question"
+          }
+        }
+      }
     }
   },
   "required": [
