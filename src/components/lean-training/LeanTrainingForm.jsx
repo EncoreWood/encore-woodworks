@@ -106,6 +106,7 @@ export default function LeanTrainingForm({ open, onOpenChange, editingTraining, 
             onChange={(quiz) => setForm({ ...form, quiz })}
             trainingTitle={form.title}
             trainingDescription={form.description}
+            videoUrl={form.video_url}
           />
         </div>
         <div className="flex gap-2 justify-end pt-2">

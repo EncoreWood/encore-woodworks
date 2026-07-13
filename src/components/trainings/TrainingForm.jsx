@@ -151,6 +151,7 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
             onChange={(quiz) => setForm({ ...form, quiz })}
             trainingTitle={form.title}
             trainingDescription={form.description}
+            videoUrl={form.video_url}
           />
 
           <div>

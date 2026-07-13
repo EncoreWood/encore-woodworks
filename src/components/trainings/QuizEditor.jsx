@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Circle, CheckCircle2, Sparkles, Loader2, ImagePlus, X } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 
-export default function QuizEditor({ quiz, onChange, trainingTitle = "", trainingDescription = "" }) {
+export default function QuizEditor({ quiz, onChange, trainingTitle = "", trainingDescription = "", videoUrl = "" }) {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiCount, setAiCount] = useState(5);
   const [uploadingFor, setUploadingFor] = useState(null);
@@ -63,11 +63,14 @@ export default function QuizEditor({ quiz, onChange, trainingTitle = "", trainin
     try {
       const prompt = `Generate ${aiCount} quiz questions for a training titled "${trainingTitle}".
       ${trainingDescription ? `Description: ${trainingDescription}` : ""}
+      ${videoUrl ? `Reference video: ${videoUrl}. Generate questions based on the content of this video.` : ""}
       Each question should have 4 multiple-choice options with exactly one correct answer (0-indexed).
       Make the questions practical and relevant to the topic.`;
 
       const res = await base44.integrations.Core.InvokeLLM({
         prompt,
+        add_context_from_internet: !!videoUrl,
+        model: videoUrl ? "gemini_3_flash" : undefined,
         response_json_schema: {
           type: "object",
           properties: {
