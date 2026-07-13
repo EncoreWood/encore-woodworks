@@ -115,8 +115,7 @@ export default function Layout({ children, currentPageName }) {
       name: "Lean",
       items: [
         { name: "Group Lean", icon: Users, iconName: "Users", page: "GroupLean" },
-        { name: "Individual Lean", icon: Users, iconName: "Users", page: "IndividualLean" },
-        { name: "Lean Training", icon: GraduationCap, iconName: "GraduationCap", page: "LeanTrainings" }
+        { name: "Individual Lean", icon: Users, iconName: "Users", page: "IndividualLean" }
       ]
     }
   };
@@ -544,7 +543,7 @@ export default function Layout({ children, currentPageName }) {
     setOpenTimeEntryId(null);
   };
 
-  const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet", "LeanTrainings"]);
+  const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet"]);
 
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: "#d1d5db" }}>

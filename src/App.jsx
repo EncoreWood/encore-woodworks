@@ -26,7 +26,6 @@ import InventoryScan from './pages/InventoryScan';
 import ClientPortal from './pages/ClientPortal';
 import MyAssignments from './pages/MyAssignments';
 import Trainings from './pages/Trainings';
-import LeanTrainings from './pages/LeanTrainings';
 
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -87,7 +86,6 @@ const AuthenticatedApp = () => {
       <Route path="/ClientPortal" element={<ClientPortal />} />
       <Route path="/MyAssignments" element={<LayoutWrapper currentPageName="MyAssignments"><MyAssignments /></LayoutWrapper>} />
       <Route path="/Trainings" element={<LayoutWrapper currentPageName="Trainings"><Trainings /></LayoutWrapper>} />
-      <Route path="/LeanTrainings" element={<LayoutWrapper currentPageName="LeanTrainings"><LeanTrainings /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
