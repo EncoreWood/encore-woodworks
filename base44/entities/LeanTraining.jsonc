@@ -1,0 +1,75 @@
+{
+  "name": "LeanTraining",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Training title"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this training covers"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "5s",
+        "kaizen",
+        "value_stream",
+        "waste_elimination",
+        "standard_work",
+        "continuous_improvement",
+        "other"
+      ],
+      "default": "5s",
+      "description": "Lean category"
+    },
+    "video_url": {
+      "type": "string",
+      "description": "Video URL (YouTube, Vimeo, or direct video file)"
+    },
+    "quiz": {
+      "type": "array",
+      "description": "Quiz questions shown after the video",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "correct_answer": {
+            "type": "number",
+            "description": "Index of correct option"
+          }
+        }
+      }
+    },
+    "passing_score": {
+      "type": "number",
+      "default": 80,
+      "description": "Percentage needed to pass"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "draft",
+        "archived"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "title",
+    "video_url"
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "name": "LeanTrainingCompletion",
+  "type": "object",
+  "properties": {
+    "training_id": {
+      "type": "string",
+      "description": "Reference to LeanTraining ID"
+    },
+    "training_title": {
+      "type": "string",
+      "description": "Training title for reference"
+    },
+    "employee_name": {
+      "type": "string",
+      "description": "Employee full name"
+    },
+    "employee_email": {
+      "type": "string",
+      "description": "Employee email"
+    },
+    "score": {
+      "type": "number",
+      "description": "Score percentage (0-100)"
+    },
+    "passed": {
+      "type": "boolean",
+      "description": "Whether the employee passed"
+    },
+    "answers": {
+      "type": "string",
+      "description": "JSON string of selected answers"
+    },
+    "completed_at": {
+      "type": "string",
+      "description": "ISO timestamp"
+    }
+  },
+  "required": [
+    "training_id",
+    "employee_name",
+    "score",
+    "passed"
+  ]
+}

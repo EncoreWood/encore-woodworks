@@ -37,7 +37,8 @@ export default function Layout({ children, currentPageName }) {
     dashboard: true,
     projects: true,
     operations: true,
-    team: true
+    team: true,
+    lean: true
   });
   const [currentUser, setCurrentUser] = useState(null);
   const [clockInTime, setClockInTime] = useState(null);
@@ -114,7 +115,8 @@ export default function Layout({ children, currentPageName }) {
       name: "Lean",
       items: [
         { name: "Group Lean", icon: Users, iconName: "Users", page: "GroupLean" },
-        { name: "Individual Lean", icon: Users, iconName: "Users", page: "IndividualLean" }
+        { name: "Individual Lean", icon: Users, iconName: "Users", page: "IndividualLean" },
+        { name: "Lean Training", icon: GraduationCap, iconName: "GraduationCap", page: "LeanTrainings" }
       ]
     }
   };
@@ -542,7 +544,7 @@ export default function Layout({ children, currentPageName }) {
     setOpenTimeEntryId(null);
   };
 
-  const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet"]);
+  const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet", "LeanTrainings"]);
 
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: "#d1d5db" }}>
