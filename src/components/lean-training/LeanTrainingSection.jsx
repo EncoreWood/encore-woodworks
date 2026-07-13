@@ -1,32 +1,25 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Pencil, Trash2, Loader2, Play, CheckCircle2, Video, HelpCircle, GraduationCap } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Loader2, Play, CheckCircle2, Video, HelpCircle, GraduationCap, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import LeanTrainingForm from "@/components/lean-training/LeanTrainingForm";
 import LeanTrainingViewer from "@/components/lean-training/LeanTrainingViewer";
+import LeanTrainingCategoryManager from "@/components/lean-training/LeanTrainingCategoryManager";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const CATEGORY_STYLES = {
-  "5s": "bg-blue-100 text-blue-700",
-  kaizen: "bg-purple-100 text-purple-700",
-  value_stream: "bg-amber-100 text-amber-700",
-  waste_elimination: "bg-red-100 text-red-700",
-  standard_work: "bg-green-100 text-green-700",
-  continuous_improvement: "bg-indigo-100 text-indigo-700",
-  other: "bg-slate-100 text-slate-600",
-};
-
-const CATEGORY_LABELS = {
-  "5s": "5S",
-  kaizen: "Kaizen",
-  value_stream: "Value Stream",
-  waste_elimination: "Waste Elimination",
-  standard_work: "Standard Work",
-  continuous_improvement: "Continuous Improvement",
-  other: "Other",
-};
+const CATEGORY_COLORS = [
+  "bg-blue-100 text-blue-700",
+  "bg-purple-100 text-purple-700",
+  "bg-amber-100 text-amber-700",
+  "bg-red-100 text-red-700",
+  "bg-green-100 text-green-700",
+  "bg-indigo-100 text-indigo-700",
+  "bg-pink-100 text-pink-700",
+  "bg-cyan-100 text-cyan-700",
+];
 
 export default function LeanTrainingSection({ currentUser }) {
   const [showForm, setShowForm] = useState(false);
@@ -34,13 +27,24 @@ export default function LeanTrainingSection({ currentUser }) {
   const [viewingTraining, setViewingTraining] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
   const queryClient = useQueryClient();
 
   const isAdmin = currentUser?.role === "admin";
 
+  const getCategoryStyle = (name) => {
+    const idx = categories.findIndex(c => c.name === name);
+    return CATEGORY_COLORS[(idx >= 0 ? idx : 0) % CATEGORY_COLORS.length];
+  };
+
   const { data: trainings = [], isLoading } = useQuery({
     queryKey: ["leanTrainings"],
     queryFn: () => base44.entities.LeanTraining.list("-created_date", 200),
+  });
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["leanTrainingCategories"],
+    queryFn: () => base44.entities.LeanTrainingCategory.list("sort_order"),
   });
 
   const { data: completions = [] } = useQuery({
@@ -62,6 +66,11 @@ export default function LeanTrainingSection({ currentUser }) {
       queryClient.invalidateQueries({ queryKey: ["leanTrainings"] });
       setShowForm(false);
     },
+  });
+
+  const moveMutation = useMutation({
+    mutationFn: ({ id, category }) => base44.entities.LeanTraining.update(id, { category }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["leanTrainings"] }),
   });
 
   const deleteMutation = useMutation({
@@ -108,11 +117,16 @@ export default function LeanTrainingSection({ currentUser }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search lean trainings..." className="pl-9" />
         </div>
-        <div className="flex gap-1.5 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap items-center">
           <button onClick={() => setFilterCategory("all")} className={cn("px-3 py-1.5 rounded-lg text-sm font-medium transition", filterCategory === "all" ? "bg-indigo-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50")}>All</button>
-          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-            <button key={key} onClick={() => setFilterCategory(key)} className={cn("px-3 py-1.5 rounded-lg text-sm font-medium transition", filterCategory === key ? "bg-indigo-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50")}>{label}</button>
+          {categories.map(cat => (
+            <button key={cat.id} onClick={() => setFilterCategory(cat.name)} className={cn("px-3 py-1.5 rounded-lg text-sm font-medium transition", filterCategory === cat.name ? "bg-indigo-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50")}>{cat.name}</button>
           ))}
+          {isAdmin && (
+            <button onClick={() => setShowCategoryManager(true)} className="px-3 py-1.5 rounded-lg text-sm font-medium transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 flex items-center gap-1">
+              <Settings className="w-3.5 h-3.5" /> Manage
+            </button>
+          )}
         </div>
       </div>
 
@@ -135,7 +149,7 @@ export default function LeanTrainingSection({ currentUser }) {
               >
                 <div className="flex items-start justify-between gap-!2 mb-2">
                   <div className="flex flex-wrap gap-1.5">
-                    <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", CATEGORY_STYLES[training.category])}>{CATEGORY_LABELS[training.category]}</span>
+                    <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", getCategoryStyle(training.category))}>{training.category || "Uncategorized"}</span>
                     {completion?.passed && (
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3" /> Passed
@@ -162,6 +176,16 @@ export default function LeanTrainingSection({ currentUser }) {
                     </span>
                   )}
                 </div>
+                {isAdmin && categories.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-slate-100" onClick={e => e.stopPropagation()}>
+                    <Select value={training.category || ""} onValueChange={(v) => moveMutation.mutate({ id: training.id, category: v })}>
+                      <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Section" /></SelectTrigger>
+                      <SelectContent>
+                        {categories.map(c => <SelectItem key={c.id || c.name} value={c.name}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
                   <span className="text-xs text-slate-400">
                     {completion ? `Best score: ${completion.score}%` : "Not started"}
@@ -180,8 +204,10 @@ export default function LeanTrainingSection({ currentUser }) {
         open={showForm}
         onOpenChange={setShowForm}
         editingTraining={editingTraining}
+        categories={categories}
         onSave={handleSave}
       />
+      <LeanTrainingCategoryManager open={showCategoryManager} onOpenChange={setShowCategoryManager} />
       <LeanTrainingViewer
         open={!!viewingTraining}
         onOpenChange={(open) => { if (!open) setViewingTraining(null); }}

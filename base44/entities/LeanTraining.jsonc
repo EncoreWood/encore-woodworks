@@ -12,17 +12,7 @@
     },
     "category": {
       "type": "string",
-      "enum": [
-        "5s",
-        "kaizen",
-        "value_stream",
-        "waste_elimination",
-        "standard_work",
-        "continuous_improvement",
-        "other"
-      ],
-      "default": "5s",
-      "description": "Lean category"
+      "description": "Lean category (managed via LeanTrainingCategory entity)"
     },
     "video_url": {
       "type": "string",

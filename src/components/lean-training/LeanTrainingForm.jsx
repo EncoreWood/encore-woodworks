@@ -7,21 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import QuizEditor from "@/components/trainings/QuizEditor";
 
-const CATEGORIES = [
-  { value: "5s", label: "5S" },
-  { value: "kaizen", label: "Kaizen" },
-  { value: "value_stream", label: "Value Stream" },
-  { value: "waste_elimination", label: "Waste Elimination" },
-  { value: "standard_work", label: "Standard Work" },
-  { value: "continuous_improvement", label: "Continuous Improvement" },
-  { value: "other", label: "Other" },
-];
-
-export default function LeanTrainingForm({ open, onOpenChange, editingTraining, onSave }) {
+export default function LeanTrainingForm({ open, onOpenChange, editingTraining, categories = [], onSave }) {
   const [form, setForm] = useState({
     title: "",
     description: "",
-    category: "5s",
+    category: "",
     video_url: "",
     passing_score: 80,
     status: "active",
@@ -33,7 +23,7 @@ export default function LeanTrainingForm({ open, onOpenChange, editingTraining, 
       setForm({
         title: editingTraining.title || "",
         description: editingTraining.description || "",
-        category: editingTraining.category || "5s",
+        category: editingTraining.category || "",
         video_url: editingTraining.video_url || "",
         passing_score: editingTraining.passing_score ?? 80,
         status: editingTraining.status || "active",
@@ -43,7 +33,7 @@ export default function LeanTrainingForm({ open, onOpenChange, editingTraining, 
       setForm({
         title: "",
         description: "",
-        category: "5s",
+        category: "",
         video_url: "",
         passing_score: 80,
         status: "active",
@@ -87,7 +77,7 @@ export default function LeanTrainingForm({ open, onOpenChange, editingTraining, 
               <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                  {categories.map(c => <SelectItem key={c.id || c.name} value={c.name}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
