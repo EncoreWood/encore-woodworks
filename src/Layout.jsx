@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square,   Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon, ArrowLeftRight, ArchiveX, ShoppingCart as ShoppingCartIcon, ListTodo } from "lucide-react";
+import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square,   Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon, ArrowLeftRight, ArchiveX, ShoppingCart as ShoppingCartIcon, ListTodo, GraduationCap } from "lucide-react";
 import MobileTabBar from "@/components/MobileTabBar";
 import ClockInModal from "@/components/timesheet/ClockInModal";
 import { cn } from "@/lib/utils";
@@ -106,6 +106,7 @@ export default function Layout({ children, currentPageName }) {
         { name: "Forms", icon: FileText, iconName: "FileText", page: "Forms" },
           { name: "Struggles & Solutions", icon: FileText, iconName: "FileText", page: "StrugglesSolutions" },
           { name: "My Assignments", icon: ListTodo, iconName: "ListTodo", page: "MyAssignments" },
+          { name: "Trainings", icon: GraduationCap, iconName: "GraduationCap", page: "Trainings" },
           { name: "Privacy Policy", icon: FileText, iconName: "FileText", page: "PrivacyPolicy" }
       ]
     },
@@ -128,7 +129,7 @@ export default function Layout({ children, currentPageName }) {
   const iconMap = {
     KanbanIcon, LayoutDashboard, Calendar, Factory, Coffee, Users, MessageSquare,
     Package, Clipboard, ShoppingCart, FileText: FileTextIcon, Wrench, Truck, Home, Building2, 
-    PieChart, BarChart3, Hammer, Archive, StickyNote, ArchiveX, ShoppingCart: ShoppingCartIcon, ListTodo
+    PieChart, BarChart3, Hammer, Archive, StickyNote, ArchiveX, ShoppingCart: ShoppingCartIcon, ListTodo, GraduationCap
   };
 
   const loadNavGroups = () => {
@@ -541,7 +542,7 @@ export default function Layout({ children, currentPageName }) {
     setOpenTimeEntryId(null);
   };
 
-  const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments"]);
+  const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings"]);
 
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: "#d1d5db" }}>

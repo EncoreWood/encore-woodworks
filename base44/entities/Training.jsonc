@@ -1,0 +1,69 @@
+{
+  "name": "Training",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Training title"
+    },
+    "description": {
+      "type": "string",
+      "description": "What this training covers"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "area",
+        "machine",
+        "custom_build",
+        "safety",
+        "process",
+        "other"
+      ],
+      "default": "machine",
+      "description": "Training category"
+    },
+    "content": {
+      "type": "string",
+      "description": "Training material / steps"
+    },
+    "video_url": {
+      "type": "string",
+      "description": "Optional video link"
+    },
+    "assigned_to": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Employee names assigned to this training"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "archived"
+      ],
+      "default": "active",
+      "description": "Training status"
+    },
+    "difficulty": {
+      "type": "string",
+      "enum": [
+        "beginner",
+        "intermediate",
+        "advanced"
+      ],
+      "default": "beginner"
+    },
+    "estimated_time": {
+      "type": "string",
+      "description": "Estimated time to complete (e.g., '30 min')"
+    }
+  },
+  "required": [
+    "title",
+    "category"
+  ]
+}
