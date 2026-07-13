@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import TrainingForm from "@/components/trainings/TrainingForm";
+import TrainingViewer from "@/components/trainings/TrainingViewer";
 import LeanTrainingSection from "@/components/lean-training/LeanTrainingSection";
 
 const CATEGORY_STYLES = {
@@ -36,6 +37,7 @@ const DIFFICULTY_STYLES = {
 export default function Trainings() {
   const [showForm, setShowForm] = useState(false);
   const [editingTraining, setEditingTraining] = useState(null);
+  const [viewingTraining, setViewingTraining] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const queryClient = useQueryClient();
@@ -154,14 +156,14 @@ export default function Trainings() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filtered.map(training => (
-                  <div key={training.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition group">
+                  <div key={training.id} onClick={() => setViewingTraining(training)} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition group cursor-pointer">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex flex-wrap gap-1.5">
                         <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", CATEGORY_STYLES[training.category])}>{CATEGORY_LABELS[training.category]}</span>
                         <span className={cn("text-xs px-2 py-0.5 rounded-full", DIFFICULTY_STYLES[training.difficulty])}>{training.difficulty}</span>
                       </div>
                       {isAdmin && (
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition" onClick={e => e.stopPropagation()}>
                           <button onClick={() => handleEdit(training)} className="text-slate-400 hover:text-indigo-600"><Pencil className="w-4 h-4" /></button>
                           <button onClick={() => { if (confirm("Delete this training?")) deleteMutation.mutate(training.id); }} className="text-slate-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
                         </div>
@@ -195,6 +197,7 @@ export default function Trainings() {
       </div>
 
       <TrainingForm open={showForm} onOpenChange={setShowForm} editingTraining={editingTraining} employees={employees} onSave={handleSave} />
+      <TrainingViewer open={!!viewingTraining} onOpenChange={(open) => { if (!open) setViewingTraining(null); }} training={viewingTraining} />
     </div>
   );
 }
