@@ -1,32 +1,27 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, GraduationCap, Search, Pencil, Trash2, Loader2, Clock, Video } from "lucide-react";
+import { Plus, GraduationCap, Search, Pencil, Trash2, Loader2, Clock, Video, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import TrainingForm from "@/components/trainings/TrainingForm";
 import TrainingViewer from "@/components/trainings/TrainingViewer";
+import TrainingCategoryManager from "@/components/trainings/TrainingCategoryManager";
 import LeanTrainingSection from "@/components/lean-training/LeanTrainingSection";
 
-const CATEGORY_STYLES = {
-  area: "bg-blue-100 text-blue-700",
-  machine: "bg-purple-100 text-purple-700",
-  custom_build: "bg-amber-100 text-amber-700",
-  safety: "bg-red-100 text-red-700",
-  process: "bg-green-100 text-green-700",
-  other: "bg-slate-100 text-slate-600",
-};
-
-const CATEGORY_LABELS = {
-  area: "Area",
-  machine: "Machine",
-  custom_build: "Custom Build",
-  safety: "Safety",
-  process: "Process",
-  other: "Other",
-};
+const CATEGORY_COLORS = [
+  "bg-blue-100 text-blue-700",
+  "bg-purple-100 text-purple-700",
+  "bg-amber-100 text-amber-700",
+  "bg-red-100 text-red-700",
+  "bg-green-100 text-green-700",
+  "bg-indigo-100 text-indigo-700",
+  "bg-pink-100 text-pink-700",
+  "bg-cyan-100 text-cyan-700",
+];
 
 const DIFFICULTY_STYLES = {
   beginner: "bg-green-50 text-green-600",
@@ -40,6 +35,7 @@ export default function Trainings() {
   const [viewingTraining, setViewingTraining] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: trainings = [], isLoading } = useQuery({
@@ -52,12 +48,22 @@ export default function Trainings() {
     queryFn: () => base44.entities.Employee.filter({ archived: false }),
   });
 
+  const { data: categories = [] } = useQuery({
+    queryKey: ["trainingCategories"],
+    queryFn: () => base44.entities.TrainingCategory.list("sort_order"),
+  });
+
   const { data: currentUser } = useQuery({
     queryKey: ["currentUser"],
     queryFn: () => base44.auth.me(),
   });
 
   const isAdmin = currentUser?.role === "admin";
+
+  const getCategoryStyle = (name) => {
+    const idx = categories.findIndex(c => c.name === name);
+    return CATEGORY_COLORS[(idx >= 0 ? idx : 0) % CATEGORY_COLORS.length];
+  };
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Training.create(data),
@@ -73,6 +79,11 @@ export default function Trainings() {
       queryClient.invalidateQueries({ queryKey: ["trainings"] });
       setShowForm(false);
     },
+  });
+
+  const moveMutation = useMutation({
+    mutationFn: ({ id, category }) => base44.entities.Training.update(id, { category }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["trainings"] }),
   });
 
   const deleteMutation = useMutation({
@@ -138,11 +149,16 @@ export default function Trainings() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search trainings..." className="pl-9" />
               </div>
-              <div className="flex gap-1.5 flex-wrap">
+              <div className="flex gap-1.5 flex-wrap items-center">
                 <button onClick={() => setFilterCategory("all")} className={cn("px-3 py-1.5 rounded-lg text-sm font-medium transition", filterCategory === "all" ? "bg-indigo-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50")}>All</button>
-                {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                  <button key={key} onClick={() => setFilterCategory(key)} className={cn("px-3 py-1.5 rounded-lg text-sm font-medium transition", filterCategory === key ? "bg-indigo-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50")}>{label}</button>
+                {categories.map(cat => (
+                  <button key={cat.id} onClick={() => setFilterCategory(cat.name)} className={cn("px-3 py-1.5 rounded-lg text-sm font-medium transition", filterCategory === cat.name ? "bg-indigo-600 text-white" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50")}>{cat.name}</button>
                 ))}
+                {isAdmin && (
+                  <button onClick={() => setShowCategoryManager(true)} className="px-3 py-1.5 rounded-lg text-sm font-medium transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 flex items-center gap-1">
+                    <Settings className="w-3.5 h-3.5" /> Manage
+                  </button>
+                )}
               </div>
             </div>
 
@@ -159,7 +175,7 @@ export default function Trainings() {
                   <div key={training.id} onClick={() => setViewingTraining(training)} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 hover:shadow-md transition group cursor-pointer">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex flex-wrap gap-1.5">
-                        <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", CATEGORY_STYLES[training.category])}>{CATEGORY_LABELS[training.category]}</span>
+                        <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", getCategoryStyle(training.category))}>{training.category || "Uncategorized"}</span>
                         <span className={cn("text-xs px-2 py-0.5 rounded-full", DIFFICULTY_STYLES[training.difficulty])}>{training.difficulty}</span>
                       </div>
                       {isAdmin && (
@@ -175,6 +191,16 @@ export default function Trainings() {
                       {training.estimated_time && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{training.estimated_time}</span>}
                       {training.video_url && <span className="flex items-center gap-1"><Video className="w-3 h-3" />Video</span>}
                     </div>
+                    {isAdmin && categories.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-slate-100" onClick={e => e.stopPropagation()}>
+                        <Select value={training.category || ""} onValueChange={(v) => moveMutation.mutate({ id: training.id, category: v })}>
+                          <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Section" /></SelectTrigger>
+                          <SelectContent>
+                            {categories.map(c => <SelectItem key={c.id || c.name} value={c.name}>{c.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     {training.assigned_to?.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-slate-100">
                         <p className="text-xs font-medium text-slate-400 mb-1">Assigned to</p>
@@ -196,8 +222,9 @@ export default function Trainings() {
         </Tabs>
       </div>
 
-      <TrainingForm open={showForm} onOpenChange={setShowForm} editingTraining={editingTraining} employees={employees} onSave={handleSave} />
+      <TrainingForm open={showForm} onOpenChange={setShowForm} editingTraining={editingTraining} employees={employees} categories={categories} onSave={handleSave} />
       <TrainingViewer open={!!viewingTraining} onOpenChange={(open) => { if (!open) setViewingTraining(null); }} training={viewingTraining} />
+      <TrainingCategoryManager open={showCategoryManager} onOpenChange={setShowCategoryManager} />
     </div>
   );
 }

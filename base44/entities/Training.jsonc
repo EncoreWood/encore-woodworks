@@ -12,16 +12,7 @@
     },
     "category": {
       "type": "string",
-      "enum": [
-        "area",
-        "machine",
-        "custom_build",
-        "safety",
-        "process",
-        "other"
-      ],
-      "default": "machine",
-      "description": "Training category"
+      "description": "Training category (managed via TrainingCategory entity)"
     },
     "content": {
       "type": "string",
@@ -97,7 +88,6 @@
     }
   },
   "required": [
-    "title",
-    "category"
+    "title"
   ]
 }

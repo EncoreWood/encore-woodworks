@@ -7,26 +7,17 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import QuizEditor from "@/components/trainings/QuizEditor";
 
-const CATEGORIES = [
-  { value: "area", label: "Area" },
-  { value: "machine", label: "Machine" },
-  { value: "custom_build", label: "Custom Build" },
-  { value: "safety", label: "Safety" },
-  { value: "process", label: "Process" },
-  { value: "other", label: "Other" },
-];
-
 const DIFFICULTIES = [
   { value: "beginner", label: "Beginner" },
   { value: "intermediate", label: "Intermediate" },
   { value: "advanced", label: "Advanced" },
 ];
 
-export default function TrainingForm({ open, onOpenChange, editingTraining, employees, onSave }) {
+export default function TrainingForm({ open, onOpenChange, editingTraining, employees, categories = [], onSave }) {
   const [form, setForm] = useState({
     title: "",
     description: "",
-    category: "machine",
+    category: "",
     difficulty: "beginner",
     estimated_time: "",
     video_url: "",
@@ -42,7 +33,7 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
       setForm({
         title: editingTraining.title || "",
         description: editingTraining.description || "",
-        category: editingTraining.category || "machine",
+        category: editingTraining.category || "",
         difficulty: editingTraining.difficulty || "beginner",
         estimated_time: editingTraining.estimated_time || "",
         video_url: editingTraining.video_url || "",
@@ -56,7 +47,7 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
       setForm({
         title: "",
         description: "",
-        category: "machine",
+        category: "",
         difficulty: "beginner",
         estimated_time: "",
         video_url: "",
@@ -113,7 +104,7 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
               <Select value={form.category} onValueChange={v => setForm({ ...form, category: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                  {categories.map(c => <SelectItem key={c.id || c.name} value={c.name}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
