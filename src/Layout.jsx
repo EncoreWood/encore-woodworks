@@ -186,6 +186,17 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   const [showSettings, setShowSettings] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('sidebarCollapsed') === 'true'; } catch { return false; }
+  });
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('sidebarCollapsed', String(next)); } catch {}
+      return next;
+    });
+  };
   const [editingGroupKey, setEditingGroupKey] = useState(null);
   const [editingGroupName, setEditingGroupName] = useState("");
   const [editingBoardKey, setEditingBoardKey] = useState(null);
@@ -548,13 +559,16 @@ export default function Layout({ children, currentPageName }) {
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: "#d1d5db" }}>
       {/* Sidebar — hidden on mobile */}
-      <aside className="hidden sm:flex w-64 border-r border-slate-400 sticky top-0 h-screen overflow-y-auto flex-col shadow-2xl" style={{ backgroundColor: "#9ca3af" }}>
+      <aside className={cn("w-64 border-r border-slate-400 sticky top-0 h-screen overflow-y-auto flex-col shadow-2xl", sidebarCollapsed ? "hidden" : "hidden sm:flex")} style={{ backgroundColor: "#9ca3af" }}>
         {/* Logo & Settings */}
         <div className="border-b border-slate-400">
           <div className="flex items-center gap-3 p-6">
             <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3 flex-1">
               <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png" alt="Encore Woodworks" className="h-24 w-auto" />
             </Link>
+            <button onClick={toggleSidebar} title="Minimize sidebar" className="p-1.5 rounded-lg text-slate-700 hover:bg-slate-600/30 transition flex-shrink-0">
+              <ChevronLeft className="w-5 h-5" />
+            </button>
           </div>
 
           {/* Clock In/Out - Users Only */}
@@ -699,6 +713,18 @@ export default function Layout({ children, currentPageName }) {
           )}
         </div>
           </aside>
+
+      {/* Expand sidebar button (tablet/desktop when collapsed) */}
+      {sidebarCollapsed && (
+        <button
+          onClick={toggleSidebar}
+          title="Expand sidebar"
+          className="hidden sm:flex fixed left-0 top-4 z-40 items-center justify-center w-8 h-20 rounded-r-xl shadow-md border border-l-0 border-slate-400 text-slate-700 hover:bg-slate-300 transition"
+          style={{ backgroundColor: "#9ca3af" }}
+        >
+          <ChevronLeft className="w-5 h-5 rotate-180" />
+        </button>
+      )}
 
       {/* Mobile Header */}
       {(() => {
