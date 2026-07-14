@@ -605,6 +605,8 @@ function PresentationEditor({ presId }) {
               slide={currentSlide}
               onUpdate={(patch) => updateSlide(selectedIdx, patch)}
               onDelete={() => deleteSlide(selectedIdx)}
+              slides={slides}
+              onUpdateSlide={updateSlide}
             />
           ) : null}
         </div>

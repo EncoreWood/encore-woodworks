@@ -4,8 +4,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
 import { getNotesText, isCoverSlide } from "./slideHelpers";
+import RoomPricingSection from "./RoomPricingSection";
 
-export default function SlidePropertiesPanel({ slide, onUpdate, onDelete }) {
+export default function SlidePropertiesPanel({ slide, onUpdate, onDelete, slides, onUpdateSlide }) {
   const notesText = getNotesText(slide);
 
   return (
@@ -43,6 +44,15 @@ export default function SlidePropertiesPanel({ slide, onUpdate, onDelete }) {
       <p className="text-xs text-slate-400 italic">
         Images are managed directly on the slide — drag to move, use the corner handle to resize, and click the crop icon to crop.
       </p>
+
+      {!isCoverSlide(slide) && (
+        <RoomPricingSection
+          slide={slide}
+          slides={slides}
+          onUpdate={onUpdate}
+          onUpdateSlide={onUpdateSlide}
+        />
+      )}
 
       {!isCoverSlide(slide) && (
         <div className="border-t border-slate-200 pt-4">
