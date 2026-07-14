@@ -4,14 +4,14 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Printer, Send, ChevronLeft, Copy, Trash2, Edit2, Save, Download } from "lucide-react";
-import jsPDF from "jspdf";
+import { Plus, Printer, Send, ChevronLeft, ChevronRight, Copy, Trash2, Edit2, Save, Download } from "lucide-react";
 import { format } from "date-fns";
 import ProjectSelector from "@/components/presentations/ProjectSelector";
-import SlideThumbnailStrip from "@/components/presentations/SlideThumbnailStrip";
-import { parseImages, parseSpec } from "@/components/presentations/SlidePreview";
-import FabricSlideCanvas, { CANVAS_W, CANVAS_H } from "@/components/presentations/FabricSlideCanvas";
 import SendToClientModal from "@/components/presentations/SendToClientModal";
+import SlideThumbnailPanel from "@/components/presentations/SlideThumbnailPanel";
+import SlideCard from "@/components/presentations/SlideCard";
+import SlidePropertiesPanel from "@/components/presentations/SlidePropertiesPanel";
+import { parseSpecs, parseImageUrl, SPEC_FIELDS } from "@/components/presentations/slideHelpers";
 
 const STATUS_COLORS = {
   draft: "bg-slate-100 text-slate-700 border-slate-300",
@@ -31,6 +31,10 @@ function navigateTo(mode, id = null) {
   window.dispatchEvent(new Event("popstate"));
 }
 
+function escapeHtml(str) {
+  return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 // ─── COVER THUMBNAIL ─────────────────────────────────────────────────────────
 function CoverThumb({ presId }) {
   const { data: slides = [] } = useQuery({
@@ -39,8 +43,8 @@ function CoverThumb({ presId }) {
     staleTime: 60000,
   });
   const first = slides[0];
-  const thumb = first?.thumbnail_url || (first ? (parseImages(first.image_3d_url)[0]?.url) : null);
-  if (thumb) return <img src={thumb} alt="" className="w-full h-full" style={{ objectFit: "contain", background: "#f8fafc" }} />;
+  const img = first ? parseImageUrl(first.image_3d_url) : null;
+  if (img) return <img src={img} alt="" className="w-full h-full" style={{ objectFit: "cover" }} />;
   return <span className="text-xs text-slate-400">{slides.length} slide{slides.length !== 1 ? "s" : ""}</span>;
 }
 
@@ -138,8 +142,6 @@ function PresentationEditor({ presId }) {
   const [presData, setPresData] = useState(null);
   const [showSend, setShowSend] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [isPrinting, setIsPrinting] = useState(false);
-  const editorPanelRef = useRef(null);
 
   const { data: presentation, isLoading: presLoading } = useQuery({
     queryKey: ["presentation", presId],
@@ -153,7 +155,7 @@ function PresentationEditor({ presId }) {
     enabled: !!presId,
   });
 
-  // Use refs so doSave always has latest data even in stale closures
+  // Refs for latest data in async closures
   const slidesRef = useRef([]);
   const presDataRef = useRef(null);
   const autoSaveTimerRef = useRef(null);
@@ -176,47 +178,64 @@ function PresentationEditor({ presId }) {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     if (updatedSlides) slidesRef.current = updatedSlides;
     if (updatedPres) presDataRef.current = updatedPres;
-    autoSaveTimerRef.current = setTimeout(() => doSave(slidesRef.current, presDataRef.current), 2000);
+    autoSaveTimerRef.current = setTimeout(() => doSave(slidesRef.current, presDataRef.current), 1500);
   };
 
   const doSave = async (slidesToSave, presToSave) => {
     setSaving(true);
-    if (presToSave?.id) {
-      await base44.entities.Presentation.update(presToSave.id, {
-        project_name: presToSave.project_name,
-        client_name: presToSave.client_name,
-        status: presToSave.status,
-      });
-    }
-    const updatedSlides = [...slidesToSave];
-    for (let i = 0; i < updatedSlides.length; i++) {
-      const slide = { ...updatedSlides[i], presentation_id: presId, sort_order: i };
-      if (slide.id) {
-        await base44.entities.PresentationSlide.update(slide.id, slide);
-      } else {
-        const created = await base44.entities.PresentationSlide.create(slide);
-        updatedSlides[i] = created;
-        slidesRef.current = updatedSlides;
+    try {
+      if (presToSave?.id) {
+        await base44.entities.Presentation.update(presToSave.id, {
+          project_name: presToSave.project_name,
+          client_name: presToSave.client_name,
+          status: presToSave.status,
+        });
       }
+      const updated = [...slidesToSave];
+      for (let i = 0; i < updated.length; i++) {
+        const slideData = {
+          presentation_id: presId,
+          sort_order: i,
+          room_name: updated[i].room_name,
+          slide_label: updated[i].slide_label,
+          image_3d_url: updated[i].image_3d_url,
+          image_2d_url: updated[i].image_2d_url,
+          specs: updated[i].specs,
+          notes: updated[i].notes,
+        };
+        if (updated[i].id) {
+          await base44.entities.PresentationSlide.update(updated[i].id, slideData);
+        } else {
+          const created = await base44.entities.PresentationSlide.create(slideData);
+          updated[i] = { ...updated[i], id: created.id };
+          slidesRef.current = updated;
+        }
+      }
+      setSlides([...updated]);
+      queryClient.invalidateQueries({ queryKey: ["presentations"] });
+      queryClient.invalidateQueries({ queryKey: ["slides", presId] });
+    } finally {
+      setSaving(false);
     }
-    setSlides([...updatedSlides]);
-    queryClient.invalidateQueries({ queryKey: ["presentations"] });
-    setSaving(false);
   };
 
   const updateSlide = (idx, patch) => {
     const updated = slidesRef.current.map((s, i) => i === idx ? { ...s, ...patch } : s);
     slidesRef.current = updated;
     setSlides(updated);
-    // Only trigger a save when real content changed (not just a live thumbnail preview)
-    const isThumbnailOnly = Object.keys(patch).length === 1 && "thumbnail_url" in patch;
-    if (!isThumbnailOnly) {
-      scheduleAutoSave(updated, null);
-    }
+    scheduleAutoSave(updated, null);
   };
 
   const addSlide = () => {
-    const newSlide = { room_name: "New Room", slide_label: "", notes: "{}", image_3d_url: "[]", sort_order: slides.length };
+    const newSlide = {
+      room_name: "New Room",
+      slide_label: "",
+      notes: "",
+      image_3d_url: null,
+      image_2d_url: null,
+      specs: "{}",
+      sort_order: slides.length,
+    };
     const updated = [...slides, newSlide];
     setSlides(updated);
     setSelectedIdx(updated.length - 1);
@@ -238,7 +257,9 @@ function PresentationEditor({ presId }) {
     if (slide?.id) await base44.entities.PresentationSlide.delete(slide.id);
     const updated = slides.filter((_, i) => i !== idx);
     setSlides(updated);
+    slidesRef.current = updated;
     setSelectedIdx(Math.max(0, idx - 1));
+    queryClient.invalidateQueries({ queryKey: ["slides", presId] });
   };
 
   const updatePres = (patch) => {
@@ -248,185 +269,190 @@ function PresentationEditor({ presId }) {
     scheduleAutoSave(null, updated);
   };
 
+  // Arrow key navigation between slides
+  useEffect(() => {
+    const handler = (e) => {
+      const tag = e.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
+      if (e.key === "ArrowLeft") setSelectedIdx(i => Math.max(0, i - 1));
+      if (e.key === "ArrowRight") setSelectedIdx(i => Math.min(slides.length - 1, i + 1));
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [slides.length]);
+
   if (presLoading || slidesLoading) return <div className="p-8 text-center text-slate-500">Loading...</div>;
   if (!presData) return <div className="p-8 text-center text-slate-500">Presentation not found.</div>;
 
   const currentSlide = slides[selectedIdx];
 
-  // Render each slide's fabric canvas to a PNG data URL
-  const renderSlidesToImages = async () => {
-    const fab = await new Promise((resolve, reject) => {
-      if (window.fabric) return resolve(window.fabric);
-      const script = document.createElement("script");
-      script.src = "https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js";
-      script.onload = () => resolve(window.fabric);
-      script.onerror = reject;
-      document.head.appendChild(script);
-    });
+  // Print / PDF — open a new window with all slides, one per letter-landscape page
+  const handlePrint = () => {
+    const slidesHTML = slides.map(slide => {
+      const specs = parseSpecs(slide);
+      const img3d = parseImageUrl(slide.image_3d_url);
+      const img2d = slide.image_2d_url;
+      return `
+        <div class="slide-page">
+          <div class="slide-header">
+            <h1>${escapeHtml(slide.room_name || "")}</h1>
+            ${slide.slide_label ? `<p>${escapeHtml(slide.slide_label)}</p>` : ""}
+          </div>
+          <div class="slide-images">
+            ${img3d ? `<img src="${img3d}" class="main-img" />` : ""}
+            ${img2d ? `<img src="${img2d}" class="second-img" />` : ""}
+          </div>
+          <table class="specs-table">
+            <tr>${SPEC_FIELDS.map(f => `<th>${f.label}</th>`).join("")}</tr>
+            <tr>${SPEC_FIELDS.map(f => `<td>${escapeHtml(specs[f.key] || "")}</td>`).join("")}</tr>
+          </table>
+        </div>
+      `;
+    }).join("");
 
-    const images = [];
-    for (let i = 0; i < slides.length; i++) {
-      const slide = slides[i];
-      const json = slide.canvas_json;
-      if (!json) { images.push(null); continue; }
-
-      const el = document.createElement("canvas");
-      document.body.appendChild(el);
-      const canvas = new fab.Canvas(el, { width: CANVAS_W, height: CANVAS_H, backgroundColor: "#ffffff" });
-
-      await new Promise((resolve) => {
-        try {
-          const parsed = typeof json === "string" ? JSON.parse(json) : json;
-          canvas.loadFromJSON(parsed, () => {
-            const imgs = canvas.getObjects("image");
-            if (imgs.length === 0) { canvas.renderAll(); return resolve(); }
-            let loaded = 0;
-            imgs.forEach(img => {
-              img.set({ crossOrigin: "anonymous" });
-              const src = img.getSrc();
-              img.setSrc(src, () => {
-                loaded++;
-                if (loaded === imgs.length) { canvas.renderAll(); resolve(); }
-              }, { crossOrigin: "anonymous" });
-            });
-          });
-        } catch { canvas.renderAll(); resolve(); }
-      });
-
-      await new Promise(r => setTimeout(r, 200));
-      images.push(canvas.toDataURL({ format: "png", quality: 1.0, multiplier: 1.0 }));
-      canvas.dispose();
-      document.body.removeChild(el);
-    }
-    return images;
-  };
-
-  // Download all slides as a landscape letter-size PDF
-  const handleExportPDF = async () => {
-    setIsPrinting(true);
-    try {
-      const images = await renderSlidesToImages();
-      const pdf = new jsPDF({ orientation: "landscape", unit: "in", format: [11, 8.5] });
-      let added = 0;
-      images.forEach((dataUrl) => {
-        if (!dataUrl) return;
-        if (added > 0) pdf.addPage([11, 8.5], "landscape");
-        pdf.addImage(dataUrl, "PNG", 0, 0, 11, 8.5);
-        added++;
-      });
-      pdf.save(`${presData.project_name || "presentation"}.pdf`);
-    } finally { setIsPrinting(false); }
-  };
-
-  // Open browser print dialog — one slide per letter-size landscape page
-  const handlePrint = async () => {
-    setIsPrinting(true);
-    try {
-      const images = await renderSlidesToImages();
-      const printWin = window.open("", "_blank");
-      if (!printWin) return;
-      printWin.document.write(`<!DOCTYPE html><html><head><title>${presData.project_name || "Presentation"}</title>
-        <style>
-          @page { size: letter landscape; margin: 0; }
-          body { margin: 0; }
-          .slide { width: 11in; height: 8.5in; page-break-after: always; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-          .slide:last-child { page-break-after: auto; }
-          .slide img { max-width: 11in; max-height: 8.5in; object-fit: contain; }
-        </style></head><body>
-        ${images.map(d => d ? `<div class="slide"><img src="${d}" /></div>` : "").join("")}
-        </body></html>`);
-      printWin.document.close();
-      printWin.onload = () => { printWin.focus(); printWin.print(); };
-    } finally { setIsPrinting(false); }
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><title>${escapeHtml(presData.project_name || "Presentation")}</title>
+      <style>
+        @page { size: letter landscape; margin: 0.5in; }
+        body { margin: 0; font-family: Georgia, serif; color: #1e293b; }
+        .slide-page { width: 100%; min-height: 7.5in; page-break-after: always; display: flex; flex-direction: column; }
+        .slide-page:last-child { page-break-after: auto; }
+        .slide-header { border-bottom: 2px solid #1e293b; padding-bottom: 8px; margin-bottom: 12px; }
+        .slide-header h1 { font-size: 28px; margin: 0; font-weight: bold; }
+        .slide-header p { font-size: 14px; color: #64748b; margin: 4px 0 0; }
+        .slide-images { flex: 1; display: flex; gap: 12px; align-items: center; justify-content: center; min-height: 3in; }
+        .main-img { max-width: 65%; max-height: 3.5in; object-fit: contain; }
+        .second-img { max-width: 30%; max-height: 3.5in; object-fit: contain; }
+        .specs-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 11px; table-layout: fixed; }
+        .specs-table th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; font-weight: 600; }
+        .specs-table td { border: 1px solid #cbd5e1; padding: 4px 6px; word-wrap: break-word; }
+      </style>
+    </head><body>${slidesHTML}</body></html>`);
+    win.document.close();
+    setTimeout(() => { win.focus(); win.print(); }, 500);
   };
 
   return (
-    <>
-      {/* Editor UI */}
-      <div className="flex flex-col h-screen bg-slate-200">
-        {/* Toolbar */}
-        <div className="no-print bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-3 flex-shrink-0 z-10">
-          <button
-            onClick={() => navigateTo("list")}
-            className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" /> Back
-          </button>
-          <div className="w-px h-5 bg-slate-200" />
-          <input
-            className="font-semibold text-slate-900 text-sm border-none outline-none bg-transparent min-w-0 flex-1"
-            value={presData.project_name || ""}
-            onChange={e => updatePres({ project_name: e.target.value })}
-            placeholder="Presentation title"
+    <div className="flex flex-col h-screen bg-slate-200">
+      {/* ── Top Bar ── */}
+      <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center gap-2 sm:gap-3 flex-shrink-0 z-10 flex-wrap">
+        <button
+          onClick={() => navigateTo("list")}
+          className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 transition-colors flex-shrink-0"
+        >
+          <ChevronLeft className="w-4 h-4" /> Back
+        </button>
+        <div className="w-px h-5 bg-slate-200 hidden sm:block" />
+        <input
+          className="font-semibold text-slate-900 text-sm border-none outline-none bg-transparent min-w-0 flex-1"
+          value={presData.project_name || ""}
+          onChange={e => updatePres({ project_name: e.target.value })}
+          placeholder="Presentation title"
+        />
+        <Select value={presData.status || "draft"} onValueChange={v => updatePres({ status: v })}>
+          <SelectTrigger className="h-8 w-24 text-xs flex-shrink-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="draft">Draft</SelectItem>
+            <SelectItem value="ready">Ready</SelectItem>
+            <SelectItem value="sent">Sent</SelectItem>
+          </SelectContent>
+        </Select>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => doSave(slidesRef.current, presDataRef.current)}
+          disabled={saving}
+          className="gap-1.5 flex-shrink-0"
+        >
+          <Save className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{saving ? "Saving..." : "Save"}</span>
+        </Button>
+        <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 flex-shrink-0">
+          <Printer className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Print</span>
+        </Button>
+        <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 flex-shrink-0">
+          <Download className="w-3.5 h-3.5" /> PDF
+        </Button>
+        <Button
+          size="sm"
+          className="bg-amber-700 hover:bg-amber-800 gap-1.5 flex-shrink-0"
+          onClick={() => setShowSend(true)}
+        >
+          <Send className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Send to Client</span>
+        </Button>
+      </div>
+
+      {/* ── 3-Panel Layout ── */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left: thumbnails */}
+        <div className="w-44 lg:w-52 bg-white border-r border-slate-200 p-3 flex-shrink-0 overflow-hidden hidden sm:block">
+          <SlideThumbnailPanel
+            slides={slides}
+            selectedIdx={selectedIdx}
+            onSelect={setSelectedIdx}
+            onAdd={addSlide}
+            onReorder={reorderSlides}
           />
-          <Select value={presData.status || "draft"} onValueChange={v => updatePres({ status: v })}>
-            <SelectTrigger className="h-8 w-28 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="ready">Ready</SelectItem>
-              <SelectItem value="sent">Sent</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button size="sm" variant="outline" onClick={() => doSave(slidesRef.current, presDataRef.current)} disabled={saving} className="gap-1.5">
-            <Save className="w-3.5 h-3.5" /> {saving ? "Saving..." : "Save"}
-          </Button>
-          <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5" disabled={isPrinting}>
-            <Printer className="w-3.5 h-3.5" /> {isPrinting ? "Preparing..." : "Print"}
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleExportPDF} className="gap-1.5" disabled={isPrinting}>
-            <Download className="w-3.5 h-3.5" /> PDF
-          </Button>
-          <Button size="sm" className="bg-amber-700 hover:bg-amber-800 gap-1.5" onClick={() => setShowSend(true)}>
-            <Send className="w-3.5 h-3.5" /> Send to Client
-          </Button>
         </div>
 
-        {/* Two-panel layout */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Left: thumbnail strip */}
-          <div className="no-print w-52 bg-white border-r border-slate-200 p-3 flex flex-col overflow-hidden flex-shrink-0">
-            <SlideThumbnailStrip
-              slides={slides}
-              selectedIdx={selectedIdx}
-              onSelect={setSelectedIdx}
-              onAdd={addSlide}
-              onReorder={reorderSlides}
-            />
-          </div>
-
-          {/* Right: Fabric canvas slide editor */}
-          <div ref={editorPanelRef} className="flex-1 overflow-y-auto p-6 bg-slate-200">
-            {currentSlide ? (
-              <div className="flex flex-col items-center gap-3">
-                <FabricSlideCanvas
-                  key={currentSlide.id || selectedIdx}
-                  slide={currentSlide}
-                  onUpdate={(patch) => updateSlide(selectedIdx, patch)}
-                  editable={true}
-                  containerWidth={editorPanelRef.current?.offsetWidth || 1100}
-                />
-                <div className="no-print">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-red-600 hover:bg-red-50 gap-1"
-                    onClick={() => deleteSlide(selectedIdx)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Delete Slide
-                  </Button>
+        {/* Center: slide editor */}
+        <div className="flex-1 overflow-y-auto p-4 bg-slate-200 flex flex-col">
+          {currentSlide ? (
+            <>
+              <div className="flex-1 flex items-center justify-center min-h-0">
+                <div style={{ width: "100%", maxWidth: "1000px" }}>
+                  <SlideCard
+                    key={selectedIdx}
+                    slide={currentSlide}
+                    onUpdate={(patch) => updateSlide(selectedIdx, patch)}
+                    editable={true}
+                  />
                 </div>
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-slate-500">
-                <p className="mb-4">No slides yet.</p>
-                <Button onClick={addSlide} className="bg-amber-700 hover:bg-amber-800 gap-2">
-                  <Plus className="w-4 h-4" /> Add First Slide
+              {/* Navigation arrows + counter */}
+              <div className="flex items-center justify-center gap-4 py-2 flex-shrink-0">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setSelectedIdx(i => Math.max(0, i - 1))}
+                  disabled={selectedIdx === 0}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="text-sm text-slate-600 font-medium min-w-[50px] text-center">
+                  {selectedIdx + 1} / {slides.length}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setSelectedIdx(i => Math.min(slides.length - 1, i + 1))}
+                  disabled={selectedIdx >= slides.length - 1}
+                >
+                  <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
-            )}
-          </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-slate-500">
+              <p className="mb-4">No slides yet.</p>
+              <Button onClick={addSlide} className="bg-amber-700 hover:bg-amber-800 gap-2">
+                <Plus className="w-4 h-4" /> Add First Slide
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Right: properties */}
+        <div className="w-64 bg-white border-l border-slate-200 p-4 overflow-y-auto flex-shrink-0 hidden lg:block">
+          {currentSlide ? (
+            <SlidePropertiesPanel
+              slide={currentSlide}
+              onUpdate={(patch) => updateSlide(selectedIdx, patch)}
+              onDelete={() => deleteSlide(selectedIdx)}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -436,7 +462,7 @@ function PresentationEditor({ presId }) {
         presentation={presData}
         onSent={() => queryClient.invalidateQueries({ queryKey: ["presentations"] })}
       />
-    </>
+    </div>
   );
 }
 
@@ -463,7 +489,7 @@ function ShareView({ token }) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [slides]);
+  }, [slides.length]);
 
   if (!presentation) return <div className="p-8 text-center">Loading...</div>;
 
@@ -471,36 +497,25 @@ function ShareView({ token }) {
 
   return (
     <div className="min-h-screen bg-slate-900 text-white flex flex-col">
-      <div className="flex-1 flex flex-col items-center justify-center p-8 max-w-5xl mx-auto w-full">
-        {idx === 0 && slides.length === 0 ? (
-          <div className="text-center">
-            <h1 className="text-5xl font-bold mb-4">{presentation.project_name}</h1>
-            <p className="text-2xl text-slate-300">{presentation.client_name}</p>
-          </div>
-        ) : slide ? (
-          <div className="w-full flex justify-center">
-            <FabricSlideCanvas
-              key={slide.id}
-              slide={slide}
-              onUpdate={() => {}}
-              editable={false}
-              containerWidth={900}
-            />
+      <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 max-w-5xl mx-auto w-full">
+        {slide ? (
+          <div className="w-full" style={{ maxWidth: "1000px" }}>
+            <SlideCard key={slide.id} slide={slide} onUpdate={() => {}} editable={false} />
           </div>
         ) : (
           <div className="text-center">
-            <h1 className="text-5xl font-bold mb-4">{presentation.project_name}</h1>
-            <p className="text-2xl text-slate-300">{presentation.client_name}</p>
+            <h1 className="text-3xl sm:text-5xl font-bold mb-4">{presentation.project_name}</h1>
+            <p className="text-xl sm:text-2xl text-slate-300">{presentation.client_name}</p>
           </div>
         )}
       </div>
-      <div className="bg-slate-800 border-t border-slate-700 px-6 py-3 flex items-center justify-between">
+      <div className="bg-slate-800 border-t border-slate-700 px-4 sm:px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={() => setIdx(i => Math.max(0, i - 1))} disabled={idx === 0} className="p-2 hover:bg-slate-700 rounded disabled:opacity-40">◀</button>
           <span className="text-slate-400 text-sm">{idx + 1} / {Math.max(slides.length, 1)}</span>
           <button onClick={() => setIdx(i => Math.min(slides.length - 1, i + 1))} disabled={idx >= slides.length - 1} className="p-2 hover:bg-slate-700 rounded disabled:opacity-40">▶</button>
         </div>
-        <span className="text-slate-500 text-sm">{presentation.project_name}</span>
+        <span className="text-slate-500 text-sm truncate ml-4">{presentation.project_name}</span>
       </div>
     </div>
   );
