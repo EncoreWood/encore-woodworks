@@ -14,6 +14,10 @@ export default function SlideCard({ slide, onUpdate, editable = true }) {
 
   const specs = parseSpecs(slide);
 
+  const roomPricingItems = Array.isArray(specs.room_pricing_items) ? specs.room_pricing_items : [];
+  const roomTotal = roomPricingItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const hasRoomPricing = roomPricingItems.length > 0 && roomTotal > 0;
+
   const updateSpec = (key, value) => {
     const newSpecs = { ...specs, [key]: value };
     onUpdate({ specs: JSON.stringify(newSpecs) });
@@ -25,27 +29,37 @@ export default function SlideCard({ slide, onUpdate, editable = true }) {
       style={{ aspectRatio: "11 / 8.5", width: "100%" }}
     >
       {/* ── Top: room name + label ── */}
-      <div className="px-6 pt-4 pb-3 border-b-2 border-slate-800 flex-shrink-0">
-        {editable ? (
-          <input
-            className="text-2xl font-bold text-slate-900 w-full border-none outline-none bg-transparent placeholder-slate-300"
-            value={slide.room_name || ""}
-            onChange={e => onUpdate({ room_name: e.target.value })}
-            placeholder="Room Name"
-          />
-        ) : (
-          <h2 className="text-2xl font-bold text-slate-900">{slide.room_name}</h2>
-        )}
-        {editable ? (
-          <input
-            className="text-sm text-slate-500 w-full border-none outline-none bg-transparent placeholder-slate-300 mt-0.5"
-            value={slide.slide_label || ""}
-            onChange={e => onUpdate({ slide_label: e.target.value })}
-            placeholder="Slide label (optional)"
-          />
-        ) : (
-          slide.slide_label ? <p className="text-sm text-slate-500 mt-0.5">{slide.slide_label}</p> : null
-        )}
+      <div className="px-6 pt-4 pb-3 border-b-2 border-slate-800 flex-shrink-0 relative">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            {editable ? (
+              <input
+                className="text-2xl font-bold text-slate-900 w-full border-none outline-none bg-transparent placeholder-slate-300"
+                value={slide.room_name || ""}
+                onChange={e => onUpdate({ room_name: e.target.value })}
+                placeholder="Room Name"
+              />
+            ) : (
+              <h2 className="text-2xl font-bold text-slate-900">{slide.room_name}</h2>
+            )}
+            {editable ? (
+              <input
+                className="text-sm text-slate-500 w-full border-none outline-none bg-transparent placeholder-slate-300 mt-0.5"
+                value={slide.slide_label || ""}
+                onChange={e => onUpdate({ slide_label: e.target.value })}
+                placeholder="Slide label (optional)"
+              />
+            ) : (
+              slide.slide_label ? <p className="text-sm text-slate-500 mt-0.5">{slide.slide_label}</p> : null
+            )}
+          </div>
+          {hasRoomPricing && (
+            <div className="flex-shrink-0 text-right">
+              <p className="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">Room Total</p>
+              <p className="text-xl font-bold text-amber-700">${roomTotal.toLocaleString()}</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Middle: Fabric.js annotation canvas ── */}
