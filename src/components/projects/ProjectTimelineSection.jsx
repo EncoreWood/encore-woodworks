@@ -32,6 +32,15 @@ const LABEL_COL_WIDTH = 140;
 
 const DEFAULT_DATE_RANGES = [[0, 14], [14, 28], [28, 42], [42, 84], [84, 98], [98, 98]];
 
+const DEFAULT_CHECKLISTS = {
+  Design: ["Initial measurements", "Draft drawings", "Client approval", "Finalize specs"],
+  Orders: ["Confirm cabinet list", "Order materials", "Order hardware", "Confirm delivery date"],
+  Prep: ["Cut list ready", "Materials staged", "Hardware pulled", "Job packet complete"],
+  Production: ["Face frames built", "Boxes assembled", "Finish applied", "QC inspection"],
+  Install: ["Schedule crew", "Site prep", "Cabinets installed", "Touch-ups complete"],
+  Complete: ["Final walkthrough", "Client sign-off", "Invoice sent", "Project closed"],
+};
+
 function parseChecklist(str) {
   if (!str) return [];
   try { const p = JSON.parse(str); return Array.isArray(p) ? p : []; } catch { return []; }
@@ -83,6 +92,7 @@ export default function ProjectTimelineSection({ project }) {
         is_client_visible: true,
         is_completed: false,
         sort_order: dm.sort_order,
+        checklist: JSON.stringify((DEFAULT_CHECKLISTS[dm.event_name] || []).map(label => ({ id: makeId(), label, done: false, done_at: null }))),
       }));
       return base44.entities.TimelineEvent.bulkCreate(records);
     },
@@ -95,6 +105,17 @@ export default function ProjectTimelineSection({ project }) {
       seedMutation.mutate();
     }
   }, [isLoading, events.length, project?.id, seeded]);
+
+  // Auto-expand phases that have checklist items so they're visible
+  useEffect(() => {
+    if (events.length > 0 && Object.keys(expandedRows).length === 0) {
+      const expanded = {};
+      events.forEach(e => {
+        if (parseChecklist(e.checklist).length > 0) expanded[e.id] = true;
+      });
+      if (Object.keys(expanded).length > 0) setExpandedRows(expanded);
+    }
+  }, [events]);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.TimelineEvent.update(id, data),
