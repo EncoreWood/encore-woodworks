@@ -1,6 +1,7 @@
 import { parseSpecs, SPEC_FIELDS, isCoverSlide } from "./slideHelpers";
 import SlideCanvas from "./SlideCanvas";
 import CoverSlide from "./CoverSlide";
+import SpecDropdownCell from "./SpecDropdownCell";
 
 /**
  * Structured slide layout — pure HTML/CSS, no canvas.
@@ -79,14 +80,13 @@ export default function SlideCard({ slide, onUpdate, editable = true }) {
               {SPEC_FIELDS.map(f => (
                 <td key={f.key} className="border border-slate-300 p-0">
                   {editable ? (
-                    <input
+                    <SpecDropdownCell
                       value={specs[f.key] || ""}
-                      onChange={e => updateSpec(f.key, e.target.value)}
-                      placeholder="—"
-                      className="w-full border-none bg-transparent px-1.5 py-1 text-[11px] outline-none focus:bg-amber-50 focus:ring-1 focus:ring-amber-400 rounded-sm"
+                      presets={f.presets}
+                      onChange={(val) => updateSpec(f.key, val)}
                     />
                   ) : (
-                    <div className="px-1.5 py-1 text-[11px] text-slate-700 truncate" title={specs[f.key] || ""}>
+                    <div className="px-1.5 py-1 text-[11px] text-blue-700 font-medium truncate" title={specs[f.key] || ""}>
                       {specs[f.key] || "—"}
                     </div>
                   )}

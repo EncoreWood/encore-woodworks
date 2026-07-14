@@ -1,11 +1,11 @@
 export const SPEC_FIELDS = [
-  { key: "wood_species", label: "Wood Species" },
-  { key: "finish", label: "Finish" },
-  { key: "crown_type", label: "Crown Type" },
-  { key: "door_profile", label: "Door Profile" },
-  { key: "ceiling_ht", label: "Ceiling Ht" },
-  { key: "cab_ht", label: "Cab Ht" },
-  { key: "notes", label: "Notes" },
+  { key: "wood_species", label: "Wood Species", presets: ["Painted", "Maple", "Cherry", "White Oak", "Walnut", "Alder", "MDF", "TBD"] },
+  { key: "finish", label: "Finish", presets: ["TBD", "Painted White", "Painted Gray", "Natural", "Stain - Light", "Stain - Medium", "Stain - Dark", "Two-Tone"] },
+  { key: "crown_type", label: "Crown Type", presets: ["None", "Simple Crown", "Build-Up Crown", "Light Rail", "Dentil", "Custom"] },
+  { key: "door_profile", label: "Door Profile", presets: ["Shaker", "Flat Panel", "Raised Panel", "Beadboard", "Glass Insert", "Slab", "Custom"] },
+  { key: "ceiling_ht", label: "Ceiling Ht", presets: ["8'", "9'", "10'", "11'", "12'", "Vaulted", "Custom"] },
+  { key: "cab_ht", label: "Cab Ht", presets: ["Standard (34.5\")", "Tall (36\")", "Custom"] },
+  { key: "notes", label: "Notes", presets: null },
 ];
 
 /**
