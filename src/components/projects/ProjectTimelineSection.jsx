@@ -16,6 +16,7 @@ import { format, differenceInDays, addDays } from "date-fns";
 import { Eye, Plus, ChevronDown, CheckCircle2, Trash2, X, Loader2, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import TimelineChecklist from "@/components/projects/TimelineChecklist";
 
 const DEFAULT_MILESTONES = [
   { event_name: "Design", event_type: "phase", color: "#3b82f6", sort_order: 0 },
@@ -438,6 +439,8 @@ export default function ProjectTimelineSection({ project }) {
           onSubmit={handleFormSubmit}
           onDelete={editingEvent ? () => deleteMutation.mutate(editingEvent.id) : null}
           editingEvent={editingEvent}
+          checklistItems={editingEvent?._checklist || []}
+          onSaveChecklist={editingEvent ? (newItems) => saveChecklist(editingEvent, newItems) : null}
           isLoading={updateMutation.isPending || createMutation.isPending || deleteMutation.isPending}
         />
       )}
@@ -445,7 +448,7 @@ export default function ProjectTimelineSection({ project }) {
   );
 }
 
-function EventEditDialog({ open, onOpenChange, onSubmit, onDelete, editingEvent, isLoading }) {
+function EventEditDialog({ open, onOpenChange, onSubmit, onDelete, editingEvent, checklistItems, onSaveChecklist, isLoading }) {
   const emptyForm = { event_name: "", event_type: "phase", start_date: "", end_date: "", color: "", is_client_visible: true, is_completed: false, notes: "" };
   const [form, setForm] = useState(emptyForm);
 
@@ -536,6 +539,14 @@ function EventEditDialog({ open, onOpenChange, onSubmit, onDelete, editingEvent,
             </div>
             <Switch checked={form.is_client_visible} onCheckedChange={v => setForm(f => ({ ...f, is_client_visible: v }))} />
           </div>
+          {editingEvent && onSaveChecklist && (
+            <div className="space-y-1.5">
+              <Label>Checklist</Label>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <TimelineChecklist items={checklistItems} onSave={onSaveChecklist} />
+              </div>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label>Notes</Label>
             <Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} placeholder="Optional notes..." />
