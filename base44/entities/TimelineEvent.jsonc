@@ -1,0 +1,71 @@
+{
+  "name": "TimelineEvent",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for reference"
+    },
+    "event_name": {
+      "type": "string",
+      "description": "Event title"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "phase",
+        "milestone",
+        "event"
+      ],
+      "default": "phase",
+      "description": "Type of timeline event"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Start date of the event"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "End date of the event"
+    },
+    "color": {
+      "type": "string",
+      "description": "Custom color override (hex)"
+    },
+    "is_client_visible": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this event is visible in client portal view"
+    },
+    "is_completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this event is completed"
+    },
+    "completed_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the event was completed"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    },
+    "sort_order": {
+      "type": "number",
+      "default": 0,
+      "description": "Display order"
+    }
+  },
+  "required": [
+    "project_id",
+    "event_name",
+    "event_type"
+  ]
+}

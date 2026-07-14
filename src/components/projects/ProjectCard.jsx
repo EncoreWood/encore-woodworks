@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, User, ChevronRight, DoorOpen, ExternalLink, CheckCircle2, Circle, Plus, ClipboardList, Image, X } from "lucide-react";
+import { Calendar, MapPin, User, ChevronRight, DoorOpen, ExternalLink, CheckCircle2, Circle, Plus, ClipboardList, Image, X, BarChart3 } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -12,6 +12,7 @@ import { base44 } from "@/api/base44Client";
 import { useState } from "react";
 import TaskForm from "./TaskForm";
 import PickupItemForm from "../pickup/PickupItemForm";
+import TimelineModal from "./TimelineModal";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -46,6 +47,7 @@ export default function ProjectCard({ project }) {
   const queryClient = useQueryClient();
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [showPickupForm, setShowPickupForm] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
   const [lightboxPhoto, setLightboxPhoto] = useState(null);
   const status = statusConfig[project.status] || statusConfig.inquiry;
   const type = typeConfig[project.project_type] || project.project_type;
@@ -142,7 +144,23 @@ export default function ProjectCard({ project }) {
             <div className="flex items-center gap-2 text-sm text-slate-600">
               <Calendar className="w-4 h-4 text-slate-400" />
               <span>Due {format(new Date(project.estimated_completion), "MMM d, yyyy")}</span>
+              <button
+                onClick={(e) => { e.preventDefault(); setShowTimeline(true); }}
+                className="ml-auto text-xs flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+                title="View Timeline"
+              >
+                <BarChart3 className="w-3 h-3" /> Timeline
+              </button>
             </div>
+          )}
+          {!project.estimated_completion && (
+            <button
+              onClick={(e) => { e.preventDefault(); setShowTimeline(true); }}
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors w-fit"
+              title="View Timeline"
+            >
+              <BarChart3 className="w-3 h-3" /> Timeline
+            </button>
           )}
           {(project.install_start_date || project.install_end_date) && (
             <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -307,6 +325,7 @@ export default function ProjectCard({ project }) {
         </div>
       </Card>
 
+      <TimelineModal open={showTimeline} onOpenChange={setShowTimeline} project={project} />
       <TaskForm
         open={showTaskForm}
         onOpenChange={setShowTaskForm}

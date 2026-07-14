@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import ProjectForm from "../components/projects/ProjectForm";
 import TaskForm from "../components/projects/TaskForm";
 import PickupItemForm from "../components/pickup/PickupItemForm";
+import TimelineModal from "../components/projects/TimelineModal";
+import { BarChart3 } from "lucide-react";
 
 const allStatusOptions = [
   { id: "inquiry", label: "Inquiry" },
@@ -57,6 +59,7 @@ export default function Kanban() {
   const [moveProjectDialog, setMoveProjectDialog] = useState(null); // { project }
   const [moveTarget, setMoveTarget] = useState({ tab: "", status: "" });
   const [stageView, setStageView] = useState(null); // { column, tabKey }
+  const [timelineProject, setTimelineProject] = useState(null);
 
   const defaultColumnsByTab = {
     "pre-production": [
@@ -155,10 +158,12 @@ export default function Kanban() {
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Project.create(data),
-    onSuccess: () => {
+    onSuccess: (newProject) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setShowProjectForm(false);
       setNewProjectStatus(null);
+      // Auto-seed default timeline events for the new project
+      base44.functions.invoke('seedTimelineEvents', { data: newProject }).catch(() => {});
     }
   });
 
@@ -425,7 +430,21 @@ export default function Kanban() {
                                                      <span>
                                                        {format(new Date(project.estimated_completion), "MMM d")}
                                                      </span>
+                                                     <button
+                                                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimelineProject(project); }}
+                                                       className="ml-auto text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                                                     >
+                                                       <BarChart3 className="w-2.5 h-2.5" /> Timeline
+                                                     </button>
                                                    </div>
+                                                 )}
+                                                 {!project.estimated_completion && (
+                                                   <button
+                                                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimelineProject(project); }}
+                                                     className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 w-fit"
+                                                   >
+                                                     <BarChart3 className="w-2.5 h-2.5" /> Timeline
+                                                   </button>
                                                  )}
                                                  {project.estimated_budget && (
                                                    <div className="flex items-center gap-2">
@@ -762,7 +781,7 @@ export default function Kanban() {
 
         {/* Project Form */}
         <ProjectForm
-          open={showProjectForm}
+              open={showProjectForm}
           onOpenChange={(open) => {
             setShowProjectForm(open);
             if (!open) setNewProjectStatus(null);
@@ -941,6 +960,8 @@ export default function Kanban() {
           </DialogContent>
         </Dialog>
       </div>
+
+      <TimelineModal open={!!timelineProject} onOpenChange={(o) => !o && setTimelineProject(null)} project={timelineProject} />
     </div>
   );
 }
