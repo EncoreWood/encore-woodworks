@@ -203,6 +203,8 @@ function PresentationEditor({ presId }) {
           slide_label: updated[i].slide_label,
           image_3d_url: updated[i].image_3d_url,
           image_2d_url: updated[i].image_2d_url,
+          images: updated[i].images,
+          canvas_json: updated[i].canvas_json,
           specs: updated[i].specs,
           notes: updated[i].notes,
         };
@@ -289,11 +291,52 @@ function PresentationEditor({ presId }) {
 
   const currentSlide = slides[selectedIdx];
 
-  // Print / PDF — open a new window with all slides, one per letter-landscape page
-  const handlePrint = () => {
-    const slidesHTML = slides.map(slide => {
+  // Print / PDF — flatten each slide's Fabric canvas to PNG, then print
+  const handlePrint = async () => {
+    const { Canvas, FabricImage } = await import("fabric");
+
+    const flattenSlide = async (slide) => {
+      const imgs = parseImagesLayout(slide);
+      const bgUrl = imgs[0]?.url;
+      if (!bgUrl && !slide.canvas_json) return null;
+
+      const W = 1000, H = 600;
+      const tempEl = document.createElement("canvas");
+      const canvas = new Canvas(tempEl, { width: W, height: H, backgroundColor: "#fff" });
+
+      if (bgUrl) {
+        try {
+          const img = await FabricImage.fromURL(bgUrl, { crossOrigin: "anonymous" });
+          const scale = Math.min(W / img.width, H / img.height);
+          img.set({
+            left: (W - img.width * scale) / 2,
+            top: (H - img.height * scale) / 2,
+            scaleX: scale, scaleY: scale,
+            selectable: false, evented: false,
+          });
+          canvas.backgroundImage = img;
+        } catch {}
+      }
+
+      if (slide.canvas_json) {
+        try {
+          const bg = canvas.backgroundImage;
+          await canvas.loadFromJSON(JSON.parse(slide.canvas_json));
+          canvas.backgroundImage = bg;
+        } catch {}
+      }
+
+      canvas.renderAll();
+      const dataUrl = canvas.toDataURL({ format: "png" });
+      canvas.dispose();
+      return dataUrl;
+    };
+
+    const flattened = await Promise.all(slides.map(flattenSlide));
+
+    const slidesHTML = slides.map((slide, i) => {
       const specs = parseSpecs(slide);
-      const slideImgs = parseImagesLayout(slide);
+      const imgSrc = flattened[i];
       return `
         <div class="slide-page">
           <div class="slide-header">
@@ -301,7 +344,7 @@ function PresentationEditor({ presId }) {
             ${slide.slide_label ? `<p>${escapeHtml(slide.slide_label)}</p>` : ""}
           </div>
           <div class="slide-images">
-            ${slideImgs.map(img => `<img src="${img.url}" style="position:absolute;left:${img.x}%;top:${img.y}%;width:${img.width}%;height:${img.height}%;object-fit:cover;${img.crop ? `clip-path:inset(${img.crop.top}% ${img.crop.right}% ${img.crop.bottom}% ${img.crop.left}%);` : ""}" />`).join("")}
+            ${imgSrc ? `<img src="${imgSrc}" style="max-width:100%;max-height:3.5in;object-fit:contain;display:block;margin:0 auto;" />` : ""}
           </div>
           <table class="specs-table">
             <tr>${SPEC_FIELDS.map(f => `<th>${f.label}</th>`).join("")}</tr>
@@ -322,7 +365,7 @@ function PresentationEditor({ presId }) {
         .slide-header { border-bottom: 2px solid #1e293b; padding-bottom: 8px; margin-bottom: 12px; }
         .slide-header h1 { font-size: 28px; margin: 0; font-weight: bold; }
         .slide-header p { font-size: 14px; color: #64748b; margin: 4px 0 0; }
-        .slide-images { flex: 1; position: relative; min-height: 3in; }
+        .slide-images { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 3in; }
         .specs-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 11px; table-layout: fixed; }
         .specs-table th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; font-weight: 600; }
         .specs-table td { border: 1px solid #cbd5e1; padding: 4px 6px; word-wrap: break-word; }

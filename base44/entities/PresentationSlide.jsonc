@@ -41,7 +41,7 @@
     },
     "canvas_json": {
       "type": "string",
-      "description": "Legacy Fabric.js canvas JSON (unused in new editor)"
+      "description": "Fabric.js canvas.toJSON() output \u2014 stores all annotation objects (shapes, text, drawings)"
     },
     "thumbnail_url": {
       "type": "string",

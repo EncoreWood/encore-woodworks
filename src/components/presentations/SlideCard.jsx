@@ -1,5 +1,5 @@
 import { parseSpecs, SPEC_FIELDS } from "./slideHelpers";
-import ImageLayer from "./ImageLayer";
+import SlideCanvas from "./SlideCanvas";
 
 /**
  * Structured slide layout — pure HTML/CSS, no canvas.
@@ -42,9 +42,9 @@ export default function SlideCard({ slide, onUpdate, editable = true }) {
         )}
       </div>
 
-      {/* ── Middle: image layer (multiple images, draggable, croppable) ── */}
+      {/* ── Middle: Fabric.js annotation canvas ── */}
       <div className="flex-1 min-h-0 p-2">
-        <ImageLayer slide={slide} onUpdate={onUpdate} editable={editable} />
+        <SlideCanvas slide={slide} onUpdate={onUpdate} editable={editable} />
       </div>
 
       {/* ── Bottom: specs table ── */}
