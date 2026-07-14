@@ -4,7 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Printer, Send, ChevronLeft, Copy, Trash2, Edit2 } from "lucide-react";
+import { Plus, Printer, Send, ChevronLeft, Copy, Trash2, Edit2, Save, Download } from "lucide-react";
 import jsPDF from "jspdf";
 import { format } from "date-fns";
 import ProjectSelector from "@/components/presentations/ProjectSelector";
@@ -253,85 +253,91 @@ function PresentationEditor({ presId }) {
 
   const currentSlide = slides[selectedIdx];
 
-  // Export all slides to a landscape PDF
+  // Render each slide's fabric canvas to a PNG data URL
+  const renderSlidesToImages = async () => {
+    const fab = await new Promise((resolve, reject) => {
+      if (window.fabric) return resolve(window.fabric);
+      const script = document.createElement("script");
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js";
+      script.onload = () => resolve(window.fabric);
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+
+    const images = [];
+    for (let i = 0; i < slides.length; i++) {
+      const slide = slides[i];
+      const json = slide.canvas_json;
+      if (!json) { images.push(null); continue; }
+
+      const el = document.createElement("canvas");
+      document.body.appendChild(el);
+      const canvas = new fab.Canvas(el, { width: CANVAS_W, height: CANVAS_H, backgroundColor: "#ffffff" });
+
+      await new Promise((resolve) => {
+        try {
+          const parsed = typeof json === "string" ? JSON.parse(json) : json;
+          canvas.loadFromJSON(parsed, () => {
+            const imgs = canvas.getObjects("image");
+            if (imgs.length === 0) { canvas.renderAll(); return resolve(); }
+            let loaded = 0;
+            imgs.forEach(img => {
+              img.set({ crossOrigin: "anonymous" });
+              const src = img.getSrc();
+              img.setSrc(src, () => {
+                loaded++;
+                if (loaded === imgs.length) { canvas.renderAll(); resolve(); }
+              }, { crossOrigin: "anonymous" });
+            });
+          });
+        } catch { canvas.renderAll(); resolve(); }
+      });
+
+      await new Promise(r => setTimeout(r, 200));
+      images.push(canvas.toDataURL({ format: "png", quality: 1.0, multiplier: 1.0 }));
+      canvas.dispose();
+      document.body.removeChild(el);
+    }
+    return images;
+  };
+
+  // Download all slides as a landscape letter-size PDF
   const handleExportPDF = async () => {
     setIsPrinting(true);
     try {
-      // Ensure fabric is loaded
-      const fab = await new Promise((resolve, reject) => {
-        if (window.fabric) return resolve(window.fabric);
-        const script = document.createElement("script");
-        script.src = "https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js";
-        script.onload = () => resolve(window.fabric);
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-
+      const images = await renderSlidesToImages();
       const pdf = new jsPDF({ orientation: "landscape", unit: "in", format: [11, 8.5] });
-
-      for (let i = 0; i < slides.length; i++) {
-        const slide = slides[i];
-        const json = slide.canvas_json;
-        if (!json) continue;
-
-        const el = document.createElement("canvas");
-        document.body.appendChild(el); // must be in DOM for some browsers
-        const canvas = new fab.Canvas(el, { width: CANVAS_W, height: CANVAS_H, backgroundColor: "#ffffff" });
-
-        await new Promise((resolve) => {
-          try {
-            const parsed = typeof json === "string" ? JSON.parse(json) : json;
-            // Load with crossOrigin so images render correctly
-            canvas.loadFromJSON(parsed, () => {
-              // Re-set crossOrigin on all image objects and reload them
-              const imgs = canvas.getObjects("image");
-              if (imgs.length === 0) {
-                canvas.renderAll();
-                return resolve();
-              }
-              let loaded = 0;
-              imgs.forEach(img => {
-                img.set({ crossOrigin: "anonymous" });
-                const src = img.getSrc();
-                img.setSrc(src, () => {
-                  loaded++;
-                  if (loaded === imgs.length) {
-                    canvas.renderAll();
-                    resolve();
-                  }
-                }, { crossOrigin: "anonymous" });
-              });
-            });
-          } catch {
-            canvas.renderAll();
-            resolve();
-          }
-        });
-
-        // Small delay to ensure render is complete
-        await new Promise(r => setTimeout(r, 200));
-
-        const dataUrl = canvas.toDataURL({ format: "png", quality: 1.0, multiplier: 1.0 });
-        canvas.dispose();
-        document.body.removeChild(el);
-
-        if (i > 0) pdf.addPage([11, 8.5], "landscape");
+      let added = 0;
+      images.forEach((dataUrl) => {
+        if (!dataUrl) return;
+        if (added > 0) pdf.addPage([11, 8.5], "landscape");
         pdf.addImage(dataUrl, "PNG", 0, 0, 11, 8.5);
-      }
+        added++;
+      });
+      pdf.save(`${presData.project_name || "presentation"}.pdf`);
+    } finally { setIsPrinting(false); }
+  };
 
-      const fileName = `${presData.project_name || "presentation"}.pdf`;
-      pdf.save(fileName);
-
-      // Open print dialog
-      const pdfBlob = pdf.output("blob");
-      const blobUrl = URL.createObjectURL(pdfBlob);
-      const printWin = window.open(blobUrl, "_blank");
-      if (printWin) {
-        printWin.onload = () => { printWin.focus(); printWin.print(); };
-      }
-    } finally {
-      setIsPrinting(false);
-    }
+  // Open browser print dialog — one slide per letter-size landscape page
+  const handlePrint = async () => {
+    setIsPrinting(true);
+    try {
+      const images = await renderSlidesToImages();
+      const printWin = window.open("", "_blank");
+      if (!printWin) return;
+      printWin.document.write(`<!DOCTYPE html><html><head><title>${presData.project_name || "Presentation"}</title>
+        <style>
+          @page { size: letter landscape; margin: 0; }
+          body { margin: 0; }
+          .slide { width: 11in; height: 8.5in; page-break-after: always; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+          .slide:last-child { page-break-after: auto; }
+          .slide img { max-width: 11in; max-height: 8.5in; object-fit: contain; }
+        </style></head><body>
+        ${images.map(d => d ? `<div class="slide"><img src="${d}" /></div>` : "").join("")}
+        </body></html>`);
+      printWin.document.close();
+      printWin.onload = () => { printWin.focus(); printWin.print(); };
+    } finally { setIsPrinting(false); }
   };
 
   return (
@@ -363,9 +369,14 @@ function PresentationEditor({ presId }) {
               <SelectItem value="sent">Sent</SelectItem>
             </SelectContent>
           </Select>
-          <span className="text-xs text-slate-400">{saving ? "Saving..." : "Saved"}</span>
+          <Button size="sm" variant="outline" onClick={() => doSave(slidesRef.current, presDataRef.current)} disabled={saving} className="gap-1.5">
+            <Save className="w-3.5 h-3.5" /> {saving ? "Saving..." : "Save"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5" disabled={isPrinting}>
+            <Printer className="w-3.5 h-3.5" /> {isPrinting ? "Preparing..." : "Print"}
+          </Button>
           <Button size="sm" variant="outline" onClick={handleExportPDF} className="gap-1.5" disabled={isPrinting}>
-            <Printer className="w-3.5 h-3.5" /> {isPrinting ? "Preparing..." : "Export PDF"}
+            <Download className="w-3.5 h-3.5" /> PDF
           </Button>
           <Button size="sm" className="bg-amber-700 hover:bg-amber-800 gap-1.5" onClick={() => setShowSend(true)}>
             <Send className="w-3.5 h-3.5" /> Send to Client
