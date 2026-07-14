@@ -98,7 +98,7 @@ export default function GanttChart({ events, onBarClick, readOnly }) {
                       >
                         <span className="text-[10px] font-bold text-white truncate flex items-center gap-1">
                           {event.is_completed && <CheckCircle2 className="w-3 h-3 flex-shrink-0" />}
-                          {format(new Date(event.start_date), "M/d")}
+                          {format(new Date(event.start_date), "M/d")} - {format(new Date(event.end_date), "M/d")}
                         </span>
                       </button>
                     )}
