@@ -62,6 +62,15 @@ function addDaysStr(dateStr, days) {
   return d.toISOString().split("T")[0];
 }
 
+function formatRange(startStr, endStr) {
+  if (!startStr) return "";
+  const start = format(new Date(startStr), "M/d");
+  if (!endStr) return start;
+  const end = format(new Date(endStr), "M/d");
+  if (start === end) return start;
+  return `${start} - ${end}`;
+}
+
 export default function ProjectTimelineSection({ project }) {
   const queryClient = useQueryClient();
   const [clientView, setClientView] = useState(false);
@@ -351,7 +360,7 @@ export default function ProjectTimelineSection({ project }) {
                               <div className="absolute inset-y-0 left-0 bg-white/30" style={{ width: `${event._completion}%` }} />
                               <span className="text-[10px] font-bold text-white truncate relative z-10 flex items-center gap-1">
                                 {event.is_completed && <CheckCircle2 className="w-3 h-3 flex-shrink-0" />}
-                                {format(new Date(event.start_date), "M/d")}
+                                {formatRange(event.start_date, event.end_date)}
                               </span>
                             </button>
                           )}
