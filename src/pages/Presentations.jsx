@@ -13,7 +13,7 @@ import SendToClientModal from "@/components/presentations/SendToClientModal";
 import SlideThumbnailPanel from "@/components/presentations/SlideThumbnailPanel";
 import SlideCard from "@/components/presentations/SlideCard";
 import SlidePropertiesPanel from "@/components/presentations/SlidePropertiesPanel";
-import { parseSpecs, parseImageUrl, SPEC_FIELDS } from "@/components/presentations/slideHelpers";
+import { parseSpecs, parseImageUrl, parseImagesLayout, SPEC_FIELDS } from "@/components/presentations/slideHelpers";
 
 const STATUS_COLORS = {
   draft: "bg-slate-100 text-slate-700 border-slate-300",
@@ -45,7 +45,8 @@ function CoverThumb({ presId }) {
     staleTime: 60000,
   });
   const first = slides[0];
-  const img = first ? parseImageUrl(first.image_3d_url) : null;
+  const imgs = first ? parseImagesLayout(first) : [];
+  const img = imgs[0]?.url;
   if (img) return <img src={img} alt="" className="w-full h-full" style={{ objectFit: "cover" }} />;
   return <span className="text-xs text-slate-400">{slides.length} slide{slides.length !== 1 ? "s" : ""}</span>;
 }
@@ -292,8 +293,7 @@ function PresentationEditor({ presId }) {
   const handlePrint = () => {
     const slidesHTML = slides.map(slide => {
       const specs = parseSpecs(slide);
-      const img3d = parseImageUrl(slide.image_3d_url);
-      const img2d = slide.image_2d_url;
+      const slideImgs = parseImagesLayout(slide);
       return `
         <div class="slide-page">
           <div class="slide-header">
@@ -301,8 +301,7 @@ function PresentationEditor({ presId }) {
             ${slide.slide_label ? `<p>${escapeHtml(slide.slide_label)}</p>` : ""}
           </div>
           <div class="slide-images">
-            ${img3d ? `<img src="${img3d}" class="main-img" />` : ""}
-            ${img2d ? `<img src="${img2d}" class="second-img" />` : ""}
+            ${slideImgs.map(img => `<img src="${img.url}" style="position:absolute;left:${img.x}%;top:${img.y}%;width:${img.width}%;height:${img.height}%;object-fit:cover;${img.crop ? `clip-path:inset(${img.crop.top}% ${img.crop.right}% ${img.crop.bottom}% ${img.crop.left}%);` : ""}" />`).join("")}
           </div>
           <table class="specs-table">
             <tr>${SPEC_FIELDS.map(f => `<th>${f.label}</th>`).join("")}</tr>
@@ -323,9 +322,7 @@ function PresentationEditor({ presId }) {
         .slide-header { border-bottom: 2px solid #1e293b; padding-bottom: 8px; margin-bottom: 12px; }
         .slide-header h1 { font-size: 28px; margin: 0; font-weight: bold; }
         .slide-header p { font-size: 14px; color: #64748b; margin: 4px 0 0; }
-        .slide-images { flex: 1; display: flex; gap: 12px; align-items: center; justify-content: center; min-height: 3in; }
-        .main-img { max-width: 65%; max-height: 3.5in; object-fit: contain; }
-        .second-img { max-width: 30%; max-height: 3.5in; object-fit: contain; }
+        .slide-images { flex: 1; position: relative; min-height: 3in; }
         .specs-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 11px; table-layout: fixed; }
         .specs-table th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; font-weight: 600; }
         .specs-table td { border: 1px solid #cbd5e1; padding: 4px 6px; word-wrap: break-word; }

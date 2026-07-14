@@ -14,13 +14,17 @@
       "type": "string",
       "description": "Slide label (e.g., 'Kitchen Island Option 1')"
     },
+    "images": {
+      "type": "string",
+      "description": "JSON array of positioned image objects: [{url, x, y, width, height, crop, zIndex}]"
+    },
     "image_3d_url": {
       "type": "string",
-      "description": "Primary 3D render image URL"
+      "description": "Legacy primary 3D image URL (migrated to images field)"
     },
     "image_2d_url": {
       "type": "string",
-      "description": "2D drawing / plan image URL"
+      "description": "Legacy 2D drawing URL (migrated to images field)"
     },
     "specs": {
       "type": "string",

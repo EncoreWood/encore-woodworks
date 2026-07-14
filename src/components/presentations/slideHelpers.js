@@ -66,6 +66,23 @@ export function parseImageUrl(raw) {
 }
 
 /**
+ * Parse the positioned images array from the `images` JSON field.
+ * Falls back to a single full-size image from `image_3d_url` for migration.
+ * Returns: [{url, x, y, width, height, crop, zIndex}]
+ */
+export function parseImagesLayout(slide) {
+  if (slide?.images) {
+    try {
+      const parsed = JSON.parse(slide.images);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch {}
+  }
+  const url = parseImageUrl(slide?.image_3d_url);
+  if (url) return [{ url, x: 5, y: 5, width: 90, height: 90, crop: null, zIndex: 0 }];
+  return [];
+}
+
+/**
  * Get plain-text notes for the client portal.
  * Old slides stored JSON in `notes` — hide that.
  */

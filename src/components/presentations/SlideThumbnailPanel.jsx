@@ -1,5 +1,5 @@
 import { Plus, GripVertical } from "lucide-react";
-import { parseImageUrl } from "./slideHelpers";
+import { parseImagesLayout } from "./slideHelpers";
 
 export default function SlideThumbnailPanel({ slides, selectedIdx, onSelect, onAdd, onReorder }) {
   const handleDragStart = (e, idx) => {
@@ -23,7 +23,8 @@ export default function SlideThumbnailPanel({ slides, selectedIdx, onSelect, onA
       </button>
       <div className="flex-1 overflow-y-auto space-y-2 -mr-1 pr-1">
         {slides.map((slide, idx) => {
-          const img = parseImageUrl(slide.image_3d_url);
+          const imgs = parseImagesLayout(slide);
+          const img = imgs[0]?.url;
           return (
             <div
               key={slide.id || idx}

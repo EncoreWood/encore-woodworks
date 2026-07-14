@@ -1,42 +1,16 @@
-import { useState, useRef } from "react";
-import { base44 } from "@/api/base44Client";
-import { Upload, X } from "lucide-react";
-import { parseSpecs, parseImageUrl, SPEC_FIELDS } from "./slideHelpers";
+import { parseSpecs, SPEC_FIELDS } from "./slideHelpers";
+import ImageLayer from "./ImageLayer";
 
 /**
  * Structured slide layout — pure HTML/CSS, no canvas.
- * Top: room name + label. Middle: images. Bottom: specs table.
+ * Top: room name + label. Middle: image layer. Bottom: specs table.
  */
 export default function SlideCard({ slide, onUpdate, editable = true }) {
   const specs = parseSpecs(slide);
-  const image3d = parseImageUrl(slide.image_3d_url);
-  const image2d = slide.image_2d_url;
-  const [uploading, setUploading] = useState(false);
-  const fileInput3d = useRef(null);
-  const fileInput2d = useRef(null);
 
   const updateSpec = (key, value) => {
     const newSpecs = { ...specs, [key]: value };
     onUpdate({ specs: JSON.stringify(newSpecs) });
-  };
-
-  const handleImageUpload = async (field, file) => {
-    if (!file) return;
-    setUploading(true);
-    try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      onUpdate({ [field]: file_url });
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    const file = e.dataTransfer.files?.[0];
-    if (file && file.type.startsWith("image/")) {
-      handleImageUpload("image_3d_url", file);
-    }
   };
 
   return (
@@ -68,106 +42,9 @@ export default function SlideCard({ slide, onUpdate, editable = true }) {
         )}
       </div>
 
-      {/* ── Middle: images ── */}
-      <div
-        className="flex gap-3 p-4 bg-slate-50 flex-1 min-h-0"
-        onDragOver={e => { if (editable) e.preventDefault(); }}
-        onDrop={editable && !image3d ? handleDrop : undefined}
-      >
-        {/* Main 3D image */}
-        <div className="flex-1 relative bg-white border border-slate-200 rounded overflow-hidden flex items-center justify-center min-h-0">
-          {image3d ? (
-            <>
-              <img
-                src={image3d}
-                alt="3D render"
-                className="max-w-full max-h-full"
-                style={{ objectFit: "contain" }}
-              />
-              {editable && (
-                <>
-                  <button
-                    onClick={() => onUpdate({ image_3d_url: null })}
-                    className="absolute top-2 right-2 bg-black/60 text-white rounded-full w-7 h-7 flex items-center justify-center hover:bg-black/80 transition-colors"
-                    title="Remove image"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => fileInput3d.current?.click()}
-                    className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2.5 py-1 rounded hover:bg-black/80 transition-colors"
-                  >
-                    Replace
-                  </button>
-                </>
-              )}
-            </>
-          ) : editable ? (
-            <button
-              onClick={() => fileInput3d.current?.click()}
-              className="flex flex-col items-center gap-2 text-slate-400 hover:text-amber-600 transition-colors p-8"
-            >
-              <Upload className="w-8 h-8" />
-              <span className="text-sm">{uploading ? "Uploading..." : "Drop image here or click to upload"}</span>
-            </button>
-          ) : (
-            <span className="text-slate-300 text-sm">No image</span>
-          )}
-          <input
-            ref={fileInput3d}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={e => { handleImageUpload("image_3d_url", e.target.files?.[0]); e.target.value = ""; }}
-          />
-        </div>
-
-        {/* 2D image (smaller, beside main) */}
-        {(image2d || editable) && (
-          <div className="w-1/4 relative bg-white border border-slate-200 rounded overflow-hidden flex items-center justify-center min-h-0">
-            {image2d ? (
-              <>
-                <img
-                  src={image2d}
-                  alt="2D drawing"
-                  className="max-w-full max-h-full"
-                  style={{ objectFit: "contain" }}
-                />
-                {editable && (
-                  <>
-                    <button
-                      onClick={() => onUpdate({ image_2d_url: null })}
-                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center hover:bg-black/80"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={() => fileInput2d.current?.click()}
-                      className="absolute top-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded hover:bg-black/80"
-                    >
-                      Replace
-                    </button>
-                  </>
-                )}
-              </>
-            ) : editable ? (
-              <button
-                onClick={() => fileInput2d.current?.click()}
-                className="flex flex-col items-center gap-1 text-slate-300 hover:text-amber-600 transition-colors p-3"
-              >
-                <Upload className="w-5 h-5" />
-                <span className="text-[10px] text-center">2D Drawing</span>
-              </button>
-            ) : null}
-            <input
-              ref={fileInput2d}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={e => { handleImageUpload("image_2d_url", e.target.files?.[0]); e.target.value = ""; }}
-            />
-          </div>
-        )}
+      {/* ── Middle: image layer (multiple images, draggable, croppable) ── */}
+      <div className="flex-1 min-h-0 p-2">
+        <ImageLayer slide={slide} onUpdate={onUpdate} editable={editable} />
       </div>
 
       {/* ── Bottom: specs table ── */}
