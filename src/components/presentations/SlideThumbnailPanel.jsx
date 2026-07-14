@@ -1,5 +1,5 @@
-import { Plus, GripVertical } from "lucide-react";
-import { parseImagesLayout } from "./slideHelpers";
+import { Plus, GripVertical, FileText } from "lucide-react";
+import { parseImagesLayout, isCoverSlide } from "./slideHelpers";
 
 export default function SlideThumbnailPanel({ slides, selectedIdx, onSelect, onAdd, onReorder }) {
   const handleDragStart = (e, idx) => {
@@ -23,12 +23,13 @@ export default function SlideThumbnailPanel({ slides, selectedIdx, onSelect, onA
       </button>
       <div className="flex-1 overflow-y-auto space-y-2 -mr-1 pr-1">
         {slides.map((slide, idx) => {
+          const cover = isCoverSlide(slide);
           const imgs = parseImagesLayout(slide);
           const img = imgs[0]?.url;
           return (
             <div
               key={slide.id || idx}
-              draggable
+              draggable={!cover}
               onDragStart={e => handleDragStart(e, idx)}
               onDragOver={e => e.preventDefault()}
               onDrop={e => handleDrop(e, idx)}
@@ -40,7 +41,12 @@ export default function SlideThumbnailPanel({ slides, selectedIdx, onSelect, onA
               }`}
             >
               <div className="aspect-video bg-slate-100 rounded-t overflow-hidden">
-                {img ? (
+                {cover ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-amber-50 text-amber-700">
+                    <FileText className="w-5 h-5 mb-0.5" />
+                    <span className="text-[10px] font-semibold">Cover</span>
+                  </div>
+                ) : img ? (
                   <img
                     src={img}
                     alt=""
@@ -61,9 +67,11 @@ export default function SlideThumbnailPanel({ slides, selectedIdx, onSelect, onA
                   <div className="text-[10px] text-slate-500 truncate">{slide.slide_label}</div>
                 )}
               </div>
-              <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-60 transition-opacity">
-                <GripVertical className="w-3 h-3 text-slate-600" />
-              </div>
+              {!cover && (
+                <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-60 transition-opacity">
+                  <GripVertical className="w-3 h-3 text-slate-600" />
+                </div>
+              )}
             </div>
           );
         })}

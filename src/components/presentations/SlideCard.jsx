@@ -1,11 +1,16 @@
-import { parseSpecs, SPEC_FIELDS } from "./slideHelpers";
+import { parseSpecs, SPEC_FIELDS, isCoverSlide } from "./slideHelpers";
 import SlideCanvas from "./SlideCanvas";
+import CoverSlide from "./CoverSlide";
 
 /**
  * Structured slide layout — pure HTML/CSS, no canvas.
  * Top: room name + label. Middle: image layer. Bottom: specs table.
  */
 export default function SlideCard({ slide, onUpdate, editable = true }) {
+  if (isCoverSlide(slide)) {
+    return <CoverSlide slide={slide} onUpdate={onUpdate} editable={editable} />;
+  }
+
   const specs = parseSpecs(slide);
 
   const updateSpec = (key, value) => {

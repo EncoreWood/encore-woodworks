@@ -13,7 +13,7 @@ import SendToClientModal from "@/components/presentations/SendToClientModal";
 import SlideThumbnailPanel from "@/components/presentations/SlideThumbnailPanel";
 import SlideCard from "@/components/presentations/SlideCard";
 import SlidePropertiesPanel from "@/components/presentations/SlidePropertiesPanel";
-import { parseSpecs, parseImageUrl, parseImagesLayout, SPEC_FIELDS } from "@/components/presentations/slideHelpers";
+import { parseSpecs, parseImageUrl, parseImagesLayout, isCoverSlide, parseCoverSpecs, makeDefaultCoverSpecs, SPEC_FIELDS } from "@/components/presentations/slideHelpers";
 
 const STATUS_COLORS = {
   draft: "bg-slate-100 text-slate-700 border-slate-300",
@@ -35,6 +35,49 @@ function navigateTo(mode, id = null) {
 
 function escapeHtml(str) {
   return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png";
+
+function renderCoverSlideHTML(slide) {
+  const specs = parseCoverSpecs(slide);
+  if (!specs) return "";
+  const total = specs.pricing_items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const deposit = total * (specs.deposit_percentage / 100);
+  const balance = total - deposit;
+  const pricingHTML = specs.show_pricing && specs.pricing_items.length > 0 ? `
+    <div class="cover-pricing">
+      <h3 class="cover-section-title">Pricing Summary</h3>
+      <table class="pricing-table">
+        <tbody>${specs.pricing_items.map(item => `<tr><td>${escapeHtml(item.label)}</td><td style="text-align:right">$${(Number(item.amount) || 0).toLocaleString()}</td></tr>`).join("")}</tbody>
+        <tfoot><tr class="pricing-total"><td>TOTAL</td><td style="text-align:right">$${total.toLocaleString()}</td></tr></tfoot>
+      </table>
+      <p class="cover-deposit">Deposit Due (${specs.deposit_percentage}%): $${deposit.toLocaleString()}</p>
+      <p class="cover-balance">Balance on Completion: $${balance.toLocaleString()}</p>
+    </div>` : "";
+  const scopeHTML = specs.scope_of_work.length > 0 ? `
+    <div class="cover-scope">
+      <h3 class="cover-section-title">Scope of Work</h3>
+      <ul>${specs.scope_of_work.map(item => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+    </div>` : "";
+  return `
+    <div class="slide-page cover-page">
+      <div class="cover-content">
+        <img src="${LOGO_URL}" class="cover-logo" />
+        <p class="cover-subtitle">Custom Cabinetry</p>
+        <div class="cover-divider"></div>
+        <h1 class="cover-title">${escapeHtml(specs.project_name)}</h1>
+        <p class="cover-client">for ${escapeHtml(specs.client_name)}</p>
+        <p class="cover-address">${escapeHtml(specs.address)}</p>
+        <div class="cover-meta">
+          <span>Prepared: ${escapeHtml(specs.prepared_date)}</span>
+          ${specs.proposal_number ? `<span>Proposal #: ${escapeHtml(specs.proposal_number)}</span>` : ""}
+        </div>
+        ${specs.overview_text ? `<p class="cover-overview">${escapeHtml(specs.overview_text)}</p>` : ""}
+        ${scopeHTML}
+        ${pricingHTML}
+      </div>
+    </div>`;
 }
 
 // ─── COVER THUMBNAIL ─────────────────────────────────────────────────────────
@@ -170,12 +213,54 @@ function PresentationEditor({ presId }) {
     }
   }, [presentation]);
 
+  const coverCreatedRef = useRef(false);
+
+  const createCoverSlide = async () => {
+    let projectName = presData?.project_name || "";
+    let clientName = presData?.client_name || "";
+    let address = "";
+    if (presData?.project_id) {
+      try {
+        const project = await base44.entities.Project.get(presData.project_id);
+        projectName = project.project_name || projectName;
+        address = project.address || "";
+        clientName = project.home_owner?.name || project.client_name || clientName;
+      } catch {}
+    }
+    const coverSpecs = makeDefaultCoverSpecs(projectName, clientName, address);
+    const slide = await base44.entities.PresentationSlide.create({
+      presentation_id: presId,
+      room_name: projectName,
+      slide_label: "Cover",
+      specs: JSON.stringify(coverSpecs),
+      sort_order: 0,
+    });
+    return { ...slide, specs: JSON.stringify(coverSpecs) };
+  };
+
   useEffect(() => {
-    if (existingSlides.length > 0) {
+    if (slidesLoading || !presData || coverCreatedRef.current) return;
+    if (existingSlides.length === 0) {
+      coverCreatedRef.current = true;
+      createCoverSlide().then(cover => {
+        const updated = [cover];
+        setSlides(updated);
+        slidesRef.current = updated;
+        scheduleAutoSave(updated, null);
+      });
+    } else if (!isCoverSlide(existingSlides[0])) {
+      coverCreatedRef.current = true;
+      createCoverSlide().then(cover => {
+        const updated = [cover, ...existingSlides];
+        setSlides(updated);
+        slidesRef.current = updated;
+        scheduleAutoSave(updated, null);
+      });
+    } else {
       setSlides([...existingSlides]);
       slidesRef.current = [...existingSlides];
     }
-  }, [existingSlides]);
+  }, [existingSlides, slidesLoading, presData]);
 
   const scheduleAutoSave = (updatedSlides, updatedPres) => {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -257,6 +342,7 @@ function PresentationEditor({ presId }) {
   };
 
   const deleteSlide = async (idx) => {
+    if (isCoverSlide(slides[idx])) return;
     if (!confirm("Delete this slide?")) return;
     const slide = slides[idx];
     if (slide?.id) await base44.entities.PresentationSlide.delete(slide.id);
@@ -296,6 +382,7 @@ function PresentationEditor({ presId }) {
     const { Canvas, FabricImage } = await import("fabric");
 
     const flattenSlide = async (slide) => {
+      if (isCoverSlide(slide)) return null;
       const imgs = parseImagesLayout(slide);
       const bgUrl = imgs[0]?.url;
       if (!bgUrl && !slide.canvas_json) return null;
@@ -335,6 +422,7 @@ function PresentationEditor({ presId }) {
     const flattened = await Promise.all(slides.map(flattenSlide));
 
     const slidesHTML = slides.map((slide, i) => {
+      if (isCoverSlide(slide)) return renderCoverSlideHTML(slide);
       const specs = parseSpecs(slide);
       const imgSrc = flattened[i];
       return `
@@ -369,6 +457,23 @@ function PresentationEditor({ presId }) {
         .specs-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 11px; table-layout: fixed; }
         .specs-table th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; font-weight: 600; }
         .specs-table td { border: 1px solid #cbd5e1; padding: 4px 6px; word-wrap: break-word; }
+        .cover-page { display: flex; align-items: center; justify-content: center; }
+        .cover-content { text-align: center; max-width: 6in; margin: auto; }
+        .cover-logo { height: 60px; margin-bottom: 4px; }
+        .cover-subtitle { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #64748b; margin-bottom: 20px; }
+        .cover-divider { width: 80px; height: 2px; background: #c9a227; margin: 0 auto 20px; }
+        .cover-title { font-size: 28px; font-family: Georgia, serif; margin: 0; }
+        .cover-client { font-size: 16px; color: #475569; margin: 4px 0; }
+        .cover-address { font-size: 13px; color: #64748b; margin: 4px 0; }
+        .cover-meta { font-size: 12px; color: #94a3b8; margin: 12px 0; display: flex; gap: 24px; justify-content: center; }
+        .cover-overview { font-size: 13px; color: #475569; margin: 16px 0; line-height: 1.5; }
+        .cover-section-title { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #c9a227; margin: 20px 0 8px; }
+        .cover-scope ul { list-style: disc; padding-left: 20px; font-size: 13px; color: #475569; text-align: left; }
+        .cover-scope li { margin: 2px 0; }
+        .pricing-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0; }
+        .pricing-table td { padding: 3px 8px; border-bottom: 1px solid #e2e8f0; }
+        .pricing-total td { border-top: 2px solid #1e293b; border-bottom: none; font-weight: bold; padding-top: 6px; }
+        .cover-deposit, .cover-balance { font-size: 13px; color: #475569; margin: 4px 0; }
       </style>
     </head><body>${slidesHTML}</body></html>`);
     win.document.close();

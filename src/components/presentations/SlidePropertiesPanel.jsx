@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Trash2 } from "lucide-react";
-import { getNotesText } from "./slideHelpers";
+import { getNotesText, isCoverSlide } from "./slideHelpers";
 
 export default function SlidePropertiesPanel({ slide, onUpdate, onDelete }) {
   const notesText = getNotesText(slide);
@@ -44,16 +44,18 @@ export default function SlidePropertiesPanel({ slide, onUpdate, onDelete }) {
         Images are managed directly on the slide — drag to move, use the corner handle to resize, and click the crop icon to crop.
       </p>
 
-      <div className="border-t border-slate-200 pt-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full text-red-600 hover:bg-red-50 gap-1.5"
-          onClick={onDelete}
-        >
-          <Trash2 className="w-3.5 h-3.5" /> Delete Slide
-        </Button>
-      </div>
+      {!isCoverSlide(slide) && (
+        <div className="border-t border-slate-200 pt-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-red-600 hover:bg-red-50 gap-1.5"
+            onClick={onDelete}
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Delete Slide
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

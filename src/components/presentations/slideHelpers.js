@@ -82,6 +82,48 @@ export function parseImagesLayout(slide) {
   return [];
 }
 
+// ─── Cover slide helpers ──────────────────────────────────────────────────────
+export function isCoverSlide(slide) {
+  const specs = parseSpecs(slide);
+  return specs.slide_type === "cover";
+}
+
+export function parseCoverSpecs(slide) {
+  const specs = parseSpecs(slide);
+  if (specs.slide_type !== "cover") return null;
+  return {
+    slide_type: "cover",
+    client_name: specs.client_name || "",
+    project_name: specs.project_name || "",
+    address: specs.address || "",
+    prepared_date: specs.prepared_date || "",
+    proposal_number: specs.proposal_number || "",
+    overview_text: specs.overview_text || "",
+    scope_of_work: Array.isArray(specs.scope_of_work) ? specs.scope_of_work : [],
+    cover_image: specs.cover_image || "",
+    show_pricing: specs.show_pricing !== false,
+    deposit_percentage: specs.deposit_percentage ?? 30,
+    pricing_items: Array.isArray(specs.pricing_items) ? specs.pricing_items : [],
+  };
+}
+
+export function makeDefaultCoverSpecs(projectName = "", clientName = "", address = "") {
+  return {
+    slide_type: "cover",
+    client_name: clientName,
+    project_name: projectName,
+    address: address,
+    prepared_date: new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+    proposal_number: "",
+    overview_text: "",
+    scope_of_work: [],
+    cover_image: "",
+    show_pricing: true,
+    deposit_percentage: 30,
+    pricing_items: [],
+  };
+}
+
 /**
  * Get plain-text notes for the client portal.
  * Old slides stored JSON in `notes` — hide that.
