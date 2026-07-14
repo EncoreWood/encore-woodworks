@@ -263,22 +263,25 @@ export default function ProjectDetails() {
           </div>
           <Card className="p-6 bg-white border-0 shadow-sm">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              {/* Left: Client name + email + phone */}
+              {/* Left: Project name + client info */}
               <div className="min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 truncate">{clientName}</h1>
-                {clientEmail && (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                    <a href={`mailto:${clientEmail}`} className="text-sm text-slate-500 hover:text-amber-600 truncate">{clientEmail}</a>
-                  </div>
-                )}
-                {clientPhone && (
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <Phone className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                    <a href={`tel:${clientPhone}`} className="text-sm text-slate-500 hover:text-amber-600">{clientPhone}</a>
-                  </div>
-                )}
-                <p className="text-xs text-slate-400 mt-2">{project.project_name} · {type}</p>
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 truncate">{project.project_name}</h1>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5">
+                  {clientName && (
+                    <span className="text-sm font-medium text-slate-600">{clientName}</span>
+                  )}
+                  {clientEmail && (
+                    <a href={`mailto:${clientEmail}`} className="flex items-center gap-1 text-sm text-slate-500 hover:text-amber-600 truncate">
+                      <Mail className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />{clientEmail}
+                    </a>
+                  )}
+                  {clientPhone && (
+                    <a href={`tel:${clientPhone}`} className="flex items-center gap-1 text-sm text-slate-500 hover:text-amber-600">
+                      <Phone className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />{clientPhone}
+                    </a>
+                  )}
+                  <span className="text-xs text-slate-400">{type}</span>
+                </div>
               </div>
               {/* Right: Status badge + address */}
               <div className="flex flex-col items-start sm:items-end gap-2 flex-shrink-0">
