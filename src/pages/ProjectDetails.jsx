@@ -20,7 +20,7 @@ import {
 import {
 ArrowLeft, Edit, Trash2, User, Mail, Phone, MapPin, Calendar,
 DollarSign, Palette, Wrench, FileText, Loader2, DoorOpen,
-ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X, Calculator, Box, Upload, Archive, ArchiveRestore
+ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X, Calculator, Box, Upload, Archive, ArchiveRestore, BarChart3
 } from "lucide-react";
 import { format } from "date-fns";
 import ProjectForm from "../components/projects/ProjectForm";
@@ -36,6 +36,7 @@ import ClientPortalTab from "../components/projects/ClientPortalTab";
 import GlbViewer from "../components/cad/GlbViewer";
 import RoomFilesSection from "../components/projects/RoomFilesSection";
 import JobMeasurementsTab from "../components/measurements/JobMeasurementsTab";
+import TimelineModal from "../components/projects/TimelineModal";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -111,6 +112,7 @@ export default function ProjectDetails() {
   const [viewingRoomGlb, setViewingRoomGlb] = useState(null); // { url, name }
   const [uploadingRoomGlbIdx, setUploadingRoomGlbIdx] = useState(null);
   const [roomGlbPickerIdx, setRoomGlbPickerIdx] = useState(null);
+  const [showTimelineModal, setShowTimelineModal] = useState(false);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
 
@@ -643,7 +645,12 @@ export default function ProjectDetails() {
 
             {/* Timeline */}
             <Card className="p-6 bg-white border-0 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900 mb-4">Timeline</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-slate-900">Timeline</h2>
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7" onClick={() => setShowTimelineModal(true)}>
+                  <BarChart3 className="w-3.5 h-3.5" />Gantt
+                </Button>
+              </div>
               <div className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Calendar className="w-5 h-5 text-slate-400 flex-shrink-0" />
@@ -868,6 +875,13 @@ export default function ProjectDetails() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Timeline / Gantt Modal */}
+        <TimelineModal
+          open={showTimelineModal}
+          onOpenChange={setShowTimelineModal}
+          project={project}
+        />
       </div>
     </div>
     </PageSlideWrapper>
