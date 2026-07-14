@@ -143,6 +143,13 @@ export default function ProjectDetails() {
     staleTime: 30000
   });
 
+  const { data: linkedPresentations = [] } = useQuery({
+    queryKey: ["presentations_for_project", projectId],
+    queryFn: () => base44.entities.Presentation.filter({ project_id: projectId }),
+    enabled: !!projectId,
+    staleTime: 30000
+  });
+
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.Project.update(projectId, data),
     onMutate: async (data) => {
@@ -303,6 +310,11 @@ export default function ProjectDetails() {
                 </>
               ) : (
                 <Button size="sm" onClick={() => setShowProposalForm(true)} className="bg-amber-600 hover:bg-amber-700"><Plus className="w-4 h-4 mr-1.5" />Create Proposal</Button>
+              )}
+              {linkedPresentations.length > 0 && (
+                <Link to={createPageUrl("Presentations") + "?mode=editor&id=" + linkedPresentations[0].id}>
+                  <Button variant="outline" size="sm"><ExternalLink className="w-4 h-4 mr-1.5" />Presentation</Button>
+                </Link>
               )}
               <Button variant="outline" size="sm" onClick={() => setShowEditForm(true)}><Edit className="w-4 h-4 mr-1.5" />Edit Project</Button>
               {project.archived ? (

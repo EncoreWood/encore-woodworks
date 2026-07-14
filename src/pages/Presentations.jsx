@@ -4,8 +4,10 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Printer, Send, ChevronLeft, ChevronRight, Copy, Trash2, Edit2, Save, Download } from "lucide-react";
+import { Plus, Printer, Send, ChevronLeft, ChevronRight, Copy, Trash2, Edit2, Save, Download, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import ProjectSelector from "@/components/presentations/ProjectSelector";
 import SendToClientModal from "@/components/presentations/SendToClientModal";
 import SlideThumbnailPanel from "@/components/presentations/SlideThumbnailPanel";
@@ -360,6 +362,13 @@ function PresentationEditor({ presId }) {
             <SelectItem value="sent">Sent</SelectItem>
           </SelectContent>
         </Select>
+        {presData.project_id && (
+          <Link to={createPageUrl("ProjectDetails") + "?id=" + presData.project_id} className="flex-shrink-0">
+            <Button size="sm" variant="outline" className="gap-1.5">
+              <ExternalLink className="w-3.5 h-3.5" /> <span className="hidden sm:inline">View Project</span>
+            </Button>
+          </Link>
+        )}
         <Button
           size="sm"
           variant="outline"
