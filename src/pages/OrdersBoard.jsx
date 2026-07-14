@@ -108,6 +108,18 @@ export default function OrdersBoard() {
     );
   };
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get("project_id");
+    if (!pid) return;
+    const el = document.getElementById(`orders-project-${pid}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-amber-400");
+      setTimeout(() => el.classList.remove("ring-2", "ring-amber-400"), 2000);
+    }
+  }, [allProjects, orders]);
+
   const handleCellClick = (project, orderType) => {
     const existingOrder = getOrder(project.id, orderType);
     setSelectedCell({ project, orderType, order: existingOrder });
@@ -268,7 +280,7 @@ export default function OrdersBoard() {
                 {groupProjects.length === 0 ? (
                   <div className="p-6 text-center text-slate-400 text-sm">{emptyMsg}</div>
                 ) : groupProjects.map((project) => (
-                  <div key={project.id} className="grid grid-cols-[250px_repeat(9,_1fr)] border-b border-slate-200 hover:bg-slate-50">
+                  <div key={project.id} id={`orders-project-${project.id}`} className="grid grid-cols-[250px_repeat(9,_1fr)] border-b border-slate-200 hover:bg-slate-50">
                     <div className="p-4 font-medium text-slate-900 border-r-2 border-slate-200" style={project.card_color ? { borderLeft: `4px solid ${project.card_color}` } : {}}>
                       <div className="flex items-center gap-2">
                         {project.card_color && <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: project.card_color }} />}

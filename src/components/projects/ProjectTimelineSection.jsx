@@ -13,7 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { format, differenceInDays, addDays } from "date-fns";
-import { Eye, Plus, ChevronDown, CheckCircle2, Trash2, X, Loader2 } from "lucide-react";
+import { Eye, Plus, ChevronDown, CheckCircle2, Trash2, X, Loader2, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 
 const DEFAULT_MILESTONES = [
   { event_name: "Design", event_type: "phase", color: "#3b82f6", sort_order: 0 },
@@ -265,6 +267,13 @@ export default function ProjectTimelineSection({ project }) {
                 {eventsWithCompletion.map(event => {
                   const style = getBarStyle(event);
                   const isExpanded = expandedRows[event.id];
+                  const navLink = event.event_name === "Orders"
+                    ? `${createPageUrl("OrdersBoard")}?project_id=${project.id}`
+                    : event.event_name === "Prep"
+                      ? `${createPageUrl("ShopProduction")}?tab=job_packets&project_id=${project.id}`
+                      : event.event_name === "Production"
+                        ? createPageUrl("ShopProduction")
+                        : null;
                   return (
                     <div key={event.id} className="border-b border-slate-100">
                       <div className="flex items-stretch h-11">
@@ -283,6 +292,11 @@ export default function ProjectTimelineSection({ project }) {
                           >
                             <span className="truncate" title={event.event_name}>{event.event_name}</span>
                           </button>
+                          {!clientView && navLink && (
+                            <Link to={navLink} className="ml-0.5 flex-shrink-0 text-slate-400 hover:text-amber-600 transition-colors" title={`Open ${event.event_name}`}>
+                              <ExternalLink className="w-3 h-3" />
+                            </Link>
+                          )}
                           <span className={cn(
                             "ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0",
                             event._completion === 100 ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"

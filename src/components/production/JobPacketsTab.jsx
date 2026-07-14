@@ -168,8 +168,18 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
 }
 
 // Main tab component
-export default function JobPacketsTab({ projects, items, openFolderContext, onFolderOpened, onAddCard, onSendToProduction, sharedCardProps }) {
+export default function JobPacketsTab({ projects, items, openFolderContext, onFolderOpened, onAddCard, onSendToProduction, sharedCardProps, scrollToProjectId }) {
   const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (!scrollToProjectId) return;
+    const el = document.getElementById(`job-packets-project-${scrollToProjectId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add("ring-2", "ring-amber-400");
+      setTimeout(() => el.classList.remove("ring-2", "ring-amber-400"), 2000);
+    }
+  }, [scrollToProjectId, projects]);
 
   if (projects.length === 0) {
     return (
@@ -243,7 +253,7 @@ export default function JobPacketsTab({ projects, items, openFolderContext, onFo
         const projectItems = items.filter(i => i.project_id === project.id && !i.is_job_info && !i.stage);
 
         return (
-          <div key={project.id} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div key={project.id} id={`job-packets-project-${project.id}`} className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             {/* Project header */}
             <div
               className="px-5 py-4 flex items-center gap-3 border-b border-slate-100"

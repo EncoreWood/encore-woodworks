@@ -53,9 +53,18 @@ export default function ShopProduction() {
   const [reportingMissing, setReportingMissing] = useState(null);
   const [quickReportItem, setQuickReportItem] = useState(null);
   const [showEndOfDay, setShowEndOfDay] = useState(false);
+  const [scrollToProjectId, setScrollToProjectId] = useState(null);
 
   useEffect(() => {
     base44.auth.me().then(setCurrentUser).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    if (tab) setActiveTab(tab);
+    const pid = params.get("project_id");
+    if (pid) setScrollToProjectId(pid);
   }, []);
 
   // Pause background polling when any modal/form is open — prevents refresh interrupting edits
@@ -570,6 +579,7 @@ export default function ShopProduction() {
             projects={activeProjects}
             items={items}
             openFolderContext={openFolderContext}
+            scrollToProjectId={scrollToProjectId}
             onFolderOpened={() => setOpenFolderContext(null)}
             onAddCard={(project, roomName) => {
               setPacketsFormContext({ project, roomName });
