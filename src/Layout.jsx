@@ -422,23 +422,48 @@ export default function Layout({ children, currentPageName }) {
             setEmployeeAllowedPages(allowedPages);
 
             const todayStr = format(new Date(), "yyyy-MM-dd");
+
+            // Reusable: reconcile React state + cache from the employee's entries
+            const syncClockState = (entries) => {
+              // Any unclosed entry counts as "active" — may span midnight (overnight shifts)
+              const openEntry = entries.find(e => e.clock_in && !e.clock_out);
+              if (openEntry) {
+                setOpenTimeEntryId(openEntry.id);
+                setCurrentProjectName(openEntry.project_name || null);
+                const [h, m] = openEntry.clock_in.split(":").map(Number);
+                const reconstructed = openEntry.date ? new Date(openEntry.date + "T00:00:00") : new Date();
+                reconstructed.setHours(h, m, 0, 0);
+                // If reconstructed time is in the future, the shift started the previous day
+                if (reconstructed > new Date()) {
+                  reconstructed.setDate(reconstructed.getDate() - 1);
+                }
+                setClockInTime(reconstructed);
+                _layoutCache.openTimeEntryId = openEntry.id;
+                _layoutCache.currentProjectName = openEntry.project_name || null;
+                _layoutCache.clockInTime = reconstructed;
+              } else {
+                setOpenTimeEntryId(null);
+                setCurrentProjectName(null);
+                setClockInTime(null);
+                _layoutCache.openTimeEntryId = null;
+                _layoutCache.currentProjectName = null;
+                _layoutCache.clockInTime = null;
+              }
+              const completedToday = entries.filter(e => e.date === todayStr && e.clock_out && e.hours_worked);
+              const hrs = completedToday.reduce((s, e) => s + (e.hours_worked || 0), 0);
+              setTodayCompletedHours(hrs);
+              _layoutCache.todayCompletedHours = hrs;
+            };
+
             const entries = await base44.entities.TimeEntry.filter({ employee_id: emp.id });
-            const openEntry = entries.find(e => e.date === todayStr && e.clock_in && !e.clock_out);
-            if (openEntry) {
-              setOpenTimeEntryId(openEntry.id);
-              setCurrentProjectName(openEntry.project_name || null);
-              const [h, m] = openEntry.clock_in.split(":").map(Number);
-              const reconstructed = new Date();
-              reconstructed.setHours(h, m, 0, 0);
-              setClockInTime(reconstructed);
-              _layoutCache.openTimeEntryId = openEntry.id;
-              _layoutCache.currentProjectName = openEntry.project_name || null;
-              _layoutCache.clockInTime = reconstructed;
-            }
-            const completedToday = entries.filter(e => e.date === todayStr && e.clock_out && e.hours_worked);
-            const hrs = completedToday.reduce((s, e) => s + (e.hours_worked || 0), 0);
-            setTodayCompletedHours(hrs);
-            _layoutCache.todayCompletedHours = hrs;
+            syncClockState(entries);
+
+            // Realtime sync: keep clock state current across devices/tabs
+            _layoutCache.unsubscribe?.();
+            _layoutCache.unsubscribe = base44.entities.TimeEntry.subscribe((event) => {
+              if (event?.data?.employee_id !== emp.id) return;
+              base44.entities.TimeEntry.filter({ employee_id: emp.id }).then(syncClockState).catch(() => {});
+            });
           }
         }
 
@@ -501,6 +526,9 @@ export default function Layout({ children, currentPageName }) {
     setOpenTimeEntryId(entry.id);
     setClockInTime(now);
     setCurrentProjectName(project_name || null);
+    _layoutCache.openTimeEntryId = entry.id;
+    _layoutCache.clockInTime = now;
+    _layoutCache.currentProjectName = project_name || null;
   };
 
   const handleClockIn = async () => {
@@ -521,7 +549,9 @@ export default function Layout({ children, currentPageName }) {
       const clockInStr = format(clockInTime, "HH:mm");
       const [inH, inM] = clockInStr.split(":").map(Number);
       const [outH, outM] = clockOutStr.split(":").map(Number);
-      const hours = ((outH * 60 + outM - inH * 60 - inM) / 60).toFixed(2);
+      let minutes = outH * 60 + outM - inH * 60 - inM;
+      if (minutes < 0) minutes += 24 * 60; // overnight shift crossed midnight
+      const hours = (minutes / 60).toFixed(2);
       await base44.entities.TimeEntry.update(openTimeEntryId, {
         clock_out: clockOutStr,
         hours_worked: parseFloat(hours)
@@ -529,6 +559,9 @@ export default function Layout({ children, currentPageName }) {
       setClockInTime(null);
       setElapsedTime("00:00:00");
       setOpenTimeEntryId(null);
+      _layoutCache.clockInTime = null;
+      _layoutCache.openTimeEntryId = null;
+      _layoutCache.currentProjectName = null;
     }
     // Clock into new job
     await doClockIn({ project_id, project_name });
@@ -542,7 +575,9 @@ export default function Layout({ children, currentPageName }) {
     const clockInStr = format(clockInTime, "HH:mm");
     const [inH, inM] = clockInStr.split(":").map(Number);
     const [outH, outM] = clockOutStr.split(":").map(Number);
-    const hours = ((outH * 60 + outM - inH * 60 - inM) / 60).toFixed(2);
+    let minutes = outH * 60 + outM - inH * 60 - inM;
+    if (minutes < 0) minutes += 24 * 60; // overnight shift crossed midnight
+    const hours = (minutes / 60).toFixed(2);
 
     await base44.entities.TimeEntry.update(openTimeEntryId, {
       clock_out: clockOutStr,
@@ -552,6 +587,9 @@ export default function Layout({ children, currentPageName }) {
     setClockInTime(null);
     setElapsedTime("00:00:00");
     setOpenTimeEntryId(null);
+    _layoutCache.clockInTime = null;
+    _layoutCache.openTimeEntryId = null;
+    _layoutCache.currentProjectName = null;
   };
 
   const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet"]);

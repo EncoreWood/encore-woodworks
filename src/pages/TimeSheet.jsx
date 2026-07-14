@@ -50,7 +50,9 @@ function calculateHours(clockIn, clockOut) {
   if (!clockIn || !clockOut) return 0;
   const [inH, inM] = clockIn.split(":").map(Number);
   const [outH, outM] = clockOut.split(":").map(Number);
-  return ((outH * 60 + outM - inH * 60 - inM) / 60).toFixed(2);
+  let minutes = outH * 60 + outM - inH * 60 - inM;
+  if (minutes < 0) minutes += 24 * 60; // overnight shift crossed midnight
+  return (minutes / 60).toFixed(2);
 }
 
 const typeColors = {
