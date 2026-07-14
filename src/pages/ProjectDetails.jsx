@@ -20,7 +20,7 @@ import {
 import {
 ArrowLeft, Edit, Trash2, User, Mail, Phone, MapPin, Calendar,
 DollarSign, Palette, Wrench, FileText, Loader2, DoorOpen,
-ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X, Calculator, Box, Upload, Archive, ArchiveRestore, BarChart3
+ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X, Calculator, Box, Upload, Archive, ArchiveRestore
 } from "lucide-react";
 import { format } from "date-fns";
 import ProjectForm from "../components/projects/ProjectForm";
@@ -36,7 +36,7 @@ import ClientPortalTab from "../components/projects/ClientPortalTab";
 import GlbViewer from "../components/cad/GlbViewer";
 import RoomFilesSection from "../components/projects/RoomFilesSection";
 import JobMeasurementsTab from "../components/measurements/JobMeasurementsTab";
-import TimelineModal from "../components/projects/TimelineModal";
+import ProjectTimelineSection from "../components/projects/ProjectTimelineSection";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -112,7 +112,6 @@ export default function ProjectDetails() {
   const [viewingRoomGlb, setViewingRoomGlb] = useState(null); // { url, name }
   const [uploadingRoomGlbIdx, setUploadingRoomGlbIdx] = useState(null);
   const [roomGlbPickerIdx, setRoomGlbPickerIdx] = useState(null);
-  const [showTimelineModal, setShowTimelineModal] = useState(false);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
 
@@ -175,8 +174,6 @@ export default function ProjectDetails() {
       setShowProposalForm(false);
     }
   });
-
-  const handlePhaseToggle = (phase) => updateMutation.mutate({ [phase]: !project[phase] });
 
   const handleSaveRoom = (roomData) => {
     const updatedRooms = [...(project.rooms || [])];
@@ -244,20 +241,6 @@ export default function ProjectDetails() {
 
   const status = statusConfig[project.status] || statusConfig.inquiry;
   const type = typeConfig[project.project_type] || project.project_type;
-
-  const phases = [
-    { key: "design_complete", label: "Design Complete", icon: Palette },
-    { key: "materials_ordered", label: "Materials Ordered", icon: FileText },
-    { key: "production_complete", label: "Production Complete", icon: Wrench },
-    { key: "installation_complete", label: "Installation Complete", icon: MapPin }
-  ];
-  const completedPhases = phases.filter((p) => project[p.key]).length;
-  const progress = (completedPhases / phases.length) * 100;
-
-  const materialsOrderedProgress = (() => {
-    if (projectOrders.length === 0) return 0;
-    return (projectOrders.filter(o => ["ordered","received","installed"].includes(o.status)).length / projectOrders.length) * 100;
-  })();
 
   return (
     <PageSlideWrapper>
@@ -332,62 +315,8 @@ export default function ProjectDetails() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Progress Card */}
-            <Card className="p-6 bg-white border-0 shadow-sm">
-              <h2 className="text-lg font-semibold text-slate-900 mb-4">Project Progress</h2>
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-slate-500">Overall Completion</span>
-                  <span className="text-sm font-semibold text-slate-700">{Math.round(progress)}%</span>
-                </div>
-                <Progress value={progress} className="h-2 bg-slate-100" />
-              </div>
-              <div className="space-y-4">
-                {phases.map((phase) => (
-                  <div key={phase.key}>
-                    <div
-                      className={cn("flex items-center gap-4 p-4 rounded-lg border transition-all cursor-pointer",
-                        project[phase.key] ? "bg-emerald-50 border-emerald-200" : "bg-white border-slate-200 hover:border-slate-300"
-                      )}
-                      onClick={() => handlePhaseToggle(phase.key)}
-                    >
-                      <Checkbox checked={project[phase.key]} className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600" />
-                      <phase.icon className={cn("w-5 h-5", project[phase.key] ? "text-emerald-600" : "text-slate-400")} />
-                      <div className="flex-1 flex items-center gap-2">
-                        <span className={cn("font-medium", project[phase.key] ? "text-emerald-700" : "text-slate-700")}>{phase.label}</span>
-                        {phase.key === "materials_ordered" && (() => {
-                          const ORDER_COLUMNS_COUNT = 9;
-                          const orderedCount = projectOrders.filter(o => o.status && !["not_ordered", "not_applicable", "partially_ordered"].includes(o.status)).length;
-                          const unorderedCount = ORDER_COLUMNS_COUNT - projectOrders.filter(o => o.status === "not_applicable").length - orderedCount;
-                          return unorderedCount > 0 ? (
-                            <span className="text-xs font-bold text-red-600 bg-red-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0">{unorderedCount}</span>
-                          ) : null;
-                        })()}
-                      </div>
-                      {phase.key === "materials_ordered" && (
-                        <Link to={createPageUrl("OrdersBoard") + "?project=" + projectId}>
-                          <Button size="sm" variant="outline" className="gap-2" onClick={(e) => e.stopPropagation()}>
-                            <PackageOpen className="w-3 h-3" />Orders
-                          </Button>
-                        </Link>
-                      )}
-                      {updateMutation.isPending && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
-                    </div>
-                    {phase.key === "materials_ordered" && projectOrders.length > 0 && (
-                      <div className="ml-14 mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs text-slate-600">Order Completion</span>
-                          <span className="text-xs font-semibold text-slate-700">
-                            {projectOrders.filter(o => ["ordered","received","installed"].includes(o.status)).length}/{projectOrders.length} orders
-                          </span>
-                        </div>
-                        <Progress value={materialsOrderedProgress} className="h-1.5 bg-slate-200" />
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </Card>
+            {/* Project Timeline */}
+            <ProjectTimelineSection project={project} />
 
             {/* Specifications */}
             {(project.cabinet_style || project.hardware_type || project.finish || project.wood_types?.length > 0 || project.project_url || project.notes) && (
@@ -643,53 +572,6 @@ export default function ProjectDetails() {
               </div>
             </Card>
 
-            {/* Timeline */}
-            <Card className="p-6 bg-white border-0 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-slate-900">Timeline</h2>
-                <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7" onClick={() => setShowTimelineModal(true)}>
-                  <BarChart3 className="w-3.5 h-3.5" />Gantt
-                </Button>
-              </div>
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                  <div className="flex-1">
-                    <InlineDateEdit label="Start Date" value={project.start_date} onSave={(v) => updateMutation.mutate({ start_date: v })} />
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                  <div className="flex-1">
-                    <InlineDateEdit label="Est. Completion" value={project.estimated_completion} onSave={(v) => updateMutation.mutate({ estimated_completion: v })} />
-                  </div>
-                </div>
-                {project.actual_completion && (
-                  <div className="flex items-center gap-3">
-                    <Calendar className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                    <div><p className="text-sm text-slate-500">Completed</p><p className="font-medium text-emerald-700">{format(new Date(project.actual_completion), "MMM d, yyyy")}</p></div>
-                  </div>
-                )}
-                <div className="border-t pt-4 mt-2">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Install Dates</p>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Calendar className="w-5 h-5 text-amber-500 flex-shrink-0" />
-                      <div className="flex-1">
-                        <InlineDateEdit label="Install Start" value={project.install_start_date} onSave={(v) => updateMutation.mutate({ install_start_date: v })} />
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Calendar className="w-5 h-5 text-amber-500 flex-shrink-0" />
-                      <div className="flex-1">
-                        <InlineDateEdit label="Install End" value={project.install_end_date} onSave={(v) => updateMutation.mutate({ install_end_date: v })} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
             {/* Job Photos */}
             {(() => {
               const jobPhotos = (project.files || []).filter(f => f.tag === 'job_photo');
@@ -876,12 +758,6 @@ export default function ProjectDetails() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Timeline / Gantt Modal */}
-        <TimelineModal
-          open={showTimelineModal}
-          onOpenChange={setShowTimelineModal}
-          project={project}
-        />
       </div>
     </div>
     </PageSlideWrapper>

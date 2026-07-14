@@ -53,6 +53,10 @@
       "format": "date",
       "description": "Date the event was completed"
     },
+    "checklist": {
+      "type": "string",
+      "description": "JSON array of checklist items: [{id, label, done, done_at}]"
+    },
     "notes": {
       "type": "string",
       "description": "Additional notes"

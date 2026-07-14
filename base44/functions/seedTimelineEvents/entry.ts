@@ -27,12 +27,12 @@ Deno.serve(async (req) => {
     };
 
     const defaults = [
-      { event_name: "Design & Planning", event_type: "phase", start_date: addDays(startDate, 0), end_date: addDays(startDate, 14), sort_order: 0 },
-      { event_name: "Material Ordering", event_type: "phase", start_date: addDays(startDate, 14), end_date: addDays(startDate, 28), sort_order: 1 },
-      { event_name: "Shop Production", event_type: "phase", start_date: addDays(startDate, 28), end_date: addDays(startDate, 70), sort_order: 2 },
-      { event_name: "Finish & Quality Check", event_type: "phase", start_date: addDays(startDate, 70), end_date: addDays(startDate, 84), sort_order: 3 },
-      { event_name: "Delivery & Install", event_type: "phase", start_date: addDays(startDate, 84), end_date: addDays(startDate, 98), sort_order: 4 },
-      { event_name: "Final Walk-Through", event_type: "milestone", start_date: addDays(startDate, 98), end_date: addDays(startDate, 98), sort_order: 5 },
+      { event_name: "Design", event_type: "phase", color: "#3b82f6", start_date: addDays(startDate, 0), end_date: addDays(startDate, 14), sort_order: 0 },
+      { event_name: "Orders", event_type: "phase", color: "#f59e0b", start_date: addDays(startDate, 14), end_date: addDays(startDate, 28), sort_order: 1 },
+      { event_name: "Prep", event_type: "phase", color: "#8b5cf6", start_date: addDays(startDate, 28), end_date: addDays(startDate, 42), sort_order: 2 },
+      { event_name: "Production", event_type: "phase", color: "#f97316", start_date: addDays(startDate, 42), end_date: addDays(startDate, 84), sort_order: 3 },
+      { event_name: "Install", event_type: "phase", color: "#14b8a6", start_date: addDays(startDate, 84), end_date: addDays(startDate, 98), sort_order: 4 },
+      { event_name: "Complete", event_type: "milestone", color: "#22c55e", start_date: addDays(startDate, 98), end_date: addDays(startDate, 98), sort_order: 5 },
     ];
 
     const records = defaults.map(e => ({
@@ -42,6 +42,7 @@ Deno.serve(async (req) => {
       event_type: e.event_type,
       start_date: e.start_date,
       end_date: e.end_date,
+      color: e.color,
       is_client_visible: true,
       is_completed: false,
       sort_order: e.sort_order,
