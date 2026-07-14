@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FileIcon, ExternalLink } from "lucide-react";
 import DxfViewer from "@/components/cad/DxfViewer";
 import GlbViewer from "@/components/cad/GlbViewer";
+import PdfViewer from "@/components/PdfViewer";
 
 export default function FileViewer({ file, className = "" }) {
   const [viewingDxf, setViewingDxf] = useState(false);
@@ -76,11 +77,9 @@ export default function FileViewer({ file, className = "" }) {
   if (fileType === 'pdf') {
     return (
       <div className={className}>
-        <iframe
-          src={`https://docs.google.com/viewer?url=${encodeURIComponent(file.url)}&embedded=true`}
-          className="w-full h-96 rounded-lg border border-slate-200"
-          title={file.name}
-        />
+        <div className="w-full h-96 rounded-lg overflow-hidden border border-slate-200">
+          <PdfViewer url={file.url} />
+        </div>
         <div className="flex items-center gap-2 mt-2 text-xs text-slate-600">
           <FileIcon className="w-3 h-3" />
           <span className="flex-1 truncate">{file.name}</span>

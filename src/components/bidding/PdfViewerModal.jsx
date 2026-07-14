@@ -2,12 +2,10 @@ import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
+import PdfViewer from "@/components/PdfViewer";
 
 export default function PdfViewerModal({ open, onClose, url, name }) {
   if (!url) return null;
-
-  // Use Google Docs viewer for cross-device inline viewing without download prompts
-  const embedUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -22,12 +20,8 @@ export default function PdfViewerModal({ open, onClose, url, name }) {
             </a>
           </div>
         </DialogHeader>
-        <div className="flex-1 bg-slate-100 overflow-hidden">
-          <iframe
-            src={embedUrl}
-            className="w-full h-full border-0"
-            title={name || "PDF Viewer"}
-          />
+        <div className="flex-1 overflow-hidden">
+          <PdfViewer url={url} className="h-full" />
         </div>
       </DialogContent>
     </Dialog>

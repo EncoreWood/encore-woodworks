@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { X, FileText, ChevronLeft, ChevronRight, Paperclip } from "lucide-react";
+import PdfViewer from "@/components/PdfViewer";
 
 export default function RoomFilesModal({ projectId, projectName, roomName, onClose }) {
   const [currentIdx, setCurrentIdx] = useState(0);
@@ -113,7 +114,7 @@ export default function RoomFilesModal({ projectId, projectName, roomName, onClo
                       {f.label && <p className="text-white text-xl font-semibold mb-2">{f.label}</p>}
                       {pdfFile?.id === f.id ? (
                         <div className="rounded-2xl overflow-hidden bg-white h-[70vh]">
-                          <iframe src={f.file_url} title={f.file_name} className="w-full h-full border-none" />
+                          <PdfViewer url={f.file_url} className="h-full" />
                         </div>
                       ) : (
                         <button
