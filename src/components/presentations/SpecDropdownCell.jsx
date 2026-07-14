@@ -1,39 +1,49 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 /**
  * Dropdown cell for the specs table — preset options + custom text input.
+ * Popover is rendered via portal to escape overflow-hidden containers.
  */
 export default function SpecDropdownCell({ value, presets, onChange, placeholder = "—" }) {
   const [open, setOpen] = useState(false);
   const [customText, setCustomText] = useState("");
-  const [dropdownUp, setDropdownUp] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState(null);
   const cellRef = useRef(null);
   const popoverRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
     const handleClick = (e) => {
-      if (cellRef.current && !cellRef.current.contains(e.target) &&
-          popoverRef.current && !popoverRef.current.contains(e.target)) {
-        setOpen(false);
-      }
+      if (cellRef.current?.contains(e.target)) return;
+      if (popoverRef.current?.contains(e.target)) return;
+      setOpen(false);
     };
-    const handleScroll = () => setOpen(false);
+    const handleClose = () => setOpen(false);
     document.addEventListener("mousedown", handleClick);
-    document.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", handleClose);
+    window.addEventListener("scroll", handleClose, true);
     return () => {
       document.removeEventListener("mousedown", handleClick);
-      document.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", handleClose);
+      window.removeEventListener("scroll", handleClose, true);
     };
   }, [open]);
 
   const openDropdown = () => {
-    if (!presets) return;
-    // Check if there's room below; if not, open above
-    if (cellRef.current) {
-      const rect = cellRef.current.getBoundingClientRect();
-      setDropdownUp(rect.bottom + 240 > window.innerHeight);
-    }
+    if (!presets || !cellRef.current) return;
+    const rect = cellRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUp = spaceBelow < 250 && rect.top > 250;
+    const top = openUp ? rect.top - 250 : rect.bottom + 4;
+    setPopoverStyle({
+      position: "fixed",
+      top: Math.max(4, Math.min(top, window.innerHeight - 250)),
+      left: rect.left,
+      width: Math.max(rect.width, 140),
+      maxHeight: 240,
+      overflowY: "auto",
+    });
     setCustomText("");
     setOpen(true);
   };
@@ -79,11 +89,11 @@ export default function SpecDropdownCell({ value, presets, onChange, placeholder
         )}
       </button>
 
-      {open && (
+      {open && popoverStyle && createPortal(
         <div
           ref={popoverRef}
-          className={`absolute z-50 min-w-full bg-white border border-slate-300 rounded-md shadow-lg ${dropdownUp ? "bottom-full mb-1" : "top-full mt-1"}`}
-          style={{ maxWidth: "200px", maxHeight: "240px", overflowY: "auto" }}
+          className="z-[9999] bg-white border border-slate-300 rounded-md shadow-lg"
+          style={popoverStyle}
         >
           <div className="py-0.5">
             {presets.map(preset => (
@@ -99,7 +109,7 @@ export default function SpecDropdownCell({ value, presets, onChange, placeholder
               </button>
             ))}
           </div>
-          <div className="border-t border-slate-200 p-1.5">
+          <div className="border-t border-slate-200 p-1.5 sticky bottom-0 bg-white">
             <form onSubmit={saveCustom} className="flex items-center gap-1">
               <input
                 autoFocus
@@ -117,7 +127,8 @@ export default function SpecDropdownCell({ value, presets, onChange, placeholder
               </button>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
