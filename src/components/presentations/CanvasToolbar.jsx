@@ -1,4 +1,4 @@
-import { MousePointer2, Pencil, Type, Minus, ArrowRight, Square, Circle, Crop as CropIcon, Trash2, Undo2, Redo2, Check, X } from "lucide-react";
+import { MousePointer2, Pencil, Type, Minus, ArrowRight, Square, Circle, Crop as CropIcon, Trash2, Undo2, Redo2, Check, X, ImagePlus } from "lucide-react";
 
 const TOOLS = [
   { id: "select", icon: MousePointer2, label: "Select / Move" },
@@ -22,6 +22,7 @@ export default function CanvasToolbar({
   onUndo, onRedo, onDelete,
   canUndo, canRedo, hasSelection,
   cropMode, onApplyCrop, onCancelCrop,
+  onAddImage,
 }) {
   const showStyleControls = SHAPE_TOOLS.includes(activeTool) && !cropMode;
   const showFillControls = FILL_TOOLS.includes(activeTool);
@@ -41,6 +42,13 @@ export default function CanvasToolbar({
 
       <div className="w-px h-5 bg-slate-200 mx-1" />
 
+      <button
+        onClick={onAddImage}
+        className="p-1.5 rounded text-slate-600 hover:bg-slate-100 transition-colors"
+        title="Add Image"
+      >
+        <ImagePlus className="w-4 h-4" />
+      </button>
       <button
         onClick={() => onToolChange("crop")}
         className={`p-1.5 rounded transition-colors ${cropMode ? "bg-blue-100 text-blue-700" : "text-slate-600 hover:bg-slate-100"}`}

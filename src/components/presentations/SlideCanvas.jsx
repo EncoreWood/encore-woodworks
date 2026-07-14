@@ -26,6 +26,7 @@ export default function SlideCanvas({ slide, onUpdate, editable = true }) {
   const shapeStartRef = useRef(null);
   const currentShapeRef = useRef(null);
   const cropRectRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const [activeTool, setActiveTool] = useState("select");
   const [strokeColor, setStrokeColor] = useState("#ef4444");
@@ -452,6 +453,47 @@ export default function SlideCanvas({ slide, onUpdate, editable = true }) {
     canvas.renderAll();
   }, [activeTool, editable, ready, cropMode, strokeColor, strokeWidth]);
 
+  // ─── Add image ──────────────────────────────────────────────────────────────
+  const handleFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const img = await FabricImage.fromURL(file_url, { crossOrigin: "anonymous" });
+
+      const maxW = canvas.width * 0.7;
+      const maxH = canvas.height * 0.7;
+      const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+
+      img.set({
+        left: canvas.width / 2,
+        top: canvas.height / 2,
+        originX: "center",
+        originY: "center",
+        scaleX: scale,
+        scaleY: scale,
+      });
+
+      canvas.add(img);
+      canvas.setActiveObject(img);
+      canvas.renderAll();
+
+      // If no background image exists yet, set this as the first image (for thumbnail + print)
+      const imgs = parseImagesLayout(slideRef.current);
+      if (imgs.length === 0) {
+        const newImgs = [{ url: file_url, x: 5, y: 5, width: 90, height: 90, crop: null, zIndex: 0 }];
+        onUpdateRef.current({ images: JSON.stringify(newImgs) });
+      }
+    } catch (err) {
+      console.error("Image upload failed:", err);
+    }
+  };
+
   // ─── Tool change handler ────────────────────────────────────────────────────
   const handleToolChange = (tool) => {
     if (tool === "crop") {
@@ -485,10 +527,18 @@ export default function SlideCanvas({ slide, onUpdate, editable = true }) {
           cropMode={cropMode}
           onApplyCrop={applyCrop}
           onCancelCrop={cancelCrop}
+          onAddImage={() => fileInputRef.current?.click()}
         />
       )}
       <div ref={containerRef} className="flex-1 min-h-0 relative">
         <canvas ref={canvasElRef} />
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileSelected}
+        />
       </div>
     </div>
   );
