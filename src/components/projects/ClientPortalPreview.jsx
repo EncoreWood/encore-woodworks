@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
-import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Download, MessageSquare, DollarSign, Image, FileText, Calendar, MapPin, ClipboardList, StickyNote, X, DoorOpen } from "lucide-react";
+import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Download, MessageSquare, DollarSign, Image, FileText, Calendar, MapPin, ClipboardList, StickyNote, X, DoorOpen, Clock } from "lucide-react";
+import GanttChart from "@/components/projects/GanttChart";
+import SlideCard from "@/components/presentations/SlideCard";
 
 function Milestones({ project }) {
   const steps = [
@@ -38,6 +40,22 @@ function Milestones({ project }) {
   );
 }
 
+// ── Timeline chart ──────────────────────────────────────────────────────────
+function TimelinePreview({ projectId }) {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    base44.entities.TimelineEvent.filter({ project_id: projectId }, "sort_order").then(evts => {
+      setEvents(evts.filter(e => e.is_client_visible !== false));
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [projectId]);
+  if (loading) return <div className="flex justify-center py-6"><div className="w-6 h-6 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>;
+  if (!events.length) return <p className="text-sm text-slate-400 text-center py-4">No timeline available yet.</p>;
+  return <GanttChart events={events} readOnly />;
+}
+
+// ── Presentation slideshow ─────────────────────────────────────────────────
 function PresentationSlideshow({ projectId }) {
   const [slides, setSlides] = useState([]);
   const [idx, setIdx] = useState(0);
@@ -52,18 +70,20 @@ function PresentationSlideshow({ projectId }) {
   const slide = slides[idx];
   return (
     <div>
-      <div className="relative rounded-xl overflow-hidden bg-slate-100 aspect-video mb-3">
-        {slide.image_3d_url || slide.image_2d_url ? (
-          <img src={slide.image_3d_url || slide.image_2d_url} alt={slide.slide_label} className="w-full h-full object-contain" />
-        ) : (
-          <div className="flex items-center justify-center h-full text-slate-400 text-sm">No image</div>
-        )}
-        {slides.length > 1 && <>
-          <button onClick={() => setIdx(i => Math.max(0, i - 1))} disabled={idx === 0} className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 text-white rounded-full w-8 h-8 flex items-center justify-center disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
-          <button onClick={() => setIdx(i => Math.min(slides.length - 1, i + 1))} disabled={idx === slides.length - 1} className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 text-white rounded-full w-8 h-8 flex items-center justify-center disabled:opacity-30"><ChevronRight className="w-4 h-4" /></button>
-        </>}
+      <div className="mb-3">
+        <SlideCard key={slide.id} slide={slide} onUpdate={() => {}} editable={false} />
       </div>
-      {slide.slide_label && <p className="text-sm font-medium text-slate-700 text-center">{slide.slide_label}</p>}
+      {slides.length > 1 && (
+        <div className="flex items-center justify-center gap-3 mt-3">
+          <button onClick={() => setIdx(i => Math.max(0, i - 1))} disabled={idx === 0} className="bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center disabled:opacity-30 transition-colors">
+            <ChevronLeft className="w-4 h-4 text-slate-600" />
+          </button>
+          <span className="text-xs text-slate-500 font-medium">{idx + 1} / {slides.length}</span>
+          <button onClick={() => setIdx(i => Math.min(slides.length - 1, i + 1))} disabled={idx === slides.length - 1} className="bg-slate-100 hover:bg-slate-200 rounded-full w-8 h-8 flex items-center justify-center disabled:opacity-30 transition-colors">
+            <ChevronRight className="w-4 h-4 text-slate-600" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -291,6 +311,12 @@ export default function ClientPortalPreview({ project, settings, tasks, notes, o
             {settings?.show_milestones !== false && (
               <Section title="Progress" icon={CheckCircle2}>
                 <Milestones project={project} />
+              </Section>
+            )}
+
+            {settings?.show_timeline !== false && (
+              <Section title="Project Timeline" icon={Clock}>
+                <TimelinePreview projectId={project.id} />
               </Section>
             )}
 
