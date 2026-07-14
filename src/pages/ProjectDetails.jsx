@@ -242,13 +242,17 @@ export default function ProjectDetails() {
   const status = statusConfig[project.status] || statusConfig.inquiry;
   const type = typeConfig[project.project_type] || project.project_type;
 
+  const clientName = project.home_owner?.name || project.client_name || project.project_name;
+  const clientEmail = project.home_owner?.email || project.client_email;
+  const clientPhone = project.home_owner?.phone || project.client_phone;
+
   return (
     <PageSlideWrapper>
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <Link to={createPageUrl("Kanban")} className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700 mb-4">
+        {/* Header — Client Info */}
+        <div className="mb-6">
+          <Link to={createPageUrl("Kanban")} className="inline-flex items-center text-sm text-slate-500 hover:text-slate-700 mb-3">
             <ArrowLeft className="w-4 h-4 mr-1" />Back to Projects
           </Link>
           {/* Mobile sticky back bar */}
@@ -257,38 +261,61 @@ export default function ProjectDetails() {
               <ArrowLeft className="w-4 h-4" /> Projects
             </Link>
           </div>
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">{project.project_name}</h1>
-                <Badge className={cn("font-medium border-0", status.color)}>{status.label}</Badge>
+          <Card className="p-6 bg-white border-0 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+              {/* Left: Client name + email + phone */}
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 truncate">{clientName}</h1>
+                {clientEmail && (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Mail className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <a href={`mailto:${clientEmail}`} className="text-sm text-slate-500 hover:text-amber-600 truncate">{clientEmail}</a>
+                  </div>
+                )}
+                {clientPhone && (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Phone className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <a href={`tel:${clientPhone}`} className="text-sm text-slate-500 hover:text-amber-600">{clientPhone}</a>
+                  </div>
+                )}
+                <p className="text-xs text-slate-400 mt-2">{project.project_name} · {type}</p>
               </div>
-              <p className="text-slate-500">{type} Cabinets</p>
+              {/* Right: Status badge + address */}
+              <div className="flex flex-col items-start sm:items-end gap-2 flex-shrink-0">
+                <Badge className={cn("font-medium border-0 text-sm px-3 py-1", status.color)}>{status.label}</Badge>
+                {project.address && (
+                  <div className="flex items-start gap-1.5 text-sm text-slate-500">
+                    <MapPin className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                    <span className="sm:text-right">{project.address}</span>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="flex gap-2">
+            {/* Action buttons */}
+            <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
               {proposal ? (
                 <>
-                  <Button variant="outline" onClick={() => setShowProposalView(true)}><Eye className="w-4 h-4 mr-2" />View Proposal</Button>
-                  <Button variant="outline" onClick={() => setShowProposalForm(true)}><Edit className="w-4 h-4 mr-2" />Edit Proposal</Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowProposalView(true)}><Eye className="w-4 h-4 mr-1.5" />View Proposal</Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowProposalForm(true)}><Edit className="w-4 h-4 mr-1.5" />Edit Proposal</Button>
                 </>
               ) : (
-                <Button onClick={() => setShowProposalForm(true)} className="bg-amber-600 hover:bg-amber-700"><Plus className="w-4 h-4 mr-2" />Create Proposal</Button>
+                <Button size="sm" onClick={() => setShowProposalForm(true)} className="bg-amber-600 hover:bg-amber-700"><Plus className="w-4 h-4 mr-1.5" />Create Proposal</Button>
               )}
-              <Button variant="outline" onClick={() => setShowEditForm(true)}><Edit className="w-4 h-4 mr-2" />Edit Project</Button>
+              <Button variant="outline" size="sm" onClick={() => setShowEditForm(true)}><Edit className="w-4 h-4 mr-1.5" />Edit Project</Button>
               {project.archived ? (
-                <Button variant="outline" className="text-amber-600 hover:text-amber-700 hover:bg-amber-50" onClick={() => updateMutation.mutate({ archived: false, archived_date: null })}>
-                  <ArchiveRestore className="w-4 h-4 mr-2" />Restore
+                <Button variant="outline" size="sm" className="text-amber-600 hover:text-amber-700 hover:bg-amber-50" onClick={() => updateMutation.mutate({ archived: false, archived_date: null })}>
+                  <ArchiveRestore className="w-4 h-4 mr-1.5" />Restore
                 </Button>
               ) : (
-                <Button variant="outline" className="text-slate-600 hover:text-slate-700 hover:bg-slate-100" onClick={() => { if (confirm(`Archive "${project.project_name}"? It will be removed from active views.`)) updateMutation.mutate({ archived: true, archived_date: new Date().toISOString().split("T")[0] }); }}>
-                  <Archive className="w-4 h-4 mr-2" />Archive
+                <Button variant="outline" size="sm" className="text-slate-600 hover:text-slate-700 hover:bg-slate-100" onClick={() => { if (confirm(`Archive "${project.project_name}"? It will be removed from active views.`)) updateMutation.mutate({ archived: true, archived_date: new Date().toISOString().split("T")[0] }); }}>
+                  <Archive className="w-4 h-4 mr-1.5" />Archive
                 </Button>
               )}
-              <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setShowDeleteDialog(true)}>
+              <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setShowDeleteDialog(true)}>
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>
-          </div>
+          </Card>
         </div>
 
         <NextActionBanner project={project} onSave={(data) => updateMutation.mutate(data)} />
@@ -312,104 +339,48 @@ export default function ProjectDetails() {
           <JobMeasurementsTab project={project} />
         )}
         {(activeTab !== "client_portal" && activeTab !== "measurements" || currentUser?.role !== "admin") && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Project Timeline */}
-            <ProjectTimelineSection project={project} />
+        <>
+        {/* Full-width Project Timeline */}
+        <ProjectTimelineSection project={project} />
 
-            {/* Specifications */}
-            {(project.cabinet_style || project.hardware_type || project.finish || project.wood_types?.length > 0 || project.project_url || project.notes) && (
-              <Card className="p-6 bg-white border-0 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-slate-900">Specifications</h2>
-                  <Button size="sm" variant="outline" onClick={() => setShowEditForm(true)} className="gap-1 text-xs h-7">
-                    <Edit className="w-3 h-3" />Edit
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column */}
+          <div className="space-y-6">
+            {/* Plan Bid */}
+            <Card className="p-6 bg-white border-0 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                  <Calculator className="w-5 h-5 text-amber-500" /> Plan Bids
+                </h2>
+                <a href={createPageUrl("PlanBidding") + "?project_id=" + projectId}>
+                  <Button size="sm" className="bg-amber-600 hover:bg-amber-700 h-8 gap-1.5">
+                    <Plus className="w-3.5 h-3.5" /> New Bid
                   </Button>
-                </div>
-                <div className="space-y-4">
-                  {project.cabinet_style && (
-                    <div className="flex items-start gap-3">
-                      <Palette className="w-5 h-5 text-slate-400 mt-0.5" />
-                      <div><p className="text-sm text-slate-500">Cabinet Style</p><p className="font-medium text-slate-900">{project.cabinet_style}</p></div>
-                    </div>
-                  )}
-                  {project.hardware_type && (
-                    <div className="flex items-start gap-3">
-                      <Wrench className="w-5 h-5 text-slate-400 mt-0.5" />
-                      <div><p className="text-sm text-slate-500">Hardware</p><p className="font-medium text-slate-900">{project.hardware_type}</p></div>
-                    </div>
-                  )}
-                  {project.finish && (
-                    <div className="flex items-start gap-3">
-                      <Paintbrush className="w-5 h-5 text-slate-400 mt-0.5" />
-                      <div><p className="text-sm text-slate-500">Finish</p><p className="font-medium text-slate-900">{project.finish}</p></div>
-                    </div>
-                  )}
-                  {project.wood_types?.length > 0 && (
-                    <div className="flex items-start gap-3">
-                      <TreePine className="w-5 h-5 text-slate-400 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-slate-500">Wood Types</p>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {project.wood_types.map((wood, idx) => (
-                            <Badge key={idx} variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">{wood}</Badge>
-                          ))}
+                </a>
+              </div>
+              {linkedBids.length === 0 ? (
+                <p className="text-sm text-slate-400">No bids linked yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {linkedBids.map(bid => {
+                    const statusColors = { draft: "bg-amber-100 text-amber-700", finalized: "bg-green-100 text-green-700", sent: "bg-blue-100 text-blue-700" };
+                    return (
+                      <a key={bid.id} href={createPageUrl("PlanBidding") + "?bid_id=" + bid.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:border-amber-200 hover:bg-amber-50 transition-all">
+                        <FileText className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-slate-800 truncate">{bid.project_name}</p>
+                          <p className="text-xs text-slate-400">{bid.rooms?.length || 0} rooms · {bid.total_lf ? `${bid.total_lf} LF` : "—"}</p>
                         </div>
-                      </div>
-                    </div>
-                  )}
-                  {project.project_url && (
-                    <div className="flex items-start gap-3">
-                      <ExternalLink className="w-5 h-5 text-slate-400 mt-0.5" />
-                      <div>
-                        <p className="text-sm text-slate-500">Project URL</p>
-                        <a href={project.project_url} target="_blank" rel="noopener noreferrer" className="font-medium text-amber-600 hover:text-amber-700 underline">{project.project_url}</a>
-                      </div>
-                    </div>
-                  )}
-                  {project.notes && (
-                    <div className="flex items-start gap-3">
-                      <FileText className="w-5 h-5 text-slate-400 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm text-slate-500">Notes</p>
-                        {editingSection === "notes" ? (
-                          <div className="space-y-2 mt-1">
-                            <Textarea value={sectionDraft.notes} onChange={e => setSectionDraft(d => ({...d, notes: e.target.value}))} rows={3} className="text-sm" />
-                            <div className="flex gap-2">
-                              <Button size="sm" className="h-7 bg-emerald-600 hover:bg-emerald-700" onClick={() => updateMutation.mutate({ notes: sectionDraft.notes })}>Save</Button>
-                              <Button size="sm" variant="outline" className="h-7" onClick={() => setEditingSection(null)}>Cancel</Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-start justify-between group">
-                            <p className="text-slate-700 whitespace-pre-wrap flex-1">{project.notes}</p>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100 flex-shrink-0" onClick={() => startEditSection("notes")}>
-                              <Edit className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold text-slate-800">${(bid.total || 0).toLocaleString()}</p>
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statusColors[bid.status] || statusColors.draft}`}>{bid.status || "draft"}</span>
+                        </div>
+                      </a>
+                    );
+                  })}
                 </div>
-              </Card>
-            )}
-
-            {/* Project Files */}
-            {project.files && project.files.filter(f => { const ext = (f.name||"").toLowerCase().split('.').pop(); return f.tag !== "cad_dxf" && f.tag !== "cad_file" && ext !== "dxf" && ext !== "glb" && ext !== "gltf"; }).length > 0 && (
-              <Card className="p-6 bg-white border-0 shadow-sm">
-                {(() => { const nonCadFiles = project.files.filter(f => { const ext = (f.name||"").toLowerCase().split('.').pop(); return f.tag !== "cad_dxf" && f.tag !== "cad_file" && ext !== "dxf" && ext !== "glb" && ext !== "gltf"; }); return (<>
-                  <h2 className="text-lg font-semibold text-slate-900 mb-4">Project Files ({nonCadFiles.length})</h2>
-                  <div className="space-y-4">
-                    {nonCadFiles.map((file, idx) => <FileViewer key={idx} file={file} />)}
-                  </div>
-                </>); })()}
-              </Card>
-            )}
-
-            {/* CAD Drawings */}
-            <CadDrawingsSection project={project} currentUser={currentUser} onSave={(data) => updateMutation.mutateAsync(data)} />
+              )}
+            </Card>
 
             {/* Rooms */}
             <Card className="p-6 bg-white border-0 shadow-sm">
@@ -539,39 +510,8 @@ export default function ProjectDetails() {
             </Card>
           </div>
 
-          {/* Sidebar */}
+          {/* Right Column */}
           <div className="space-y-6">
-            {/* Client Info */}
-            <Card className="p-6 bg-white border-0 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-slate-900">Client Information</h2>
-                <Button size="sm" variant="outline" onClick={() => setShowEditForm(true)} className="gap-1 text-xs h-7">
-                  <Edit className="w-3 h-3" />Edit
-                </Button>
-              </div>
-              <div className="space-y-4">
-                {["contractor", "home_owner", "designer"].map((role) => {
-                  const contact = project[role];
-                  if (!contact?.name && !contact?.email && !contact?.phone) return null;
-                  const labels = { contractor: "Contractor", home_owner: "Home Owner", designer: "Designer" };
-                  return (
-                    <div key={role} className="border rounded-lg p-3 space-y-1.5 bg-slate-50">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{labels[role]}</p>
-                      {contact.name && <div className="flex items-center gap-2"><User className="w-4 h-4 text-slate-400" /><span className="text-slate-800 font-medium">{contact.name}</span></div>}
-                      {contact.email && <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-slate-400" /><a href={`mailto:${contact.email}`} className="text-amber-600 hover:text-amber-700 text-sm">{contact.email}</a></div>}
-                      {contact.phone && <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-slate-400" /><a href={`tel:${contact.phone}`} className="text-amber-600 hover:text-amber-700 text-sm">{contact.phone}</a></div>}
-                    </div>
-                  );
-                })}
-                {!project.contractor?.name && !project.home_owner?.name && !project.designer?.name && project.client_name && (
-                  <div className="flex items-center gap-3"><User className="w-5 h-5 text-slate-400" /><span className="text-slate-700">{project.client_name}</span></div>
-                )}
-                {project.address && (
-                  <div className="flex items-start gap-3"><MapPin className="w-5 h-5 text-slate-400 mt-0.5" /><span className="text-slate-700">{project.address}</span></div>
-                )}
-              </div>
-            </Card>
-
             {/* Job Photos */}
             {(() => {
               const jobPhotos = (project.files || []).filter(f => f.tag === 'job_photo');
@@ -597,49 +537,106 @@ export default function ProjectDetails() {
               );
             })()}
 
-            {/* Plan Bid */}
-            <Card className="p-6 bg-white border-0 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                  <Calculator className="w-5 h-5 text-amber-500" /> Plan Bids
-                </h2>
-                <a href={createPageUrl("PlanBidding") + "?project_id=" + projectId}>
-                  <Button size="sm" className="bg-amber-600 hover:bg-amber-700 h-8 gap-1.5">
-                    <Plus className="w-3.5 h-3.5" /> New Bid
-                  </Button>
-                </a>
-              </div>
-              {linkedBids.length === 0 ? (
-                <p className="text-sm text-slate-400">No bids linked yet.</p>
-              ) : (
-                <div className="space-y-2">
-                  {linkedBids.map(bid => {
-                    const statusColors = { draft: "bg-amber-100 text-amber-700", finalized: "bg-green-100 text-green-700", sent: "bg-blue-100 text-blue-700" };
-                    return (
-                      <a key={bid.id} href={createPageUrl("PlanBidding") + "?bid_id=" + bid.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:border-amber-200 hover:bg-amber-50 transition-all">
-                        <FileText className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">{bid.project_name}</p>
-                          <p className="text-xs text-slate-400">{bid.rooms?.length || 0} rooms · {bid.total_lf ? `${bid.total_lf} LF` : "—"}</p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-bold text-slate-800">${(bid.total || 0).toLocaleString()}</p>
-                          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statusColors[bid.status] || statusColors.draft}`}>{bid.status || "draft"}</span>
-                        </div>
-                      </a>
-                    );
-                  })}
-                </div>
-              )}
-            </Card>
-
             {/* Payment Log */}
             <PaymentLog project={project} onSave={(data) => updateMutation.mutate(data)} />
-
-
           </div>
         </div>
 
+        {/* Full-width sections below grid */}
+        {/* Specifications */}
+        {(project.cabinet_style || project.hardware_type || project.finish || project.wood_types?.length > 0 || project.project_url || project.notes) && (
+          <Card className="p-6 bg-white border-0 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-slate-900">Specifications</h2>
+              <Button size="sm" variant="outline" onClick={() => setShowEditForm(true)} className="gap-1 text-xs h-7">
+                <Edit className="w-3 h-3" />Edit
+              </Button>
+            </div>
+            <div className="space-y-4">
+              {project.cabinet_style && (
+                <div className="flex items-start gap-3">
+                  <Palette className="w-5 h-5 text-slate-400 mt-0.5" />
+                  <div><p className="text-sm text-slate-500">Cabinet Style</p><p className="font-medium text-slate-900">{project.cabinet_style}</p></div>
+                </div>
+              )}
+              {project.hardware_type && (
+                <div className="flex items-start gap-3">
+                  <Wrench className="w-5 h-5 text-slate-400 mt-0.5" />
+                  <div><p className="text-sm text-slate-500">Hardware</p><p className="font-medium text-slate-900">{project.hardware_type}</p></div>
+                </div>
+              )}
+              {project.finish && (
+                <div className="flex items-start gap-3">
+                  <Paintbrush className="w-5 h-5 text-slate-400 mt-0.5" />
+                  <div><p className="text-sm text-slate-500">Finish</p><p className="font-medium text-slate-900">{project.finish}</p></div>
+                </div>
+              )}
+              {project.wood_types?.length > 0 && (
+                <div className="flex items-start gap-3">
+                  <TreePine className="w-5 h-5 text-slate-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-slate-500">Wood Types</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {project.wood_types.map((wood, idx) => (
+                        <Badge key={idx} variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">{wood}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {project.project_url && (
+                <div className="flex items-start gap-3">
+                  <ExternalLink className="w-5 h-5 text-slate-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-slate-500">Project URL</p>
+                    <a href={project.project_url} target="_blank" rel="noopener noreferrer" className="font-medium text-amber-600 hover:text-amber-700 underline">{project.project_url}</a>
+                  </div>
+                </div>
+              )}
+              {project.notes && (
+                <div className="flex items-start gap-3">
+                  <FileText className="w-5 h-5 text-slate-400 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-slate-500">Notes</p>
+                    {editingSection === "notes" ? (
+                      <div className="space-y-2 mt-1">
+                        <Textarea value={sectionDraft.notes} onChange={e => setSectionDraft(d => ({...d, notes: e.target.value}))} rows={3} className="text-sm" />
+                        <div className="flex gap-2">
+                          <Button size="sm" className="h-7 bg-emerald-600 hover:bg-emerald-700" onClick={() => updateMutation.mutate({ notes: sectionDraft.notes })}>Save</Button>
+                          <Button size="sm" variant="outline" className="h-7" onClick={() => setEditingSection(null)}>Cancel</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between group">
+                        <p className="text-slate-700 whitespace-pre-wrap flex-1">{project.notes}</p>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100 flex-shrink-0" onClick={() => startEditSection("notes")}>
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* Project Files */}
+        {project.files && project.files.filter(f => { const ext = (f.name||"").toLowerCase().split('.').pop(); return f.tag !== "cad_dxf" && f.tag !== "cad_file" && ext !== "dxf" && ext !== "glb" && ext !== "gltf"; }).length > 0 && (
+          <Card className="p-6 bg-white border-0 shadow-sm">
+            {(() => { const nonCadFiles = project.files.filter(f => { const ext = (f.name||"").toLowerCase().split('.').pop(); return f.tag !== "cad_dxf" && f.tag !== "cad_file" && ext !== "dxf" && ext !== "glb" && ext !== "gltf"; }); return (<>
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">Project Files ({nonCadFiles.length})</h2>
+              <div className="space-y-4">
+                {nonCadFiles.map((file, idx) => <FileViewer key={idx} file={file} />)}
+              </div>
+            </>); })()}
+          </Card>
+        )}
+
+        {/* CAD Drawings */}
+        <CadDrawingsSection project={project} currentUser={currentUser} onSave={(data) => updateMutation.mutateAsync(data)} />
+
+        </>
         )}
 
         {/* Edit Form */}
