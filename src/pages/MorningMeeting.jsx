@@ -980,7 +980,7 @@ export default function MorningMeeting() {
 
           {/* Cleaning Schedule */}
           <SectionCard title="Cleaning Schedule — This Week" icon={Sparkles} color="slate" defaultOpen={true}>
-            <CleaningScheduleWidget showCheckboxes={false} todayOnly />
+            <CleaningScheduleWidget showCheckboxes={false} />
           </SectionCard>
 
           {/* 6. Tasks, Action Items — meeting tasks + global tasks */}
