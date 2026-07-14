@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, FolderOpen, Folder, ChevronRight, ArrowRight, Package, Search, X } from "lucide-react";
+import { Plus, FolderOpen, Folder, ChevronRight, ArrowRight, Package, Search, X, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import ProductionCard from "./ProductionCard";
 
 // A single room folder within a project
@@ -268,6 +270,13 @@ export default function JobPacketsTab({ projects, items, openFolderContext, onFo
                   {rooms.length} room{rooms.length !== 1 ? "s" : ""} · {projectItems.length} job packet{projectItems.length !== 1 ? "s" : ""}
                 </p>
               </div>
+              <Link
+                to={`${createPageUrl("Kanban")}?project=${project.id}`}
+                className="flex-shrink-0 text-slate-400 hover:text-amber-600 transition-colors p-1"
+                title="Open in Projects Board"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </Link>
               <Badge
                 className="capitalize text-xs"
                 variant="outline"
