@@ -116,17 +116,6 @@ export default function ProjectTimelineSection({ project }) {
     }
   }, [isLoading, events.length, project?.id, seeded]);
 
-  // Auto-expand phases that have checklist items so they're visible
-  useEffect(() => {
-    if (events.length > 0 && Object.keys(expandedRows).length === 0) {
-      const expanded = {};
-      events.forEach(e => {
-        if (parseChecklist(e.checklist).length > 0) expanded[e.id] = true;
-      });
-      if (Object.keys(expanded).length > 0) setExpandedRows(expanded);
-    }
-  }, [events]);
-
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.TimelineEvent.update(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["timelineEvents", project.id] }),
