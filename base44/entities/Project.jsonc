@@ -330,6 +330,10 @@
     "project_url": {
       "type": "string"
     },
+    "google_drive_folder_url": {
+      "type": "string",
+      "description": "Google Drive folder URL for this project"
+    },
     "cabinet_style": {
       "type": "string"
     },

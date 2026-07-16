@@ -37,6 +37,7 @@ import GlbViewer from "../components/cad/GlbViewer";
 import RoomFilesSection from "../components/projects/RoomFilesSection";
 import JobMeasurementsTab from "../components/measurements/JobMeasurementsTab";
 import ProjectTimelineSection from "../components/projects/ProjectTimelineSection";
+import GoogleFolderButton from "../components/projects/GoogleFolderButton";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -317,6 +318,7 @@ export default function ProjectDetails() {
                   <Button variant="outline" size="sm"><ExternalLink className="w-4 h-4 mr-1.5" />Presentation</Button>
                 </Link>
               )}
+              <GoogleFolderButton project={project} onSave={(data) => updateMutation.mutate(data)} isLoading={updateMutation.isPending} />
               <Button variant="outline" size="sm" onClick={() => setShowEditForm(true)}><Edit className="w-4 h-4 mr-1.5" />Edit Project</Button>
               {project.archived ? (
                 <Button variant="outline" size="sm" className="text-amber-600 hover:text-amber-700 hover:bg-amber-50" onClick={() => updateMutation.mutate({ archived: false, archived_date: null })}>
