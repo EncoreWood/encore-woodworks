@@ -84,6 +84,7 @@
         "inquiry",
         "side_projects",
         "quoted",
+        "likely_approved",
         "approved",
         "in_design",
         "in_production",

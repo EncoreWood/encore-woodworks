@@ -13,6 +13,7 @@ import { format } from "date-fns";
 const statusConfig = {
   inquiry: "bg-slate-100 text-slate-700",
   quoted: "bg-blue-50 text-blue-700",
+  likely_approved: "bg-teal-50 text-teal-700",
   approved: "bg-emerald-50 text-emerald-700",
   in_design: "bg-violet-50 text-violet-700",
   in_production: "bg-amber-50 text-amber-700",
@@ -23,7 +24,7 @@ const statusConfig = {
 };
 
 const statusLabel = {
-  inquiry: "Inquiry", quoted: "Quoted", approved: "Approved",
+  inquiry: "Inquiry", quoted: "Quoted", likely_approved: "Likely to Be Approved", approved: "Approved",
   in_design: "In Design", in_production: "In Production",
   ready_for_install: "Ready for Install", installing: "Installing",
   completed: "Completed", on_hold: "On Hold"

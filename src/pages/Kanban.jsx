@@ -27,6 +27,7 @@ const allStatusOptions = [
   { id: "inquiry", label: "Inquiry" },
   { id: "side_projects", label: "Side Projects" },
   { id: "quoted", label: "Quoted" },
+  { id: "likely_approved", label: "Likely to Be Approved" },
   { id: "approved", label: "Approved" },
   { id: "in_design", label: "In Design" },
   { id: "in_production", label: "In Production" },

@@ -253,12 +253,13 @@ function RoomsPreview({ project, tasks }) {
 
 export default function ClientPortalPreview({ project, settings, tasks, notes, onClose }) {
   const statusLabels = {
-    inquiry: "Inquiry", quoted: "Quoted", approved: "Approved", in_design: "In Design",
+    inquiry: "Inquiry", quoted: "Quoted", likely_approved: "Likely to Be Approved", approved: "Approved", in_design: "In Design",
     in_production: "In Production", ready_for_install: "Ready for Install",
     installing: "Installing", completed: "Completed", on_hold: "On Hold"
   };
   const statusColors = {
     inquiry: "bg-slate-100 text-slate-600", quoted: "bg-blue-100 text-blue-700",
+    likely_approved: "bg-teal-100 text-teal-700",
     approved: "bg-emerald-100 text-emerald-700", in_design: "bg-violet-100 text-violet-700",
     in_production: "bg-amber-100 text-amber-700", ready_for_install: "bg-cyan-100 text-cyan-700",
     installing: "bg-orange-100 text-orange-700", completed: "bg-emerald-100 text-emerald-700",

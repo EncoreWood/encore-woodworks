@@ -41,6 +41,7 @@ import ProjectTimelineSection from "../components/projects/ProjectTimelineSectio
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
   quoted: { label: "Quoted", color: "bg-blue-50 text-blue-700" },
+  likely_approved: { label: "Likely to Be Approved", color: "bg-teal-50 text-teal-700" },
   approved: { label: "Approved", color: "bg-emerald-50 text-emerald-700" },
   in_design: { label: "In Design", color: "bg-violet-50 text-violet-700" },
   in_production: { label: "In Production", color: "bg-amber-50 text-amber-700" },
