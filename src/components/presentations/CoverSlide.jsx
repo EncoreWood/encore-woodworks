@@ -1,6 +1,7 @@
-import { X, Plus, Upload } from "lucide-react";
+import { X, Upload } from "lucide-react";
 import { parseCoverSpecs } from "./slideHelpers";
 import PricingSummary from "./PricingSummary";
+import CabinetSelectionsTable from "./CabinetSelectionsTable";
 
 const LOGO_URL = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png";
 
@@ -14,14 +15,6 @@ export default function CoverSlide({ slide, onUpdate, editable = true }) {
     if (key === "project_name") patch.room_name = value;
     onUpdate(patch);
   };
-
-  const updateScopeItem = (idx, value) => {
-    const items = [...specs.scope_of_work];
-    items[idx] = value;
-    update("scope_of_work", items);
-  };
-  const addScopeItem = () => update("scope_of_work", [...specs.scope_of_work, ""]);
-  const removeScopeItem = (idx) => update("scope_of_work", specs.scope_of_work.filter((_, i) => i !== idx));
 
   const updatePricingItem = (idx, field, value) => {
     const items = [...specs.pricing_items];
@@ -115,47 +108,8 @@ export default function CoverSlide({ slide, onUpdate, editable = true }) {
           </span>
         </div>
 
-        {editable ? (
-          <textarea
-            className="text-xs text-slate-600 text-center border-none outline-none bg-transparent placeholder-slate-300 mt-5 max-w-md resize-none"
-            value={specs.overview_text}
-            onChange={e => update("overview_text", e.target.value)}
-            placeholder="Project overview..."
-            rows={3}
-          />
-        ) : (
-          specs.overview_text && <p className="text-xs text-slate-600 mt-5 max-w-md whitespace-pre-wrap">{specs.overview_text}</p>
-        )}
-
-        {/* Scope of Work */}
-        {(specs.scope_of_work.length > 0 || editable) && (
-          <div className="mt-5 max-w-sm w-full">
-            <h3 className="text-[9px] font-semibold tracking-[0.2em] uppercase text-amber-700 mb-1.5">Scope of Work</h3>
-            {specs.scope_of_work.map((item, idx) => (
-              <div key={idx} className="flex items-center gap-1.5 group">
-                <span className="text-slate-400 text-xs">•</span>
-                {editable ? (
-                  <input
-                    className="flex-1 text-xs text-slate-700 border-none outline-none bg-transparent placeholder-slate-300"
-                    value={item}
-                    onChange={e => updateScopeItem(idx, e.target.value)}
-                    placeholder="Scope item..."
-                  />
-                ) : (
-                  <span className="text-xs text-slate-700">{item}</span>
-                )}
-                {editable && (
-                  <button onClick={() => removeScopeItem(idx)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100">
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            ))}
-            {editable && (
-              <button onClick={addScopeItem} className="text-[10px] text-amber-600 hover:text-amber-700 mt-1 ml-4">+ Add Item</button>
-            )}
-          </div>
-        )}
+        {/* Cabinet Selections Table */}
+        <CabinetSelectionsTable specs={specs} editable={editable} onUpdate={update} />
 
         {/* Pricing Summary */}
         {showPricing && (
