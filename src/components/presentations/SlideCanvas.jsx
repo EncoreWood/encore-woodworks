@@ -251,36 +251,32 @@ export default function SlideCanvas({ slide, onUpdate, editable = true }) {
     const ro = new ResizeObserver(resize);
     if (containerRef.current) ro.observe(containerRef.current);
 
-    // Load background + saved annotations
+    // Load canvas — image lives ONLY as a Fabric object, never as a background <img>
     const init = async () => {
-      const imgs = parseImagesLayout(slideRef.current);
-      const bgUrl = imgs[0]?.url;
-
-      if (bgUrl) {
-        try {
-          const img = await FabricImage.fromURL(bgUrl, { crossOrigin: "anonymous" });
-          if (disposed) return;
-          const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
-          img.set({
-            left: (canvas.width - img.width * scale) / 2,
-            top: (canvas.height - img.height * scale) / 2,
-            scaleX: scale, scaleY: scale,
-            selectable: false, evented: false,
-          });
-          canvas.backgroundImage = img;
-          canvas.renderAll();
-        } catch (e) { console.error("BG image load failed:", e); }
-      }
+      canvas.clear();
 
       if (slideRef.current.canvas_json) {
+        // Saved canvas JSON already contains the image + annotations
         try {
           const saved = JSON.parse(slideRef.current.canvas_json);
           if (disposed) return;
-          const bg = canvas.backgroundImage;
           await canvas.loadFromJSON(saved);
-          canvas.backgroundImage = bg;
           canvas.renderAll();
         } catch (e) { console.error("Canvas JSON load failed:", e); }
+      } else {
+        // No saved canvas — load image_3d as a Fabric object only
+        const imgs = parseImagesLayout(slideRef.current);
+        const imgUrl = imgs[0]?.url;
+        if (imgUrl) {
+          try {
+            const img = await FabricImage.fromURL(imgUrl, { crossOrigin: "anonymous" });
+            if (disposed) return;
+            img.scaleToWidth(canvas.width);
+            canvas.add(img);
+            canvas.sendToBack(img);
+            canvas.renderAll();
+          } catch (e) { console.error("Image load failed:", e); }
+        }
       }
 
       if (disposed) return;
