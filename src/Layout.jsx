@@ -3,6 +3,9 @@ import { createPageUrl } from "@/utils";
 import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square,   Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon, ArrowLeftRight, ArchiveX, ShoppingCart as ShoppingCartIcon, ListTodo, GraduationCap, Workflow } from "lucide-react";
 import MobileTabBar from "@/components/MobileTabBar";
 import ClockInModal from "@/components/timesheet/ClockInModal";
+import CommandPalette from "@/components/CommandPalette";
+import ShortcutHelpOverlay from "@/components/ShortcutHelpOverlay";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
@@ -47,10 +50,23 @@ export default function Layout({ children, currentPageName }) {
   const [employees, setEmployees] = useState([]);
   const [projects, setProjects] = useState([]);
   const [showClockInModal, setShowClockInModal] = useState(false);
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showShortcutHelp, setShowShortcutHelp] = useState(false);
   const [showSwitchModal, setShowSwitchModal] = useState(false);
   const [currentProjectName, setCurrentProjectName] = useState(null);
   const [todayCompletedHours, setTodayCompletedHours] = useState(0);
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
+
+  // Global keyboard shortcuts
+  useKeyboardShortcuts({
+    onOpenPalette: () => setShowCommandPalette(true),
+    onOpenHelp: () => setShowShortcutHelp(true),
+    onCloseOverlay: () => {
+      setShowCommandPalette(false);
+      setShowShortcutHelp(false);
+      window.dispatchEvent(new CustomEvent("encore:escape"));
+    },
+  });
 
   const defaultNavGroups = {
     dashboard: {
@@ -898,6 +914,10 @@ export default function Layout({ children, currentPageName }) {
         confirmLabel="Clock In"
         confirmClass="bg-green-600 hover:bg-green-700"
       />
+
+      {/* Global Keyboard Shortcut Components */}
+      <CommandPalette open={showCommandPalette} onClose={() => setShowCommandPalette(false)} />
+      <ShortcutHelpOverlay open={showShortcutHelp} onClose={() => setShowShortcutHelp(false)} />
 
       {/* Switch Job Modal */}
       <ClockInModal

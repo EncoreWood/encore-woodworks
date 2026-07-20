@@ -27,6 +27,7 @@ export default function SlideCanvas({ slide, onUpdate, editable = true }) {
   const currentShapeRef = useRef(null);
   const cropRectRef = useRef(null);
   const fileInputRef = useRef(null);
+  const clipboardRef = useRef(null);
 
   const [activeTool, setActiveTool] = useState("select");
   const [strokeColor, setStrokeColor] = useState("#ef4444");
@@ -499,6 +500,65 @@ export default function SlideCanvas({ slide, onUpdate, editable = true }) {
       setActiveTool(tool);
     }
   };
+
+  // ─── Copy / Paste ─────────────────────────────────────────────────────────
+  const handleCopy = () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const obj = canvas.getActiveObject();
+    if (obj) clipboardRef.current = obj;
+  };
+
+  const handlePaste = async () => {
+    const canvas = fabricRef.current;
+    if (!canvas || !clipboardRef.current) return;
+    try {
+      const cloned = await clipboardRef.current.clone();
+      cloned.set({ left: (cloned.left || 0) + 20, top: (cloned.top || 0) + 20 });
+      canvas.add(cloned);
+      canvas.setActiveObject(cloned);
+      canvas.renderAll();
+      pushUndoState();
+      debouncedSave();
+    } catch (e) {
+      console.error("Paste failed:", e);
+    }
+  };
+
+  // ─── Zoom ──────────────────────────────────────────────────────────────────
+  const handleCanvasZoom = (direction) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const currentZoom = canvas.getZoom();
+    if (direction === "in") canvas.setZoom(Math.min(5, currentZoom + 0.2));
+    else if (direction === "out") canvas.setZoom(Math.max(0.2, currentZoom - 0.2));
+    else if (direction === "reset") canvas.setZoom(1);
+  };
+
+  // ─── Keyboard shortcut listener ────────────────────────────────────────────
+  useEffect(() => {
+    if (!editable) return;
+    const handler = (e) => {
+      if (e.detail.page !== "presentations") return;
+      const { action } = e.detail;
+      switch (action) {
+        case "tool-text": handleToolChange("text"); break;
+        case "tool-select": handleToolChange("select"); break;
+        case "tool-rect": handleToolChange("rect"); break;
+        case "tool-crop": handleToolChange("crop"); break;
+        case "delete-object": handleDelete(); break;
+        case "copy": handleCopy(); break;
+        case "paste": handlePaste(); break;
+        case "undo": handleUndo(); break;
+        case "redo": handleRedo(); break;
+        case "zoom-in": handleCanvasZoom("in"); break;
+        case "zoom-out": handleCanvasZoom("out"); break;
+        case "zoom-reset": handleCanvasZoom("reset"); break;
+      }
+    };
+    window.addEventListener("encore:shortcut", handler);
+    return () => window.removeEventListener("encore:shortcut", handler);
+  }, [editable]);
 
   return (
     <div className="flex flex-col w-full h-full">

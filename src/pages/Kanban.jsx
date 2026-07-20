@@ -214,6 +214,19 @@ export default function Kanban() {
     "#ec4899", "#14b8a6", "#f59e0b", "#6366f1", "#64748b"
   ];
 
+  // Keyboard shortcut listener — 'N' for new project
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail.page !== "projects") return;
+      if (e.detail.action === "new-project") {
+        setNewProjectStatus(null);
+        setShowProjectForm(true);
+      }
+    };
+    window.addEventListener("encore:shortcut", handler);
+    return () => window.removeEventListener("encore:shortcut", handler);
+  }, []);
+
   const handleChatClick = (e, project) => {
     e.preventDefault();
     setSelectedProject(project);

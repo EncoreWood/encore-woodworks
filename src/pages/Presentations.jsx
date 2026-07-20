@@ -374,17 +374,31 @@ function PresentationEditor({ presId }) {
     scheduleAutoSave(null, updated);
   };
 
-  // Arrow key navigation between slides
+  // Duplicate current slide
+  const duplicateSlide = (idx) => {
+    const slide = slides[idx];
+    if (!slide || isCoverSlide(slide)) return;
+    const dup = { ...slide, id: undefined, slide_label: (slide.slide_label || "") + " (copy)" };
+    const updated = [...slides.slice(0, idx + 1), dup, ...slides.slice(idx + 1)];
+    updated.forEach((s, i) => { s.sort_order = i; });
+    setSlides(updated);
+    setSelectedIdx(idx + 1);
+    scheduleAutoSave(updated, null);
+  };
+
+  // Keyboard shortcut listener (receives events from useKeyboardShortcuts hook)
   useEffect(() => {
     const handler = (e) => {
-      const tag = e.target.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || e.target.isContentEditable) return;
-      if (e.key === "ArrowLeft") setSelectedIdx(i => Math.max(0, i - 1));
-      if (e.key === "ArrowRight") setSelectedIdx(i => Math.min(slides.length - 1, i + 1));
+      if (e.detail.page !== "presentations") return;
+      const { action } = e.detail;
+      if (action === "slide-prev") setSelectedIdx(i => Math.max(0, i - 1));
+      else if (action === "slide-next") setSelectedIdx(i => Math.min(slidesRef.current.length - 1, i + 1));
+      else if (action === "duplicate-slide") duplicateSlide(selectedIdx);
+      else if (action === "save") doSave(slidesRef.current, presDataRef.current);
     };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [slides.length]);
+    window.addEventListener("encore:shortcut", handler);
+    return () => window.removeEventListener("encore:shortcut", handler);
+  }, [selectedIdx]);
 
   if (presLoading || slidesLoading) return <div className="p-8 text-center text-slate-500">Loading...</div>;
   if (!presData) return <div className="p-8 text-center text-slate-500">Presentation not found.</div>;

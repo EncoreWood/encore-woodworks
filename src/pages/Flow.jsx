@@ -337,6 +337,20 @@ export default function Flow() {
     setSelectedPathId(null);
   };
 
+  // Keyboard shortcut listener — delete selected zone/arrow/path
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail.page !== "flow") return;
+      if (e.detail.action === "delete-selected") {
+        if (selectedZoneId) { deleteZone.mutate(selectedZoneId); setSelectedZoneId(null); }
+        else if (selectedArrowId) { deleteArrow.mutate(selectedArrowId); setSelectedArrowId(null); }
+        else if (selectedPathId) { deleteArrow.mutate(selectedPathId); setSelectedPathId(null); }
+      }
+    };
+    window.addEventListener("encore:shortcut", handler);
+    return () => window.removeEventListener("encore:shortcut", handler);
+  }, [selectedZoneId, selectedArrowId, selectedPathId]);
+
   const selectedZone = zones.find((z) => z.id === selectedZoneId);
   const selectedArrow = arrows.find((a) => a.id === selectedArrowId);
   const selectedFlowObj = flows.find((f) => f.name === selectedFlow) || null;

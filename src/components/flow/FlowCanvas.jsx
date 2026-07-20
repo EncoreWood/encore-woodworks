@@ -84,6 +84,28 @@ export default function FlowCanvas({
   const zoomIn = useCallback(() => setZoom((z) => Math.min(MAX_ZOOM, +(z + 0.25).toFixed(2))), []);
   const zoomOut = useCallback(() => setZoom((z) => Math.max(MIN_ZOOM, +(z - 0.25).toFixed(2))), []);
 
+  // Keyboard shortcut listener
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail.page !== "flow") return;
+      const { action } = e.detail;
+      switch (action) {
+        case "zoom-in": zoomIn(); break;
+        case "zoom-out": zoomOut(); break;
+        case "zoom-fit": fitToScreen(); break;
+        case "tool-select": setDrawMode("select"); break;
+        case "tool-route": setDrawMode("arrow"); break;
+        case "tool-label": setDrawMode("label"); break;
+        case "cancel":
+          setDrawMode("select");
+          setDrawPoints([]);
+          break;
+      }
+    };
+    window.addEventListener("encore:shortcut", handler);
+    return () => window.removeEventListener("encore:shortcut", handler);
+  }, [zoomIn, zoomOut, fitToScreen]);
+
   // Non-passive wheel zoom
   useEffect(() => {
     const el = containerRef.current;
