@@ -10,6 +10,11 @@
       "type": "string",
       "default": "blue",
       "description": "Preset color key"
+    },
+    "sequence": {
+      "type": "string",
+      "description": "JSON array of zone IDs in flow order",
+      "default": "[]"
     }
   },
   "required": [

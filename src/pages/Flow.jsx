@@ -10,6 +10,7 @@ import ArrowEditor from "@/components/flow/ArrowEditor";
 import FlowSequenceBar from "@/components/flow/FlowSequenceBar";
 import AddZoneDialog from "@/components/flow/AddZoneDialog";
 import FlowManager from "@/components/flow/FlowManager";
+import FlowSequenceBuilder from "@/components/flow/FlowSequenceBuilder";
 import { DEFAULT_ZONES, DEFAULT_FLOWS, CANVAS_INCHES } from "@/components/flow/flowConstants";
 
 export default function Flow() {
@@ -19,6 +20,7 @@ export default function Flow() {
   const [selectedFlow, setSelectedFlow] = useState(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showFlowManager, setShowFlowManager] = useState(false);
+  const [editingSequenceFlow, setEditingSequenceFlow] = useState(null);
 
   // Queries
   const { data: zones = [], isLoading: zonesLoading } = useQuery({
@@ -124,6 +126,10 @@ export default function Flow() {
     mutationFn: ({ id, data }) => base44.entities.ShopFlow.update(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shopFlows"] }),
   });
+  const updateFlowSequence = useMutation({
+    mutationFn: ({ id, sequence }) => base44.entities.ShopFlow.update(id, { sequence }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shopFlows"] }),
+  });
 
   // Drag handlers (optimistic local update, save on end)
   const handleDragMove = (id, x, y, width, height) => {
@@ -147,6 +153,17 @@ export default function Flow() {
     queryClient.invalidateQueries({ queryKey: ["shopFlowAreas"] });
   };
 
+  const handleFlowSequenceReorder = (newSequenceIds) => {
+    const flowObj = flows.find((f) => f.name === selectedFlow);
+    if (flowObj) {
+      // Optimistic update
+      queryClient.setQueryData(["shopFlows"], (old = []) =>
+        old.map((f) => (f.id === flowObj.id ? { ...f, sequence: JSON.stringify(newSequenceIds) } : f))
+      );
+      updateFlowSequence.mutate({ id: flowObj.id, sequence: JSON.stringify(newSequenceIds) });
+    }
+  };
+
   const handleCreateZone = (data) => {
     createZone.mutate({ ...data, x: 40, y: 40, width: 15, height: 15, flow_tags: [] });
   };
@@ -156,6 +173,18 @@ export default function Flow() {
 
   const selectedZone = zones.find((z) => z.id === selectedZoneId);
   const selectedArrow = arrows.find((a) => a.id === selectedArrowId);
+  const selectedFlowObj = flows.find((f) => f.name === selectedFlow) || null;
+  const flowSequenceIds = (() => {
+    if (!selectedFlowObj) return [];
+    let ids = [];
+    try { ids = JSON.parse(selectedFlowObj.sequence || "[]"); } catch { ids = []; }
+    if (ids.length === 0) {
+      const tagged = zones.filter((z) => (z.flow_tags || []).includes(selectedFlow));
+      tagged.sort((a, b) => (a.flow_order ?? 999) - (b.flow_order ?? 999));
+      ids = tagged.map((z) => z.id);
+    }
+    return ids;
+  })();
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] sm:h-screen bg-slate-50 overflow-hidden">
@@ -214,13 +243,14 @@ export default function Flow() {
           onArrowCreate={(data) => createArrow.mutate(data)}
           onArrowUpdate={(id, data) => updateArrow.mutate({ id, data })}
           selectedFlow={selectedFlow}
+          flowSequenceIds={flowSequenceIds}
           isLoading={isLoading}
         />
       </div>
 
       {/* Flow Sequence Bar */}
       <div className="p-2 pt-0 flex-shrink-0">
-        <FlowSequenceBar zones={zones} selectedFlow={selectedFlow} onReorder={handleSequenceReorder} />
+        <FlowSequenceBar zones={zones} selectedFlowObj={selectedFlowObj} onFlowSequenceReorder={handleFlowSequenceReorder} onReorder={handleSequenceReorder} />
       </div>
 
       {/* Modals */}
@@ -234,6 +264,14 @@ export default function Flow() {
         onRename={(id, name) => renameFlow.mutate({ id, data: { name } })}
         selectedFlow={selectedFlow}
         onSelectFlow={setSelectedFlow}
+        onEditSequence={(flow) => { setEditingSequenceFlow(flow); setShowFlowManager(false); }}
+      />
+      <FlowSequenceBuilder
+        flow={editingSequenceFlow}
+        zones={zones}
+        open={!!editingSequenceFlow}
+        onOpenChange={(open) => { if (!open) setEditingSequenceFlow(null); }}
+        onSave={(id, sequence) => updateFlowSequence.mutate({ id, sequence })}
       />
     </div>
   );

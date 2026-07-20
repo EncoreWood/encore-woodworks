@@ -12,7 +12,7 @@ const MAX_ZOOM = 3;
 export default function FlowCanvas({
   zones, selectedZoneId, onSelectZone, onDragMove, onDragEnd,
   arrows, selectedArrowId, onSelectArrow, onArrowCreate, onArrowUpdate,
-  selectedFlow,
+  selectedFlow, flowSequenceIds,
   isLoading,
 }) {
   const containerRef = useRef(null);
@@ -212,7 +212,7 @@ export default function FlowCanvas({
             {/* Zones */}
             <div className={drawMode !== "select" ? "pointer-events-none" : ""}>
               {zones.map((zone) => (
-                <FlowZone key={zone.id} zone={zone} shopPx={shopPx} isSelected={selectedZoneId === zone.id} dimmed={selectedFlow && !(zone.flow_tags || []).includes(selectedFlow)} onSelect={onSelectZone} onDragMove={onDragMove} onDragEnd={onDragEnd} />
+                <FlowZone key={zone.id} zone={zone} shopPx={shopPx} isSelected={selectedZoneId === zone.id} dimmed={selectedFlow && !flowSequenceIds.includes(zone.id)} onSelect={onSelectZone} onDragMove={onDragMove} onDragEnd={onDragEnd} />
               ))}
             </div>
 

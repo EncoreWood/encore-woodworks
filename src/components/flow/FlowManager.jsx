@@ -3,11 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Edit, Check } from "lucide-react";
+import { Plus, Trash2, Edit, Check, ListOrdered } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ZONE_COLORS } from "./flowConstants";
 
-export default function FlowManager({ open, onOpenChange, flows, onCreate, onDelete, onRename, selectedFlow, onSelectFlow }) {
+export default function FlowManager({ open, onOpenChange, flows, onCreate, onDelete, onRename, selectedFlow, onSelectFlow, onEditSequence }) {
   const [newName, setNewName] = useState("");
   const [newColor, setNewColor] = useState("blue");
   const [editingId, setEditingId] = useState(null);
@@ -65,6 +65,7 @@ export default function FlowManager({ open, onOpenChange, flows, onCreate, onDel
                     {selectedFlow === flow.name && <Check className="w-4 h-4 text-amber-600" />}
                   </button>
                   <div className="flex gap-1">
+                    <Button size="ghost" className="h-7 w-7 p-0" title="Edit Sequence" onClick={() => onEditSequence(flow)}><ListOrdered className="w-3.5 h-3.5" /></Button>
                     <Button size="ghost" className="h-7 w-7 p-0" onClick={() => { setEditingId(flow.id); setEditName(flow.name); }}><Edit className="w-3.5 h-3.5" /></Button>
                     <Button size="ghost" className="h-7 w-7 p-0 text-red-600" onClick={() => { if (confirm(`Delete flow "${flow.name}"?`)) onDelete(flow.id); }}><Trash2 className="w-3.5 h-3.5" /></Button>
                   </div>
