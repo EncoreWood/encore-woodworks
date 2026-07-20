@@ -42,8 +42,18 @@ export default function FlowManager({ open, onOpenChange, flows, onCreate, onDel
         <div className="space-y-1.5 max-h-60 overflow-y-auto">
           {/* Visibility controls */}
           <div className="flex gap-2 px-1">
-            <Button size="sm" variant="outline" className="h-7 text-xs flex-1" onClick={onShowAllFlows}>Show All</Button>
-            <Button size="sm" variant="outline" className="h-7 text-xs flex-1" onClick={onShowSelectedOnly}>Show Selected Only</Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs flex-1"
+              onClick={() => {
+                const allChecked = flows.length > 0 && flows.every(f => checkedFlows?.has(f.name));
+                if (allChecked) onShowSelectedOnly();
+                else onShowAllFlows();
+              }}
+            >
+              {flows.length > 0 && flows.every(f => checkedFlows?.has(f.name)) ? "Unselect All" : "Select All"}
+            </Button>
           </div>
 
           {flows.map((flow) => (
