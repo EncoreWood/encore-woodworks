@@ -98,6 +98,7 @@ export default function FlowCanvas({
   const maxPoints = (mode) => (mode === "curve" ? 3 : mode === "arrow" || mode === "line" ? 2 : 1);
 
   const handleDrawClick = (pt) => {
+    if (!pt) return;
     if (drawMode === "label") {
       const text = window.prompt("Label text:");
       if (text) onArrowCreate({ arrow_type: "label", start_x: pt.x, start_y: pt.y, color: "#475569", stroke_width: 2, label: text });
@@ -105,12 +106,15 @@ export default function FlowCanvas({
       return;
     }
     const snapped = getZoneCenterAt(pt);
+    if (!snapped) return;
     const newPoints = [...drawPoints, snapped];
     if (newPoints.length >= maxPoints(drawMode)) {
-      const [s, mid, e] = newPoints;
-      if (drawMode === "curve") {
+      const s = newPoints[0];
+      const e = newPoints[newPoints.length - 1];
+      if (drawMode === "curve" && newPoints.length >= 3) {
+        const mid = newPoints[1];
         onArrowCreate({ arrow_type: "curve", start_x: s.x, start_y: s.y, control_x: mid.x, control_y: mid.y, end_x: e.x, end_y: e.y, color: "#64748b", stroke_width: 2, arrowhead_style: "filled" });
-      } else {
+      } else if (s && e) {
         onArrowCreate({ arrow_type: drawMode, start_x: s.x, start_y: s.y, end_x: e.x, end_y: e.y, color: "#64748b", stroke_width: 2, arrowhead_style: drawMode === "arrow" ? "filled" : "none" });
       }
       setDrawPoints([]);
