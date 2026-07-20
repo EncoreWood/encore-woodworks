@@ -2,21 +2,20 @@ import { useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ZONE_COLORS, CANVAS_INCHES } from "./flowConstants";
 
-/**
- * A single draggable + resizable zone on the floor plan canvas.
- * Uses native pointer events (works with mouse + touch / iPad).
- * During drag/resize, calls onDragMove (local cache update, no API).
- * On release, calls onDragEnd (persists to entity).
- */
-export default function FlowZone({ zone, scale, isSelected, onSelect, onDragMove, onDragEnd }) {
+export default function FlowZone({ zone, scale, isSelected, dimmed, onSelect, onDragMove, onDragEnd }) {
   const dragState = useRef(null);
   const [interacting, setInteracting] = useState(false);
 
+  // Clamp position for display safety
+  const cx = Math.max(0, Math.min(CANVAS_INCHES - zone.width, zone.x));
+  const cy = Math.max(0, Math.min(CANVAS_INCHES - zone.height, zone.y));
+
   const style = {
-    left: zone.x * scale,
-    top: zone.y * scale,
+    left: cx * scale,
+    top: cy * scale,
     width: zone.width * scale,
     height: zone.height * scale,
+    opacity: dimmed ? 0.25 : 1,
   };
 
   const colorClass = ZONE_COLORS[zone.color]?.zone || ZONE_COLORS.blue.zone;
@@ -58,7 +57,7 @@ export default function FlowZone({ zone, scale, isSelected, onSelect, onDragMove
     }
   };
 
-  const onUp = (e) => {
+  const onUp = () => {
     if (dragState.current) {
       onDragEnd(zone.id);
       dragState.current = null;
@@ -69,7 +68,7 @@ export default function FlowZone({ zone, scale, isSelected, onSelect, onDragMove
   return (
     <div
       className={cn(
-        "absolute rounded-lg border-2 cursor-move touch-none select-none flex flex-col items-center justify-center gap-0.5 transition-shadow",
+        "absolute rounded-lg border-2 cursor-move touch-none select-none flex flex-col items-center justify-center gap-0.5 transition-opacity",
         colorClass,
         isSelected ? "ring-2 ring-offset-1 ring-amber-500 z-30 shadow-lg" : "z-10 hover:shadow-md",
         interacting && "shadow-xl"

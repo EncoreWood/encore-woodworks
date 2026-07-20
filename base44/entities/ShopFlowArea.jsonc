@@ -46,6 +46,14 @@
       "default": "right",
       "description": "Which side the flow arrow exits from"
     },
+    "flow_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Flow names this zone belongs to",
+      "default": []
+    },
     "x": {
       "type": "number",
       "description": "X position in inches on the floor plan"

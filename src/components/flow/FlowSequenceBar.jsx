@@ -2,10 +2,12 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { cn } from "@/lib/utils";
 import { ZONE_COLORS } from "./flowConstants";
 
-export default function FlowSequenceBar({ zones, onReorder }) {
-  const sequenced = [...zones]
-    .filter(z => z.flow_order != null)
-    .sort((a, b) => a.flow_order - b.flow_order);
+export default function FlowSequenceBar({ zones, selectedFlow, onReorder }) {
+  let sequenced = [...zones].filter((z) => z.flow_order != null);
+  if (selectedFlow) {
+    sequenced = sequenced.filter((z) => (z.flow_tags || []).includes(selectedFlow));
+  }
+  sequenced.sort((a, b) => a.flow_order - b.flow_order);
 
   const handleDragEnd = (result) => {
     if (!result.destination || result.destination.index === result.source.index) return;
@@ -20,7 +22,9 @@ export default function FlowSequenceBar({ zones, onReorder }) {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-3">
-      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Flow Sequence</p>
+      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+        Flow Sequence {selectedFlow ? `· ${selectedFlow}` : ""}
+      </p>
       <DragDropContext onDragEnd={handleDragEnd}>
         <Droppable droppableId="flow-seq" direction="horizontal">
           {(provided) => (

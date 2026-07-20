@@ -1,0 +1,18 @@
+{
+  "name": "ShopFlow",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Flow name"
+    },
+    "color": {
+      "type": "string",
+      "default": "blue",
+      "description": "Preset color key"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

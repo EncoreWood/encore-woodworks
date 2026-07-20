@@ -1,0 +1,70 @@
+{
+  "name": "ShopFlowArrow",
+  "type": "object",
+  "properties": {
+    "arrow_type": {
+      "type": "string",
+      "enum": [
+        "arrow",
+        "line",
+        "curve",
+        "label"
+      ],
+      "description": "Type of drawn element"
+    },
+    "start_x": {
+      "type": "number",
+      "description": "Start X position (% of canvas, 0-100)"
+    },
+    "start_y": {
+      "type": "number",
+      "description": "Start Y position (% of canvas, 0-100)"
+    },
+    "end_x": {
+      "type": "number",
+      "description": "End X position (% of canvas)"
+    },
+    "end_y": {
+      "type": "number",
+      "description": "End Y position (% of canvas)"
+    },
+    "control_x": {
+      "type": "number",
+      "description": "Bezier control X (% of canvas, for curves)"
+    },
+    "control_y": {
+      "type": "number",
+      "description": "Bezier control Y (% of canvas, for curves)"
+    },
+    "color": {
+      "type": "string",
+      "default": "#64748b"
+    },
+    "stroke_width": {
+      "type": "number",
+      "default": 2
+    },
+    "arrowhead_style": {
+      "type": "string",
+      "enum": [
+        "filled",
+        "outline",
+        "none"
+      ],
+      "default": "filled"
+    },
+    "label": {
+      "type": "string",
+      "description": "Text label (for label type or annotation on arrows)"
+    },
+    "flow_name": {
+      "type": "string",
+      "description": "Which flow this arrow belongs to (optional)"
+    }
+  },
+  "required": [
+    "arrow_type",
+    "start_x",
+    "start_y"
+  ]
+}
