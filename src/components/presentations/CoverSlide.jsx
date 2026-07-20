@@ -119,7 +119,6 @@ export default function CoverSlide({ slide, onUpdate, editable = true }) {
             onUpdatePricingItem={updatePricingItem}
             onAddPricingItem={addPricingItem}
             onRemovePricingItem={removePricingItem}
-            onDepositChange={v => update("deposit_percentage", v)}
             onShowPricingChange={v => update("show_pricing", v)}
           />
         )}

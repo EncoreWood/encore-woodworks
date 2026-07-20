@@ -104,6 +104,13 @@ export function parseCoverSpecs(slide) {
     show_pricing: specs.show_pricing !== false,
     deposit_percentage: specs.deposit_percentage ?? 30,
     pricing_items: Array.isArray(specs.pricing_items) ? specs.pricing_items : [],
+    cabinet_style: specs.cabinet_style || "",
+    wood_species: specs.wood_species || "",
+    door_style: specs.door_style || "",
+    handles: specs.handles || "",
+    drawerbox: specs.drawerbox || "",
+    drawer_glides: specs.drawer_glides || "",
+    hinges: specs.hinges || "",
   };
 }
 
@@ -121,6 +128,13 @@ export function makeDefaultCoverSpecs(projectName = "", clientName = "", address
     show_pricing: true,
     deposit_percentage: 30,
     pricing_items: [],
+    cabinet_style: "",
+    wood_species: "",
+    door_style: "",
+    handles: "",
+    drawerbox: "",
+    drawer_glides: "",
+    hinges: "",
   };
 }
 

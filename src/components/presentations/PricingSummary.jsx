@@ -1,9 +1,7 @@
 import { X } from "lucide-react";
 
-export default function PricingSummary({ specs, editable, onUpdatePricingItem, onAddPricingItem, onRemovePricingItem, onDepositChange, onShowPricingChange }) {
+export default function PricingSummary({ specs, editable, onUpdatePricingItem, onAddPricingItem, onRemovePricingItem, onShowPricingChange }) {
   const total = specs.pricing_items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-  const deposit = total * (specs.deposit_percentage / 100);
-  const balance = total - deposit;
 
   return (
     <div className="mt-5 max-w-sm w-full">
@@ -55,32 +53,6 @@ export default function PricingSummary({ specs, editable, onUpdatePricingItem, o
       {editable && (
         <button onClick={onAddPricingItem} className="text-[10px] text-amber-600 hover:text-amber-700 mt-1">+ Add Line Item</button>
       )}
-
-      <div className="mt-3 text-xs text-slate-600 space-y-0.5">
-        <div className="flex justify-between items-center">
-          <span>
-            Deposit Due{" "}
-            {editable ? (
-              <>
-                (
-                <input
-                  type="number"
-                  className="w-8 text-center border-b border-slate-200 outline-none text-slate-600 inline-block"
-                  value={specs.deposit_percentage}
-                  onChange={e => onDepositChange(Number(e.target.value) || 0)}
-                />
-                %)
-              </>
-            ) : `(${specs.deposit_percentage}%)`}
-            :
-          </span>
-          <span className="font-medium">${deposit.toLocaleString()}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Balance on Completion:</span>
-          <span className="font-medium">${balance.toLocaleString()}</span>
-        </div>
-      </div>
 
       {editable && (
         <label className="mt-3 flex items-center gap-2 text-[10px] text-slate-500">
