@@ -55,6 +55,27 @@ export default function ZoneEditor({ zone, flows, onUpdate, onDelete, onClose })
           </PopoverContent>
         </Popover>
 
+        {/* Size & Position */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500 whitespace-nowrap">W:</span>
+          <Input type="number" min="1" max="100" value={Math.round((zone.width || 0) * 10) / 10}
+            onChange={(e) => onUpdate({ width: Math.max(1, Math.min(100, parseFloat(e.target.value) || 1)) })}
+            className="h-8 w-14 text-xs" />
+          <span className="text-xs text-slate-500 whitespace-nowrap">H:</span>
+          <Input type="number" min="1" max="100" value={Math.round((zone.height || 0) * 10) / 10}
+            onChange={(e) => onUpdate({ height: Math.max(1, Math.min(100, parseFloat(e.target.value) || 1)) })}
+            className="h-8 w-14 text-xs" />
+          <span className="text-xs text-slate-500 whitespace-nowrap">X:</span>
+          <Input type="number" min="0" max="100" value={Math.round((zone.x || 0) * 10) / 10}
+            onChange={(e) => onUpdate({ x: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) })}
+            className="h-8 w-14 text-xs" />
+          <span className="text-xs text-slate-500 whitespace-nowrap">Y:</span>
+          <Input type="number" min="0" max="100" value={Math.round((zone.y || 0) * 10) / 10}
+            onChange={(e) => onUpdate({ y: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) })}
+            className="h-8 w-14 text-xs" />
+          <span className="text-xs text-slate-400 whitespace-nowrap">%</span>
+        </div>
+
         {/* Flow Order */}
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-slate-500 whitespace-nowrap">Order:</span>
