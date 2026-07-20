@@ -12,7 +12,7 @@ import AddZoneDialog from "@/components/flow/AddZoneDialog";
 import FlowManager from "@/components/flow/FlowManager";
 import FlowSequenceBuilder from "@/components/flow/FlowSequenceBuilder";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { generateFlowPath } from "@/components/flow/flowPathUtils";
+import { generateFlowPath, pruneRemovedZones } from "@/components/flow/flowPathUtils";
 import { DEFAULT_ZONES, DEFAULT_FLOWS, CANVAS_INCHES, FLOW_COLORS } from "@/components/flow/flowConstants";
 
 export default function Flow() {
@@ -178,57 +178,105 @@ export default function Flow() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shopFlows"] }),
   });
 
-  // Ensure a flow has an auto-generated path; regenerate if auto-generated, prompt if manual
+  // Helper: delete all flow_path arrows by ID
+  const deleteFlowPaths = async (ids) => {
+    await Promise.all(ids.map((id) => base44.entities.ShopFlowArrow.delete(id)));
+  };
+
+  // Helper: build a flow_path record from generated path data
+  const createFlowPathRecord = (flow, pathData) => ({
+    arrow_type: "flow_path",
+    flow_name: flow.name,
+    start_x: pathData.points[0][0],
+    start_y: pathData.points[0][1],
+    end_x: pathData.points[pathData.points.length - 1][0],
+    end_y: pathData.points[pathData.points.length - 1][1],
+    label: JSON.stringify(pathData),
+    color: FLOW_COLORS[flow.color] || "#64748b",
+    stroke_width: 2,
+    arrowhead_style: "filled",
+  });
+
+  // Ensure a flow has a path; delete old + regenerate if auto, prompt if manual
   const ensureFlowPath = async (flow, sequenceIds) => {
     if (!sequenceIds || sequenceIds.length < 2) return;
-    const existingPath = arrows.find((a) => a.arrow_type === "flow_path" && a.flow_name === flow.name);
+    const existingPaths = arrows.filter((a) => a.arrow_type === "flow_path" && a.flow_name === flow.name);
     const pathData = generateFlowPath(zones, sequenceIds);
     if (!pathData) return;
-    const label = JSON.stringify(pathData);
-    const record = {
-      arrow_type: "flow_path",
-      flow_name: flow.name,
-      start_x: pathData.points[0][0],
-      start_y: pathData.points[0][1],
-      end_x: pathData.points[pathData.points.length - 1][0],
-      end_y: pathData.points[pathData.points.length - 1][1],
-      label,
-      color: FLOW_COLORS[flow.color] || "#64748b",
-      stroke_width: 2,
-      arrowhead_style: "filled",
-    };
-    if (!existingPath) {
-      await base44.entities.ShopFlowArrow.create(record);
+
+    if (existingPaths.length === 0) {
+      await base44.entities.ShopFlowArrow.create(createFlowPathRecord(flow, pathData));
       queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
+      return;
+    }
+
+    const manuallyEdited = existingPaths.some((p) => {
+      try { return JSON.parse(p.label || "{}").auto_generated === false; } catch { return false; }
+    });
+
+    if (manuallyEdited) {
+      setPendingRegenFlow({ flow, sequenceIds, existingPathIds: existingPaths.map((p) => p.id) });
     } else {
-      const data = JSON.parse(existingPath.label || "{}");
-      if (data.auto_generated) {
-        await base44.entities.ShopFlowArrow.update(existingPath.id, {
-          start_x: record.start_x, start_y: record.start_y,
-          end_x: record.end_x, end_y: record.end_y, label,
-        });
-        queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
-      } else {
-        setPendingRegenFlow({ flow, sequenceIds, existingPathId: existingPath.id });
-      }
+      await deleteFlowPaths(existingPaths.map((p) => p.id));
+      await base44.entities.ShopFlowArrow.create(createFlowPathRecord(flow, pathData));
+      queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
     }
   };
 
   const handleRegeneratePath = async () => {
     if (!pendingRegenFlow) return;
-    const { flow, sequenceIds, existingPathId } = pendingRegenFlow;
+    const { flow, sequenceIds, existingPathIds } = pendingRegenFlow;
+    await deleteFlowPaths(existingPathIds);
     const pathData = generateFlowPath(zones, sequenceIds);
     if (pathData) {
-      await base44.entities.ShopFlowArrow.update(existingPathId, {
-        start_x: pathData.points[0][0],
-        start_y: pathData.points[0][1],
-        end_x: pathData.points[pathData.points.length - 1][0],
-        end_y: pathData.points[pathData.points.length - 1][1],
-        label: JSON.stringify(pathData),
-      });
+      await base44.entities.ShopFlowArrow.create(createFlowPathRecord(flow, pathData));
+    }
+    queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
+    setPendingRegenFlow(null);
+  };
+
+  // Keep manually edited path but prune segments for zones removed from the sequence
+  const handleKeepEdits = async () => {
+    if (!pendingRegenFlow) return;
+    const { sequenceIds, existingPathIds } = pendingRegenFlow;
+    const existingPaths = arrows.filter((a) => existingPathIds.includes(a.id));
+    for (const path of existingPaths) {
+      try {
+        const pathData = JSON.parse(path.label || "{}");
+        const pruned = pruneRemovedZones(pathData, sequenceIds);
+        if (pruned.points.length < 2) {
+          await base44.entities.ShopFlowArrow.delete(path.id);
+        } else {
+          await base44.entities.ShopFlowArrow.update(path.id, {
+            start_x: pruned.points[0][0],
+            start_y: pruned.points[0][1],
+            end_x: pruned.points[pruned.points.length - 1][0],
+            end_y: pruned.points[pruned.points.length - 1][1],
+            label: JSON.stringify(pruned),
+          });
+        }
+      } catch { /* skip unparseable */ }
+    }
+    queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
+    setPendingRegenFlow(null);
+  };
+
+  // Rename flow and update flow_name on all its path arrows
+  const handleRenameFlow = async (id, newName) => {
+    const oldFlow = flows.find((f) => f.id === id);
+    if (!oldFlow || oldFlow.name === newName) return;
+    await renameFlow.mutateAsync({ id, data: { name: newName } });
+    const flowArrows = arrows.filter((a) => a.arrow_type === "flow_path" && a.flow_name === oldFlow.name);
+    if (flowArrows.length > 0) {
+      await Promise.all(flowArrows.map((a) => base44.entities.ShopFlowArrow.update(a.id, { flow_name: newName })));
       queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
     }
-    setPendingRegenFlow(null);
+    setCheckedFlows((prev) => {
+      const next = new Set(prev);
+      if (next.has(oldFlow.name)) { next.delete(oldFlow.name); next.add(newName); }
+      return next;
+    });
+    if (selectedFlow === oldFlow.name) setSelectedFlow(newName);
   };
 
   // Flow visibility handlers
@@ -382,7 +430,7 @@ export default function Flow() {
         flows={flows}
         onCreate={createFlow.mutate}
         onDelete={deleteFlow.mutate}
-        onRename={(id, name) => renameFlow.mutate({ id, data: { name } })}
+        onRename={handleRenameFlow}
         selectedFlow={selectedFlow}
         onSelectFlow={handleSelectFlow}
         onEditSequence={(flow) => { setEditingSequenceFlow(flow); setShowFlowManager(false); }}
@@ -413,7 +461,7 @@ export default function Flow() {
           <DialogHeader><DialogTitle>Sequence changed — regenerate path?</DialogTitle></DialogHeader>
           <p className="text-sm text-slate-600">The flow sequence was updated but the path has manual edits.</p>
           <div className="flex gap-2 justify-end pt-2">
-            <Button variant="outline" onClick={() => setPendingRegenFlow(null)}>Keep Edits</Button>
+            <Button variant="outline" onClick={handleKeepEdits}>Keep Edits</Button>
             <Button className="bg-amber-600 hover:bg-amber-700" onClick={handleRegeneratePath}>Regenerate</Button>
           </div>
         </DialogContent>

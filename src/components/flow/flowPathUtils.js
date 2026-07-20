@@ -52,6 +52,51 @@ function routeBetween(from, to, obstacles) {
   return [from, to];
 }
 
+export function pruneRemovedZones(pathData, newSequenceIds) {
+  if (!pathData.points || !pathData.zone_ids || !pathData.step_indices) return pathData;
+  if (!newSequenceIds || newSequenceIds.length === 0) return pathData;
+
+  const removedZoneIdxs = pathData.zone_ids
+    .map((id, i) => (!newSequenceIds.includes(id) ? i : -1))
+    .filter((i) => i >= 0);
+
+  if (removedZoneIdxs.length === 0) return pathData;
+
+  const pointsToRemove = new Set();
+  for (const zoneIdx of removedZoneIdxs) {
+    const stepIdx = pathData.step_indices[zoneIdx];
+    pointsToRemove.add(stepIdx);
+    if (zoneIdx > 0) {
+      const prevStepIdx = pathData.step_indices[zoneIdx - 1];
+      for (let p = prevStepIdx + 1; p < stepIdx; p++) pointsToRemove.add(p);
+    }
+    if (zoneIdx < pathData.zone_ids.length - 1) {
+      const nextStepIdx = pathData.step_indices[zoneIdx + 1];
+      for (let p = stepIdx + 1; p < nextStepIdx; p++) pointsToRemove.add(p);
+    }
+  }
+
+  const newPoints = [];
+  const indexMap = {};
+  for (let i = 0; i < pathData.points.length; i++) {
+    if (!pointsToRemove.has(i)) {
+      indexMap[i] = newPoints.length;
+      newPoints.push(pathData.points[i]);
+    }
+  }
+
+  const newStepIndices = [];
+  const newZoneIds = [];
+  for (let i = 0; i < pathData.zone_ids.length; i++) {
+    if (!removedZoneIdxs.includes(i)) {
+      newZoneIds.push(pathData.zone_ids[i]);
+      newStepIndices.push(indexMap[pathData.step_indices[i]]);
+    }
+  }
+
+  return { ...pathData, points: newPoints, zone_ids: newZoneIds, step_indices: newStepIndices };
+}
+
 export function generateFlowPath(zones, sequenceIds) {
   const seqZones = sequenceIds.map((id) => zones.find((z) => z.id === id)).filter(Boolean);
   if (seqZones.length < 2) return null;
