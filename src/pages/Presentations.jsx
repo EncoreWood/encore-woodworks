@@ -43,8 +43,6 @@ function renderCoverSlideHTML(slide) {
   const specs = parseCoverSpecs(slide);
   if (!specs) return "";
   const total = specs.pricing_items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-  const deposit = total * (specs.deposit_percentage / 100);
-  const balance = total - deposit;
   const pricingHTML = specs.show_pricing && specs.pricing_items.length > 0 ? `
     <div class="cover-pricing">
       <h3 class="cover-section-title">Pricing Summary</h3>
@@ -52,8 +50,23 @@ function renderCoverSlideHTML(slide) {
         <tbody>${specs.pricing_items.map(item => `<tr><td>${escapeHtml(item.label)}</td><td style="text-align:right">$${(Number(item.amount) || 0).toLocaleString()}</td></tr>`).join("")}</tbody>
         <tfoot><tr class="pricing-total"><td>TOTAL</td><td style="text-align:right">$${total.toLocaleString()}</td></tr></tfoot>
       </table>
-      <p class="cover-deposit">Deposit Due (${specs.deposit_percentage}%): $${deposit.toLocaleString()}</p>
-      <p class="cover-balance">Balance on Completion: $${balance.toLocaleString()}</p>
+    </div>` : "";
+  const selectionFields = [
+    { label: "Cabinet Style", key: "cabinet_style" },
+    { label: "Wood Species", key: "wood_species" },
+    { label: "Door Style", key: "door_style" },
+    { label: "Handles", key: "handles" },
+    { label: "Drawerbox", key: "drawerbox" },
+    { label: "Drawer Glides", key: "drawer_glides" },
+    { label: "Hinges", key: "hinges" },
+  ];
+  const hasSelections = selectionFields.some(f => specs[f.key]);
+  const selectionsHTML = hasSelections ? `
+    <div class="cover-selections">
+      <h3 class="cover-section-title">Cabinet Selections</h3>
+      <table class="selections-table">
+        <tbody>${selectionFields.map(f => `<tr><td class="selection-label">${f.label}</td><td>${escapeHtml(specs[f.key] || "—")}</td></tr>`).join("")}</tbody>
+      </table>
     </div>` : "";
   const scopeHTML = specs.scope_of_work.length > 0 ? `
     <div class="cover-scope">
@@ -74,6 +87,7 @@ function renderCoverSlideHTML(slide) {
           ${specs.proposal_number ? `<span>Proposal #: ${escapeHtml(specs.proposal_number)}</span>` : ""}
         </div>
         ${specs.overview_text ? `<p class="cover-overview">${escapeHtml(specs.overview_text)}</p>` : ""}
+        ${selectionsHTML}
         ${scopeHTML}
         ${pricingHTML}
       </div>
@@ -377,63 +391,43 @@ function PresentationEditor({ presId }) {
 
   const currentSlide = slides[selectedIdx];
 
-  // Print / PDF — flatten each slide's Fabric canvas to PNG, then print
+  // Print / PDF — render slide images directly as <img> tags (no Fabric canvas in print)
   const handlePrint = async () => {
-    const { Canvas, FabricImage } = await import("fabric");
-
-    const flattenSlide = async (slide) => {
-      if (isCoverSlide(slide)) return null;
-      const imgs = parseImagesLayout(slide);
-      const bgUrl = imgs[0]?.url;
-      if (!bgUrl && !slide.canvas_json) return null;
-
-      const W = 1000, H = 600;
-      const tempEl = document.createElement("canvas");
-      const canvas = new Canvas(tempEl, { width: W, height: H, backgroundColor: "#fff" });
-
-      if (bgUrl) {
-        try {
-          const img = await FabricImage.fromURL(bgUrl, { crossOrigin: "anonymous" });
-          const scale = Math.min(W / img.width, H / img.height);
-          img.set({
-            left: (W - img.width * scale) / 2,
-            top: (H - img.height * scale) / 2,
-            scaleX: scale, scaleY: scale,
-            selectable: false, evented: false,
-          });
-          canvas.backgroundImage = img;
-        } catch {}
+    const extractSlideImages = (slide) => {
+      const urls = [];
+      const seen = new Set();
+      // From images layout (handles both 'images' field and image_3d_url fallback)
+      for (const img of parseImagesLayout(slide)) {
+        if (img.url && !seen.has(img.url)) { seen.add(img.url); urls.push(img.url); }
       }
-
+      // From canvas_json image objects
       if (slide.canvas_json) {
         try {
-          const bg = canvas.backgroundImage;
-          await canvas.loadFromJSON(JSON.parse(slide.canvas_json));
-          canvas.backgroundImage = bg;
+          const parsed = typeof slide.canvas_json === "string" ? JSON.parse(slide.canvas_json) : slide.canvas_json;
+          if (Array.isArray(parsed.objects)) {
+            for (const obj of parsed.objects) {
+              if (obj.type === "image" && obj.src && !seen.has(obj.src)) { seen.add(obj.src); urls.push(obj.src); }
+            }
+          }
         } catch {}
       }
-
-      canvas.renderAll();
-      const dataUrl = canvas.toDataURL({ format: "png" });
-      canvas.dispose();
-      return dataUrl;
+      return urls;
     };
 
-    const flattened = await Promise.all(slides.map(flattenSlide));
-
-    const slidesHTML = slides.map((slide, i) => {
+    const slidesHTML = slides.map((slide) => {
       if (isCoverSlide(slide)) return renderCoverSlideHTML(slide);
       const specs = parseSpecs(slide);
-      const imgSrc = flattened[i];
+      const imgUrls = extractSlideImages(slide);
+      const imagesHTML = imgUrls.length > 0
+        ? `<div class="print-images-only">${imgUrls.map(url => `<img src="${escapeHtml(url)}" class="slide-img" />`).join("")}</div>`
+        : "";
       return `
-        <div class="slide-page">
+        <div class="slide-page slide-print-page">
           <div class="slide-header">
             <h1>${escapeHtml(slide.room_name || "")}</h1>
             ${slide.slide_label ? `<p>${escapeHtml(slide.slide_label)}</p>` : ""}
           </div>
-          <div class="slide-images">
-            ${imgSrc ? `<img src="${imgSrc}" style="max-width:100%;max-height:3.5in;object-fit:contain;display:block;margin:0 auto;" />` : ""}
-          </div>
+          ${imagesHTML}
           <table class="specs-table">
             <tr>${SPEC_FIELDS.map(f => `<th>${f.label}</th>`).join("")}</tr>
             <tr>${SPEC_FIELDS.map(f => `<td>${escapeHtml(specs[f.key] || "")}</td>`).join("")}</tr>
@@ -447,13 +441,15 @@ function PresentationEditor({ presId }) {
     win.document.write(`<!DOCTYPE html><html><head><title>${escapeHtml(presData.project_name || "Presentation")}</title>
       <style>
         @page { size: letter landscape; margin: 0.5in; }
-        body { margin: 0; font-family: Georgia, serif; color: #1e293b; }
-        .slide-page { width: 100%; min-height: 7.5in; page-break-after: always; display: flex; flex-direction: column; }
-        .slide-page:last-child { page-break-after: auto; }
+        body { margin: 0; font-family: Georgia, serif; color: #1e293b; background: #fff; }
+        .slide-page { width: 100%; min-height: 7.5in; page-break-after: always; break-after: page; display: flex; flex-direction: column; }
+        .slide-page:last-child { page-break-after: avoid; break-after: avoid; }
+        .slide-print-page { min-height: 80vh; justify-content: center; }
         .slide-header { border-bottom: 2px solid #1e293b; padding-bottom: 8px; margin-bottom: 12px; }
         .slide-header h1 { font-size: 28px; margin: 0; font-weight: bold; }
         .slide-header p { font-size: 14px; color: #64748b; margin: 4px 0 0; }
-        .slide-images { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 3in; }
+        .print-images-only { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+        .slide-img { width: 100%; max-width: 100%; height: auto; object-fit: contain; display: block; margin: 0 auto; }
         .specs-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 11px; table-layout: fixed; }
         .specs-table th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; font-weight: 600; }
         .specs-table td { border: 1px solid #cbd5e1; padding: 4px 6px; word-wrap: break-word; }
@@ -470,10 +466,12 @@ function PresentationEditor({ presId }) {
         .cover-section-title { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #c9a227; margin: 20px 0 8px; }
         .cover-scope ul { list-style: disc; padding-left: 20px; font-size: 13px; color: #475569; text-align: left; }
         .cover-scope li { margin: 2px 0; }
+        .selections-table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 8px 0; }
+        .selections-table td { border: 1px solid rgba(184,134,11,0.4); padding: 4px 8px; }
+        .selections-table .selection-label { font-weight: 600; color: #b8860b; text-align: left; width: 40%; }
         .pricing-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 8px 0; }
         .pricing-table td { padding: 3px 8px; border-bottom: 1px solid #e2e8f0; }
         .pricing-total td { border-top: 2px solid #1e293b; border-bottom: none; font-weight: bold; padding-top: 6px; }
-        .cover-deposit, .cover-balance { font-size: 13px; color: #475569; margin: 4px 0; }
       </style>
     </head><body>${slidesHTML}</body></html>`);
     win.document.close();
@@ -523,10 +521,10 @@ function PresentationEditor({ presId }) {
         >
           <Save className="w-3.5 h-3.5" /> <span className="hidden sm:inline">{saving ? "Saving..." : "Save"}</span>
         </Button>
-        <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 flex-shrink-0">
+        <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 flex-shrink-0" title="For best results: in the print dialog, uncheck 'Headers and Footers' and set margins to None or Minimum.">
           <Printer className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Print</span>
         </Button>
-        <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 flex-shrink-0">
+        <Button size="sm" variant="outline" onClick={handlePrint} className="gap-1.5 flex-shrink-0" title="For best results: in the print dialog, uncheck 'Headers and Footers' and set margins to None or Minimum.">
           <Download className="w-3.5 h-3.5" /> PDF
         </Button>
         <Button
