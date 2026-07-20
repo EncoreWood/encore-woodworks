@@ -1,5 +1,7 @@
-export const CANVAS_INCHES = 594;
-export const SHOP_BASE = 900; // base pixel size of the shop boundary at zoom=1
+export const CANVAS_INCHES = 594;            // shop height in inches
+export const CANVAS_WIDTH_INCHES = 1188;     // shop width in inches (two 594" bays side by side)
+export const SHOP_BASE = 900;                // height pixel base at zoom=1
+export const SHOP_WIDTH_BASE = 1800;         // width pixel base at zoom=1 (2:1 ratio)
 
 export function hexToRgba(hex, alpha) {
   const r = parseInt(hex.slice(1, 3), 16);

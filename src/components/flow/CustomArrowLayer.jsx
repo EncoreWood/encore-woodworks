@@ -9,11 +9,12 @@ function arrowHeadPoints(x1, y1, x2, y2, size, tangentFromControl) {
   return `${x2},${y2} ${x2 + size * Math.cos(a1)},${y2 + size * Math.sin(a1)} ${x2 + size * Math.cos(a2)},${y2 + size * Math.sin(a2)}`;
 }
 
-export default function CustomArrowLayer({ arrows, canvasPx, selectedArrowId, onSelect, onUpdate, selectedFlow }) {
+export default function CustomArrowLayer({ arrows, canvasW, canvasH, selectedArrowId, onSelect, onUpdate, selectedFlow }) {
   const dragRef = useRef(null);
   const svgRef = useRef(null);
 
-  const toPx = (pct) => ((pct || 0) / 100) * canvasPx;
+  const toPxX = (pct) => ((pct || 0) / 100) * canvasW;
+  const toPxY = (pct) => ((pct || 0) / 100) * canvasH;
 
   const visibleArrows = selectedFlow
     ? arrows.filter((a) => !a.flow_name || a.flow_name === selectedFlow)
@@ -45,17 +46,17 @@ export default function CustomArrowLayer({ arrows, canvasPx, selectedArrowId, on
     <svg
       ref={svgRef}
       className="absolute inset-0"
-      width={canvasPx}
-      height={canvasPx}
+      width={canvasW}
+      height={canvasH}
       style={{ zIndex: 6 }}
       onPointerMove={handleMove}
       onPointerUp={handleEnd}
       onPointerCancel={handleEnd}
     >
       {visibleArrows.map((arrow) => {
-        const x1 = toPx(arrow.start_x), y1 = toPx(arrow.start_y);
-        const x2 = toPx(arrow.end_x), y2 = toPx(arrow.end_y);
-        const cx = toPx(arrow.control_x), cy = toPx(arrow.control_y);
+        const x1 = toPxX(arrow.start_x), y1 = toPxY(arrow.start_y);
+        const x2 = toPxX(arrow.end_x), y2 = toPxY(arrow.end_y);
+        const cx = toPxX(arrow.control_x), cy = toPxY(arrow.control_y);
         const isSelected = selectedArrowId === arrow.id;
         const showHead = arrow.arrow_type === "arrow" && arrow.arrowhead_style !== "none";
 

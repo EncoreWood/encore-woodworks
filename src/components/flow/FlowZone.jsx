@@ -1,29 +1,29 @@
 import { useRef, useState } from "react";
-import { ZONE_COLORS, SHOP_BASE, hexToRgba } from "./flowConstants";
+import { ZONE_COLORS, SHOP_BASE, SHOP_WIDTH_BASE, hexToRgba } from "./flowConstants";
 
 /**
  * Zone positioned using PERCENTAGES (0-100) within the shop boundary.
- * shopPx = SHOP_BASE * zoom (actual rendered pixel size of the shop).
+ * shopW = SHOP_WIDTH_BASE * zoom, shopH = SHOP_BASE * zoom (rendered pixel sizes).
  */
-export default function FlowZone({ zone, shopPx, isSelected, dimmed, onSelect, onDragMove, onDragEnd }) {
+export default function FlowZone({ zone, shopW, shopH, isSelected, dimmed, onSelect, onDragMove, onDragEnd }) {
   const dragState = useRef(null);
   const [interacting, setInteracting] = useState(false);
 
   // Base pixel size (before zoom) with minimum 80×60
-  const baseW = Math.max(80, (zone.width / 100) * SHOP_BASE);
+  const baseW = Math.max(80, (zone.width / 100) * SHOP_WIDTH_BASE);
   const baseH = Math.max(60, (zone.height / 100) * SHOP_BASE);
 
   // Clamp position so zone stays inside boundary (in percentage space)
-  const effWPct = (baseW / SHOP_BASE) * 100;
+  const effWPct = (baseW / SHOP_WIDTH_BASE) * 100;
   const effHPct = (baseH / SHOP_BASE) * 100;
   const cx = Math.max(0, Math.min(100 - effWPct, zone.x));
   const cy = Math.max(0, Math.min(100 - effHPct, zone.y));
 
   // Final pixel positions
-  const px = (cx / 100) * shopPx;
-  const py = (cy / 100) * shopPx;
-  const pw = baseW * (shopPx / SHOP_BASE);
-  const ph = baseH * (shopPx / SHOP_BASE);
+  const px = (cx / 100) * shopW;
+  const py = (cy / 100) * shopH;
+  const pw = baseW * (shopW / SHOP_WIDTH_BASE);
+  const ph = baseH * (shopH / SHOP_BASE);
 
   const hex = ZONE_COLORS[zone.color]?.hex || ZONE_COLORS.blue.hex;
   const showIcon = pw > 65 && ph > 45;
@@ -49,15 +49,15 @@ export default function FlowZone({ zone, shopPx, isSelected, dimmed, onSelect, o
     const ds = dragState.current;
     if (!ds) return;
     if (ds.type === "drag") {
-      const dxPct = ((e.clientX - ds.startX) / shopPx) * 100;
-      const dyPct = ((e.clientY - ds.startY) / shopPx) * 100;
+      const dxPct = ((e.clientX - ds.startX) / shopW) * 100;
+      const dyPct = ((e.clientY - ds.startY) / shopH) * 100;
       let nx = Math.max(0, Math.min(100 - effWPct, ds.origX + dxPct));
       let ny = Math.max(0, Math.min(100 - effHPct, ds.origY + dyPct));
       onDragMove(zone.id, +nx.toFixed(2), +ny.toFixed(2), zone.width, zone.height);
     } else {
-      const dwPct = ((e.clientX - ds.startX) / shopPx) * 100;
-      const dhPct = ((e.clientY - ds.startY) / shopPx) * 100;
-      const minW = (80 / SHOP_BASE) * 100;
+      const dwPct = ((e.clientX - ds.startX) / shopW) * 100;
+      const dhPct = ((e.clientY - ds.startY) / shopH) * 100;
+      const minW = (80 / SHOP_WIDTH_BASE) * 100;
       const minH = (60 / SHOP_BASE) * 100;
       let nw = Math.max(minW, ds.origW + dwPct);
       let nh = Math.max(minH, ds.origH + dhPct);

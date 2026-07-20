@@ -3,7 +3,7 @@ import FlowZone from "./FlowZone";
 import CustomArrowLayer from "./CustomArrowLayer";
 import DrawingToolbar from "./DrawingToolbar";
 import ZoomToolbar from "./ZoomToolbar";
-import { SHOP_BASE, CANVAS_INCHES } from "./flowConstants";
+import { SHOP_BASE, SHOP_WIDTH_BASE, CANVAS_INCHES, CANVAS_WIDTH_INCHES } from "./flowConstants";
 import { Loader2 } from "lucide-react";
 
 const MIN_ZOOM = 0.25;
@@ -46,17 +46,18 @@ export default function FlowCanvas({
   useEffect(() => {
     if (!autoFitted.current && containerSize.w > 0 && containerSize.h > 0) {
       autoFitted.current = true;
-      const scaleX = (containerSize.w - 80) / SHOP_BASE;
+      const scaleX = (containerSize.w - 80) / SHOP_WIDTH_BASE;
       const scaleY = (containerSize.h - 200) / SHOP_BASE;
       setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.min(scaleX, scaleY))));
     }
   }, [containerSize]);
 
-  const shopPx = SHOP_BASE * zoom;
+  const shopW = SHOP_WIDTH_BASE * zoom;
+  const shopH = SHOP_BASE * zoom;
 
   const fitToScreen = useCallback(() => {
     if (containerSize.w > 0 && containerSize.h > 0) {
-      const scaleX = (containerSize.w - 80) / SHOP_BASE;
+      const scaleX = (containerSize.w - 80) / SHOP_WIDTH_BASE;
       const scaleY = (containerSize.h - 200) / SHOP_BASE;
       setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.min(scaleX, scaleY))));
     }
@@ -176,7 +177,7 @@ export default function FlowCanvas({
             className="absolute rounded-md"
             style={{
               left: "50%", top: "50%",
-              width: shopPx, height: shopPx,
+              width: shopW, height: shopH,
               transform: `translate(-50%, -50%) translate(${pan.x}px, ${pan.y}px)`,
               backgroundColor: "#f9fafb",
               border: "3px solid #374151",
@@ -191,20 +192,28 @@ export default function FlowCanvas({
             {/* Grid background */}
             <div className="absolute inset-0 pointer-events-none rounded-sm overflow-hidden" style={{
               backgroundImage: "linear-gradient(to right, rgba(148,163,184,0.12) 1px, transparent 1px), linear-gradient(to bottom, rgba(148,163,184,0.12) 1px, transparent 1px)",
-              backgroundSize: `${(12 / SHOP_BASE) * shopPx}px ${(12 / SHOP_BASE) * shopPx}px`,
+              backgroundSize: `${(12 / SHOP_BASE) * shopH}px ${(12 / SHOP_BASE) * shopH}px`,
+            }} />
+
+            {/* Center dividing wall between the two bays */}
+            <div className="absolute top-0 bottom-0 pointer-events-none" style={{
+              left: "50%",
+              width: 0,
+              borderLeft: "2px dashed #94a3b8",
+              opacity: 0.5,
             }} />
 
             {/* Custom Arrows / Lines / Labels */}
-            <CustomArrowLayer arrows={arrows} canvasPx={shopPx} selectedArrowId={selectedArrowId} onSelect={onSelectArrow} onUpdate={onArrowUpdate} selectedFlow={selectedFlow} />
+            <CustomArrowLayer arrows={arrows} canvasW={shopW} canvasH={shopH} selectedArrowId={selectedArrowId} onSelect={onSelectArrow} onUpdate={onArrowUpdate} selectedFlow={selectedFlow} />
 
             {/* Drawing preview */}
             {drawPoints.length > 0 && (
-              <svg className="absolute inset-0 pointer-events-none" width={shopPx} height={shopPx} style={{ zIndex: 7 }}>
+              <svg className="absolute inset-0 pointer-events-none" width={shopW} height={shopH} style={{ zIndex: 7 }}>
                 {drawPoints.map((p, i) => (
-                  <circle key={i} cx={(p.x / 100) * shopPx} cy={(p.y / 100) * shopPx} r={5} fill="#f59e0b" />
+                  <circle key={i} cx={(p.x / 100) * shopW} cy={(p.y / 100) * shopH} r={5} fill="#f59e0b" />
                 ))}
                 {hoverPt && drawPoints.length === 1 && (drawMode === "arrow" || drawMode === "line") && (
-                  <line x1={(drawPoints[0].x / 100) * shopPx} y1={(drawPoints[0].y / 100) * shopPx} x2={(hoverPt.x / 100) * shopPx} y2={(hoverPt.y / 100) * shopPx} stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 4" opacity="0.6" />
+                  <line x1={(drawPoints[0].x / 100) * shopW} y1={(drawPoints[0].y / 100) * shopH} x2={(hoverPt.x / 100) * shopW} y2={(hoverPt.y / 100) * shopH} stroke="#f59e0b" strokeWidth={2} strokeDasharray="4 4" opacity="0.6" />
                 )}
               </svg>
             )}
@@ -212,13 +221,13 @@ export default function FlowCanvas({
             {/* Zones */}
             <div className={drawMode !== "select" ? "pointer-events-none" : ""}>
               {zones.map((zone) => (
-                <FlowZone key={zone.id} zone={zone} shopPx={shopPx} isSelected={selectedZoneId === zone.id} dimmed={selectedFlow && !flowSequenceIds.includes(zone.id)} onSelect={onSelectZone} onDragMove={onDragMove} onDragEnd={onDragEnd} />
+                <FlowZone key={zone.id} zone={zone} shopW={shopW} shopH={shopH} isSelected={selectedZoneId === zone.id} dimmed={selectedFlow && !flowSequenceIds.includes(zone.id)} onSelect={onSelectZone} onDragMove={onDragMove} onDragEnd={onDragEnd} />
               ))}
             </div>
 
             {/* Dimension label */}
             <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-slate-400 pointer-events-none whitespace-nowrap">
-              {CANVAS_INCHES}" × {CANVAS_INCHES}" (49.5' × 49.5')
+              {CANVAS_WIDTH_INCHES}" × {CANVAS_INCHES}" (99' × 49.5')
             </div>
           </div>
 
