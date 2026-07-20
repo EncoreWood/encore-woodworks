@@ -419,19 +419,21 @@ function PresentationEditor({ presId }) {
       const specs = parseSpecs(slide);
       const imgUrls = extractSlideImages(slide);
       const imagesHTML = imgUrls.length > 0
-        ? `<div class="print-images-only">${imgUrls.map(url => `<img src="${escapeHtml(url)}" class="slide-img" />`).join("")}</div>`
+        ? `<div class="slide-print-image">${imgUrls.map(url => `<img src="${escapeHtml(url)}" />`).join("")}</div>`
         : "";
       return `
-        <div class="slide-page slide-print-page">
+        <div class="slide-print-page">
           <div class="slide-header">
             <h1>${escapeHtml(slide.room_name || "")}</h1>
             ${slide.slide_label ? `<p>${escapeHtml(slide.slide_label)}</p>` : ""}
           </div>
           ${imagesHTML}
-          <table class="specs-table">
-            <tr>${SPEC_FIELDS.map(f => `<th>${f.label}</th>`).join("")}</tr>
-            <tr>${SPEC_FIELDS.map(f => `<td>${escapeHtml(specs[f.key] || "")}</td>`).join("")}</tr>
-          </table>
+          <div class="slide-print-specs">
+            <table class="specs-table">
+              <tr>${SPEC_FIELDS.map(f => `<th>${f.label}</th>`).join("")}</tr>
+              <tr>${SPEC_FIELDS.map(f => `<td>${escapeHtml(specs[f.key] || "")}</td>`).join("")}</tr>
+            </table>
+          </div>
         </div>
       `;
     }).join("");
@@ -440,17 +442,27 @@ function PresentationEditor({ presId }) {
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html><head><title>${escapeHtml(presData.project_name || "Presentation")}</title>
       <style>
-        @page { size: letter landscape; margin: 0.5in; }
-        body { margin: 0; font-family: Georgia, serif; color: #1e293b; background: #fff; }
-        .slide-page { width: 100%; min-height: 7.5in; page-break-after: always; break-after: page; display: flex; flex-direction: column; }
-        .slide-page:last-child { page-break-after: avoid; break-after: avoid; }
-        .slide-print-page { min-height: 80vh; justify-content: center; }
-        .slide-header { border-bottom: 2px solid #1e293b; padding-bottom: 8px; margin-bottom: 12px; }
+        @page { size: letter landscape; margin: 0.4in; }
+        html, body { margin: 0; padding: 0; font-family: Georgia, serif; color: #1e293b; background: #fff; }
+        .slide-print-page {
+          page-break-after: always; break-after: page;
+          page-break-inside: avoid; break-inside: avoid;
+          display: flex; flex-direction: column;
+          height: 100vh; max-height: 100vh; overflow: hidden;
+        }
+        .slide-print-page:last-child { page-break-after: avoid; break-after: avoid; }
+        .slide-header { border-bottom: 2px solid #1e293b; padding-bottom: 8px; margin-bottom: 12px; flex-shrink: 0; }
         .slide-header h1 { font-size: 28px; margin: 0; font-weight: bold; }
         .slide-header p { font-size: 14px; color: #64748b; margin: 4px 0 0; }
-        .print-images-only { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
-        .slide-img { width: 100%; max-width: 100%; height: auto; object-fit: contain; display: block; margin: 0 auto; }
-        .specs-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 11px; table-layout: fixed; }
+        .slide-print-image {
+          flex: 1; min-height: 0; height: 65vh; overflow: hidden;
+          display: flex; align-items: center; justify-content: center; background: white;
+        }
+        .slide-print-image img {
+          width: 100%; height: 100%; object-fit: cover; object-position: center 40%; display: block;
+        }
+        .slide-print-specs { page-break-inside: avoid; break-inside: avoid; margin-top: 12px; flex-shrink: 0; }
+        .specs-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
         .specs-table th { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 4px 6px; text-align: left; font-weight: 600; }
         .specs-table td { border: 1px solid #cbd5e1; padding: 4px 6px; word-wrap: break-word; }
         .cover-page { display: flex; align-items: center; justify-content: center; }
