@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, CheckCircle2, AlertCircle, RefreshCw, Search, Archive, Factory, FileText, ChevronDown, ChevronUp, PenLine, PackageX } from "lucide-react";
+import { Plus, Pencil, Trash2, CheckCircle2, AlertCircle, RefreshCw, Search, Archive, Factory, FileText, ChevronDown, ChevronUp, ChevronRight, PenLine, PackageX } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import PickupItemForm from "../components/pickup/PickupItemForm";
@@ -45,6 +45,24 @@ const productionStageColors = {
   job_info: { label: "Job Info", color: "bg-slate-100 text-slate-600 border-slate-300" }
 };
 
+const roomStageColors = {
+  open: { border: "#ef4444", bg: "#fef2f2", text: "text-red-700", label: "Not Started" },
+  in_progress: { border: "#f59e0b", bg: "#fffbeb", text: "text-amber-700", label: "In Progress" },
+  ready_at_shop: { border: "#3b82f6", bg: "#eff6ff", text: "text-blue-700", label: "Ready" },
+  installers: { border: "#6366f1", bg: "#eef2ff", text: "text-indigo-700", label: "In Installs" },
+  resolved: { border: "#10b981", bg: "#ecfdf5", text: "text-emerald-700", label: "Complete" },
+};
+
+function getRoomStage(items) {
+  const stages = items.map(i => i.stage || i.status || "open");
+  if (stages.includes("open")) return "open";
+  if (stages.includes("in_progress")) return "in_progress";
+  if (stages.includes("ready_at_shop")) return "ready_at_shop";
+  if (stages.includes("installers")) return "installers";
+  if (stages.every(s => s === "resolved")) return "resolved";
+  return "open";
+}
+
 const priorityConfig = {
   low: "bg-slate-100 text-slate-600",
   medium: "bg-yellow-100 text-yellow-800",
@@ -57,6 +75,10 @@ export default function PickupList() {
   const [editingItem, setEditingItem] = useState(null);
   const [expandedItems, setExpandedItems] = useState(new Set());
   const toggleExpanded = (id) => setExpandedItems(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  const [expandedProjects, setExpandedProjects] = useState(new Set());
+  const [expandedRooms, setExpandedRooms] = useState(new Set());
+  const toggleProject = (id) => setExpandedProjects(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  const toggleRoom = (key) => setExpandedRooms(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
   const [filterProjectId, setFilterProjectId] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
@@ -306,11 +328,13 @@ export default function PickupList() {
               return (
                 <div key={projectId} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                   <div
-                    className="px-5 py-3 border-b border-slate-100 flex items-center justify-between"
-                    style={cardColor ? { borderLeft: `4px solid ${cardColor}`, backgroundColor: cardColor + "15" } : { borderLeft: "4px solid #94a3b8" }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <h2 className="font-semibold text-slate-900">{group.projectName}</h2>
+                     className="px-5 py-3 border-b border-slate-100 flex items-center justify-between cursor-pointer select-none"
+                     style={cardColor ? { borderLeft: `4px solid ${cardColor}`, backgroundColor: cardColor + "15" } : { borderLeft: "4px solid #94a3b8" }}
+                     onClick={() => toggleProject(projectId)}
+                   >
+                     <div className="flex items-center gap-3">
+                       {expandedProjects.has(projectId) ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                       <h2 className="font-semibold text-slate-900">{group.projectName}</h2>
                       <Badge variant="outline" className="text-xs">
                         {group.items.filter(i => i.status !== "resolved").length} open
                       </Badge>
@@ -319,7 +343,8 @@ export default function PickupList() {
                       size="sm"
                       variant="ghost"
                       className="text-amber-600 hover:text-amber-700 h-7"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setEditingItem({ project_id: projectId, project_name: group.projectName, source: "manual" });
                         setShowForm(true);
                       }}
@@ -329,18 +354,33 @@ export default function PickupList() {
                   </div>
 
                   {/* Group by room */}
-                  {(() => {
+                  {expandedProjects.has(projectId) && (() => {
                     const byRoom = group.items.reduce((acc, item) => {
                       const room = item.room_name || "General";
                       if (!acc[room]) acc[room] = [];
                       acc[room].push(item);
                       return acc;
                     }, {});
-                    return Object.entries(byRoom).map(([room, roomItems]) => (
+                    return Object.entries(byRoom).map(([room, roomItems]) => {
+                      const roomStage = getRoomStage(roomItems);
+                      const roomColor = roomStageColors[roomStage];
+                      const roomKey = `${projectId}-${room}`;
+                      const isRoomExpanded = expandedRooms.has(roomKey);
+                      return (
                       <div key={room}>
-                        <div className="px-5 py-2 bg-slate-50 border-b border-slate-100">
-                          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">{room}</span>
+                        <div
+                          className="px-5 py-2 border-b border-slate-100 flex items-center gap-2 cursor-pointer select-none"
+                          style={{ borderLeft: `4px solid ${roomColor.border}`, backgroundColor: roomColor.bg }}
+                          onClick={() => toggleRoom(roomKey)}
+                        >
+                          {isRoomExpanded ? <ChevronDown className="w-3 h-3 text-slate-400" /> : <ChevronRight className="w-3 h-3 text-slate-400" />}
+                          <span className={cn("text-xs font-semibold uppercase tracking-wider", roomColor.text)}>{room}</span>
+                          <Badge variant="outline" className={cn("text-xs border-0 bg-white/50", roomColor.text)}>
+                            {roomColor.label}
+                          </Badge>
+                          <span className="text-xs text-slate-400">{roomItems.length} item{roomItems.length !== 1 ? "s" : ""}</span>
                         </div>
+                        {isRoomExpanded && (
                         <div className="divide-y divide-slate-50">
                           {roomItems.map(item => {
                             const TypeIcon = typeConfig[item.type]?.icon || AlertCircle;
@@ -461,8 +501,10 @@ export default function PickupList() {
                             );
                           })}
                         </div>
+                        )}
                       </div>
-                    ));
+                      );
+                    });
                   })()}
                 </div>
               );
