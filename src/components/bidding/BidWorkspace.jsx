@@ -23,6 +23,20 @@ const BID_STYLES = [
   { key: "high_end_face_frame", label: "Tier 3 Face Frame" },
 ];
 
+// Convert a PDF's first page to a PNG blob for AI vision analysis
+async function pdfToImageBlob(pdfUrl) {
+  const pdfjs = await import('pdfjs-dist');
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+  const pdf = await pdfjs.getDocument(pdfUrl).promise;
+  const page = await pdf.getPage(1);
+  const viewport = page.getViewport({ scale: 2.0 });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
 // project prop: optional pre-linked project object (when opened from ProjectDetails)
 export default function BidWorkspace({ bidId, project: linkedProject, onClose, onSaved, onOpenPricing }) {
   const [projectName, setProjectName] = useState("");
@@ -230,6 +244,21 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
      const roomNotesSection = roomNotes ? `\n\nAdditional notes from room annotations:\n${roomNotes}` : "";
      const mainPlanNotesSection = aiNotes ? `\n\nMain plan annotations and notes:\n${aiNotes}` : "";
 
+    // Convert PDF to image for AI vision analysis
+    const isPdf = planFileName?.toLowerCase().endsWith('.pdf') || planFileUrl?.toLowerCase().includes('.pdf');
+    let analysisFileUrl = planFileUrl;
+    if (isPdf) {
+      try {
+        const blob = await pdfToImageBlob(planFileUrl);
+        const { file_url } = await base44.integrations.Core.UploadFile({ file: new File([blob], 'plan-page1.png', { type: 'image/png' }) });
+        analysisFileUrl = file_url;
+      } catch (err) {
+        setAnalyzeError("Could not convert PDF for AI analysis. Try uploading a PNG or JPG image instead, or add rooms manually.");
+        setIsAnalyzing(false);
+        return;
+      }
+    }
+
     let result;
     try {
       result = await base44.integrations.Core.InvokeLLM({
@@ -247,7 +276,7 @@ For measure_type: use "lf" for cabinet runs (base, upper, tall), use "qty" for i
 For cabinet_category: "base" = floor cabinets/islands, "upper" = wall-mounted upper cabs, "tall" = full-height pantries/towers, "misc" = accessories.
 
 A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scale conversions.`,
-      file_urls: [planFileUrl],
+      file_urls: [analysisFileUrl],
       response_json_schema: {
         type: "object",
         properties: {
@@ -284,7 +313,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
     }
 
     if (!result.rooms || result.rooms.length === 0) {
-      setAnalyzeError("AI couldn't identify cabinet areas. Try a clearer image (PNG/JPG works best), or add rooms manually.");
+      setAnalyzeError("No cabinet areas detected. Tips:\n• Make sure the plan shows a floor plan view (not elevation/section)\n• Try uploading a PNG or JPG version for better results\n• Or use 'Add Rooms Manually' to build the list yourself");
       setIsAnalyzing(false);
       return;
     }
@@ -585,7 +614,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
               {isAnalyzing && <p className="text-xs text-center text-slate-500">Reading plans and grouping by room... up to 60 seconds.</p>}
               {analyzeError && (
                 <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 p-3 rounded-lg">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" /><span>{analyzeError}</span>
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" /><span className="whitespace-pre-line">{analyzeError}</span>
                 </div>
               )}
             </div>
