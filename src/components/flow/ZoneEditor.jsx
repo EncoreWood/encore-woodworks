@@ -8,7 +8,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { X, Trash2, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ZONE_COLORS, ZONE_TYPES, FLOW_DIRECTIONS, FLOW_COLORS } from "./flowConstants";
+import { ZONE_COLORS, ZONE_TYPES, FLOW_DIRECTIONS, FLOW_COLORS, CANVAS_WIDTH_INCHES, CANVAS_INCHES } from "./flowConstants";
+
+const SHOP_W_FT = CANVAS_WIDTH_INCHES / 12; // 99 ft
+const SHOP_H_FT = CANVAS_INCHES / 12;       // 49.5 ft
+const pctToFtW = (pct) => ((pct || 0) / 100) * SHOP_W_FT;
+const pctToFtH = (pct) => ((pct || 0) / 100) * SHOP_H_FT;
+const ftToPctW = (ft) => Math.max(0, Math.min(100, (ft / SHOP_W_FT) * 100));
+const ftToPctH = (ft) => Math.max(0, Math.min(100, (ft / SHOP_H_FT) * 100));
 
 export default function ZoneEditor({ zone, flows, onUpdate, onDelete, onClose }) {
   const [name, setName] = useState(zone.name);
@@ -58,22 +65,22 @@ export default function ZoneEditor({ zone, flows, onUpdate, onDelete, onClose })
         {/* Size & Position */}
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-slate-500 whitespace-nowrap">W:</span>
-          <Input type="number" min="1" max="100" value={Math.round((zone.width || 0) * 10) / 10}
-            onChange={(e) => onUpdate({ width: Math.max(1, Math.min(100, parseFloat(e.target.value) || 1)) })}
+          <Input type="number" min="0.1" max={SHOP_W_FT} step="0.1" value={Math.round(pctToFtW(zone.width) * 10) / 10}
+            onChange={(e) => onUpdate({ width: ftToPctW(parseFloat(e.target.value) || 0.1) })}
             className="h-8 w-14 text-xs" />
           <span className="text-xs text-slate-500 whitespace-nowrap">H:</span>
-          <Input type="number" min="1" max="100" value={Math.round((zone.height || 0) * 10) / 10}
-            onChange={(e) => onUpdate({ height: Math.max(1, Math.min(100, parseFloat(e.target.value) || 1)) })}
+          <Input type="number" min="0.1" max={SHOP_H_FT} step="0.1" value={Math.round(pctToFtH(zone.height) * 10) / 10}
+            onChange={(e) => onUpdate({ height: ftToPctH(parseFloat(e.target.value) || 0.1) })}
             className="h-8 w-14 text-xs" />
           <span className="text-xs text-slate-500 whitespace-nowrap">X:</span>
-          <Input type="number" min="0" max="100" value={Math.round((zone.x || 0) * 10) / 10}
-            onChange={(e) => onUpdate({ x: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) })}
+          <Input type="number" min="0" max={SHOP_W_FT} step="0.1" value={Math.round(pctToFtW(zone.x) * 10) / 10}
+            onChange={(e) => onUpdate({ x: ftToPctW(parseFloat(e.target.value) || 0) })}
             className="h-8 w-14 text-xs" />
           <span className="text-xs text-slate-500 whitespace-nowrap">Y:</span>
-          <Input type="number" min="0" max="100" value={Math.round((zone.y || 0) * 10) / 10}
-            onChange={(e) => onUpdate({ y: Math.max(0, Math.min(100, parseFloat(e.target.value) || 0)) })}
+          <Input type="number" min="0" max={SHOP_H_FT} step="0.1" value={Math.round(pctToFtH(zone.y) * 10) / 10}
+            onChange={(e) => onUpdate({ y: ftToPctH(parseFloat(e.target.value) || 0) })}
             className="h-8 w-14 text-xs" />
-          <span className="text-xs text-slate-400 whitespace-nowrap">%</span>
+          <span className="text-xs text-slate-400 whitespace-nowrap">ft</span>
         </div>
 
         {/* Flow Order */}
