@@ -1,0 +1,76 @@
+{
+  "name": "ShopFlowArea",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Zone name"
+    },
+    "zone_type": {
+      "type": "string",
+      "enum": [
+        "storage",
+        "machine",
+        "workstation",
+        "assembly",
+        "finish",
+        "staging",
+        "office",
+        "utility",
+        "custom"
+      ],
+      "description": "Type of shop zone"
+    },
+    "color": {
+      "type": "string",
+      "default": "blue",
+      "description": "Preset color key"
+    },
+    "icon": {
+      "type": "string",
+      "description": "Emoji icon"
+    },
+    "flow_order": {
+      "type": "number",
+      "description": "Position in the flow sequence (null = not in sequence)"
+    },
+    "flow_direction": {
+      "type": "string",
+      "enum": [
+        "right",
+        "left",
+        "up",
+        "down",
+        "none"
+      ],
+      "default": "right",
+      "description": "Which side the flow arrow exits from"
+    },
+    "x": {
+      "type": "number",
+      "description": "X position in inches on the floor plan"
+    },
+    "y": {
+      "type": "number",
+      "description": "Y position in inches on the floor plan"
+    },
+    "width": {
+      "type": "number",
+      "default": 100,
+      "description": "Width in inches"
+    },
+    "height": {
+      "type": "number",
+      "default": 70,
+      "description": "Height in inches"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Zone notes"
+    }
+  },
+  "required": [
+    "name",
+    "zone_type"
+  ]
+}
