@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,32 @@ export default function Flow() {
   useEffect(() => {
     if (!isLoading && flows.length === 0 && !seedFlows.isPending) seedFlows.mutate();
   }, [isLoading, flows.length, seedFlows.isPending]);
+
+  // Migrate old inch-based positions (x > 100) to percentage-based
+  const migratingRef = useRef(false);
+  useEffect(() => {
+    if (!isLoading && zones.length > 0 && !migratingRef.current) {
+      const needsMigration = zones.some((z) => z.x > 100 || z.y > 100 || z.width > 100 || z.height > 100);
+      if (needsMigration) {
+        migratingRef.current = true;
+        const updates = zones.map((z) => {
+          const def = DEFAULT_ZONES.find((d) => d.name === z.name);
+          if (def) return { id: z.id, x: def.x, y: def.y, width: def.width, height: def.height };
+          // Proportional conversion for custom zones
+          return {
+            id: z.id,
+            x: Math.min((z.x / CANVAS_INCHES) * 100, 100),
+            y: Math.min((z.y / CANVAS_INCHES) * 100, 100),
+            width: Math.min((z.width / CANVAS_INCHES) * 100, 100),
+            height: Math.min((z.height / CANVAS_INCHES) * 100, 100),
+          };
+        });
+        base44.entities.ShopFlowArea.bulkUpdate(updates).then(() =>
+          queryClient.invalidateQueries({ queryKey: ["shopFlowAreas"] })
+        );
+      }
+    }
+  }, [isLoading, zones]);
 
   // Zone mutations
   const updateZone = useMutation({
@@ -122,7 +148,7 @@ export default function Flow() {
   };
 
   const handleCreateZone = (data) => {
-    createZone.mutate({ ...data, x: CANVAS_INCHES / 2 - 50, y: CANVAS_INCHES / 2 - 40, width: 100, height: 70, flow_tags: [] });
+    createZone.mutate({ ...data, x: 40, y: 40, width: 15, height: 15, flow_tags: [] });
   };
 
   const handleSelectZone = (id) => { setSelectedZoneId(id); if (id) setSelectedArrowId(null); };

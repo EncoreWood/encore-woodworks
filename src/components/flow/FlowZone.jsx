@@ -1,24 +1,32 @@
 import { useRef, useState } from "react";
-import { cn } from "@/lib/utils";
-import { ZONE_COLORS, CANVAS_INCHES } from "./flowConstants";
+import { ZONE_COLORS, SHOP_BASE, hexToRgba } from "./flowConstants";
 
-export default function FlowZone({ zone, scale, isSelected, dimmed, onSelect, onDragMove, onDragEnd }) {
+/**
+ * Zone positioned using PERCENTAGES (0-100) within the shop boundary.
+ * shopPx = SHOP_BASE * zoom (actual rendered pixel size of the shop).
+ */
+export default function FlowZone({ zone, shopPx, isSelected, dimmed, onSelect, onDragMove, onDragEnd }) {
   const dragState = useRef(null);
   const [interacting, setInteracting] = useState(false);
 
-  // Clamp position for display safety
-  const cx = Math.max(0, Math.min(CANVAS_INCHES - zone.width, zone.x));
-  const cy = Math.max(0, Math.min(CANVAS_INCHES - zone.height, zone.y));
+  // Base pixel size (before zoom) with minimum 80×60
+  const baseW = Math.max(80, (zone.width / 100) * SHOP_BASE);
+  const baseH = Math.max(60, (zone.height / 100) * SHOP_BASE);
 
-  const style = {
-    left: cx * scale,
-    top: cy * scale,
-    width: zone.width * scale,
-    height: zone.height * scale,
-    opacity: dimmed ? 0.25 : 1,
-  };
+  // Clamp position so zone stays inside boundary (in percentage space)
+  const effWPct = (baseW / SHOP_BASE) * 100;
+  const effHPct = (baseH / SHOP_BASE) * 100;
+  const cx = Math.max(0, Math.min(100 - effWPct, zone.x));
+  const cy = Math.max(0, Math.min(100 - effHPct, zone.y));
 
-  const colorClass = ZONE_COLORS[zone.color]?.zone || ZONE_COLORS.blue.zone;
+  // Final pixel positions
+  const px = (cx / 100) * shopPx;
+  const py = (cy / 100) * shopPx;
+  const pw = baseW * (shopPx / SHOP_BASE);
+  const ph = baseH * (shopPx / SHOP_BASE);
+
+  const hex = ZONE_COLORS[zone.color]?.hex || ZONE_COLORS.blue.hex;
+  const showIcon = pw > 65 && ph > 45;
 
   const startDrag = (e) => {
     if (e.target.dataset.role === "resize-handle") return;
@@ -41,19 +49,21 @@ export default function FlowZone({ zone, scale, isSelected, dimmed, onSelect, on
     const ds = dragState.current;
     if (!ds) return;
     if (ds.type === "drag") {
-      const dx = (e.clientX - ds.startX) / scale;
-      const dy = (e.clientY - ds.startY) / scale;
-      let nx = Math.max(0, Math.min(CANVAS_INCHES - zone.width, ds.origX + dx));
-      let ny = Math.max(0, Math.min(CANVAS_INCHES - zone.height, ds.origY + dy));
-      onDragMove(zone.id, Math.round(nx), Math.round(ny), zone.width, zone.height);
+      const dxPct = ((e.clientX - ds.startX) / shopPx) * 100;
+      const dyPct = ((e.clientY - ds.startY) / shopPx) * 100;
+      let nx = Math.max(0, Math.min(100 - effWPct, ds.origX + dxPct));
+      let ny = Math.max(0, Math.min(100 - effHPct, ds.origY + dyPct));
+      onDragMove(zone.id, +nx.toFixed(2), +ny.toFixed(2), zone.width, zone.height);
     } else {
-      const dx = (e.clientX - ds.startX) / scale;
-      const dy = (e.clientY - ds.startY) / scale;
-      let nw = Math.max(40, ds.origW + dx);
-      let nh = Math.max(40, ds.origH + dy);
-      nw = Math.min(CANVAS_INCHES - zone.x, nw);
-      nh = Math.min(CANVAS_INCHES - zone.y, nh);
-      onDragMove(zone.id, zone.x, zone.y, Math.round(nw), Math.round(nh));
+      const dwPct = ((e.clientX - ds.startX) / shopPx) * 100;
+      const dhPct = ((e.clientY - ds.startY) / shopPx) * 100;
+      const minW = (80 / SHOP_BASE) * 100;
+      const minH = (60 / SHOP_BASE) * 100;
+      let nw = Math.max(minW, ds.origW + dwPct);
+      let nh = Math.max(minH, ds.origH + dhPct);
+      nw = Math.min(100 - zone.x, nw);
+      nh = Math.min(100 - zone.y, nh);
+      onDragMove(zone.id, zone.x, zone.y, +nw.toFixed(2), +nh.toFixed(2));
     }
   };
 
@@ -67,29 +77,45 @@ export default function FlowZone({ zone, scale, isSelected, dimmed, onSelect, on
 
   return (
     <div
-      className={cn(
-        "absolute rounded-lg border-2 cursor-move touch-none select-none flex flex-col items-center justify-center gap-0.5 transition-opacity",
-        colorClass,
-        isSelected ? "ring-2 ring-offset-1 ring-amber-500 z-30 shadow-lg" : "z-10 hover:shadow-md",
-        interacting && "shadow-xl"
-      )}
-      style={style}
+      className="absolute rounded-lg touch-none select-none cursor-move transition-opacity"
+      style={{
+        left: px,
+        top: py,
+        width: pw,
+        height: ph,
+        backgroundColor: hexToRgba(hex, 0.2),
+        border: `2px solid ${hex}`,
+        opacity: dimmed ? 0.25 : 1,
+        zIndex: isSelected ? 30 : 10,
+        boxShadow: interacting ? "0 4px 12px rgba(0,0,0,0.15)" : isSelected ? "0 2px 8px rgba(0,0,0,0.12)" : "none",
+      }}
       onPointerDown={startDrag}
       onPointerMove={onMove}
       onPointerUp={onUp}
       onPointerCancel={onUp}
     >
-      {zone.icon && <span className="text-lg sm:text-2xl pointer-events-none leading-none">{zone.icon}</span>}
-      <span className="font-bold text-[10px] sm:text-xs text-center px-1 pointer-events-none truncate max-w-full leading-tight">{zone.name}</span>
+      {/* Icon top-left */}
+      {showIcon && zone.icon && (
+        <span className="absolute top-1 left-1.5 text-sm pointer-events-none leading-none">{zone.icon}</span>
+      )}
+      {/* Flow order badge top-right */}
       {zone.flow_order != null && (
-        <span className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-slate-800 text-white text-[10px] font-bold flex items-center justify-center pointer-events-none z-10">
+        <span className="absolute top-1 right-1 w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center pointer-events-none"
+          style={{ backgroundColor: hex }}>
           {zone.flow_order}
         </span>
       )}
+      {/* Name centered */}
+      <div className="absolute inset-0 flex items-center justify-center p-1">
+        <span className="font-bold text-center text-slate-900 truncate max-w-full" style={{ fontSize: pw > 100 ? 13 : 11 }}>
+          {zone.name}
+        </span>
+      </div>
+      {/* Resize handle */}
       {isSelected && (
         <div
           data-role="resize-handle"
-          className="absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-amber-500 border-2 border-white rounded-sm cursor-se-resize touch-none"
+          className="absolute -bottom-1 -right-1 w-4 h-4 bg-amber-500 border-2 border-white rounded-sm cursor-se-resize touch-none"
           onPointerDown={startResize}
         />
       )}
