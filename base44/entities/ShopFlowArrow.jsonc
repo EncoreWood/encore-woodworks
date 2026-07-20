@@ -8,7 +8,8 @@
         "arrow",
         "line",
         "curve",
-        "label"
+        "label",
+        "flow_path"
       ],
       "description": "Type of drawn element"
     },
@@ -55,7 +56,7 @@
     },
     "label": {
       "type": "string",
-      "description": "Text label (for label type or annotation on arrows)"
+      "description": "Text label (for label type), or JSON waypoints for flow_path: {points, auto_generated, zone_ids, step_indices}"
     },
     "flow_name": {
       "type": "string",

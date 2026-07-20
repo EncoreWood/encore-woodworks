@@ -5,7 +5,7 @@ import { ZONE_COLORS, SHOP_BASE, SHOP_WIDTH_BASE, hexToRgba } from "./flowConsta
  * Zone positioned using PERCENTAGES (0-100) within the shop boundary.
  * shopW = SHOP_WIDTH_BASE * zoom, shopH = SHOP_BASE * zoom (rendered pixel sizes).
  */
-export default function FlowZone({ zone, shopW, shopH, isSelected, dimmed, onSelect, onDragMove, onDragEnd }) {
+export default function FlowZone({ zone, shopW, shopH, isSelected, opacity = 1, onSelect, onDragMove, onDragEnd }) {
   const dragState = useRef(null);
   const [interacting, setInteracting] = useState(false);
 
@@ -85,7 +85,7 @@ export default function FlowZone({ zone, shopW, shopH, isSelected, dimmed, onSel
         height: ph,
         backgroundColor: hexToRgba(hex, 0.2),
         border: `2px solid ${hex}`,
-        opacity: dimmed ? 0.25 : 1,
+        opacity,
         zIndex: isSelected ? 30 : 10,
         boxShadow: interacting ? "0 4px 12px rgba(0,0,0,0.15)" : isSelected ? "0 2px 8px rgba(0,0,0,0.12)" : "none",
       }}

@@ -11,7 +11,9 @@ import FlowSequenceBar from "@/components/flow/FlowSequenceBar";
 import AddZoneDialog from "@/components/flow/AddZoneDialog";
 import FlowManager from "@/components/flow/FlowManager";
 import FlowSequenceBuilder from "@/components/flow/FlowSequenceBuilder";
-import { DEFAULT_ZONES, DEFAULT_FLOWS, CANVAS_INCHES } from "@/components/flow/flowConstants";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { generateFlowPath } from "@/components/flow/flowPathUtils";
+import { DEFAULT_ZONES, DEFAULT_FLOWS, CANVAS_INCHES, FLOW_COLORS } from "@/components/flow/flowConstants";
 
 export default function Flow() {
   const queryClient = useQueryClient();
@@ -21,6 +23,11 @@ export default function Flow() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showFlowManager, setShowFlowManager] = useState(false);
   const [editingSequenceFlow, setEditingSequenceFlow] = useState(null);
+  const [checkedFlows, setCheckedFlows] = useState(new Set());
+  const [selectedPathId, setSelectedPathId] = useState(null);
+  const [pendingRegenFlow, setPendingRegenFlow] = useState(null);
+  const checkedInitRef = useRef(false);
+  const pathGenRef = useRef(false);
 
   // Queries
   const { data: zones = [], isLoading: zonesLoading } = useQuery({
@@ -85,6 +92,46 @@ export default function Flow() {
     }
   }, [isLoading, zones]);
 
+  // Initialize checked flows (all visible by default)
+  useEffect(() => {
+    if (!checkedInitRef.current && flows.length > 0) {
+      checkedInitRef.current = true;
+      setCheckedFlows(new Set(flows.map((f) => f.name)));
+    }
+  }, [flows]);
+
+  // Auto-generate flow paths for existing sequences on initial load
+  useEffect(() => {
+    if (pathGenRef.current || isLoading || flows.length === 0 || zones.length === 0) return;
+    pathGenRef.current = true;
+    (async () => {
+      let created = false;
+      for (const flow of flows) {
+        let seqIds = [];
+        try { seqIds = JSON.parse(flow.sequence || "[]"); } catch { seqIds = []; }
+        if (seqIds.length < 2) continue;
+        const hasPath = arrows.some((a) => a.arrow_type === "flow_path" && a.flow_name === flow.name);
+        if (hasPath) continue;
+        const pathData = generateFlowPath(zones, seqIds);
+        if (!pathData) continue;
+        await base44.entities.ShopFlowArrow.create({
+          arrow_type: "flow_path",
+          flow_name: flow.name,
+          start_x: pathData.points[0][0],
+          start_y: pathData.points[0][1],
+          end_x: pathData.points[pathData.points.length - 1][0],
+          end_y: pathData.points[pathData.points.length - 1][1],
+          label: JSON.stringify(pathData),
+          color: FLOW_COLORS[flow.color] || "#64748b",
+          stroke_width: 2,
+          arrowhead_style: "filled",
+        });
+        created = true;
+      }
+      if (created) queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
+    })();
+  }, [isLoading, flows, arrows, zones]);
+
   // Zone mutations
   const updateZone = useMutation({
     mutationFn: ({ id, data }) => base44.entities.ShopFlowArea.update(id, data),
@@ -131,6 +178,72 @@ export default function Flow() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shopFlows"] }),
   });
 
+  // Ensure a flow has an auto-generated path; regenerate if auto-generated, prompt if manual
+  const ensureFlowPath = async (flow, sequenceIds) => {
+    if (!sequenceIds || sequenceIds.length < 2) return;
+    const existingPath = arrows.find((a) => a.arrow_type === "flow_path" && a.flow_name === flow.name);
+    const pathData = generateFlowPath(zones, sequenceIds);
+    if (!pathData) return;
+    const label = JSON.stringify(pathData);
+    const record = {
+      arrow_type: "flow_path",
+      flow_name: flow.name,
+      start_x: pathData.points[0][0],
+      start_y: pathData.points[0][1],
+      end_x: pathData.points[pathData.points.length - 1][0],
+      end_y: pathData.points[pathData.points.length - 1][1],
+      label,
+      color: FLOW_COLORS[flow.color] || "#64748b",
+      stroke_width: 2,
+      arrowhead_style: "filled",
+    };
+    if (!existingPath) {
+      await base44.entities.ShopFlowArrow.create(record);
+      queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
+    } else {
+      const data = JSON.parse(existingPath.label || "{}");
+      if (data.auto_generated) {
+        await base44.entities.ShopFlowArrow.update(existingPath.id, {
+          start_x: record.start_x, start_y: record.start_y,
+          end_x: record.end_x, end_y: record.end_y, label,
+        });
+        queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
+      } else {
+        setPendingRegenFlow({ flow, sequenceIds, existingPathId: existingPath.id });
+      }
+    }
+  };
+
+  const handleRegeneratePath = async () => {
+    if (!pendingRegenFlow) return;
+    const { flow, sequenceIds, existingPathId } = pendingRegenFlow;
+    const pathData = generateFlowPath(zones, sequenceIds);
+    if (pathData) {
+      await base44.entities.ShopFlowArrow.update(existingPathId, {
+        start_x: pathData.points[0][0],
+        start_y: pathData.points[0][1],
+        end_x: pathData.points[pathData.points.length - 1][0],
+        end_y: pathData.points[pathData.points.length - 1][1],
+        label: JSON.stringify(pathData),
+      });
+      queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
+    }
+    setPendingRegenFlow(null);
+  };
+
+  // Flow visibility handlers
+  const toggleFlowVisibility = (flowName) => {
+    setCheckedFlows((prev) => {
+      const next = new Set(prev);
+      if (next.has(flowName)) next.delete(flowName);
+      else next.add(flowName);
+      return next;
+    });
+    if (checkedFlows.has(flowName) && selectedFlow === flowName) setSelectedFlow(null);
+  };
+  const showAllFlows = () => setCheckedFlows(new Set(flows.map((f) => f.name)));
+  const showSelectedOnly = () => setCheckedFlows(new Set());
+
   // Drag handlers (optimistic local update, save on end)
   const handleDragMove = (id, x, y, width, height) => {
     queryClient.setQueryData(["shopFlowAreas"], (old = []) =>
@@ -153,23 +266,28 @@ export default function Flow() {
     queryClient.invalidateQueries({ queryKey: ["shopFlowAreas"] });
   };
 
-  const handleFlowSequenceReorder = (newSequenceIds) => {
+  const handleFlowSequenceReorder = async (newSequenceIds) => {
     const flowObj = flows.find((f) => f.name === selectedFlow);
-    if (flowObj) {
-      // Optimistic update
-      queryClient.setQueryData(["shopFlows"], (old = []) =>
-        old.map((f) => (f.id === flowObj.id ? { ...f, sequence: JSON.stringify(newSequenceIds) } : f))
-      );
-      updateFlowSequence.mutate({ id: flowObj.id, sequence: JSON.stringify(newSequenceIds) });
-    }
+    if (!flowObj) return;
+    queryClient.setQueryData(["shopFlows"], (old = []) =>
+      old.map((f) => (f.id === flowObj.id ? { ...f, sequence: JSON.stringify(newSequenceIds) } : f))
+    );
+    await updateFlowSequence.mutateAsync({ id: flowObj.id, sequence: JSON.stringify(newSequenceIds) });
+    await ensureFlowPath(flowObj, newSequenceIds);
   };
 
   const handleCreateZone = (data) => {
     createZone.mutate({ ...data, x: 40, y: 40, width: 15, height: 15, flow_tags: [] });
   };
 
-  const handleSelectZone = (id) => { setSelectedZoneId(id); if (id) setSelectedArrowId(null); };
-  const handleSelectArrow = (id) => { setSelectedArrowId(id); if (id) setSelectedZoneId(null); };
+  const handleSelectZone = (id) => { setSelectedZoneId(id); if (id) { setSelectedArrowId(null); setSelectedPathId(null); } };
+  const handleSelectArrow = (id) => { setSelectedArrowId(id); if (id) { setSelectedZoneId(null); setSelectedPathId(null); } };
+  const handleSelectPath = (id) => { setSelectedPathId(id); if (id) { setSelectedZoneId(null); setSelectedArrowId(null); } };
+  const handleSelectFlow = (flowName) => {
+    setSelectedFlow(flowName);
+    if (flowName) setCheckedFlows((prev) => new Set([...prev, flowName]));
+    setSelectedPathId(null);
+  };
 
   const selectedZone = zones.find((z) => z.id === selectedZoneId);
   const selectedArrow = arrows.find((a) => a.id === selectedArrowId);
@@ -243,7 +361,10 @@ export default function Flow() {
           onArrowCreate={(data) => createArrow.mutate(data)}
           onArrowUpdate={(id, data) => updateArrow.mutate({ id, data })}
           selectedFlow={selectedFlow}
-          flowSequenceIds={flowSequenceIds}
+          checkedFlows={checkedFlows}
+          selectedPathId={selectedPathId}
+          onSelectPath={handleSelectPath}
+          onUpdatePath={(id, data) => updateArrow.mutate({ id, data })}
           isLoading={isLoading}
         />
       </div>
@@ -263,16 +384,40 @@ export default function Flow() {
         onDelete={deleteFlow.mutate}
         onRename={(id, name) => renameFlow.mutate({ id, data: { name } })}
         selectedFlow={selectedFlow}
-        onSelectFlow={setSelectedFlow}
+        onSelectFlow={handleSelectFlow}
         onEditSequence={(flow) => { setEditingSequenceFlow(flow); setShowFlowManager(false); }}
+        checkedFlows={checkedFlows}
+        onToggleFlowVisibility={toggleFlowVisibility}
+        onShowAllFlows={showAllFlows}
+        onShowSelectedOnly={showSelectedOnly}
       />
       <FlowSequenceBuilder
         flow={editingSequenceFlow}
         zones={zones}
         open={!!editingSequenceFlow}
         onOpenChange={(open) => { if (!open) setEditingSequenceFlow(null); }}
-        onSave={(id, sequence) => updateFlowSequence.mutate({ id, sequence })}
+        onSave={async (id, sequence) => {
+          await updateFlowSequence.mutateAsync({ id, sequence });
+          const flow = flows.find((f) => f.id === id);
+          if (flow) {
+            let seqIds = [];
+            try { seqIds = JSON.parse(sequence || "[]"); } catch { seqIds = []; }
+            await ensureFlowPath(flow, seqIds);
+          }
+        }}
       />
+
+      {/* Regeneration prompt */}
+      <Dialog open={!!pendingRegenFlow} onOpenChange={(open) => !open && setPendingRegenFlow(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Sequence changed — regenerate path?</DialogTitle></DialogHeader>
+          <p className="text-sm text-slate-600">The flow sequence was updated but the path has manual edits.</p>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="outline" onClick={() => setPendingRegenFlow(null)}>Keep Edits</Button>
+            <Button className="bg-amber-600 hover:bg-amber-700" onClick={handleRegeneratePath}>Regenerate</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

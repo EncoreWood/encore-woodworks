@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import FlowZone from "./FlowZone";
 import CustomArrowLayer from "./CustomArrowLayer";
+import FlowPathLayer from "./FlowPathLayer";
 import DrawingToolbar from "./DrawingToolbar";
 import ZoomToolbar from "./ZoomToolbar";
 import { SHOP_BASE, SHOP_WIDTH_BASE, CANVAS_INCHES, CANVAS_WIDTH_INCHES } from "./flowConstants";
@@ -12,7 +13,7 @@ const MAX_ZOOM = 3;
 export default function FlowCanvas({
   zones, selectedZoneId, onSelectZone, onDragMove, onDragEnd,
   arrows, selectedArrowId, onSelectArrow, onArrowCreate, onArrowUpdate,
-  selectedFlow, flowSequenceIds,
+  selectedFlow, checkedFlows, selectedPathId, onSelectPath, onUpdatePath,
   isLoading,
 }) {
   const containerRef = useRef(null);
@@ -54,6 +55,22 @@ export default function FlowCanvas({
 
   const shopW = SHOP_WIDTH_BASE * zoom;
   const shopH = SHOP_BASE * zoom;
+
+  const getZoneOpacity = (zone) => {
+    const zoneFlows = zone.flow_tags || [];
+    if (!checkedFlows || (checkedFlows.size === 0 && !selectedFlow)) return 1;
+    const isInCheckedFlow = zoneFlows.some((f) => checkedFlows.has(f));
+    if (selectedFlow) {
+      if (zoneFlows.includes(selectedFlow)) return 1;
+      if (isInCheckedFlow) return 0.5;
+      return 0;
+    }
+    return isInCheckedFlow ? 1 : 0.25;
+  };
+
+  const manualArrows = arrows.filter((a) => a.arrow_type !== "flow_path");
+  const flowPaths = arrows.filter((a) => a.arrow_type === "flow_path");
+  const visibleFlowPaths = flowPaths.filter((p) => !p.flow_name || (checkedFlows && checkedFlows.has(p.flow_name)));
 
   const fitToScreen = useCallback(() => {
     if (containerSize.w > 0 && containerSize.h > 0) {
@@ -137,6 +154,7 @@ export default function FlowCanvas({
       panState.current = { startX: e.clientX, startY: e.clientY, origX: pan.x, origY: pan.y };
       onSelectZone(null);
       onSelectArrow(null);
+      onSelectPath(null);
       e.currentTarget.setPointerCapture(e.pointerId);
     } else {
       handleDrawClick(clientToPercent(e.clientX, e.clientY));
@@ -204,7 +222,10 @@ export default function FlowCanvas({
             }} />
 
             {/* Custom Arrows / Lines / Labels */}
-            <CustomArrowLayer arrows={arrows} canvasW={shopW} canvasH={shopH} selectedArrowId={selectedArrowId} onSelect={onSelectArrow} onUpdate={onArrowUpdate} selectedFlow={selectedFlow} />
+            <CustomArrowLayer arrows={manualArrows} canvasW={shopW} canvasH={shopH} selectedArrowId={selectedArrowId} onSelect={onSelectArrow} onUpdate={onArrowUpdate} selectedFlow={selectedFlow} />
+
+            {/* Flow Paths (auto-generated dotted routes) */}
+            <FlowPathLayer flowPaths={visibleFlowPaths} canvasW={shopW} canvasH={shopH} selectedPathId={selectedPathId} onSelectPath={onSelectPath} onUpdatePath={onUpdatePath} selectedFlow={selectedFlow} drawMode={drawMode} />
 
             {/* Drawing preview */}
             {drawPoints.length > 0 && (
@@ -220,9 +241,11 @@ export default function FlowCanvas({
 
             {/* Zones */}
             <div className={drawMode !== "select" ? "pointer-events-none" : ""}>
-              {zones.map((zone) => (
-                <FlowZone key={zone.id} zone={zone} shopW={shopW} shopH={shopH} isSelected={selectedZoneId === zone.id} dimmed={selectedFlow && !flowSequenceIds.includes(zone.id)} onSelect={onSelectZone} onDragMove={onDragMove} onDragEnd={onDragEnd} />
-              ))}
+              {zones.map((zone) => {
+                const op = getZoneOpacity(zone);
+                if (op === 0) return null;
+                return <FlowZone key={zone.id} zone={zone} shopW={shopW} shopH={shopH} isSelected={selectedZoneId === zone.id} opacity={op} onSelect={onSelectZone} onDragMove={onDragMove} onDragEnd={onDragEnd} />;
+              })}
             </div>
 
             {/* Dimension label */}
