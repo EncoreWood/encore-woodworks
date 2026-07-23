@@ -1,0 +1,41 @@
+{
+  "name": "Auto Lunch Deduction (Daily 8:00 PM MT)",
+  "description": "Automatically deducts 30 minutes for lunch from each employee's longest job entry of the day. Runs daily at 8:00 PM Mountain Time (MDT = UTC-6, so 02:00 UTC next day).",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 2 * * *",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "auto_lunch_deduction_daily_8_00_pm_mt",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "autoLunchDeduction",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}

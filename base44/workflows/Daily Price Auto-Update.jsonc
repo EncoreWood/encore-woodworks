@@ -1,0 +1,41 @@
+{
+  "name": "Daily Price Auto-Update",
+  "description": "Daily check of inventory items with supplier links \u2014 auto-updates price_per_unit if the supplier page price has changed.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 8 * * *",
+      "one_time_date": null,
+      "timezone": "UTC",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "daily_price_auto_update",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "updatePricesFromLinks",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}

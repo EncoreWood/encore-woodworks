@@ -1,0 +1,34 @@
+{
+  "name": "Auto-create Chat for Approved Projects",
+  "description": "",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "update"
+      ],
+      "entity_name": "Project"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "auto_create_chat_for_approved_projects",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "createChatForApprovedProject",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}

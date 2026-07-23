@@ -1,0 +1,34 @@
+{
+  "name": "Auto-create Chat Folders",
+  "description": "",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "entity",
+      "events": [
+        "create"
+      ],
+      "entity_name": "ChatRoom"
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "auto_create_chat_folders",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "run_function": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "createChatFolders",
+            "args": {}
+          },
+          "then": "end"
+        }
+      }
+    ]
+  }
+}
