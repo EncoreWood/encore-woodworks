@@ -61,7 +61,7 @@ export default function FlowCanvas({
     if (!checkedFlows || (checkedFlows.size === 0 && !selectedFlow)) return 1;
     const isInCheckedFlow = zoneFlows.some((f) => checkedFlows.has(f));
     if (selectedFlow) {
-      if (zoneFlows.includes(selectedFlow)) return 1;
+      if (highlightedZoneIds?.has(zone.id) || zoneFlows.includes(selectedFlow)) return 1;
       if (isInCheckedFlow) return 0.5;
       return 0;
     }
