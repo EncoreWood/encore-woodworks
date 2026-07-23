@@ -43,9 +43,7 @@ export const STROKE_WIDTHS = [
 export const ARROWHEAD_STYLES = ["filled", "outline", "none"];
 
 export const DEFAULT_FLOWS = [
-  { name: "Standard Cabinet Flow", color: "blue" },
-  { name: "Custom Work Flow", color: "purple" },
-  { name: "Spray Only", color: "teal" },
+  { name: "Cut", color: "blue" },
 ];
 
 // All positions/sizes are PERCENTAGES (0-100) of the shop boundary
