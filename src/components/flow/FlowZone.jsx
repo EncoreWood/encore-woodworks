@@ -5,7 +5,7 @@ import { ZONE_COLORS, SHOP_BASE, SHOP_WIDTH_BASE, hexToRgba } from "./flowConsta
  * Zone positioned using PERCENTAGES (0-100) within the shop boundary.
  * shopW = SHOP_WIDTH_BASE * zoom, shopH = SHOP_BASE * zoom (rendered pixel sizes).
  */
-export default function FlowZone({ zone, shopW, shopH, isSelected, opacity = 1, onSelect, onDragMove, onDragEnd }) {
+export default function FlowZone({ zone, shopW, shopH, isSelected, isHighlighted, opacity = 1, onSelect, onDragMove, onDragEnd }) {
   const dragState = useRef(null);
   const [interacting, setInteracting] = useState(false);
 
@@ -83,11 +83,11 @@ export default function FlowZone({ zone, shopW, shopH, isSelected, opacity = 1, 
         top: py,
         width: pw,
         height: ph,
-        backgroundColor: hexToRgba(hex, 0.2),
+        backgroundColor: hexToRgba(hex, isHighlighted ? 0.35 : 0.2),
         border: `2px solid ${hex}`,
         opacity,
-        zIndex: isSelected ? 30 : 10,
-        boxShadow: interacting ? "0 4px 12px rgba(0,0,0,0.15)" : isSelected ? "0 2px 8px rgba(0,0,0,0.12)" : "none",
+        zIndex: isSelected ? 30 : isHighlighted ? 20 : 10,
+        boxShadow: interacting ? "0 4px 12px rgba(0,0,0,0.15)" : isSelected ? "0 2px 8px rgba(0,0,0,0.12)" : isHighlighted ? `0 0 0 3px ${hexToRgba(hex, 0.5)}` : "none",
       }}
       onPointerDown={startDrag}
       onPointerMove={onMove}

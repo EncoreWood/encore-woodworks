@@ -13,7 +13,7 @@ const MAX_ZOOM = 3;
 export default function FlowCanvas({
   zones, selectedZoneId, onSelectZone, onDragMove, onDragEnd,
   arrows, selectedArrowId, onSelectArrow, onArrowCreate, onArrowUpdate,
-  selectedFlow, checkedFlows, selectedPathId, onSelectPath, onUpdatePath,
+  selectedFlow, checkedFlows, highlightedZoneIds, selectedPathId, onSelectPath, onUpdatePath,
   isLoading,
 }) {
   const containerRef = useRef(null);
@@ -266,7 +266,7 @@ export default function FlowCanvas({
               {zones.map((zone) => {
                 const op = getZoneOpacity(zone);
                 if (op === 0) return null;
-                return <FlowZone key={zone.id} zone={zone} shopW={shopW} shopH={shopH} isSelected={selectedZoneId === zone.id} opacity={op} onSelect={onSelectZone} onDragMove={onDragMove} onDragEnd={onDragEnd} />;
+                return <FlowZone key={zone.id} zone={zone} shopW={shopW} shopH={shopH} isSelected={selectedZoneId === zone.id} isHighlighted={highlightedZoneIds?.has(zone.id)} opacity={op} onSelect={onSelectZone} onDragMove={onDragMove} onDragEnd={onDragEnd} />;
               })}
             </div>
 

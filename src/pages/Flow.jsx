@@ -365,6 +365,7 @@ export default function Flow() {
     }
     return ids;
   })();
+  const highlightedZoneIds = new Set(flowSequenceIds);
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] sm:h-screen bg-slate-50 overflow-hidden">
@@ -424,6 +425,7 @@ export default function Flow() {
           onArrowUpdate={(id, data) => updateArrow.mutate({ id, data })}
           selectedFlow={selectedFlow}
           checkedFlows={checkedFlows}
+          highlightedZoneIds={highlightedZoneIds}
           selectedPathId={selectedPathId}
           onSelectPath={handleSelectPath}
           onUpdatePath={(id, data) => updateArrow.mutate({ id, data })}
