@@ -613,8 +613,39 @@ export default function Layout({ children, currentPageName }) {
 
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: "#d1d5db" }}>
+      {/* Neumorphic soft-UI treatment for the sidebar nav (adapted from Sidebar Nav 3) */}
+      <style>{`
+        .encore-neu-surface{
+          --neu-light: rgba(255,255,255,.5);
+          --neu-dark: rgba(45,55,72,.32);
+          --neu-ink: #1e293b;
+          --neu-active-1: #9c8470;
+          --neu-active-2: #765f4d;
+        }
+        .encore-neu-surface .encore-neu-link{
+          background: linear-gradient(145deg, #a6abb3, #949aa3);
+          color: var(--neu-ink);
+          box-shadow: -3px -3px 6px var(--neu-light), 3px 3px 6px var(--neu-dark);
+          transition: box-shadow .22s ease, color .22s ease, background .22s ease;
+          border: 1px solid rgba(255,255,255,.18);
+        }
+        .encore-neu-surface .encore-neu-link:hover,
+        .encore-neu-surface .encore-neu-link:focus-visible{
+          box-shadow: inset 2px 2px 5px var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+          color:#0f172a;
+          outline:none;
+        }
+        .encore-neu-surface .encore-neu-link[data-active="true"]{
+          color:#fff;
+          background: linear-gradient(145deg, var(--neu-active-1), var(--neu-active-2));
+          box-shadow: inset 2px 2px 5px rgba(60,48,38,.5), inset -2px -2px 5px rgba(255,255,255,.3), 0 0 10px rgba(138,117,96,.45);
+        }
+        @media (prefers-reduced-motion: reduce){
+          .encore-neu-surface .encore-neu-link{ transition:none; }
+        }
+      `}</style>
       {/* Sidebar — hidden on mobile */}
-      <aside className={cn("w-64 border-r border-slate-400 sticky top-0 h-screen overflow-y-auto flex-col shadow-2xl", sidebarCollapsed ? "hidden" : "hidden sm:flex")} style={{ backgroundColor: "#9ca3af" }}>
+      <aside className={cn("encore-neu-surface w-64 border-r border-slate-400 sticky top-0 h-screen overflow-y-auto flex-col shadow-2xl", sidebarCollapsed ? "hidden" : "hidden sm:flex")} style={{ backgroundColor: "#9ca3af" }}>
         {/* Logo & Settings */}
         <div className="border-b border-slate-400">
           <div className="flex items-center gap-3 p-6">
@@ -717,15 +748,8 @@ export default function Layout({ children, currentPageName }) {
                       <Link
                         key={item.page}
                         to={createPageUrl(item.page)}
-                        className={cn(
-                          "flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all",
-                          currentPageName === item.page
-                            ? "text-white shadow-md"
-                            : "text-slate-800 hover:text-slate-900"
-                        )}
-                        style={currentPageName === item.page ? { backgroundColor: "#8a7560" } : undefined}
-                        onMouseEnter={e => { if (currentPageName !== item.page) e.currentTarget.style.backgroundColor = "rgba(180,150,100,0.25)"; }}
-                        onMouseLeave={e => { if (currentPageName !== item.page) e.currentTarget.style.backgroundColor = ""; }}
+                        className="encore-neu-link flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium"
+                        data-active={currentPageName === item.page}
                       >
                         <item.icon className="w-4 h-4 flex-shrink-0" />
                         <span>{item.name}</span>
@@ -839,7 +863,7 @@ export default function Layout({ children, currentPageName }) {
           />
           <div className="relative flex h-full">
             {/* Drawer panel */}
-            <div className="relative w-64 h-full flex flex-col shadow-2xl overflow-y-auto" style={{ backgroundColor: "#9ca3af" }}>
+            <div className="encore-neu-surface relative w-64 h-full flex flex-col shadow-2xl overflow-y-auto" style={{ backgroundColor: "#9ca3af" }}>
               {/* Logo mini */}
               <div className="flex items-center justify-between px-3 py-2 border-b border-slate-400">
                 <span className="font-bold text-slate-900 text-sm">Menu</span>
@@ -862,11 +886,8 @@ export default function Layout({ children, currentPageName }) {
                             key={item.page}
                             to={createPageUrl(item.page)}
                             onPointerDown={() => setMobileNavOpen(false)}
-                            className={cn(
-                              "flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium transition-all touch-manipulation select-none active:opacity-70 min-h-[40px]",
-                              currentPageName === item.page ? "text-white shadow-md" : "text-slate-800"
-                            )}
-                            style={currentPageName === item.page ? { backgroundColor: "#8a7560" } : undefined}
+                            className="encore-neu-link flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium touch-manipulation select-none active:opacity-70 min-h-[40px]"
+                            data-active={currentPageName === item.page}
                           >
                             <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
                             <span>{item.name}</span>
