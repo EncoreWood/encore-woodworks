@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square,   Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon, ArrowLeftRight, ArchiveX, ShoppingCart as ShoppingCartIcon, ListTodo, GraduationCap, Workflow } from "lucide-react";
 import MobileTabBar from "@/components/MobileTabBar";
+import SidebarNav3 from "@/components/SidebarNav3";
 import ClockInModal from "@/components/timesheet/ClockInModal";
 import CommandPalette from "@/components/CommandPalette";
 import ShortcutHelpOverlay from "@/components/ShortcutHelpOverlay";
@@ -812,16 +813,17 @@ export default function Layout({ children, currentPageName }) {
         </div>
           </aside>
 
-      {/* Expand sidebar button (tablet/desktop when collapsed) */}
+      {/* Compact neumorphic icon rail (tablet/desktop when sidebar is minimized) */}
       {sidebarCollapsed && (
-        <button
-          onClick={toggleSidebar}
-          title="Expand sidebar"
-          className="hidden sm:flex fixed left-0 top-4 z-40 items-center justify-center w-8 h-20 rounded-r-xl shadow-md border border-l-0 border-slate-400 text-slate-700 hover:bg-slate-300 transition"
-          style={{ backgroundColor: "#9ca3af" }}
-        >
-          <ChevronLeft className="w-5 h-5 rotate-180" />
-        </button>
+        <div className="hidden sm:flex shrink-0">
+          <SidebarNav3
+            navGroups={navGroups}
+            currentPageName={currentPageName}
+            currentUser={currentUser}
+            allowedPages={employeeAllowedPages}
+            onExpand={toggleSidebar}
+          />
+        </div>
       )}
 
       {/* Mobile Header */}
