@@ -19,6 +19,10 @@ export default function PdfViewer({ url, className = "" }) {
   const scrollRef = useRef(null);
   const rightMouseDownRef = useRef(false);
   const panStateRef = useRef(null);
+  const touchStateRef = useRef(null);
+  // Keep latest scale accessible inside native touch listeners
+  const scaleRef = useRef(scale);
+  useEffect(() => { scaleRef.current = scale; }, [scale]);
 
   const onDocumentLoadSuccess = useCallback(({ numPages }) => {
     setNumPages(numPages);
@@ -135,6 +139,83 @@ export default function PdfViewer({ url, className = "" }) {
     []
   );
 
+  // ── Touch controls (iPad / mobile) ──
+  // Attached natively (passive: false) so preventDefault works on iOS Safari.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const onTouchStart = (e) => {
+      if (e.touches.length === 2) {
+        const t0 = e.touches[0], t1 = e.touches[1];
+        touchStateRef.current = {
+          mode: "pinch",
+          initialDistance: Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY),
+          initialScale: scaleRef.current,
+        };
+      } else if (e.touches.length === 1 && scaleRef.current > 1) {
+        const t = e.touches[0];
+        touchStateRef.current = {
+          mode: "pan",
+          startX: t.clientX,
+          startY: t.clientY,
+          scrollLeft: el.scrollLeft,
+          scrollTop: el.scrollTop,
+        };
+      }
+    };
+
+    const onTouchMove = (e) => {
+      const st = touchStateRef.current;
+      if (!st) return;
+      if (st.mode === "pinch" && e.touches.length === 2) {
+        e.preventDefault();
+        const t0 = e.touches[0], t1 = e.touches[1];
+        const dist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+        if (!st.initialDistance) return;
+        const ratio = dist / st.initialDistance;
+        const newScale = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, +(st.initialScale * ratio).toFixed(2)));
+        setScale(newScale);
+      } else if (st.mode === "pan" && e.touches.length === 1) {
+        e.preventDefault();
+        const t = e.touches[0];
+        el.scrollLeft = st.scrollLeft - (t.clientX - st.startX);
+        el.scrollTop = st.scrollTop - (t.clientY - st.startY);
+      }
+    };
+
+    const onTouchEnd = (e) => {
+      if (e.touches.length === 0) {
+        touchStateRef.current = null;
+      } else if (e.touches.length === 1) {
+        // Transitioning out of pinch into a single-finger pan
+        if (touchStateRef.current?.mode === "pinch" && scaleRef.current > 1) {
+          const t = e.touches[0];
+          touchStateRef.current = {
+            mode: "pan",
+            startX: t.clientX,
+            startY: t.clientY,
+            scrollLeft: el.scrollLeft,
+            scrollTop: el.scrollTop,
+          };
+        } else {
+          touchStateRef.current = null;
+        }
+      }
+    };
+
+    el.addEventListener("touchstart", onTouchStart, { passive: false });
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    el.addEventListener("touchend", onTouchEnd);
+    el.addEventListener("touchcancel", onTouchEnd);
+    return () => {
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("touchend", onTouchEnd);
+      el.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, []);
+
   const cursorClass = rightMouseDownRef.current
     ? "cursor-zoom-in"
     : panStateRef.current
@@ -199,7 +280,7 @@ export default function PdfViewer({ url, className = "" }) {
         ref={scrollRef}
         onWheel={handleWheel}
         className={`flex-1 overflow-auto overscroll-contain ${cursorClass}`}
-        style={{ WebkitOverflowScrolling: "touch" }}
+        style={{ WebkitOverflowScrolling: "touch", touchAction: "none" }}
       >
         {error ? (
           <div className="flex flex-col items-center justify-center h-full text-white/70 gap-3 p-6 text-center">
