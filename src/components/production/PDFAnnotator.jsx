@@ -133,17 +133,29 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   };
 
   useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    el.addEventListener("touchstart", handleTouchStart, { passive: false });
-    el.addEventListener("touchmove", handleTouchMove, { passive: false });
-    el.addEventListener("touchend", handleTouchEnd, { passive: false });
+    if (!open) return;
+    // Radix Dialog mounts its content via portal; wait a frame so the ref is set
+    let el = scrollContainerRef.current;
+    if (!el) {
+      const raf = requestAnimationFrame(() => {
+        el = scrollContainerRef.current;
+        if (!el) return;
+        attach();
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+    attach();
+    function attach() {
+      el.addEventListener("touchstart", handleTouchStart, { passive: false });
+      el.addEventListener("touchmove", handleTouchMove, { passive: false });
+      el.addEventListener("touchend", handleTouchEnd, { passive: false });
+    }
     return () => {
       el.removeEventListener("touchstart", handleTouchStart);
       el.removeEventListener("touchmove", handleTouchMove);
       el.removeEventListener("touchend", handleTouchEnd);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Pointer handlers (mouse + Apple Pencil / stylus) ──────────────────────
   const handlePointerDown = (e) => {
