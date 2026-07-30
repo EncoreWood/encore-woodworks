@@ -56,6 +56,10 @@ export default function Layout({ children, currentPageName }) {
   const [currentProjectName, setCurrentProjectName] = useState(null);
   const [todayCompletedHours, setTodayCompletedHours] = useState(0);
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
+  const [hoveredGroup, setHoveredGroup] = useState(null);
+  const hoverCloseTimer = useRef(null);
+
+  useEffect(() => () => clearTimeout(hoverCloseTimer.current), []);
 
   // Global keyboard shortcuts
   useKeyboardShortcuts({
@@ -720,29 +724,43 @@ export default function Layout({ children, currentPageName }) {
           {Object.entries(navGroups).map(([groupKey, group]) => {
             // Admin section only visible to admins
             if (groupKey === "admin" && currentUser?.role !== "admin") return null;
-            
+
             // Wait until we know the user before filtering
             if (!currentUser) return null;
             const visibleItems = currentUser.role === "admin"
               ? group.items
               : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page) || ALWAYS_ALLOWED.has(item.page));
             if (visibleItems.length === 0) return null;
+            const isOpen = hoveredGroup === groupKey;
+            const isGroupActive = visibleItems.some(item => item.page === currentPageName);
             return (
-              <div key={groupKey}>
+              <div
+                key={groupKey}
+                onMouseEnter={() => { clearTimeout(hoverCloseTimer.current); setHoveredGroup(groupKey); }}
+                onMouseLeave={() => { hoverCloseTimer.current = setTimeout(() => setHoveredGroup(null), 160); }}
+              >
                 <button
-                  onClick={() => toggleGroup(groupKey)}
-                  className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold text-slate-800 hover:bg-amber-700/20 transition-all group"
+                  type="button"
+                  className={cn(
+                    "flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-all",
+                    isGroupActive ? "text-amber-900" : "text-slate-800"
+                  )}
+                  style={isOpen ? { boxShadow: "inset 2px 2px 5px rgba(45,55,72,.32), inset -2px -2px 5px rgba(255,255,255,.5)" } : undefined}
+                  aria-expanded={isOpen}
                 >
                   <ChevronDown
                     className={cn(
                       "w-4 h-4 flex-shrink-0 transition-transform",
-                      !expandedGroups[groupKey] && "-rotate-90"
+                      !isOpen && "-rotate-90"
                     )}
                   />
                   <span className="flex-1 text-left">{group.name}</span>
+                  {isGroupActive && !isOpen && (
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: "#8a7560" }} />
+                  )}
                 </button>
 
-                {expandedGroups[groupKey] && (
+                {isOpen && (
                   <div className="space-y-1 mt-2 ml-2">
                     {visibleItems.map((item) => (
                       <Link
@@ -750,6 +768,7 @@ export default function Layout({ children, currentPageName }) {
                         to={createPageUrl(item.page)}
                         className="encore-neu-link flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium"
                         data-active={currentPageName === item.page}
+                        onClick={() => setHoveredGroup(null)}
                       >
                         <item.icon className="w-4 h-4 flex-shrink-0" />
                         <span>{item.name}</span>
