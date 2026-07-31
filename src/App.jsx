@@ -27,6 +27,7 @@ import ClientPortal from './pages/ClientPortal';
 import MyAssignments from './pages/MyAssignments';
 import Trainings from './pages/Trainings';
 import Flow from './pages/Flow';
+import Education from './pages/Education';
 
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -88,6 +89,14 @@ const AuthenticatedApp = () => {
       <Route path="/MyAssignments" element={<LayoutWrapper currentPageName="MyAssignments"><MyAssignments /></LayoutWrapper>} />
       <Route path="/Trainings" element={<LayoutWrapper currentPageName="Trainings"><Trainings /></LayoutWrapper>} />
       <Route path="/Flow" element={<LayoutWrapper currentPageName="Flow"><Flow /></LayoutWrapper>} />
+      <Route path="/EducationCut" element={<LayoutWrapper currentPageName="EducationCut"><Education folder="Cut" /></LayoutWrapper>} />
+      <Route path="/EducationFaceFrame" element={<LayoutWrapper currentPageName="EducationFaceFrame"><Education folder="Face Frame" /></LayoutWrapper>} />
+      <Route path="/EducationSpray" element={<LayoutWrapper currentPageName="EducationSpray"><Education folder="Spray" /></LayoutWrapper>} />
+      <Route path="/EducationBuild" element={<LayoutWrapper currentPageName="EducationBuild"><Education folder="Build" /></LayoutWrapper>} />
+      <Route path="/EducationDelivery" element={<LayoutWrapper currentPageName="EducationDelivery"><Education folder="Delivery" /></LayoutWrapper>} />
+      <Route path="/EducationInstall" element={<LayoutWrapper currentPageName="EducationInstall"><Education folder="Install" /></LayoutWrapper>} />
+      <Route path="/EducationSpecialty" element={<LayoutWrapper currentPageName="EducationSpecialty"><Education folder="Specialty" /></LayoutWrapper>} />
+      <Route path="/EducationGeneral" element={<LayoutWrapper currentPageName="EducationGeneral"><Education folder="General" /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

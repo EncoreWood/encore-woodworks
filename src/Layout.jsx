@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square,   Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon, ArrowLeftRight, ArchiveX, ShoppingCart as ShoppingCartIcon, ListTodo, GraduationCap, Workflow } from "lucide-react";
+import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square,   Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon, ArrowLeftRight, ArchiveX, ShoppingCart as ShoppingCartIcon, ListTodo, GraduationCap, Scissors, Frame, SprayCan, HardHat, Sparkles, BookOpen, Workflow } from "lucide-react";
 import MobileTabBar from "@/components/MobileTabBar";
 import SidebarNav3 from "@/components/SidebarNav3";
 import ClockInModal from "@/components/timesheet/ClockInModal";
@@ -42,7 +42,8 @@ export default function Layout({ children, currentPageName }) {
     projects: true,
     operations: true,
     team: true,
-    lean: true
+    lean: true,
+    education: true
   });
   const [currentUser, setCurrentUser] = useState(null);
   const [clockInTime, setClockInTime] = useState(null);
@@ -128,7 +129,6 @@ export default function Layout({ children, currentPageName }) {
         { name: "Forms", icon: FileText, iconName: "FileText", page: "Forms" },
           { name: "Struggles & Solutions", icon: FileText, iconName: "FileText", page: "StrugglesSolutions" },
           { name: "My Assignments", icon: ListTodo, iconName: "ListTodo", page: "MyAssignments" },
-          { name: "Trainings", icon: GraduationCap, iconName: "GraduationCap", page: "Trainings" },
           { name: "Flow", icon: Workflow, iconName: "Workflow", page: "Flow" },
           { name: "Privacy Policy", icon: FileText, iconName: "FileText", page: "PrivacyPolicy" }
       ]
@@ -138,6 +138,19 @@ export default function Layout({ children, currentPageName }) {
       items: [
         { name: "Group Lean", icon: Users, iconName: "Users", page: "GroupLean" },
         { name: "Individual Lean", icon: Users, iconName: "Users", page: "IndividualLean" }
+      ]
+    },
+    education: {
+      name: "Education",
+      items: [
+        { name: "Cut", icon: Scissors, iconName: "Scissors", page: "EducationCut" },
+        { name: "Face Frame", icon: Frame, iconName: "Frame", page: "EducationFaceFrame" },
+        { name: "Spray", icon: SprayCan, iconName: "SprayCan", page: "EducationSpray" },
+        { name: "Build", icon: Hammer, iconName: "Hammer", page: "EducationBuild" },
+        { name: "Delivery", icon: Truck, iconName: "Truck", page: "EducationDelivery" },
+        { name: "Install", icon: HardHat, iconName: "HardHat", page: "EducationInstall" },
+        { name: "Specialty", icon: Sparkles, iconName: "Sparkles", page: "EducationSpecialty" },
+        { name: "General", icon: BookOpen, iconName: "BookOpen", page: "EducationGeneral" }
       ]
     }
   };
@@ -152,7 +165,7 @@ export default function Layout({ children, currentPageName }) {
   const iconMap = {
     KanbanIcon, LayoutDashboard, Calendar, Factory, Coffee, Users, MessageSquare,
     Package, Clipboard, ShoppingCart, FileText: FileTextIcon, Wrench, Truck, Home, Building2, 
-    PieChart, BarChart3, Hammer, Archive, StickyNote, ArchiveX, ShoppingCart: ShoppingCartIcon, ListTodo, GraduationCap, Workflow
+    PieChart, BarChart3, Hammer, Archive, StickyNote, ArchiveX, ShoppingCart: ShoppingCartIcon, ListTodo, GraduationCap, Workflow, Scissors, Frame, SprayCan, HardHat, Sparkles, BookOpen
   };
 
   const loadNavGroups = () => {

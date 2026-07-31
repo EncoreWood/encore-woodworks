@@ -14,7 +14,7 @@ const DIFFICULTIES = [
   { value: "advanced", label: "Advanced" },
 ];
 
-export default function TrainingForm({ open, onOpenChange, editingTraining, employees, categories = [], onSave }) {
+export default function TrainingForm({ open, onOpenChange, editingTraining, employees, categories = [], onSave, defaultCategory }) {
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -50,7 +50,7 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
       setForm({
         title: "",
         description: "",
-        category: "",
+        category: defaultCategory || "",
         difficulty: "beginner",
         estimated_time: "",
         video_url: "",
@@ -62,7 +62,7 @@ export default function TrainingForm({ open, onOpenChange, editingTraining, empl
         status: "active",
       });
     }
-  }, [editingTraining, open]);
+  }, [editingTraining, open, defaultCategory]);
 
   const toggleEmployee = (name) => {
     setForm(prev => ({

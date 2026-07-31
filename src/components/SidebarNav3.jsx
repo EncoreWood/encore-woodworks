@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
-  LayoutDashboard, Home, Factory, Users, GraduationCap, BarChart3,
+  LayoutDashboard, Home, Factory, Users, GraduationCap, BookOpen, BarChart3,
   ChevronRight, X,
 } from "lucide-react";
 
@@ -13,6 +13,7 @@ const GROUP_ICONS = {
   operations: Factory,
   team: Users,
   lean: GraduationCap,
+  education: BookOpen,
 };
 
 const ALWAYS_ALLOWED = new Set([
@@ -55,7 +56,7 @@ export default function SidebarNav3({
       })
       .filter(Boolean);
 
-  const mainKeys = ["dashboard", "projects", "operations", "team", "lean"];
+  const mainKeys = ["dashboard", "projects", "operations", "team", "lean", "education"];
   const mainGroups = buildGroups(mainKeys);
   const adminGroups = buildGroups(["admin"]);
   const allGroups = [...mainGroups, ...adminGroups];
