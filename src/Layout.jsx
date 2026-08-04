@@ -630,7 +630,7 @@ export default function Layout({ children, currentPageName }) {
   const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet"]);
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: "#d1d5db" }}>
+    <div className="h-screen overflow-hidden flex" style={{ backgroundColor: "#d1d5db" }}>
       {/* Neumorphic soft-UI treatment for the sidebar nav (adapted from Sidebar Nav 3) */}
       <style>{`
         .encore-neu-surface{
