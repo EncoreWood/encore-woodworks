@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2, Edit, Check, ListOrdered } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/components/ui/use-toast";
 import { ZONE_COLORS } from "./flowConstants";
 
 export default function FlowManager({ open, onOpenChange, flows, onCreate, onDelete, onRename, selectedFlow, onSelectFlow, onEditSequence, checkedFlows, onToggleFlowVisibility, onShowAllFlows, onShowSelectedOnly }) {
@@ -13,12 +14,30 @@ export default function FlowManager({ open, onOpenChange, flows, onCreate, onDel
   const [newColor, setNewColor] = useState("blue");
   const [editingId, setEditingId] = useState(null);
   const [editName, setEditName] = useState("");
+  const { toast } = useToast();
 
   const handleCreate = () => {
     if (!newName.trim()) return;
+    const exists = flows.find((f) => f.name.trim().toLowerCase() === newName.trim().toLowerCase());
+    if (exists) {
+      toast({ title: "Duplicate flow", description: `A flow named "${exists.name}" already exists. Choose a different name.`, variant: "destructive" });
+      return;
+    }
     onCreate({ name: newName.trim(), color: newColor });
     setNewName("");
     setNewColor("blue");
+  };
+
+  const handleRenameSave = (flow) => {
+    const trimmed = editName.trim();
+    if (!trimmed) return;
+    const exists = flows.find((f) => f.id !== flow.id && f.name.trim().toLowerCase() === trimmed.toLowerCase());
+    if (exists) {
+      toast({ title: "Duplicate flow", description: `A flow named "${exists.name}" already exists. Choose a different name.`, variant: "destructive" });
+      return;
+    }
+    onRename(flow.id, trimmed);
+    setEditingId(null);
   };
 
   return (
@@ -62,7 +81,7 @@ export default function FlowManager({ open, onOpenChange, flows, onCreate, onDel
               {editingId === flow.id ? (
                 <div className="flex gap-2 flex-1">
                   <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-7 text-sm" autoFocus />
-                  <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => { onRename(flow.id, editName); setEditingId(null); }}>Save</Button>
+                  <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => handleRenameSave(flow)}>Save</Button>
                 </div>
               ) : (
                 <>

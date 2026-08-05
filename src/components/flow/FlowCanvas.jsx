@@ -14,6 +14,7 @@ export default function FlowCanvas({
   zones, selectedZoneId, onSelectZone, onDragMove, onDragEnd,
   arrows, selectedArrowId, onSelectArrow, onArrowCreate, onArrowUpdate,
   selectedFlow, checkedFlows, highlightedZoneIds, selectedPathId, onSelectPath, onUpdatePath,
+  sopZoneIds, flowColorHex,
   isLoading,
 }) {
   const containerRef = useRef(null);
@@ -62,8 +63,7 @@ export default function FlowCanvas({
     const isInCheckedFlow = zoneFlows.some((f) => checkedFlows.has(f));
     if (selectedFlow) {
       if (highlightedZoneIds?.has(zone.id) || zoneFlows.includes(selectedFlow)) return 1;
-      if (isInCheckedFlow) return 0.5;
-      return 0;
+      return 0.22; // everything not in the flow dims to ~22% (non-interactive)
     }
     return isInCheckedFlow ? 1 : 0.25;
   };
@@ -266,7 +266,27 @@ export default function FlowCanvas({
               {zones.map((zone) => {
                 const op = getZoneOpacity(zone);
                 if (op === 0) return null;
-                return <FlowZone key={zone.id} zone={zone} shopW={shopW} shopH={shopH} isSelected={selectedZoneId === zone.id} isHighlighted={highlightedZoneIds?.has(zone.id)} opacity={op} onSelect={onSelectZone} onDragMove={onDragMove} onDragEnd={onDragEnd} />;
+                const partOfFlow = !!selectedFlow && (highlightedZoneIds?.has(zone.id) || (zone.flow_tags || []).includes(selectedFlow));
+                return (
+                  <FlowZone
+                    key={zone.id}
+                    zone={zone}
+                    shopW={shopW}
+                    shopH={shopH}
+                    isSelected={selectedZoneId === zone.id}
+                    isHighlighted={highlightedZoneIds?.has(zone.id)}
+                    opacity={op}
+                    onSelect={onSelectZone}
+                    onDragMove={onDragMove}
+                    onDragEnd={onDragEnd}
+                    flowColor={flowColorHex}
+                    partOfFlow={partOfFlow}
+                    dragEnabled={!selectedFlow}
+                    nonInteractive={!!selectedFlow && !partOfFlow}
+                    hasSop={sopZoneIds?.has(zone.id) || false}
+                    showNoSopBadge={!!selectedFlow && partOfFlow && !sopZoneIds?.has(zone.id)}
+                  />
+                );
               })}
             </div>
 

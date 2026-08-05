@@ -1,0 +1,62 @@
+{
+  "name": "ShopZoneSOP",
+  "type": "object",
+  "properties": {
+    "zone_id": {
+      "type": "string",
+      "description": "Reference to ShopFlowArea ID"
+    },
+    "zone_name": {
+      "type": "string",
+      "description": "Zone name for reference"
+    },
+    "title": {
+      "type": "string",
+      "description": "SOP title"
+    },
+    "overview": {
+      "type": "string",
+      "description": "Short overview of the station/process"
+    },
+    "required_ppe": {
+      "type": "array",
+      "description": "Required PPE items",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "steps": {
+      "type": "array",
+      "description": "Ordered list of procedure steps",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "common_mistakes": {
+      "type": "string",
+      "description": "Common mistakes to avoid"
+    },
+    "safety_notes": {
+      "type": "string",
+      "description": "Safety notes / warnings"
+    },
+    "training_video_url": {
+      "type": "string",
+      "description": "Optional training video URL"
+    },
+    "photos": {
+      "type": "array",
+      "description": "Reference photo URLs",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "zone_id",
+    "title"
+  ]
+}

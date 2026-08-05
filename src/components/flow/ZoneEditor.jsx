@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { X, Trash2, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ZONE_COLORS, ZONE_TYPES, FLOW_DIRECTIONS, FLOW_COLORS, CANVAS_WIDTH_INCHES, CANVAS_INCHES } from "./flowConstants";
+import ZoneSopEditor from "./ZoneSopEditor";
 
 const SHOP_W_FT = CANVAS_WIDTH_INCHES / 12; // 99 ft
 const SHOP_H_FT = CANVAS_INCHES / 12;       // 49.5 ft
@@ -17,11 +18,12 @@ const pctToFtH = (pct) => ((pct || 0) / 100) * SHOP_H_FT;
 const ftToPctW = (ft) => Math.max(0, Math.min(100, (ft / SHOP_W_FT) * 100));
 const ftToPctH = (ft) => Math.max(0, Math.min(100, (ft / SHOP_H_FT) * 100));
 
-export default function ZoneEditor({ zone, flows, onUpdate, onDelete, onClose }) {
+export default function ZoneEditor({ zone, flows, sop, onUpdate, onDelete, onClose }) {
   const [name, setName] = useState(zone.name);
   const [notes, setNotes] = useState(zone.notes || "");
   const [orderStr, setOrderStr] = useState(zone.flow_order != null ? String(zone.flow_order) : "");
   const [showNotes, setShowNotes] = useState(false);
+  const [showSopEditor, setShowSopEditor] = useState(false);
 
   useEffect(() => {
     setName(zone.name);
@@ -135,6 +137,11 @@ export default function ZoneEditor({ zone, flows, onUpdate, onDelete, onClose })
           </PopoverContent>
         </Popover>
 
+        {/* SOP */}
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={() => setShowSopEditor(true)}>
+          📋 SOP{sop ? "" : " +"}
+        </Button>
+
         {/* Notes toggle */}
         <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setShowNotes((s) => !s)}>Notes</Button>
 
@@ -150,6 +157,8 @@ export default function ZoneEditor({ zone, flows, onUpdate, onDelete, onClose })
       </div>
 
       {/* Name edit (inline, shown when editing) */}
+      <ZoneSopEditor open={showSopEditor} onOpenChange={setShowSopEditor} zone={zone} existingSop={sop} />
+
       {showNotes && (
         <div className="mt-2 space-y-2">
           <div className="flex gap-2">

@@ -80,7 +80,7 @@ export default function FlowPathLayer({ flowPaths, canvasW, canvasH, selectedPat
         if (!data.points || data.points.length < 2) return null;
         const isSelected = selectedPathId === path.id;
         const isDimmed = selectedFlow && path.flow_name !== selectedFlow;
-        const groupOpacity = isDimmed ? 0.5 : 1;
+        const groupOpacity = isDimmed ? 0.25 : 1;
         const stepIndices = data.step_indices || [];
         const pointsStr = data.points.map(([x, y]) => `${toPxX(x)},${toPxY(y)}`).join(" ");
 

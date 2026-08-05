@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Shuffle, X } from "lucide-react";
+import { Plus, Shuffle } from "lucide-react";
 import FlowCanvas from "@/components/flow/FlowCanvas";
 import ZoneEditor from "@/components/flow/ZoneEditor";
 import ArrowEditor from "@/components/flow/ArrowEditor";
@@ -12,11 +11,14 @@ import AddZoneDialog from "@/components/flow/AddZoneDialog";
 import FlowManager from "@/components/flow/FlowManager";
 import FlowSequenceBuilder from "@/components/flow/FlowSequenceBuilder";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
 import { generateFlowPath, pruneRemovedZones } from "@/components/flow/flowPathUtils";
 import { DEFAULT_ZONES, DEFAULT_FLOWS, CANVAS_INCHES, FLOW_COLORS } from "@/components/flow/flowConstants";
+import ZoneSopViewer from "@/components/flow/ZoneSopViewer";
 
 export default function Flow() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [selectedZoneId, setSelectedZoneId] = useState(null);
   const [selectedArrowId, setSelectedArrowId] = useState(null);
   const [selectedFlow, setSelectedFlow] = useState(null);
@@ -26,8 +28,10 @@ export default function Flow() {
   const [checkedFlows, setCheckedFlows] = useState(new Set());
   const [selectedPathId, setSelectedPathId] = useState(null);
   const [pendingRegenFlow, setPendingRegenFlow] = useState(null);
+  const [sopViewZoneId, setSopViewZoneId] = useState(null);
   const checkedInitRef = useRef(false);
   const pathGenRef = useRef(false);
+  const dedupeRef = useRef(false);
 
   // Queries
   const { data: zones = [], isLoading: zonesLoading } = useQuery({
@@ -45,6 +49,12 @@ export default function Flow() {
     queryFn: () => base44.entities.ShopFlow.list(),
     staleTime: 15000,
   });
+  const { data: sops = [] } = useQuery({
+    queryKey: ["shopZoneSops"],
+    queryFn: () => base44.entities.ShopZoneSOP.list(),
+    staleTime: 15000,
+  });
+  const sopZoneIds = new Set(sops.map((s) => s.zone_id));
 
   const isLoading = zonesLoading;
 
@@ -129,6 +139,59 @@ export default function Flow() {
         created = true;
       }
       if (created) queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
+    })();
+  }, [isLoading, flows, arrows, zones]);
+
+  // One-time silent cleanup: merge duplicate-named flows (keep oldest, combine sequences)
+  useEffect(() => {
+    if (dedupeRef.current || isLoading || flows.length === 0) return;
+    dedupeRef.current = true;
+    (async () => {
+      const groups = {};
+      for (const f of flows) {
+        const key = f.name.trim().toLowerCase();
+        (groups[key] = groups[key] || []).push(f);
+      }
+      const dirtyNames = Object.keys(groups).filter((k) => groups[k].length > 1);
+      if (dirtyNames.length === 0) return;
+
+      for (const key of dirtyNames) {
+        const group = groups[key].sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+        const keeper = group[0];
+        const dups = group.slice(1);
+        let merged = [];
+        try { merged = JSON.parse(keeper.sequence || "[]"); } catch { merged = []; }
+        for (const d of dups) {
+          let ds = [];
+          try { ds = JSON.parse(d.sequence || "[]"); } catch { ds = []; }
+          for (const id of ds) if (!merged.includes(id)) merged.push(id);
+        }
+        await base44.entities.ShopFlow.update(keeper.id, { sequence: JSON.stringify(merged) });
+        for (const d of dups) await base44.entities.ShopFlow.delete(d.id);
+
+        // Reset the flow's path to a single clean auto-generated route for the merged sequence
+        const pathArrows = arrows.filter((a) => a.arrow_type === "flow_path" && a.flow_name === keeper.name);
+        for (const a of pathArrows) await base44.entities.ShopFlowArrow.delete(a.id);
+        if (merged.length >= 2) {
+          const pathData = generateFlowPath(zones, merged);
+          if (pathData) {
+            await base44.entities.ShopFlowArrow.create({
+              arrow_type: "flow_path",
+              flow_name: keeper.name,
+              start_x: pathData.points[0][0],
+              start_y: pathData.points[0][1],
+              end_x: pathData.points[pathData.points.length - 1][0],
+              end_y: pathData.points[pathData.points.length - 1][1],
+              label: JSON.stringify(pathData),
+              color: FLOW_COLORS[keeper.color] || "#64748b",
+              stroke_width: 2,
+              arrowhead_style: "filled",
+            });
+          }
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ["shopFlows"] });
+      queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
     })();
   }, [isLoading, flows, arrows, zones]);
 
@@ -265,6 +328,11 @@ export default function Flow() {
   const handleRenameFlow = async (id, newName) => {
     const oldFlow = flows.find((f) => f.id === id);
     if (!oldFlow || oldFlow.name === newName) return;
+    const dup = flows.find((f) => f.id !== id && f.name.trim().toLowerCase() === newName.trim().toLowerCase());
+    if (dup) {
+      toast({ title: "Duplicate flow", description: `A flow named "${dup.name}" already exists. Choose a different name.`, variant: "destructive" });
+      return;
+    }
     await renameFlow.mutateAsync({ id, data: { name: newName } });
     const flowArrows = arrows.filter((a) => a.arrow_type === "flow_path" && a.flow_name === oldFlow.name);
     if (flowArrows.length > 0) {
@@ -289,7 +357,7 @@ export default function Flow() {
     });
     if (checkedFlows.has(flowName) && selectedFlow === flowName) setSelectedFlow(null);
   };
-  const showAllFlows = () => setCheckedFlows(new Set(flows.map((f) => f.name)));
+  const showAllFlows = () => { setSelectedFlow(null); setSopViewZoneId(null); setCheckedFlows(new Set(flows.map((f) => f.name))); };
   const showSelectedOnly = () => setCheckedFlows(new Set());
 
   // Drag handlers (optimistic local update, save on end)
@@ -328,7 +396,15 @@ export default function Flow() {
     createZone.mutate({ ...data, x: 40, y: 40, width: 15, height: 15, flow_tags: [] });
   };
 
-  const handleSelectZone = (id) => { setSelectedZoneId(id); if (id) { setSelectedArrowId(null); setSelectedPathId(null); } };
+  const handleSelectZone = (id) => {
+    // In Flow View mode, clicking a highlighted zone opens the SOP viewer instead of the editor
+    if (selectedFlow && id && highlightedZoneIds.has(id)) {
+      setSopViewZoneId(id);
+      return;
+    }
+    setSelectedZoneId(id);
+    if (id) { setSelectedArrowId(null); setSelectedPathId(null); }
+  };
   const handleSelectArrow = (id) => { setSelectedArrowId(id); if (id) { setSelectedZoneId(null); setSelectedPathId(null); } };
   const handleSelectPath = (id) => { setSelectedPathId(id); if (id) { setSelectedZoneId(null); setSelectedArrowId(null); } };
   const handleSelectFlow = (flowName) => {
@@ -354,6 +430,7 @@ export default function Flow() {
   const selectedZone = zones.find((z) => z.id === selectedZoneId);
   const selectedArrow = arrows.find((a) => a.id === selectedArrowId);
   const selectedFlowObj = flows.find((f) => f.name === selectedFlow) || null;
+  const flowColorHex = selectedFlowObj ? (FLOW_COLORS[selectedFlowObj.color] || "#64748b") : null;
   const flowSequenceIds = (() => {
     if (!selectedFlowObj) return [];
     let ids = [];
@@ -373,12 +450,6 @@ export default function Flow() {
       <div className="flex items-center justify-between p-3 bg-white border-b border-slate-200 flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <h1 className="text-xl font-bold text-slate-900 truncate">Shop Flow</h1>
-          {selectedFlow && (
-            <Badge className="bg-amber-100 text-amber-800 border-amber-300 gap-1">
-              {selectedFlow}
-              <button onClick={() => setSelectedFlow(null)}><X className="w-3 h-3" /></button>
-            </Badge>
-          )}
         </div>
         <div className="flex gap-2 flex-shrink-0">
           <Button variant="outline" size="sm" onClick={() => setShowFlowManager(true)}>
@@ -390,11 +461,29 @@ export default function Flow() {
         </div>
       </div>
 
+      {/* Flow View banner */}
+      {selectedFlow && (
+        <div className="flex items-center justify-between px-4 py-2 bg-amber-100 border-b border-amber-300 flex-shrink-0">
+          <span className="font-semibold text-amber-900 text-sm truncate">
+            👁️ Viewing: {selectedFlow}
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs border-amber-400 text-amber-800 hover:bg-amber-200"
+            onClick={() => { setSelectedFlow(null); setSopViewZoneId(null); }}
+          >
+            ✕ Exit Flow View
+          </Button>
+        </div>
+      )}
+
       {/* Zone / Arrow Editor (top panel) */}
       {selectedZone && (
         <ZoneEditor
           zone={selectedZone}
           flows={flows}
+          sop={sops.find((s) => s.zone_id === selectedZone.id)}
           onUpdate={(data) => updateZone.mutate({ id: selectedZone.id, data })}
           onDelete={() => deleteZone.mutate(selectedZone.id)}
           onClose={() => setSelectedZoneId(null)}
@@ -429,6 +518,8 @@ export default function Flow() {
           selectedPathId={selectedPathId}
           onSelectPath={handleSelectPath}
           onUpdatePath={(id, data) => updateArrow.mutate({ id, data })}
+          sopZoneIds={sopZoneIds}
+          flowColorHex={flowColorHex}
           isLoading={isLoading}
         />
       </div>
@@ -469,6 +560,22 @@ export default function Flow() {
             await ensureFlowPath(flow, seqIds);
           }
         }}
+      />
+
+      {/* SOP Viewer (Flow View training walkthrough) */}
+      <ZoneSopViewer
+        open={!!sopViewZoneId && !!selectedFlow}
+        onClose={() => setSopViewZoneId(null)}
+        zone={zones.find((z) => z.id === sopViewZoneId)}
+        sop={sops.find((s) => s.zone_id === sopViewZoneId)}
+        flowName={selectedFlow}
+        stepIndex={sopViewZoneId ? flowSequenceIds.indexOf(sopViewZoneId) : -1}
+        totalSteps={flowSequenceIds.length}
+        hasPrev={sopViewZoneId ? flowSequenceIds.indexOf(sopViewZoneId) > 0 : false}
+        hasNext={sopViewZoneId ? flowSequenceIds.indexOf(sopViewZoneId) < flowSequenceIds.length - 1 : false}
+        onPrev={() => { const i = flowSequenceIds.indexOf(sopViewZoneId); if (i > 0) setSopViewZoneId(flowSequenceIds[i - 1]); }}
+        onNext={() => { const i = flowSequenceIds.indexOf(sopViewZoneId); if (i < flowSequenceIds.length - 1) setSopViewZoneId(flowSequenceIds[i + 1]); }}
+        onExitToEdit={() => { const id = sopViewZoneId; setSelectedFlow(null); setSopViewZoneId(null); if (id) setSelectedZoneId(id); }}
       />
 
       {/* Regeneration prompt */}
