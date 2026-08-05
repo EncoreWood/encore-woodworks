@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Upload, Sparkles, Plus, Save, Check, RefreshCw, FileText, Settings2, AlertCircle, BookOpen, Send, Link2, Kanban, Search, X } from "lucide-react";
+import { ArrowLeft, Upload, Sparkles, Plus, Save, Check, RefreshCw, FileText, Settings2, AlertCircle, AlertTriangle, BookOpen, Send, Link2, Kanban, Search, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createPageUrl } from "@/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -74,6 +74,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const [categories, setCategories] = useState([]);
   const [analyzeError, setAnalyzeError] = useState(null);
   const [extractedData, setExtractedData] = useState(null);
+  const [pendingAnalysis, setPendingAnalysis] = useState(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [showLinkProjectDialog, setShowLinkProjectDialog] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
@@ -314,13 +315,15 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
       }
     }
 
-    // Build the AI prompt — branch on whether text extraction found readable room labels
+    // ── CALL #1: PRIMARY TAKEOFF ──────────────────────────────────────────────
+    // Focuses ONLY on rooms/cabinet runs + LF for pricing. No coordinate/geometry
+    // instructions here, so the geometry task can't pollute the quantity takeoff
+    // (the source of run-to-run total variance on identical plans).
     const needsVisionFallback = !!extractedSummary?.needsVisionFallback;
-    const highlightInstr = `\n\nFor EACH line item, also estimate an approximate bounding box on the floor plan image showing WHERE that cabinet run is located, and return it as highlight: { page_number, x, y, width, height }. ALL FOUR of x/y/width/height MUST be FRACTIONS of the image dimensions in the 0–1 range (NOT pixels):\n- x = left edge as a fraction of image width (0 = left edge, 1 = right edge)\n- y = TOP edge as a fraction of image height (0 = TOP of the image, 1 = bottom — use top-down image coordinates, NOT PDF bottom-up coordinates)\n- width = box width as a fraction of image width\n- height = box height as a fraction of image height\n- page_number = 1-based index of the image (the floor plan images provided to you, in the order given)\nDraw the box along the wall run where those cabinets sit (e.g. a base cabinet run along the kitchen perimeter wall, an upper run above it, a tall pantry along a wall). If you cannot confidently locate an item on the plan, omit its highlight — better to skip than place a wrong box.\n\nALSO, for EACH room return room_box: { page_number, x, y, width, height } — the bounding box of that room's enclosed AREA on the floor plan (the space inside its walls where the room's text label sits). Use the SAME fraction conventions (x/y = top-left fraction, width/height = fraction of image). This anchors every cabinet highlight to the correct room. Locate the ACTUAL boundary/walls of that specific room — NOT a vague nearby area. If you can find the room's label but not exact walls, draw the box tightly around the label and its immediate enclosed space. Every cabinet highlight for a room MUST land INSIDE that room's room_box; if you are unsure of the exact wall position, center the highlight on the room's label rather than letting it drift toward a neighboring room.`;
-    let aiPrompt;
+    let takeoffPrompt;
     if (extractedSummary && needsVisionFallback) {
       const floorPages = (extractedSummary.selectedPages?.length ? extractedSummary.selectedPages : extractedPageSelection).join(', ');
-      aiPrompt = `You are estimating cabinetry for a residential project from architectural plans.
+      takeoffPrompt = `You are estimating cabinetry for a residential project from architectural plans.
 
 PDF ANALYSIS:
 - Total pages in PDF: ${extractedTotalPages}
@@ -339,9 +342,11 @@ INSTRUCTIONS:
 IMPORTANT: Do NOT say "no rooms found" or "cannot identify rooms". The floor plan IS in the images — read it visually.
 
 For measure_type: use "lf" for cabinet runs (base, upper, tall), use "qty" for individual pieces (islands, towers, appliance panels).
-For cabinet_category: "base" = floor cabinets/islands, "upper" = wall-mounted upper cabs, "tall" = full-height pantries/towers, "misc" = accessories.${highlightInstr}`;
+For cabinet_category: "base" = floor cabinets/islands, "upper" = wall-mounted upper cabs, "tall" = full-height pantries/towers, "misc" = accessories.
+
+Return ONLY rooms with their items, quantities, and categories. Do NOT return coordinates, boxes, or geometry.`;
     } else {
-      aiPrompt = `You are a professional cabinet estimator analyzing architectural floor plans for a ${styleLabel} cabinet project. ${pricingNote}
+      takeoffPrompt = `You are a professional cabinet estimator analyzing architectural floor plans for a ${styleLabel} cabinet project. ${pricingNote}
 ${extractedDataSection}${mainPlanNotesSection}${roomNotesSection}
 
 CRITICAL: First, locate and read the SCALE RATIO on the plans (e.g., "1/4" = 1", "1/8" = 1", etc.). Use this scale to accurately convert measured distances to actual linear feet. If no scale is visible, assume 1/4" = 1" standard architectural scale.${extractedInstructions}
@@ -353,77 +358,61 @@ Group by room. For each room provide a list of items. Split Base Cabinets, Wall/
 For measure_type: use "lf" for cabinet runs (base, upper, tall), use "qty" for individual pieces (islands, towers, appliance panels).
 For cabinet_category: "base" = floor cabinets/islands, "upper" = wall-mounted upper cabs, "tall" = full-height pantries/towers, "misc" = accessories.
 
-A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scale conversions.${highlightInstr}`;
+A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scale conversions.
+
+Return ONLY rooms with their items, quantities, and categories. Do NOT return coordinates, boxes, or geometry.`;
     }
 
-    let result;
+    let takeoff;
     try {
-      result = await base44.integrations.Core.InvokeLLM({
-      model: "gemini_3_1_pro",
-      prompt: aiPrompt,
-      file_urls: analysisFileUrls,
-      response_json_schema: {
-        type: "object",
-        properties: {
-          rooms: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                room_name: { type: "string" },
-                room_box: {
-                  type: "object",
-                  properties: {
-                    page_number: { type: "number" },
-                    x: { type: "number" },
-                    y: { type: "number" },
-                    width: { type: "number" },
-                    height: { type: "number" }
-                  }
-                },
-                items: {
-                  type: "array",
+      takeoff = await base44.integrations.Core.InvokeLLM({
+        model: "gemini_3_1_pro",
+        prompt: takeoffPrompt,
+        file_urls: analysisFileUrls,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            rooms: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  room_name: { type: "string" },
                   items: {
-                    type: "object",
-                    properties: {
-                      name: { type: "string" },
-                      cabinet_category: { type: "string" },
-                      measure_type: { type: "string" },
-                      quantity: { type: "number" },
-                      notes: { type: "string" },
-                      highlight: {
-                        type: "object",
-                        properties: {
-                          page_number: { type: "number" },
-                          x: { type: "number" },
-                          y: { type: "number" },
-                          width: { type: "number" },
-                          height: { type: "number" }
-                        }
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        cabinet_category: { type: "string" },
+                        measure_type: { type: "string" },
+                        quantity: { type: "number" },
+                        notes: { type: "string" }
                       }
                     }
                   }
                 }
               }
-            }
-          },
-          general_notes: { type: "string" }
+            },
+            general_notes: { type: "string" }
+          }
         }
-      }
-    });
+      });
     } catch (err) {
       setAnalyzeError(`Analysis failed: ${err?.message || "Unknown error"}`);
       setIsAnalyzing(false);
       return;
     }
 
-    if (!result.rooms || result.rooms.length === 0) {
+    if (!takeoff.rooms || takeoff.rooms.length === 0) {
       setAnalyzeError("No cabinet areas detected. Tips:\n• Make sure the plan shows a floor plan view (not elevation/section)\n• Try uploading a PNG or JPG version for better results\n• Or use 'Add Rooms Manually' to build the list yourself");
       setIsAnalyzing(false);
       return;
     }
 
-    const newRooms = result.rooms.map((room, ri) => ({
+    // Build the priced room list from the takeoff. This is the source of truth for
+    // pricing and is never modified by the highlight call below.
+    const newRooms = takeoff.rooms.map((room, ri) => ({
       id: `room_${Date.now()}_${ri}`,
       room_name: room.room_name || `Room ${ri + 1}`,
       items: (room.items || []).map((item, ii) => {
@@ -444,87 +433,139 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
         };
       })
     }));
+    const newTotal = newRooms.reduce((s, r) => s + getRoomTotal(r), 0);
 
-    setRooms(newRooms);
+    // ── CALL #2: HIGHLIGHTING (best-effort, never affects pricing) ──────────────
+    // Separate call so geometry estimation can't degrade the takeoff. If this fails
+    // or returns nothing, the analysis still succeeds with full pricing — just no
+    // highlights on the Annotate Plan overlay.
+    let aiHighlights = [];
+    try {
+      const highlightPayload = takeoff.rooms.map((room, ri) => ({
+        room_name: room.room_name || `Room ${ri + 1}`,
+        items: (room.items || []).map(item => ({
+          name: item.name || "",
+          cabinet_category: item.cabinet_category || "misc"
+        }))
+      }));
+      const highlightResult = await base44.integrations.Core.InvokeLLM({
+        model: "gemini_3_1_pro",
+        prompt: `You are locating cabinetry on an architectural floor plan for HIGHLIGHTING ONLY. A separate takeoff already produced the room/item list below (JSON). DO NOT change names, categories, or quantities, and DO NOT add or remove rooms/items. Your ONLY job: for each room return room_box (the room's enclosed area where its label sits) and for each item return a highlight bounding box where that cabinet run sits, placed INSIDE its room_box.
 
-    // Convert AI-estimated per-item bounding boxes into highlight annotations in the
-    // Annotate Plan tool's natural (scale=1) pixel space. Each item highlight is cross-
-    // checked against the AI's room_box for its room: if the item box center falls OUTSIDE
-    // the room box, it's snapped back into the room (tiled within the room box) so highlights
-    // never drift into a neighboring room. Only source:"ai" highlights regenerate on
-    // re-analysis; manual highlights are preserved.
-    const fracBoxToNatural = (b, pm) => {
-      if (!b || !pm || !pm.naturalWidth || !pm.naturalHeight) return null;
-      const iw = pm.imageWidth || pm.naturalWidth;
-      const ih = pm.imageHeight || pm.naturalHeight;
-      const fx = (b.x || 0) > 1.5 ? (b.x || 0) / iw : (b.x || 0);
-      const fy = (b.y || 0) > 1.5 ? (b.y || 0) / ih : (b.y || 0);
-      const fw = (b.width || 0) > 1.5 ? (b.width || 0) / iw : (b.width || 0);
-      const fh = (b.height || 0) > 1.5 ? (b.height || 0) / ih : (b.height || 0);
-      const w = Math.max(0, fw * pm.naturalWidth);
-      const h = Math.max(0, fh * pm.naturalHeight);
-      if (w < 3 || h < 3) return null;
-      return { page: pm.pdfPage, x: Math.max(0, fx * pm.naturalWidth), y: Math.max(0, fy * pm.naturalHeight), w, h };
-    };
+Coordinates are FRACTIONS of the image (0–1), NOT pixels:
+- x = left edge as fraction of image width (0 = left, 1 = right)
+- y = TOP edge as fraction of image height (0 = TOP, 1 = bottom — top-down image coords, NOT PDF bottom-up)
+- width = box width as fraction of image width
+- height = box height as fraction of image height
+- page_number = 1-based index of the image provided
 
-    const roomBoxes = (result.rooms || []).map(room => room.room_box
-      ? fracBoxToNatural(room.room_box, analysisPagesList[Math.max(0, Math.floor((room.room_box.page_number || 1) - 1))])
-      : null);
+Locate the ACTUAL boundary/walls of each specific room for room_box. If unsure of exact walls, draw the box tightly around the room's label and its immediate enclosed space. Every item highlight MUST land INSIDE its room's room_box. Return the rooms/items in the SAME order as the input.
 
-    const aiHighlights = [];
-    (result.rooms || []).forEach((room, ri) => {
-      const rb = roomBoxes[ri];
-      const roomItems = room.items || [];
-      const nItems = roomItems.length;
-      roomItems.forEach((item, ii) => {
-        const cat = ["base", "upper", "tall", "misc"].includes(item.cabinet_category) ? item.cabinet_category : "misc";
-        let box = item.highlight
-          ? fracBoxToNatural(item.highlight, analysisPagesList[Math.max(0, Math.floor((item.highlight.page_number || 1) - 1))])
-          : null;
-        // Cross-check: if the highlight center is outside its room box (same page), discard
-        // it so the room-anchored fallback below places it back on the correct room.
-        if (box && rb && rb.w > 3 && rb.h > 3) {
-          const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
-          const inside = cx >= rb.x && cx <= rb.x + rb.w && cy >= rb.y && cy <= rb.y + rb.h;
-          if (!inside) box = null;
+ROOM/ITEM LIST (do not modify):
+${JSON.stringify(highlightPayload)}`,
+        file_urls: analysisFileUrls,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            rooms: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  room_name: { type: "string" },
+                  room_box: {
+                    type: "object",
+                    properties: {
+                      page_number: { type: "number" },
+                      x: { type: "number" },
+                      y: { type: "number" },
+                      width: { type: "number" },
+                      height: { type: "number" }
+                    }
+                  },
+                  items: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        highlight: {
+                          type: "object",
+                          properties: {
+                            page_number: { type: "number" },
+                            x: { type: "number" },
+                            y: { type: "number" },
+                            width: { type: "number" },
+                            height: { type: "number" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
-        // Room-anchored fallback: tile a modest box inside the room box so the highlight
-        // sits ON the right room (centered on/near the room's label area) instead of drifting.
-        if (!box && rb && rb.w > 3 && rb.h > 3) {
-          const cols = Math.min(3, Math.max(1, nItems));
-          const rows = Math.ceil(nItems / cols) || 1;
-          const cellW = rb.w / cols, cellH = rb.h / rows;
-          const col = ii % cols, row = Math.floor(ii / cols);
-          box = {
-            page: rb.page,
-            x: rb.x + col * cellW + cellW * 0.2,
-            y: rb.y + row * cellH + cellH * 0.25,
-            w: cellW * 0.6,
-            h: cellH * 0.5,
-          };
-        }
-        if (!box || box.w < 3 || box.h < 3) return;
-        aiHighlights.push({
-          type: "highlight",
-          x: box.x,
-          y: box.y,
-          w: box.w,
-          h: box.h,
-          color: CATEGORY_HIGHLIGHT_COLOR[cat] || CATEGORY_HIGHLIGHT_COLOR.misc,
-          page: box.page,
-          source: "ai",
-          room_name: room.room_name || "",
-          item_name: item.name || "",
-          _natural: true
+      });
+
+      const fracBoxToNatural = (b, pm) => {
+        if (!b || !pm || !pm.naturalWidth || !pm.naturalHeight) return null;
+        const iw = pm.imageWidth || pm.naturalWidth;
+        const ih = pm.imageHeight || pm.naturalHeight;
+        const fx = (b.x || 0) > 1.5 ? (b.x || 0) / iw : (b.x || 0);
+        const fy = (b.y || 0) > 1.5 ? (b.y || 0) / ih : (b.y || 0);
+        const fw = (b.width || 0) > 1.5 ? (b.width || 0) / iw : (b.width || 0);
+        const fh = (b.height || 0) > 1.5 ? (b.height || 0) / ih : (b.height || 0);
+        const w = Math.max(0, fw * pm.naturalWidth);
+        const h = Math.max(0, fh * pm.naturalHeight);
+        if (w < 3 || h < 3) return null;
+        return { page: pm.pdfPage, x: Math.max(0, fx * pm.naturalWidth), y: Math.max(0, fy * pm.naturalHeight), w, h };
+      };
+
+      const roomBoxes = (highlightResult.rooms || []).map(room => room.room_box
+        ? fracBoxToNatural(room.room_box, analysisPagesList[Math.max(0, Math.floor((room.room_box.page_number || 1) - 1))])
+        : null);
+
+      (highlightResult.rooms || []).forEach((room, ri) => {
+        const rb = roomBoxes[ri];
+        const tRoom = newRooms[ri];
+        const tItems = tRoom?.items || [];
+        const hlItems = room.items || [];
+        const nItems = hlItems.length;
+        hlItems.forEach((item, ii) => {
+          const cat = tItems[ii]?.cabinet_category || "misc";
+          let box = item.highlight
+            ? fracBoxToNatural(item.highlight, analysisPagesList[Math.max(0, Math.floor((item.highlight.page_number || 1) - 1))])
+            : null;
+          if (box && rb && rb.w > 3 && rb.h > 3) {
+            const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+            if (!(cx >= rb.x && cx <= rb.x + rb.w && cy >= rb.y && cy <= rb.y + rb.h)) box = null;
+          }
+          if (!box && rb && rb.w > 3 && rb.h > 3) {
+            const cols = Math.min(3, Math.max(1, nItems));
+            const rows = Math.ceil(nItems / cols) || 1;
+            const cellW = rb.w / cols, cellH = rb.h / rows;
+            const col = ii % cols, row = Math.floor(ii / cols);
+            box = { page: rb.page, x: rb.x + col * cellW + cellW * 0.2, y: rb.y + row * cellH + cellH * 0.25, w: cellW * 0.6, h: cellH * 0.5 };
+          }
+          if (!box || box.w < 3 || box.h < 3) return;
+          aiHighlights.push({
+            type: "highlight", x: box.x, y: box.y, w: box.w, h: box.h,
+            color: CATEGORY_HIGHLIGHT_COLOR[cat] || CATEGORY_HIGHLIGHT_COLOR.misc,
+            page: box.page, source: "ai",
+            room_name: tRoom?.room_name || room.room_name || "",
+            item_name: tItems[ii]?.name || item.name || "",
+            _natural: true
+          });
         });
       });
-    });
-    if (aiHighlights.length > 0) {
-      const kept = (planAnnotations || []).filter(a => !(a.type === "highlight" && a.source === "ai"));
-      setPlanAnnotations([...kept, ...aiHighlights]);
+    } catch (err) {
+      console.warn("Highlight call failed (non-blocking, pricing unaffected):", err);
     }
 
-    let finalNotes = result.general_notes || "";
+    // Final notes (unchanged behavior)
+    let finalNotes = takeoff.general_notes || "";
     if (extractedSummary) {
       let extractionNote;
       if (extractedSummary.needsVisionFallback) {
@@ -536,7 +577,28 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
       }
       finalNotes = finalNotes ? `${finalNotes}\n\n${extractionNote}` : extractionNote;
     }
-    setAiNotes(finalNotes);
+
+    // ── Apply results (with variance safety check on re-analyze) ────────────────
+    const applyResults = () => {
+      setRooms(newRooms);
+      setAiNotes(finalNotes);
+      if (aiHighlights.length > 0) {
+        const kept = (planAnnotations || []).filter(a => !(a.type === "highlight" && a.source === "ai"));
+        setPlanAnnotations([...kept, ...aiHighlights]);
+      }
+    };
+
+    const prevTotal = grandTotal;
+    if (rooms.length > 0 && prevTotal > 0) {
+      const diff = Math.abs(newTotal - prevTotal);
+      const pct = (diff / prevTotal) * 100;
+      if (pct > 15) {
+        setPendingAnalysis({ newRooms, finalNotes, aiHighlights, prevTotal, newTotal, pct });
+        setIsAnalyzing(false);
+        return;
+      }
+    }
+    applyResults();
     setIsAnalyzing(false);
   };
 
@@ -810,6 +872,29 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
               {analyzeError && (
                 <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 p-3 rounded-lg">
                   <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" /><span className="whitespace-pre-line">{analyzeError}</span>
+                </div>
+              )}
+              {pendingAnalysis && (
+                <div className="border border-amber-300 bg-amber-50 p-4 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-amber-900">Review analysis change</p>
+                      <p className="text-sm text-amber-800 mt-1">
+                        New total (<b>${pendingAnalysis.newTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b>) differs from previous analysis (<b>${pendingAnalysis.prevTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}</b>) by <b>{pendingAnalysis.pct.toFixed(0)}%</b>. Please review room quantities carefully before using this for a customer estimate.
+                      </p>
+                      <div className="flex gap-2 mt-3">
+                        <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={() => {
+                          setRooms(pendingAnalysis.newRooms);
+                          setAiNotes(pendingAnalysis.finalNotes);
+                          const kept = (planAnnotations || []).filter(a => !(a.type === "highlight" && a.source === "ai"));
+                          setPlanAnnotations([...kept, ...pendingAnalysis.aiHighlights]);
+                          setPendingAnalysis(null);
+                        }}>Apply New Numbers</Button>
+                        <Button size="sm" variant="outline" onClick={() => setPendingAnalysis(null)}>Keep Existing</Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
               {extractedData?.success && extractedData.aiReadySummary && (
