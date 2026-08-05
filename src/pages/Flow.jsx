@@ -135,6 +135,8 @@ export default function Flow() {
   // SINGLE load-time initialization — dedupe + seed, sequential (no competing effects).
   // Replaces the old separate dedupe + Cut-bootstrap effects that raced each other
   // and caused "Entity ShopFlow with ID ... not found" errors. Runs ONCE on mount.
+  // Updates debugStatus throughout so the on-screen banner shows real DB results.
+  const [debugStatus, setDebugStatus] = useState("Initializing...");
   const initFlowsRef = useRef(false);
   useEffect(() => {
     if (initFlowsRef.current) return;
@@ -142,7 +144,9 @@ export default function Flow() {
     (async () => {
       try {
         // Step 1: fetch all flows once
+        setDebugStatus("Fetching existing flows...");
         const allFlows = await base44.entities.ShopFlow.list();
+        setDebugStatus(`Found ${allFlows.length} existing flows in DB`);
 
         // Step 2: dedupe by name — keep oldest, merge sequences, delete duplicates.
         // Each await completes before the next step; no concurrent mutations.
@@ -174,19 +178,26 @@ export default function Flow() {
 
         // Step 3: re-fetch the clean list
         let cleanFlows = await base44.entities.ShopFlow.list();
+        setDebugStatus(`After dedupe: ${cleanFlows.length} flows in DB`);
 
         // Step 4: if no flows exist at all, seed ONE default "Cut" flow
         if (cleanFlows.length === 0) {
+          setDebugStatus("No flows found — creating default 'Cut' flow...");
           try {
-            await base44.entities.ShopFlow.create({
+            const created = await base44.entities.ShopFlow.create({
               name: "Cut",
               color: "blue",
               sequence: JSON.stringify([]),
               is_active: true,
               sort_order: 1,
             });
-          } catch (e) { console.warn("Flow init: default seed create skipped:", e?.message); }
+            setDebugStatus(`✅ SUCCESS — Created flow with ID: ${created.id}`);
+          } catch (e) {
+            setDebugStatus(`❌ FAILED to create: ${e.message || JSON.stringify(e)}`);
+            return;
+          }
           cleanFlows = await base44.entities.ShopFlow.list();
+          setDebugStatus(`✅ Created default flow. Now ${cleanFlows.length} flows in DB`);
         }
 
         // Step 5: ensure the "Cut" flow has a valid, non-orphaned sequence
@@ -202,10 +213,16 @@ export default function Flow() {
               .sort((a, b) => (a.flow_order ?? 999) - (b.flow_order ?? 999))
               .map((z) => z.id);
             if (ordered.length >= 2) {
+              setDebugStatus(`Seeding Cut sequence with ${ordered.length} zones...`);
               try {
                 await base44.entities.ShopFlow.update(cutFlow.id, { sequence: JSON.stringify(ordered) });
-              } catch (e) { console.warn("Flow init: cut sequence seed skipped:", e?.message); }
+                setDebugStatus(`✅ Cut sequence seeded (${ordered.length} zones)`);
+              } catch (e) {
+                setDebugStatus(`❌ Cut sequence seed FAILED: ${e.message || JSON.stringify(e)}`);
+              }
             }
+          } else {
+            setDebugStatus(`✅ Loaded ${cleanFlows.length} flows; Cut seq OK (${seq.length} zones)`);
           }
         }
 
@@ -213,6 +230,7 @@ export default function Flow() {
         queryClient.invalidateQueries({ queryKey: ["shopFlows"] });
       } catch (err) {
         console.error("Flow init failed:", err);
+        setDebugStatus(`❌ FAILED: ${err.message || JSON.stringify(err)}`);
         initFlowsRef.current = false; // allow a retry on next mount
       }
     })();
@@ -507,6 +525,11 @@ export default function Flow() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] sm:h-screen bg-slate-50 overflow-hidden">
+      {/* TEMP DEBUG BANNER — visible proof of seed/save success/failure */}
+      <div style={{ padding: "8px 16px", background: "#fef3c7", fontSize: "12px", fontFamily: "monospace", borderBottom: "1px solid #fcd34d" }}>
+        DEBUG: {debugStatus}
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between p-3 bg-white border-b border-slate-200 flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">
