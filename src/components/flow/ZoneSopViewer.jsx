@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { X, ChevronLeft, ChevronRight, AlertTriangle, Video, Camera } from "lucide-react";
+import ImageLightbox from "./ImageLightbox";
 
 export default function ZoneSopViewer({ open, onClose, zone, sop, flowName, stepIndex, totalSteps, hasPrev, hasNext, onPrev, onNext, onExitToEdit }) {
+  const [lightboxUrl, setLightboxUrl] = useState(null);
   if (!open || !zone) return null;
   const stepLabel = totalSteps > 0 ? `Step ${stepIndex + 1} of ${totalSteps}` : "";
 
@@ -45,9 +48,9 @@ export default function ZoneSopViewer({ open, onClose, zone, sop, flowName, step
                       <li key={i} className="list-item">
                         <span>{text}</span>
                         {img && (
-                          <a href={img} target="_blank" rel="noreferrer" className="block mt-1">
+                          <button type="button" onClick={() => setLightboxUrl(img)} className="block mt-1">
                             <img src={img} alt="" className="w-full max-w-[220px] rounded-md border border-slate-200" />
-                          </a>
+                          </button>
                         )}
                       </li>
                     );
@@ -81,9 +84,9 @@ export default function ZoneSopViewer({ open, onClose, zone, sop, flowName, step
                 <p className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1 mb-1"><Camera className="w-3.5 h-3.5" /> Reference Photos</p>
                 <div className="flex flex-wrap gap-2">
                   {sop.photos.map((url, i) => (
-                    <a key={i} href={url} target="_blank" rel="noreferrer">
+                    <button key={i} type="button" onClick={() => setLightboxUrl(url)}>
                       <img src={url} alt="" className="w-20 h-20 object-cover rounded-md border border-slate-200" />
-                    </a>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -108,6 +111,7 @@ export default function ZoneSopViewer({ open, onClose, zone, sop, flowName, step
           </Button>
         </div>
       )}
+      <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </div>
   );
 }
