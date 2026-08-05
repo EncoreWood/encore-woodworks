@@ -121,3 +121,17 @@ export function generateFlowPath(zones, sequenceIds) {
 
   return { points, auto_generated: true, zone_ids: sequenceIds, step_indices: stepIndices };
 }
+
+// Resolve the ordered list of zone IDs for a flow: prefer the stored sequence,
+// fall back to zones tagged with the flow name (ordered by flow_order).
+export function getFlowSequenceIds(flowObj, zones) {
+  if (!flowObj) return [];
+  let ids = [];
+  try { ids = JSON.parse(flowObj.sequence || "[]"); } catch { ids = []; }
+  if (ids.length === 0) {
+    const tagged = (zones || []).filter((z) => (z.flow_tags || []).includes(flowObj.name));
+    tagged.sort((a, b) => (a.flow_order ?? 999) - (b.flow_order ?? 999));
+    ids = tagged.map((z) => z.id);
+  }
+  return ids;
+}

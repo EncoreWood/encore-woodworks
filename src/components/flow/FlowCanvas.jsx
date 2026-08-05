@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import FlowZone from "./FlowZone";
 import CustomArrowLayer from "./CustomArrowLayer";
 import FlowPathLayer from "./FlowPathLayer";
+import FlowBadgeLayer from "./FlowBadgeLayer";
 import DrawingToolbar from "./DrawingToolbar";
 import ZoomToolbar from "./ZoomToolbar";
 import { SHOP_BASE, SHOP_WIDTH_BASE, CANVAS_INCHES, CANVAS_WIDTH_INCHES } from "./flowConstants";
@@ -15,6 +16,7 @@ export default function FlowCanvas({
   arrows, selectedArrowId, onSelectArrow, onArrowCreate, onArrowUpdate,
   selectedFlow, checkedFlows, highlightedZoneIds, selectedPathId, onSelectPath, onUpdatePath,
   sopZoneIds, flowColorHex,
+  activeZoneId, onSelectStage,
   isLoading,
 }) {
   const containerRef = useRef(null);
@@ -53,6 +55,31 @@ export default function FlowCanvas({
       setZoom(Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.min(scaleX, scaleY))));
     }
   }, [containerSize]);
+
+  const [centering, setCentering] = useState(false);
+
+  // Walkthrough: smoothly pan/zoom so the active stage stays centered
+  useEffect(() => {
+    if (!activeZoneId) return;
+    const zone = zones.find((z) => z.id === activeZoneId);
+    if (!zone || containerSize.w === 0 || containerSize.h === 0) return;
+    const targetZoom = Math.max(zoom, 0.9);
+    const sW = SHOP_WIDTH_BASE * targetZoom;
+    const sH = SHOP_BASE * targetZoom;
+    const zx = zone.x + zone.width / 2;
+    const zy = zone.y + zone.height / 2;
+    // Leave room for the SOP panel on the right (384px on desktop)
+    const panelW = containerSize.w > 640 ? 384 : 0;
+    const viewCenterX = (containerSize.w - panelW) / 2;
+    const newPanX = viewCenterX - containerSize.w / 2 - (zx / 100 - 0.5) * sW;
+    const newPanY = -(zy / 100 - 0.5) * sH;
+    setZoom(targetZoom);
+    setCentering(true);
+    setPan({ x: newPanX, y: newPanY });
+    const t = setTimeout(() => setCentering(false), 450);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeZoneId]);
 
   const shopW = SHOP_WIDTH_BASE * zoom;
   const shopH = SHOP_BASE * zoom;
@@ -223,6 +250,7 @@ export default function FlowCanvas({
               border: "3px solid #374151",
               boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
               cursor: drawMode === "select" ? (panState.current ? "grabbing" : "grab") : "crosshair",
+              transition: centering ? "transform 0.4s ease-out" : "none",
             }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
@@ -289,6 +317,16 @@ export default function FlowCanvas({
                 );
               })}
             </div>
+
+            {/* Numbered stage badges — clickable walkthrough overlay (flow view) */}
+            <FlowBadgeLayer
+              flowPaths={visibleFlowPaths}
+              canvasW={shopW}
+              canvasH={shopH}
+              selectedFlow={selectedFlow}
+              activeZoneId={activeZoneId}
+              onSelectStage={onSelectStage}
+            />
 
             {/* Dimension label */}
             <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-slate-400 pointer-events-none whitespace-nowrap">

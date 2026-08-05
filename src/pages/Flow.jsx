@@ -12,7 +12,7 @@ import FlowManager from "@/components/flow/FlowManager";
 import FlowSequenceBuilder from "@/components/flow/FlowSequenceBuilder";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { generateFlowPath, pruneRemovedZones } from "@/components/flow/flowPathUtils";
+import { generateFlowPath, pruneRemovedZones, getFlowSequenceIds } from "@/components/flow/flowPathUtils";
 import { DEFAULT_ZONES, DEFAULT_FLOWS, CANVAS_INCHES, FLOW_COLORS } from "@/components/flow/flowConstants";
 import ZoneSopViewer from "@/components/flow/ZoneSopViewer";
 
@@ -409,8 +409,17 @@ export default function Flow() {
   const handleSelectPath = (id) => { setSelectedPathId(id); if (id) { setSelectedZoneId(null); setSelectedArrowId(null); } };
   const handleSelectFlow = (flowName) => {
     setSelectedFlow(flowName);
-    if (flowName) setCheckedFlows((prev) => new Set([...prev, flowName]));
+    setSelectedZoneId(null);
     setSelectedPathId(null);
+    if (flowName) {
+      setCheckedFlows((prev) => new Set([...prev, flowName]));
+      // Auto-open the first stage to start the walkthrough
+      const flowObj = flows.find((f) => f.name === flowName);
+      const seq = getFlowSequenceIds(flowObj, zones);
+      setSopViewZoneId(seq.length > 0 ? seq[0] : null);
+    } else {
+      setSopViewZoneId(null);
+    }
   };
 
   // Keyboard shortcut listener — delete selected zone/arrow/path
@@ -431,17 +440,7 @@ export default function Flow() {
   const selectedArrow = arrows.find((a) => a.id === selectedArrowId);
   const selectedFlowObj = flows.find((f) => f.name === selectedFlow) || null;
   const flowColorHex = selectedFlowObj ? (FLOW_COLORS[selectedFlowObj.color] || "#64748b") : null;
-  const flowSequenceIds = (() => {
-    if (!selectedFlowObj) return [];
-    let ids = [];
-    try { ids = JSON.parse(selectedFlowObj.sequence || "[]"); } catch { ids = []; }
-    if (ids.length === 0) {
-      const tagged = zones.filter((z) => (z.flow_tags || []).includes(selectedFlow));
-      tagged.sort((a, b) => (a.flow_order ?? 999) - (b.flow_order ?? 999));
-      ids = tagged.map((z) => z.id);
-    }
-    return ids;
-  })();
+  const flowSequenceIds = getFlowSequenceIds(selectedFlowObj, zones);
   const highlightedZoneIds = new Set(flowSequenceIds);
 
   return (
@@ -521,6 +520,8 @@ export default function Flow() {
           sopZoneIds={sopZoneIds}
           flowColorHex={flowColorHex}
           isLoading={isLoading}
+          activeZoneId={sopViewZoneId}
+          onSelectStage={(zoneId) => setSopViewZoneId(zoneId)}
         />
       </div>
 

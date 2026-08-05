@@ -108,7 +108,7 @@ export default function FlowPathLayer({ flowPaths, canvasW, canvasH, selectedPat
               fill={path.color}
               style={{ pointerEvents: "none" }}
             />
-            {stepIndices.map((idx, stepNum) => {
+            {!selectedFlow && stepIndices.map((idx, stepNum) => {
               const [x, y] = data.points[idx];
               const cx = toPxX(x), cy = toPxY(y);
               return (

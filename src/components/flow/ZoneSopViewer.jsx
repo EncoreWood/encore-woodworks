@@ -3,14 +3,14 @@ import { X, ChevronLeft, ChevronRight, AlertTriangle, Video, Camera } from "luci
 
 export default function ZoneSopViewer({ open, onClose, zone, sop, flowName, stepIndex, totalSteps, hasPrev, hasNext, onPrev, onNext, onExitToEdit }) {
   if (!open || !zone) return null;
-  const stepLabel = totalSteps > 0 ? `Step ${stepIndex + 1} of ${totalSteps} in "${flowName}"` : "";
+  const stepLabel = totalSteps > 0 ? `Step ${stepIndex + 1} of ${totalSteps}` : "";
 
   return (
     <div className="fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-40 flex flex-col border-l border-slate-200 transition-transform">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
         <div className="min-w-0">
-          <p className="text-xs text-slate-500 truncate">{stepLabel}</p>
+          <p className="text-xs text-slate-500 truncate">{flowName ? `${flowName} flow` : ""}{stepLabel ? ` · ${stepLabel}` : ""}</p>
           <h2 className="font-bold text-slate-900 truncate flex items-center gap-1.5">{zone.icon} {zone.name}</h2>
         </div>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onClose}><X className="w-4 h-4" /></Button>
