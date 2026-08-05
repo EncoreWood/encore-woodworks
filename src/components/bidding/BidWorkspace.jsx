@@ -225,8 +225,12 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
     let extractedTotalPages = 0;
     if (isPdf) {
       try {
-        const extractResponse = await base44.functions.invoke('extractPlanMeasurements', { pdfUrl: planFileUrl });
-        const extracted = extractResponse?.data || extractResponse;
+        const extractResponse = await fetch('https://vivica-d92c9f97.base44.app/functions/extractPlanMeasurements', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pdfUrl: planFileUrl })
+        });
+        const extracted = await extractResponse.json();
         if (extracted?.success) {
           extractedTotalPages = extracted.totalPages || 0;
           extractedPageSelection = extracted.pageSelection?.selectedPages || [];
