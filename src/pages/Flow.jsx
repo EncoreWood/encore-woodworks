@@ -263,22 +263,53 @@ export default function Flow() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] }); setSelectedArrowId(null); },
   });
 
-  // Flow mutations
+  // Flow mutations — every save/delete surfaces success + failure toasts so
+  // silent DB write failures can't hide (errors would otherwise be swallowed
+  // by react-query's internal pipeline and never reach the user).
   const createFlow = useMutation({
     mutationFn: (data) => base44.entities.ShopFlow.create(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shopFlows"] }),
+    onSuccess: (result) => {
+      console.log("✅ ShopFlow.create succeeded:", result);
+      queryClient.invalidateQueries({ queryKey: ["shopFlows"] });
+      toast({ title: "✅ Flow saved to database" });
+    },
+    onError: (err) => {
+      console.error("❌ ShopFlow.create FAILED:", err);
+      toast({ title: "Failed to save flow", description: err?.message || String(err), variant: "destructive" });
+    },
   });
   const deleteFlow = useMutation({
     mutationFn: (id) => base44.entities.ShopFlow.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shopFlows"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shopFlows"] });
+      toast({ title: "✅ Flow deleted" });
+    },
+    onError: (err) => {
+      console.error("❌ ShopFlow.delete FAILED:", err);
+      toast({ title: "Failed to delete flow", description: err?.message || String(err), variant: "destructive" });
+    },
   });
   const renameFlow = useMutation({
     mutationFn: ({ id, data }) => base44.entities.ShopFlow.update(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shopFlows"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shopFlows"] });
+      toast({ title: "✅ Flow renamed" });
+    },
+    onError: (err) => {
+      console.error("❌ ShopFlow.update (rename) FAILED:", err);
+      toast({ title: "Failed to rename flow", description: err?.message || String(err), variant: "destructive" });
+    },
   });
   const updateFlowSequence = useMutation({
     mutationFn: ({ id, sequence }) => base44.entities.ShopFlow.update(id, { sequence }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shopFlows"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["shopFlows"] });
+      toast({ title: "✅ Flow sequence saved" });
+    },
+    onError: (err) => {
+      console.error("❌ ShopFlow.update (sequence) FAILED:", err);
+      toast({ title: "Failed to save flow sequence", description: err?.message || String(err), variant: "destructive" });
+    },
   });
 
   // Helper: delete all flow_path arrows by ID

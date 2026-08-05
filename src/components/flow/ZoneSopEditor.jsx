@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useToast } from "@/components/ui/use-toast";
 import { Plus, Trash2, X, Loader2, Upload } from "lucide-react";
 
 const EMPTY = {
@@ -21,6 +22,7 @@ const EMPTY = {
 
 export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop }) {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [form, setForm] = useState(EMPTY);
   const [ppeInput, setPpeInput] = useState("");
   const [stepInput, setStepInput] = useState("");
@@ -65,13 +67,21 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop })
         training_video_url: form.training_video_url,
         photos: form.photos,
       };
+      let result;
       if (existingSop) {
-        await base44.entities.ShopZoneSOP.update(existingSop.id, payload);
+        result = await base44.entities.ShopZoneSOP.update(existingSop.id, payload);
+        console.log("✅ ShopZoneSOP.update succeeded:", result);
+        toast({ title: "✅ SOP saved to database" });
       } else {
-        await base44.entities.ShopZoneSOP.create(payload);
+        result = await base44.entities.ShopZoneSOP.create(payload);
+        console.log("✅ ShopZoneSOP.create succeeded:", result);
+        toast({ title: "✅ SOP saved to database" });
       }
       await invalidate();
       onOpenChange(false);
+    } catch (err) {
+      console.error("❌ ShopZoneSOP save FAILED:", err);
+      toast({ title: "Failed to save SOP", description: err?.message || String(err), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -83,8 +93,13 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop })
     setSaving(true);
     try {
       await base44.entities.ShopZoneSOP.delete(existingSop.id);
+      console.log("✅ ShopZoneSOP.delete succeeded:", existingSop.id);
+      toast({ title: "✅ SOP deleted" });
       await invalidate();
       onOpenChange(false);
+    } catch (err) {
+      console.error("❌ ShopZoneSOP.delete FAILED:", err);
+      toast({ title: "Failed to delete SOP", description: err?.message || String(err), variant: "destructive" });
     } finally {
       setSaving(false);
     }
