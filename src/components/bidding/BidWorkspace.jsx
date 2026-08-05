@@ -64,6 +64,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const [catalogItems, setCatalogItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [analyzeError, setAnalyzeError] = useState(null);
+  const [extractedData, setExtractedData] = useState(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [showLinkProjectDialog, setShowLinkProjectDialog] = useState(false);
   const [projectSearch, setProjectSearch] = useState("");
@@ -196,6 +197,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
     const file = e.target.files[0];
     if (!file) return;
     setAnalyzeError(null);
+    setExtractedData(null);
     setIsUploading(true);
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
     setPlanFileUrl(file_url);
@@ -214,28 +216,40 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
       ? `Pricing: Base $${config.bases_lf}/LF, Upper/Wall $${config.uppers_lf}/LF, Tall $${config.tall_lf}/LF.`
       : "";
 
-    let extractedText = "";
-    try {
-      // Only attempt text extraction for smaller files (under 8MB)
-      const headRes = await fetch(planFileUrl, { method: "HEAD" }).catch(() => null);
-      const contentLength = headRes ? parseInt(headRes.headers.get("content-length") || "0") : 0;
-      if (!contentLength || contentLength < 8 * 1024 * 1024) {
-        const extracted = await base44.integrations.Core.ExtractDataFromUploadedFile({
-          file_url: planFileUrl,
-          json_schema: {
-            type: "object",
-            properties: {
-              room_labels: { type: "array", items: { type: "string" } },
-              dimensions: { type: "array", items: { type: "string" } },
-              notes: { type: "string" }
-            }
-          }
-        });
-        if (extracted?.status === "success" && extracted.output) {
-          extractedText = `\n\nExtracted plan text: ${JSON.stringify(extracted.output)}`;
+    const isPdf = planFileName?.toLowerCase().endsWith('.pdf') || planFileUrl?.toLowerCase().includes('.pdf');
+
+    // Step 1: Extract real vector data from the PDF (rooms, dimensions, scale)
+    let extractedSummary = null;
+    let cabinetPricing = [];
+    if (isPdf) {
+      try {
+        const extractResponse = await base44.functions.invoke('extractPlanMeasurements', { pdfUrl: planFileUrl });
+        const extracted = extractResponse?.data || extractResponse;
+        if (extracted?.success && extracted.aiReadySummary) {
+          extractedSummary = extracted.aiReadySummary;
+          cabinetPricing = extracted.cabinetPricing || [];
+          setExtractedData(extracted);
         }
+      } catch (err) {
+        console.error('Plan extraction failed:', err);
       }
-    } catch (_) {}
+    } else {
+      setExtractedData(null);
+    }
+
+    // Build the extracted-data section for the AI prompt
+    let extractedDataSection = "";
+    let extractedInstructions = "";
+    if (extractedSummary) {
+      const dimsText = (extractedSummary.roomsWithNearbyDimensions || [])
+        .map(r => `- ${r.label}: ${(r.nearbyDimensions || []).map(d => d.text).join(', ')}`)
+        .join('\n');
+      const pricingText = (cabinetPricing || [])
+        .map(p => `- ${p.styleName}: Base $${p.baseLf}/LF, Upper $${p.upperLf}/LF, Tall $${p.tallLf}/LF`)
+        .join('\n');
+      extractedDataSection = `\n\nEXTRACTED DATA FROM PDF (use these as ground truth — do not guess):\nScale: ${extractedSummary.detectedScale || '1/4'}" = 1'-0"\nRooms found (from PDF text labels):\n${(extractedSummary.roomLabels || []).join(', ')}\nRoom dimensions (from PDF dimension annotations):\n${dimsText}${pricingText ? `\n\nCabinet pricing tiers:\n${pricingText}` : ''}`;
+      extractedInstructions = `\nUse the EXTRACTED DIMENSIONS above to calculate LF — do not guess from the image. For kitchens: look for appliance indicators (33" REF = refrigerator, 33" FRZ = freezer, 24" SHELVES = pantry shelving). For bathrooms: vanity runs are typically the wall width minus fixtures. For closets/pantries: use the shelving dimensions shown. Skip rooms that don't need cabinetry (bedrooms, hall, entry, exercise, garage).`;
+    }
 
     const roomNotes = rooms
        .filter(r => r.pdf_notes)
@@ -245,7 +259,6 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
      const mainPlanNotesSection = aiNotes ? `\n\nMain plan annotations and notes:\n${aiNotes}` : "";
 
     // Convert PDF to image for AI vision analysis
-    const isPdf = planFileName?.toLowerCase().endsWith('.pdf') || planFileUrl?.toLowerCase().includes('.pdf');
     let analysisFileUrl = planFileUrl;
     if (isPdf) {
       try {
@@ -264,9 +277,9 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
       result = await base44.integrations.Core.InvokeLLM({
       model: "gemini_3_1_pro",
       prompt: `You are a professional cabinet estimator analyzing architectural floor plans for a ${styleLabel} cabinet project. ${pricingNote}
-${extractedText}${mainPlanNotesSection}${roomNotesSection}
+${extractedDataSection}${mainPlanNotesSection}${roomNotesSection}
 
-CRITICAL: First, locate and read the SCALE RATIO on the plans (e.g., "1/4" = 1", "1/8" = 1", etc.). Use this scale to accurately convert measured distances to actual linear feet. If no scale is visible, assume 1/4" = 1" standard architectural scale.
+CRITICAL: First, locate and read the SCALE RATIO on the plans (e.g., "1/4" = 1", "1/8" = 1", etc.). Use this scale to accurately convert measured distances to actual linear feet. If no scale is visible, assume 1/4" = 1" standard architectural scale.${extractedInstructions}
 
 Identify EVERY cabinet location (Kitchen, Bathrooms, Pantry, Laundry, Mudroom, Closets, Built-ins, Bars, Offices, etc.).
 
@@ -341,7 +354,13 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
     }));
 
     setRooms(newRooms);
-    setAiNotes(result.general_notes || "");
+    let finalNotes = result.general_notes || "";
+    if (extractedSummary) {
+      const dimCount = (extractedSummary.dimensionAnnotations || []).length;
+      const extractionNote = `Estimates based on ${dimCount} dimension annotations extracted directly from the PDF vector data. Scale detected: ${extractedSummary.detectedScale || '1/4'}" = 1'-0". Room labels extracted from PDF text (not visual guessing). All dimensions must be field-verified prior to fabrication.`;
+      finalNotes = finalNotes ? `${finalNotes}\n\n${extractionNote}` : extractionNote;
+    }
+    setAiNotes(finalNotes);
     setIsAnalyzing(false);
   };
 
@@ -580,7 +599,7 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
                    View & Mark Up
                  </Button>
                )}
-               {planFileUrl && <button onClick={() => { setPlanFileUrl(null); setPlanFileName(null); setAiNotes(""); }} className="text-xs text-slate-400 hover:text-red-500">Remove</button>}
+               {planFileUrl && <button onClick={() => { setPlanFileUrl(null); setPlanFileName(null); setAiNotes(""); setExtractedData(null); }} className="text-xs text-slate-400 hover:text-red-500">Remove</button>}
              </div>
            </div>
 
@@ -615,6 +634,32 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
               {analyzeError && (
                 <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 p-3 rounded-lg">
                   <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" /><span className="whitespace-pre-line">{analyzeError}</span>
+                </div>
+              )}
+              {extractedData?.success && extractedData.aiReadySummary && (
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="w-4 h-4 text-blue-600" />
+                    <h4 className="font-semibold text-sm text-blue-900">PDF Data Extracted</h4>
+                  </div>
+                  <p className="text-xs text-blue-800 mb-1">Scale: {extractedData.aiReadySummary.detectedScale}" = 1'-0"</p>
+                  <p className="text-xs text-blue-800 mb-1">Rooms found: {extractedData.aiReadySummary.roomLabels?.length || 0}</p>
+                  <p className="text-xs text-blue-800 mb-2">Dimension annotations: {extractedData.aiReadySummary.dimensionAnnotations?.length || 0}</p>
+                  <details className="text-xs text-blue-900">
+                    <summary className="cursor-pointer font-medium hover:text-blue-700">View rooms and dimensions</summary>
+                    <div className="mt-2 space-y-2 pl-2">
+                      {(extractedData.aiReadySummary.roomsWithNearbyDimensions || []).map(room => (
+                        <div key={room.label}>
+                          <strong className="text-blue-900">{room.label}</strong>
+                          <ul className="ml-4 list-disc">
+                            {(room.nearbyDimensions || []).map((d, i) => (
+                              <li key={i}>{d.text}{d.feet != null ? ` (${d.feet.toFixed(1)} ft)` : ""}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
                 </div>
               )}
             </div>
