@@ -37,8 +37,21 @@ export default function ZoneSopViewer({ open, onClose, zone, sop, flowName, step
             {sop.steps?.length > 0 && (
               <div>
                 <p className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">📋 Steps</p>
-                <ol className="text-sm text-slate-700 list-decimal pl-5 space-y-1">
-                  {sop.steps.map((s, i) => <li key={i}>{s}</li>)}
+                <ol className="text-sm text-slate-700 list-decimal pl-5 space-y-2">
+                  {sop.steps.map((s, i) => {
+                    const text = typeof s === "string" ? s : s?.text;
+                    const img = typeof s === "string" ? null : s?.image_url;
+                    return (
+                      <li key={i} className="list-item">
+                        <span>{text}</span>
+                        {img && (
+                          <a href={img} target="_blank" rel="noreferrer" className="block mt-1">
+                            <img src={img} alt="" className="w-full max-w-[220px] rounded-md border border-slate-200" />
+                          </a>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ol>
               </div>
             )}

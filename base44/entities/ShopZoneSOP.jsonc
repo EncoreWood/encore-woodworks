@@ -4,11 +4,15 @@
   "properties": {
     "zone_id": {
       "type": "string",
-      "description": "Reference to ShopFlowArea ID"
+      "description": "Reference to ShopFlowArea ID (null for type-level SOPs)"
+    },
+    "zone_type": {
+      "type": "string",
+      "description": "Zone type key for type-level SOPs (applies to all zones of this type when zone_id is null)"
     },
     "zone_name": {
       "type": "string",
-      "description": "Zone name for reference"
+      "description": "Zone (or type) name for reference"
     },
     "title": {
       "type": "string",
@@ -28,9 +32,17 @@
     },
     "steps": {
       "type": "array",
-      "description": "Ordered list of procedure steps",
+      "description": "Ordered list of procedure steps (each {text, image_url})",
       "items": {
-        "type": "string"
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string"
+          }
+        }
       },
       "default": []
     },
@@ -56,7 +68,6 @@
     }
   },
   "required": [
-    "zone_id",
     "title"
   ]
 }

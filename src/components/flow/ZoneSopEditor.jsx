@@ -7,7 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Trash2, X, Loader2, Upload } from "lucide-react";
+import { Plus, Trash2, X, Loader2, Upload, Image as ImageIcon } from "lucide-react";
+
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+// Steps are stored as objects {text, image_url}. Older records stored plain
+// strings — normalize them on load so the editor always works with objects.
+const normalizeStep = (s) =>
+  typeof s === "string" ? { text: s, image_url: "" } : { text: s?.text || "", image_url: s?.image_url || "" };
 
 const EMPTY = {
   title: "",
@@ -20,7 +27,7 @@ const EMPTY = {
   photos: [],
 };
 
-export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop }) {
+export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop, zoneType }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [form, setForm] = useState(EMPTY);
@@ -28,6 +35,7 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop })
   const [stepInput, setStepInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingStep, setUploadingStep] = useState(null);
 
   useEffect(() => {
     if (!open) return;
@@ -36,28 +44,32 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop })
         title: existingSop.title || "",
         overview: existingSop.overview || "",
         required_ppe: existingSop.required_ppe || [],
-        steps: existingSop.steps || [],
+        steps: (existingSop.steps || []).map(normalizeStep),
         common_mistakes: existingSop.common_mistakes || "",
         safety_notes: existingSop.safety_notes || "",
         training_video_url: existingSop.training_video_url || "",
         photos: existingSop.photos || [],
       });
     } else {
-      setForm({ ...EMPTY, title: zone?.name ? `${zone.name} Operation` : "" });
+      const defaultTitle = zone?.name
+        ? `${zone.name} Operation`
+        : zoneType ? `${cap(zoneType)} Operation` : "";
+      setForm({ ...EMPTY, title: defaultTitle });
     }
     setPpeInput("");
     setStepInput("");
-  }, [open, existingSop, zone]);
+  }, [open, existingSop, zone, zoneType]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["shopZoneSops"] });
 
   const handleSave = async () => {
-    if (!form.title.trim() || !zone) return;
+    if (!form.title.trim() || (!zone && !zoneType)) return;
     setSaving(true);
     try {
       const payload = {
-        zone_id: zone.id,
-        zone_name: zone.name,
+        zone_id: zone?.id || null,
+        zone_name: zone?.name || (zoneType ? cap(zoneType) : ""),
+        zone_type: zoneType || zone?.zone_type || null,
         title: form.title.trim(),
         overview: form.overview,
         required_ppe: form.required_ppe,
@@ -89,7 +101,7 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop })
 
   const handleDelete = async () => {
     if (!existingSop) return;
-    if (!confirm(`Delete SOP for "${zone?.name}"?`)) return;
+    if (!confirm(`Delete SOP for "${zone?.name || cap(zoneType)}"?`)) return;
     setSaving(true);
     try {
       await base44.entities.ShopZoneSOP.delete(existingSop.id);
@@ -116,10 +128,25 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop })
   const addStep = () => {
     const v = stepInput.trim();
     if (!v) return;
-    setForm((f) => ({ ...f, steps: [...f.steps, v] }));
+    setForm((f) => ({ ...f, steps: [...f.steps, { text: v, image_url: "" }] }));
     setStepInput("");
   };
   const removeStep = (i) => setForm((f) => ({ ...f, steps: f.steps.filter((_, idx) => idx !== i) }));
+
+  const handleStepImageUpload = async (e, i) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingStep(i);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setForm((f) => ({ ...f, steps: f.steps.map((x, idx) => (idx === i ? { ...x, image_url: file_url } : x)) }));
+    } finally {
+      setUploadingStep(null);
+      e.target.value = "";
+    }
+  };
+  const removeStepImage = (i) =>
+    setForm((f) => ({ ...f, steps: f.steps.map((x, idx) => (idx === i ? { ...x, image_url: "" } : x)) }));
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -139,7 +166,7 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop })
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>📋 SOP: {zone?.name}</DialogTitle>
+          <DialogTitle>📋 SOP: {zone?.name || `${cap(zoneType)} (type)`}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -174,13 +201,29 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop })
 
           {/* Steps */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Steps</Label>
-            <div className="space-y-1.5">
+            <Label className="text-xs">Steps <span className="text-slate-400 font-normal">(add an image next to any step)</span></Label>
+            <div className="space-y-2">
               {form.steps.map((s, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-xs text-slate-500 w-5">{i + 1}.</span>
-                  <Input value={s} onChange={(e) => setForm((f) => ({ ...f, steps: f.steps.map((x, idx) => idx === i ? e.target.value : x) }))} className="h-8 text-sm flex-1" />
-                  <Button size="ghost" className="h-8 w-8 p-0 text-red-600" onClick={() => removeStep(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                <div key={i} className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500 w-5">{i + 1}.</span>
+                    <Input
+                      value={s.text}
+                      onChange={(e) => setForm((f) => ({ ...f, steps: f.steps.map((x, idx) => (idx === i ? { ...x, text: e.target.value } : x)) }))}
+                      className="h-8 text-sm flex-1"
+                    />
+                    <label className="h-8 w-8 flex items-center justify-center rounded-md border border-slate-200 cursor-pointer hover:bg-slate-50 text-slate-500" title="Add image to step">
+                      {uploadingStep === i ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleStepImageUpload(e, i)} />
+                    </label>
+                    <Button size="ghost" className="h-8 w-8 p-0 text-red-600" onClick={() => removeStep(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  </div>
+                  {s.image_url && (
+                    <div className="ml-7 relative w-20 h-20 rounded-md overflow-hidden border border-slate-200">
+                      <img src={s.image_url} alt="" className="w-full h-full object-cover" />
+                      <button onClick={() => removeStepImage(i)} className="absolute top-0 right-0 bg-red-600 text-white rounded-bl p-0.5"><X className="w-3 h-3" /></button>
+                    </div>
+                  )}
                 </div>
               ))}
               <div className="flex items-center gap-2">

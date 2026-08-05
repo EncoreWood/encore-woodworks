@@ -71,7 +71,15 @@ export default function Flow() {
     if (zoneTypeRecords.length > 0) {
       try {
         const parsed = JSON.parse(zoneTypeRecords[0].config || "[]");
-        if (Array.isArray(parsed) && parsed.length > 0) setZoneTypes(parsed);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Backfill category on older records that were seeded before categories existed.
+          const withCats = parsed.map((t) => {
+            if (t.category) return t;
+            const def = DEFAULT_ZONE_TYPES.find((d) => d.name === t.name);
+            return def ? { ...t, category: def.category } : { ...t, category: "Uncategorized" };
+          });
+          setZoneTypes(withCats);
+        }
       } catch { /* keep defaults */ }
       return;
     }
@@ -559,6 +567,13 @@ export default function Flow() {
   const flowSequenceIds = getFlowSequenceIds(selectedFlowObj, zones);
   const highlightedZoneIds = new Set(flowSequenceIds);
 
+  // SOP lookup for the viewer: prefer a zone-specific SOP, fall back to the
+  // type-level SOP shared by all zones of that zone_type.
+  const viewedZone = zones.find((z) => z.id === sopViewZoneId);
+  const viewedSop = sopViewZoneId
+    ? (sops.find((s) => s.zone_id === sopViewZoneId) || (viewedZone ? sops.find((s) => !s.zone_id && s.zone_type === viewedZone.zone_type) : null))
+    : null;
+
   // Quick-access flow buttons: click → enter View mode + highlight that flow; click active → exit.
   const toggleFlowSelection = (flow) => {
     if (selectedFlowObj?.id === flow.id) {
@@ -780,14 +795,15 @@ export default function Flow() {
         zones={zones}
         onSaveConfig={handleSaveZoneTypeConfig}
         toast={toast}
+        sops={sops}
       />
 
       {/* SOP Viewer (Flow View training walkthrough) */}
       <ZoneSopViewer
         open={!!sopViewZoneId}
         onClose={() => { setSopViewZoneId(null); if (!viewingFlow) setSelectedZoneId(null); }}
-        zone={zones.find((z) => z.id === sopViewZoneId)}
-        sop={sops.find((s) => s.zone_id === sopViewZoneId)}
+        zone={viewedZone}
+        sop={viewedSop}
         flowName={selectedFlow}
         stepIndex={sopViewZoneId ? flowSequenceIds.indexOf(sopViewZoneId) : -1}
         totalSteps={flowSequenceIds.length}
