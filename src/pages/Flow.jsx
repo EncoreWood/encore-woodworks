@@ -6,14 +6,13 @@ import { Plus, Shuffle } from "lucide-react";
 import FlowCanvas from "@/components/flow/FlowCanvas";
 import ZoneEditor from "@/components/flow/ZoneEditor";
 import ArrowEditor from "@/components/flow/ArrowEditor";
-import FlowSequenceBar from "@/components/flow/FlowSequenceBar";
 import AddZoneDialog from "@/components/flow/AddZoneDialog";
 import FlowManager from "@/components/flow/FlowManager";
 import FlowSequenceBuilder from "@/components/flow/FlowSequenceBuilder";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { generateFlowPath, pruneRemovedZones, getFlowSequenceIds } from "@/components/flow/flowPathUtils";
-import { DEFAULT_ZONES, DEFAULT_FLOWS, CANVAS_INCHES, FLOW_COLORS } from "@/components/flow/flowConstants";
+import { DEFAULT_ZONES, CANVAS_INCHES, FLOW_COLORS } from "@/components/flow/flowConstants";
 import ZoneSopViewer from "@/components/flow/ZoneSopViewer";
 
 export default function Flow() {
@@ -32,7 +31,6 @@ export default function Flow() {
   const [sopViewZoneId, setSopViewZoneId] = useState(null);
   const checkedInitRef = useRef(false);
   const pathGenRef = useRef(false);
-  const dedupeRef = useRef(false);
 
   // Queries
   const { data: zones = [], isLoading: zonesLoading } = useQuery({
@@ -67,15 +65,6 @@ export default function Flow() {
   useEffect(() => {
     if (!isLoading && zones.length === 0 && !seedZones.isPending) seedZones.mutate();
   }, [isLoading, zones.length, seedZones.isPending]);
-
-  // Auto-seed flows
-  const seedFlows = useMutation({
-    mutationFn: () => base44.entities.ShopFlow.bulkCreate(DEFAULT_FLOWS),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["shopFlows"] }),
-  });
-  useEffect(() => {
-    if (!isLoading && flows.length === 0 && !seedFlows.isPending) seedFlows.mutate();
-  }, [isLoading, flows.length, seedFlows.isPending]);
 
   // Migrate old inch-based positions (x > 100) to percentage-based
   const migratingRef = useRef(false);
@@ -143,112 +132,93 @@ export default function Flow() {
     })();
   }, [isLoading, flows, arrows, zones]);
 
-  // One-time silent cleanup: merge duplicate-named flows (keep oldest, combine sequences)
+  // SINGLE load-time initialization — dedupe + seed, sequential (no competing effects).
+  // Replaces the old separate dedupe + Cut-bootstrap effects that raced each other
+  // and caused "Entity ShopFlow with ID ... not found" errors. Runs ONCE on mount.
+  const initFlowsRef = useRef(false);
   useEffect(() => {
-    if (dedupeRef.current || isLoading || flows.length === 0) return;
-    dedupeRef.current = true;
+    if (initFlowsRef.current) return;
+    initFlowsRef.current = true;
     (async () => {
-      const groups = {};
-      for (const f of flows) {
-        const key = f.name.trim().toLowerCase();
-        (groups[key] = groups[key] || []).push(f);
-      }
-      const dirtyNames = Object.keys(groups).filter((k) => groups[k].length > 1);
-      if (dirtyNames.length === 0) return;
+      try {
+        // Step 1: fetch all flows once
+        const allFlows = await base44.entities.ShopFlow.list();
 
-      for (const key of dirtyNames) {
-        const group = groups[key].sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
-        const keeper = group[0];
-        const dups = group.slice(1);
-        let merged = [];
-        try { merged = JSON.parse(keeper.sequence || "[]"); } catch { merged = []; }
-        for (const d of dups) {
-          let ds = [];
-          try { ds = JSON.parse(d.sequence || "[]"); } catch { ds = []; }
-          for (const id of ds) if (!merged.includes(id)) merged.push(id);
+        // Step 2: dedupe by name — keep oldest, merge sequences, delete duplicates.
+        // Each await completes before the next step; no concurrent mutations.
+        const groups = {};
+        for (const f of allFlows) {
+          const key = f.name.trim().toLowerCase();
+          (groups[key] = groups[key] || []).push(f);
         }
-        try {
-          await base44.entities.ShopFlow.update(keeper.id, { sequence: JSON.stringify(merged) });
-        } catch (e) { console.warn("Dedupe: keeper update skipped (likely already removed):", e?.message); }
-        for (const d of dups) {
-          try { await base44.entities.ShopFlow.delete(d.id); }
-          catch (e) { console.warn("Dedupe: dup delete skipped (already gone):", e?.message); }
-        }
-
-        // Reset the flow's path to a single clean auto-generated route for the merged sequence
-        const pathArrows = arrows.filter((a) => a.arrow_type === "flow_path" && a.flow_name === keeper.name);
-        for (const a of pathArrows) await base44.entities.ShopFlowArrow.delete(a.id);
-        if (merged.length >= 2) {
-          const pathData = generateFlowPath(zones, merged);
-          if (pathData) {
-            await base44.entities.ShopFlowArrow.create({
-              arrow_type: "flow_path",
-              flow_name: keeper.name,
-              start_x: pathData.points[0][0],
-              start_y: pathData.points[0][1],
-              end_x: pathData.points[pathData.points.length - 1][0],
-              end_y: pathData.points[pathData.points.length - 1][1],
-              label: JSON.stringify(pathData),
-              color: FLOW_COLORS[keeper.color] || "#64748b",
-              stroke_width: 2,
-              arrowhead_style: "filled",
-            });
+        for (const key of Object.keys(groups)) {
+          const group = groups[key].sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+          if (group.length < 2) continue;
+          const keeper = group[0];
+          const dups = group.slice(1);
+          let merged = [];
+          try { merged = JSON.parse(keeper.sequence || "[]"); } catch { merged = []; }
+          for (const d of dups) {
+            let ds = [];
+            try { ds = JSON.parse(d.sequence || "[]"); } catch { ds = []; }
+            for (const id of ds) if (!merged.includes(id)) merged.push(id);
+          }
+          try {
+            await base44.entities.ShopFlow.update(keeper.id, { sequence: JSON.stringify(merged) });
+          } catch (e) { console.warn("Flow init: keeper update skipped:", e?.message); }
+          for (const d of dups) {
+            try { await base44.entities.ShopFlow.delete(d.id); }
+            catch (e) { console.warn("Flow init: dup delete skipped:", e?.message); }
           }
         }
-      }
-      queryClient.invalidateQueries({ queryKey: ["shopFlows"] });
-      queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
-    })();
-  }, [isLoading, flows, arrows, zones]);
 
-  // Bootstrap + self-heal: ensure the default "Cut" flow has a valid sequence
-  // (ordered production zones). Re-seeds if the sequence is empty OR contains
-  // orphaned IDs (e.g. zones were deleted and re-created with new IDs).
-  const cutSeedRef = useRef(false);
-  useEffect(() => {
-    if (cutSeedRef.current || isLoading || flows.length === 0 || zones.length === 0) return;
-    cutSeedRef.current = true;
-    (async () => {
-      const cutFlow = flows.find((f) => f.name === "Cut");
-      if (!cutFlow) return;
-      let seq = [];
-      try { seq = JSON.parse(cutFlow.sequence || "[]"); } catch { seq = []; }
-      const orphanCount = seq.filter((id) => !zones.find((z) => z.id === id)).length;
-      // Re-seed if empty OR every ID is orphaned (zones were wiped/re-created)
-      if (seq.length > 0 && orphanCount < seq.length) return; // at least one valid ref — leave it
-      const ordered = zones
-        .filter((z) => z.flow_order != null)
-        .sort((a, b) => (a.flow_order ?? 999) - (b.flow_order ?? 999))
-        .map((z) => z.id);
-      if (ordered.length < 2) return;
-      try {
-        await base44.entities.ShopFlow.update(cutFlow.id, { sequence: JSON.stringify(ordered) });
-      } catch (e) {
-        // The "Cut" flow may have been removed by the dedupe effect racing this
-        // bootstrap. Skip silently — the sequence will heal on the next load.
-        console.warn("Cut bootstrap: update skipped (flow not found):", e?.message);
-        return;
+        // Step 3: re-fetch the clean list
+        let cleanFlows = await base44.entities.ShopFlow.list();
+
+        // Step 4: if no flows exist at all, seed ONE default "Cut" flow
+        if (cleanFlows.length === 0) {
+          try {
+            await base44.entities.ShopFlow.create({
+              name: "Cut",
+              color: "blue",
+              sequence: JSON.stringify([]),
+              is_active: true,
+              sort_order: 1,
+            });
+          } catch (e) { console.warn("Flow init: default seed create skipped:", e?.message); }
+          cleanFlows = await base44.entities.ShopFlow.list();
+        }
+
+        // Step 5: ensure the "Cut" flow has a valid, non-orphaned sequence
+        const allZones = await base44.entities.ShopFlowArea.list();
+        const cutFlow = cleanFlows.find((f) => f.name === "Cut");
+        if (cutFlow) {
+          let seq = [];
+          try { seq = JSON.parse(cutFlow.sequence || "[]"); } catch { seq = []; }
+          const orphanCount = seq.filter((id) => !allZones.find((z) => z.id === id)).length;
+          if (seq.length === 0 || orphanCount === seq.length) {
+            const ordered = allZones
+              .filter((z) => z.flow_order != null)
+              .sort((a, b) => (a.flow_order ?? 999) - (b.flow_order ?? 999))
+              .map((z) => z.id);
+            if (ordered.length >= 2) {
+              try {
+                await base44.entities.ShopFlow.update(cutFlow.id, { sequence: JSON.stringify(ordered) });
+              } catch (e) { console.warn("Flow init: cut sequence seed skipped:", e?.message); }
+            }
+          }
+        }
+
+        // Step 6: refresh react-query cache with the final clean state
+        queryClient.invalidateQueries({ queryKey: ["shopFlows"] });
+      } catch (err) {
+        console.error("Flow init failed:", err);
+        initFlowsRef.current = false; // allow a retry on next mount
       }
-      // Regenerate the flow path so the walkthrough route + numbered badges render
-      const oldPaths = arrows.filter((a) => a.arrow_type === "flow_path" && a.flow_name === "Cut");
-      for (const a of oldPaths) {
-        try { await base44.entities.ShopFlowArrow.delete(a.id); }
-        catch (e) { console.warn("Cut bootstrap: stale path delete skipped:", e?.message); }
-      }
-      const pathData = generateFlowPath(zones, ordered);
-      if (pathData) {
-        await base44.entities.ShopFlowArrow.create({
-          arrow_type: "flow_path", flow_name: "Cut",
-          start_x: pathData.points[0][0], start_y: pathData.points[0][1],
-          end_x: pathData.points[pathData.points.length - 1][0], end_y: pathData.points[pathData.points.length - 1][1],
-          label: JSON.stringify(pathData),
-          color: FLOW_COLORS[cutFlow.color] || "#64748b", stroke_width: 2, arrowhead_style: "filled",
-        });
-      }
-      queryClient.invalidateQueries({ queryKey: ["shopFlows"] });
-      queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
     })();
-  }, [isLoading, flows, zones, arrows]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // runs ONCE on mount — never on unrelated state changes
+
 
   // Zone mutations
   const updateZone = useMutation({
@@ -457,27 +427,6 @@ export default function Flow() {
     if (current) updateZone.mutate({ id, data: { x: current.x, y: current.y, width: current.width, height: current.height } });
   };
 
-  const handleSequenceReorder = async (updates) => {
-    queryClient.setQueryData(["shopFlowAreas"], (old = []) =>
-      old.map((z) => {
-        const u = updates.find((x) => x.id === z.id);
-        return u ? { ...z, flow_order: u.flow_order } : z;
-      })
-    );
-    await base44.entities.ShopFlowArea.bulkUpdate(updates);
-    queryClient.invalidateQueries({ queryKey: ["shopFlowAreas"] });
-  };
-
-  const handleFlowSequenceReorder = async (newSequenceIds) => {
-    const flowObj = flows.find((f) => f.name === selectedFlow);
-    if (!flowObj) return;
-    queryClient.setQueryData(["shopFlows"], (old = []) =>
-      old.map((f) => (f.id === flowObj.id ? { ...f, sequence: JSON.stringify(newSequenceIds) } : f))
-    );
-    await updateFlowSequence.mutateAsync({ id: flowObj.id, sequence: JSON.stringify(newSequenceIds) });
-    await ensureFlowPath(flowObj, newSequenceIds);
-  };
-
   const handleCreateZone = (data) => {
     createZone.mutate({ ...data, x: 40, y: 40, width: 15, height: 15, flow_tags: [] });
   };
@@ -654,11 +603,6 @@ export default function Flow() {
           activeZoneId={sopViewZoneId}
           onSelectStage={(zoneId) => setSopViewZoneId(zoneId)}
         />
-      </div>
-
-      {/* Flow Sequence Bar */}
-      <div className="p-2 pt-0 flex-shrink-0">
-        <FlowSequenceBar zones={zones} selectedFlowObj={selectedFlowObj} onFlowSequenceReorder={handleFlowSequenceReorder} onReorder={handleSequenceReorder} />
       </div>
 
       {/* Modals */}
