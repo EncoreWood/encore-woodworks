@@ -489,11 +489,14 @@ export default function Flow() {
       setSelectedPathId(null);
       return;
     }
-    // View mode: clicking a zone that belongs to the viewed flow opens its SOP panel
-    if (viewingFlow && highlightedZoneIds.has(id)) {
+    // View mode
+    if (viewingFlow) {
+      // Clicking a zone that belongs to the viewed flow opens its SOP panel
+      if (highlightedZoneIds.has(id)) setSopViewZoneId(id);
+    } else {
+      // No flow selected — clicking any zone opens its SOP / info
       setSopViewZoneId(id);
     }
-    // otherwise: do nothing (non-flow zones are non-interactive)
   };
   const handleSelectArrow = (id) => { setSelectedArrowId(id); if (id) { setSelectedZoneId(null); setSelectedPathId(null); } };
   const handleSelectPath = (id) => { setSelectedPathId(id); if (id) { setSelectedZoneId(null); setSelectedArrowId(null); } };
@@ -780,7 +783,7 @@ export default function Flow() {
 
       {/* SOP Viewer (Flow View training walkthrough) */}
       <ZoneSopViewer
-        open={!!sopViewZoneId && viewingFlow}
+        open={!!sopViewZoneId}
         onClose={() => setSopViewZoneId(null)}
         zone={zones.find((z) => z.id === sopViewZoneId)}
         sop={sops.find((s) => s.zone_id === sopViewZoneId)}

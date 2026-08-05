@@ -84,15 +84,17 @@ export default function ZoneSopViewer({ open, onClose, zone, sop, flowName, step
         )}
       </div>
 
-      {/* Footer nav */}
-      <div className="flex items-center gap-2 px-4 py-3 border-t border-slate-200 bg-slate-50">
-        <Button variant="outline" size="sm" disabled={!hasPrev} onClick={onPrev} className="flex-1">
-          <ChevronLeft className="w-4 h-4 mr-1" /> Previous Stage
-        </Button>
-        <Button variant="outline" size="sm" disabled={!hasNext} onClick={onNext} className="flex-1">
-          Next Stage <ChevronRight className="w-4 h-4 ml-1" />
-        </Button>
-      </div>
+      {/* Footer nav — only shown when viewing within a flow sequence */}
+      {totalSteps > 0 && (
+        <div className="flex items-center gap-2 px-4 py-3 border-t border-slate-200 bg-slate-50">
+          <Button variant="outline" size="sm" disabled={!hasPrev} onClick={onPrev} className="flex-1">
+            <ChevronLeft className="w-4 h-4 mr-1" /> Previous Stage
+          </Button>
+          <Button variant="outline" size="sm" disabled={!hasNext} onClick={onNext} className="flex-1">
+            Next Stage <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
