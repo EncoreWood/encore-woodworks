@@ -22,6 +22,7 @@ export default function Flow() {
   const [selectedZoneId, setSelectedZoneId] = useState(null);
   const [selectedArrowId, setSelectedArrowId] = useState(null);
   const [selectedFlow, setSelectedFlow] = useState(null);
+  const [mode, setMode] = useState("view"); // "view" (safe walkthrough) | "edit" (full editing) — defaults to View, not persisted
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showFlowManager, setShowFlowManager] = useState(false);
   const [editingSequenceFlow, setEditingSequenceFlow] = useState(null);
@@ -194,6 +195,43 @@ export default function Flow() {
       queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
     })();
   }, [isLoading, flows, arrows, zones]);
+
+  // One-time bootstrap: give the default "Cut" flow a sequence (ordered production zones)
+  // so flow-view highlighting + walkthrough are demonstrable out of the box.
+  const cutSeedRef = useRef(false);
+  useEffect(() => {
+    if (cutSeedRef.current || isLoading || flows.length === 0 || zones.length === 0) return;
+    cutSeedRef.current = true;
+    (async () => {
+      const cutFlow = flows.find((f) => f.name === "Cut");
+      if (!cutFlow) return;
+      let seq = [];
+      try { seq = JSON.parse(cutFlow.sequence || "[]"); } catch { seq = []; }
+      if (seq.length > 0) return; // already has a sequence — leave it
+      const ordered = zones
+        .filter((z) => z.flow_order != null)
+        .sort((a, b) => (a.flow_order ?? 999) - (b.flow_order ?? 999))
+        .map((z) => z.id);
+      if (ordered.length < 2) return;
+      await base44.entities.ShopFlow.update(cutFlow.id, { sequence: JSON.stringify(ordered) });
+      // Also generate the flow path so the walkthrough route + numbered badges render
+      const hasPath = arrows.some((a) => a.arrow_type === "flow_path" && a.flow_name === "Cut");
+      if (!hasPath) {
+        const pathData = generateFlowPath(zones, ordered);
+        if (pathData) {
+          await base44.entities.ShopFlowArrow.create({
+            arrow_type: "flow_path", flow_name: "Cut",
+            start_x: pathData.points[0][0], start_y: pathData.points[0][1],
+            end_x: pathData.points[pathData.points.length - 1][0], end_y: pathData.points[pathData.points.length - 1][1],
+            label: JSON.stringify(pathData),
+            color: FLOW_COLORS[cutFlow.color] || "#64748b", stroke_width: 2, arrowhead_style: "filled",
+          });
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ["shopFlows"] });
+      queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
+    })();
+  }, [isLoading, flows, zones, arrows]);
 
   // Zone mutations
   const updateZone = useMutation({
@@ -397,13 +435,18 @@ export default function Flow() {
   };
 
   const handleSelectZone = (id) => {
-    // In Flow View mode, clicking a highlighted zone opens the SOP viewer instead of the editor
-    if (selectedFlow && id && highlightedZoneIds.has(id)) {
-      setSopViewZoneId(id);
+    if (!id) { setSelectedZoneId(null); return; }
+    if (mode === "edit") {
+      setSelectedZoneId(id);
+      setSelectedArrowId(null);
+      setSelectedPathId(null);
       return;
     }
-    setSelectedZoneId(id);
-    if (id) { setSelectedArrowId(null); setSelectedPathId(null); }
+    // View mode: clicking a zone that belongs to the viewed flow opens its SOP panel
+    if (viewingFlow && highlightedZoneIds.has(id)) {
+      setSopViewZoneId(id);
+    }
+    // otherwise: do nothing (non-flow zones are non-interactive)
   };
   const handleSelectArrow = (id) => { setSelectedArrowId(id); if (id) { setSelectedZoneId(null); setSelectedPathId(null); } };
   const handleSelectPath = (id) => { setSelectedPathId(id); if (id) { setSelectedZoneId(null); setSelectedArrowId(null); } };
@@ -411,15 +454,16 @@ export default function Flow() {
     setSelectedFlow(flowName);
     setSelectedZoneId(null);
     setSelectedPathId(null);
-    if (flowName) {
-      setCheckedFlows((prev) => new Set([...prev, flowName]));
-      // Auto-open the first stage to start the walkthrough
-      const flowObj = flows.find((f) => f.name === flowName);
-      const seq = getFlowSequenceIds(flowObj, zones);
-      setSopViewZoneId(seq.length > 0 ? seq[0] : null);
-    } else {
-      setSopViewZoneId(null);
-    }
+    setSopViewZoneId(null);
+    if (!flowName) return;
+    setCheckedFlows((prev) => new Set([...prev, flowName]));
+    const flowObj = flows.find((f) => f.name === flowName);
+    // Verify the actual data structure holding the flow's zone IDs
+    console.log('Active flow:', flowObj);
+    const seq = getFlowSequenceIds(flowObj, zones);
+    console.log('Zone IDs in this flow:', flowObj?.sequence || flowObj?.zone_ids, '→ resolved:', seq);
+    // In View mode, auto-open the first stage to start the walkthrough
+    if (mode === "view" && seq.length > 0) setSopViewZoneId(seq[0]);
   };
 
   // Keyboard shortcut listener — delete selected zone/arrow/path
@@ -439,7 +483,8 @@ export default function Flow() {
   const selectedZone = zones.find((z) => z.id === selectedZoneId);
   const selectedArrow = arrows.find((a) => a.id === selectedArrowId);
   const selectedFlowObj = flows.find((f) => f.name === selectedFlow) || null;
-  const flowColorHex = selectedFlowObj ? (FLOW_COLORS[selectedFlowObj.color] || "#64748b") : null;
+  const viewingFlow = mode === "view" && !!selectedFlow;
+  const flowColorHex = viewingFlow && selectedFlowObj ? (FLOW_COLORS[selectedFlowObj.color] || "#64748b") : null;
   const flowSequenceIds = getFlowSequenceIds(selectedFlowObj, zones);
   const highlightedZoneIds = new Set(flowSequenceIds);
 
@@ -450,7 +495,24 @@ export default function Flow() {
         <div className="flex items-center gap-3 min-w-0">
           <h1 className="text-xl font-bold text-slate-900 truncate">Shop Flow</h1>
         </div>
-        <div className="flex gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* View / Edit mode toggle — defaults to View on every page load */}
+          <div className="flex items-center rounded-lg border border-slate-200 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setMode("view")}
+              className={`px-3 py-1.5 text-sm font-medium transition ${mode === "view" ? "bg-amber-500 text-white" : "bg-white text-slate-600 hover:bg-slate-100"}`}
+            >
+              👁 View
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode("edit"); setSopViewZoneId(null); }}
+              className={`px-3 py-1.5 text-sm font-medium transition border-l border-slate-200 ${mode === "edit" ? "bg-amber-500 text-white" : "bg-white text-slate-600 hover:bg-slate-100"}`}
+            >
+              ✏️ Edit
+            </button>
+          </div>
           <Button variant="outline" size="sm" onClick={() => setShowFlowManager(true)}>
             <Shuffle className="w-4 h-4 mr-1.5" />Flows
           </Button>
@@ -461,7 +523,7 @@ export default function Flow() {
       </div>
 
       {/* Flow View banner */}
-      {selectedFlow && (
+      {viewingFlow && (
         <div className="flex items-center justify-between px-4 py-2 bg-amber-100 border-b border-amber-300 flex-shrink-0">
           <span className="font-semibold text-amber-900 text-sm truncate">
             👁️ Viewing: {selectedFlow}
@@ -477,8 +539,8 @@ export default function Flow() {
         </div>
       )}
 
-      {/* Zone / Arrow Editor (top panel) */}
-      {selectedZone && (
+      {/* Zone / Arrow Editor (top panel) — Edit mode only */}
+      {mode === "edit" && selectedZone && (
         <ZoneEditor
           zone={selectedZone}
           flows={flows}
@@ -488,7 +550,7 @@ export default function Flow() {
           onClose={() => setSelectedZoneId(null)}
         />
       )}
-      {selectedArrow && (
+      {mode === "edit" && selectedArrow && (
         <ArrowEditor
           arrow={selectedArrow}
           flows={flows}
@@ -502,6 +564,7 @@ export default function Flow() {
       <div className="flex-1 p-2 min-h-0">
         <FlowCanvas
           zones={zones}
+          mode={mode}
           selectedZoneId={selectedZoneId}
           onSelectZone={handleSelectZone}
           onDragMove={handleDragMove}
@@ -565,7 +628,7 @@ export default function Flow() {
 
       {/* SOP Viewer (Flow View training walkthrough) */}
       <ZoneSopViewer
-        open={!!sopViewZoneId && !!selectedFlow}
+        open={!!sopViewZoneId && viewingFlow}
         onClose={() => setSopViewZoneId(null)}
         zone={zones.find((z) => z.id === sopViewZoneId)}
         sop={sops.find((s) => s.zone_id === sopViewZoneId)}
@@ -576,7 +639,7 @@ export default function Flow() {
         hasNext={sopViewZoneId ? flowSequenceIds.indexOf(sopViewZoneId) < flowSequenceIds.length - 1 : false}
         onPrev={() => { const i = flowSequenceIds.indexOf(sopViewZoneId); if (i > 0) setSopViewZoneId(flowSequenceIds[i - 1]); }}
         onNext={() => { const i = flowSequenceIds.indexOf(sopViewZoneId); if (i < flowSequenceIds.length - 1) setSopViewZoneId(flowSequenceIds[i + 1]); }}
-        onExitToEdit={() => { const id = sopViewZoneId; setSelectedFlow(null); setSopViewZoneId(null); if (id) setSelectedZoneId(id); }}
+        onExitToEdit={() => { const id = sopViewZoneId; setSelectedFlow(null); setSopViewZoneId(null); setMode("edit"); if (id) setSelectedZoneId(id); }}
       />
 
       {/* Regeneration prompt */}

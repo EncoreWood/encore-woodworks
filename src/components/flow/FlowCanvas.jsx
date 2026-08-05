@@ -17,6 +17,7 @@ export default function FlowCanvas({
   selectedFlow, checkedFlows, highlightedZoneIds, selectedPathId, onSelectPath, onUpdatePath,
   sopZoneIds, flowColorHex,
   activeZoneId, onSelectStage,
+  mode = "view",
   isLoading,
 }) {
   const containerRef = useRef(null);
@@ -32,6 +33,13 @@ export default function FlowCanvas({
   const pointers = useRef(new Map());
   const pinchState = useRef(null);
   const autoFitted = useRef(false);
+
+  const viewingFlow = mode === "view" && !!selectedFlow;
+
+  // In View mode, never allow drawing — force the select tool
+  useEffect(() => {
+    if (mode !== "edit") { setDrawMode("select"); setDrawPoints([]); setHoverPt(null); }
+  }, [mode]);
 
   // Measure container
   useEffect(() => {
@@ -86,12 +94,12 @@ export default function FlowCanvas({
 
   const getZoneOpacity = (zone) => {
     const zoneFlows = zone.flow_tags || [];
-    if (!checkedFlows || (checkedFlows.size === 0 && !selectedFlow)) return 1;
-    const isInCheckedFlow = zoneFlows.some((f) => checkedFlows.has(f));
-    if (selectedFlow) {
-      if (highlightedZoneIds?.has(zone.id) || zoneFlows.includes(selectedFlow)) return 1;
-      return 0.22; // everything not in the flow dims to ~22% (non-interactive)
+    if (viewingFlow) {
+      if (highlightedZoneIds?.has(zone.id)) return 1;
+      return 0.2; // non-flow zones dim to 20% (non-interactive)
     }
+    if (!checkedFlows || checkedFlows.size === 0) return 1;
+    const isInCheckedFlow = zoneFlows.some((f) => checkedFlows.has(f));
     return isInCheckedFlow ? 1 : 0.25;
   };
 
@@ -294,7 +302,7 @@ export default function FlowCanvas({
               {zones.map((zone) => {
                 const op = getZoneOpacity(zone);
                 if (op === 0) return null;
-                const partOfFlow = !!selectedFlow && (highlightedZoneIds?.has(zone.id) || (zone.flow_tags || []).includes(selectedFlow));
+                const isInActiveFlow = viewingFlow && highlightedZoneIds?.has(zone.id);
                 return (
                   <FlowZone
                     key={zone.id}
@@ -302,31 +310,33 @@ export default function FlowCanvas({
                     shopW={shopW}
                     shopH={shopH}
                     isSelected={selectedZoneId === zone.id}
-                    isHighlighted={highlightedZoneIds?.has(zone.id)}
+                    isHighlighted={isInActiveFlow}
                     opacity={op}
                     onSelect={onSelectZone}
                     onDragMove={onDragMove}
                     onDragEnd={onDragEnd}
-                    flowColor={flowColorHex}
-                    partOfFlow={partOfFlow}
-                    dragEnabled={!selectedFlow}
-                    nonInteractive={!!selectedFlow && !partOfFlow}
+                    flowColor={isInActiveFlow ? flowColorHex : null}
+                    partOfFlow={isInActiveFlow}
+                    dragEnabled={mode === "edit"}
+                    nonInteractive={viewingFlow && !isInActiveFlow}
                     hasSop={sopZoneIds?.has(zone.id) || false}
-                    showNoSopBadge={!!selectedFlow && partOfFlow && !sopZoneIds?.has(zone.id)}
+                    showNoSopBadge={isInActiveFlow && !sopZoneIds?.has(zone.id)}
                   />
                 );
               })}
             </div>
 
-            {/* Numbered stage badges — clickable walkthrough overlay (flow view) */}
-            <FlowBadgeLayer
-              flowPaths={visibleFlowPaths}
-              canvasW={shopW}
-              canvasH={shopH}
-              selectedFlow={selectedFlow}
-              activeZoneId={activeZoneId}
-              onSelectStage={onSelectStage}
-            />
+            {/* Numbered stage badges — clickable walkthrough overlay (flow view only) */}
+            {viewingFlow && (
+              <FlowBadgeLayer
+                flowPaths={visibleFlowPaths}
+                canvasW={shopW}
+                canvasH={shopH}
+                selectedFlow={selectedFlow}
+                activeZoneId={activeZoneId}
+                onSelectStage={onSelectStage}
+              />
+            )}
 
             {/* Dimension label */}
             <div className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-slate-400 pointer-events-none whitespace-nowrap">
@@ -335,7 +345,9 @@ export default function FlowCanvas({
           </div>
 
           {/* Floating toolbars */}
-          <DrawingToolbar mode={drawMode} onModeChange={(m) => { setDrawMode(m); setDrawPoints([]); setHoverPt(null); }} />
+          {mode === "edit" && (
+            <DrawingToolbar mode={drawMode} onModeChange={(m) => { setDrawMode(m); setDrawPoints([]); setHoverPt(null); }} />
+          )}
           <ZoomToolbar zoom={zoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={fitToScreen} />
         </div>
       )}
