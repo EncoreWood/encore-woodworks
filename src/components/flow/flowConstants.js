@@ -46,6 +46,19 @@ export const DEFAULT_FLOWS = [
   { name: "Cut", color: "blue" },
 ];
 
+// Default zone type metadata: icon + default color used when creating new zones.
+// The `name` is the value stored in ShopFlowArea.zone_type.
+export const DEFAULT_ZONE_TYPES = [
+  { name: "machine", icon: "🔧", default_color: "blue" },
+  { name: "workstation", icon: "🔨", default_color: "purple" },
+  { name: "finish", icon: "🎨", default_color: "teal" },
+  { name: "assembly", icon: "🔨", default_color: "orange" },
+  { name: "storage", icon: "📦", default_color: "amber" },
+  { name: "utility", icon: "🚿", default_color: "gray" },
+  { name: "office", icon: "🖥️", default_color: "gray" },
+  { name: "custom", icon: "⭐", default_color: "purple" },
+];
+
 // All positions/sizes are PERCENTAGES (0-100) of the shop boundary
 export const DEFAULT_ZONES = [
   { name: "Lumber Storage", zone_type: "storage",     color: "amber",  icon: "📦", flow_order: 1,    flow_direction: "down",  x: 2,  y: 2,  width: 12, height: 18, flow_tags: ["Standard Cabinet Flow"] },

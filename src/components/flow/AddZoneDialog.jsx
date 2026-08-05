@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { ZONE_COLORS, ZONE_TYPES, ZONE_ICONS } from "./flowConstants";
+import { ZONE_COLORS, ZONE_ICONS } from "./flowConstants";
 
-export default function AddZoneDialog({ open, onOpenChange, onCreate }) {
+export default function AddZoneDialog({ open, onOpenChange, onCreate, zoneTypes }) {
+  const types = zoneTypes && zoneTypes.length > 0 ? zoneTypes : [{ name: "workstation", icon: "📦", default_color: "blue" }];
   const [name, setName] = useState("");
   const [zoneType, setZoneType] = useState("workstation");
   const [color, setColor] = useState("blue");
@@ -15,6 +16,13 @@ export default function AddZoneDialog({ open, onOpenChange, onCreate }) {
   const [orderStr, setOrderStr] = useState("");
 
   const reset = () => { setName(""); setZoneType("workstation"); setColor("blue"); setIcon("📦"); setOrderStr(""); };
+
+  const handleTypeChange = (val) => {
+    setZoneType(val);
+    // Auto-fill suggested icon + color from the zone-type config (user can still override)
+    const t = types.find((x) => x.name === val);
+    if (t) { setIcon(t.icon); setColor(t.default_color); }
+  };
 
   const handleSubmit = () => {
     if (!name.trim()) return;
@@ -35,9 +43,9 @@ export default function AddZoneDialog({ open, onOpenChange, onCreate }) {
           </div>
           <div className="space-y-1">
             <Label>Zone Type</Label>
-            <Select value={zoneType} onValueChange={setZoneType}>
+            <Select value={zoneType} onValueChange={handleTypeChange}>
               <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{ZONE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              <SelectContent>{types.map((t) => <SelectItem key={t.name} value={t.name}>{t.name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div className="space-y-1">

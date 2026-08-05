@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { X, Trash2, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ZONE_COLORS, ZONE_TYPES, FLOW_DIRECTIONS, FLOW_COLORS, CANVAS_WIDTH_INCHES, CANVAS_INCHES } from "./flowConstants";
+import { ZONE_COLORS, FLOW_DIRECTIONS, FLOW_COLORS, CANVAS_WIDTH_INCHES, CANVAS_INCHES } from "./flowConstants";
 import ZoneSopEditor from "./ZoneSopEditor";
 
 const SHOP_W_FT = CANVAS_WIDTH_INCHES / 12; // 99 ft
@@ -18,7 +18,8 @@ const pctToFtH = (pct) => ((pct || 0) / 100) * SHOP_H_FT;
 const ftToPctW = (ft) => Math.max(0, Math.min(100, (ft / SHOP_W_FT) * 100));
 const ftToPctH = (ft) => Math.max(0, Math.min(100, (ft / SHOP_H_FT) * 100));
 
-export default function ZoneEditor({ zone, flows, sop, onUpdate, onDelete, onClose }) {
+export default function ZoneEditor({ zone, flows, zoneTypes, sop, onUpdate, onDelete, onClose }) {
+  const types = zoneTypes && zoneTypes.length > 0 ? zoneTypes : [{ name: zone.zone_type, icon: zone.icon, default_color: zone.color }];
   const [name, setName] = useState(zone.name);
   const [notes, setNotes] = useState(zone.notes || "");
   const [orderStr, setOrderStr] = useState(zone.flow_order != null ? String(zone.flow_order) : "");
@@ -45,7 +46,7 @@ export default function ZoneEditor({ zone, flows, sop, onUpdate, onDelete, onClo
           <span className="text-xs text-slate-500 whitespace-nowrap">Type:</span>
           <Select value={zone.zone_type} onValueChange={(v) => onUpdate({ zone_type: v })}>
             <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>{ZONE_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+            <SelectContent>{types.map((t) => <SelectItem key={t.name} value={t.name}>{t.name}</SelectItem>)}</SelectContent>
           </Select>
         </div>
 

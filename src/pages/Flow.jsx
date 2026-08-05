@@ -12,8 +12,9 @@ import FlowSequenceBuilder from "@/components/flow/FlowSequenceBuilder";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { generateFlowPath, pruneRemovedZones, getFlowSequenceIds } from "@/components/flow/flowPathUtils";
-import { DEFAULT_ZONES, CANVAS_INCHES, FLOW_COLORS } from "@/components/flow/flowConstants";
+import { DEFAULT_ZONES, CANVAS_INCHES, FLOW_COLORS, DEFAULT_ZONE_TYPES } from "@/components/flow/flowConstants";
 import ZoneSopViewer from "@/components/flow/ZoneSopViewer";
+import ZoneTypesManager from "@/components/flow/ZoneTypesManager";
 
 export default function Flow() {
   const queryClient = useQueryClient();
@@ -25,6 +26,7 @@ export default function Flow() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showFlowManager, setShowFlowManager] = useState(false);
   const [editingSequenceFlow, setEditingSequenceFlow] = useState(null);
+  const [showZoneTypesManager, setShowZoneTypesManager] = useState(false);
   const [checkedFlows, setCheckedFlows] = useState(new Set());
   const [selectedPathId, setSelectedPathId] = useState(null);
   const [pendingRegenFlow, setPendingRegenFlow] = useState(null);
@@ -54,6 +56,36 @@ export default function Flow() {
     staleTime: 15000,
   });
   const sopZoneIds = new Set(sops.map((s) => s.zone_id));
+
+  // Zone type config — metadata (icon, default color) for zone types, persisted in
+  // a ZoneTypeConfig record keyed by label "zone_types". Seeded with defaults on first load.
+  const { data: zoneTypeConfigRaw, isLoading: zoneTypesLoading } = useQuery({
+    queryKey: ["zoneTypeConfig"],
+    queryFn: () => base44.entities.ZoneTypeConfig.filter({ label: "zone_types" }),
+    staleTime: 30000,
+  });
+  const zoneTypeRecords = zoneTypeConfigRaw || [];
+  const [zoneTypes, setZoneTypes] = useState(DEFAULT_ZONE_TYPES);
+  useEffect(() => {
+    if (zoneTypesLoading) return;
+    if (zoneTypeRecords.length > 0) {
+      try {
+        const parsed = JSON.parse(zoneTypeRecords[0].config || "[]");
+        if (Array.isArray(parsed) && parsed.length > 0) setZoneTypes(parsed);
+      } catch { /* keep defaults */ }
+      return;
+    }
+    // No record exists yet — seed defaults
+    (async () => {
+      try {
+        await base44.entities.ZoneTypeConfig.create({
+          label: "zone_types",
+          config: JSON.stringify(DEFAULT_ZONE_TYPES),
+        });
+        queryClient.invalidateQueries({ queryKey: ["zoneTypeConfig"] });
+      } catch (e) { console.warn("ZoneType seed failed:", e?.message); }
+    })();
+  }, [zoneTypesLoading, zoneTypeRecords.length]);
 
   const isLoading = zonesLoading;
 
@@ -523,6 +555,48 @@ export default function Flow() {
   const flowSequenceIds = getFlowSequenceIds(selectedFlowObj, zones);
   const highlightedZoneIds = new Set(flowSequenceIds);
 
+  // Quick-access flow buttons: click → enter View mode + highlight that flow; click active → exit.
+  const toggleFlowSelection = (flow) => {
+    if (selectedFlowObj?.id === flow.id) {
+      setSelectedFlow(null);
+      setSopViewZoneId(null);
+    } else {
+      setMode("view");
+      handleSelectFlow(flow.name);
+    }
+  };
+
+  // Merged zone-type list for dropdowns: configured types + any zone_type values on
+  // existing zones that aren't in the config (zones created before this feature).
+  const configuredNames = zoneTypes.map((t) => t.name);
+  const extraZoneTypes = [...new Set(zones.map((z) => z.zone_type).filter((t) => t && !configuredNames.includes(t)))];
+  const allZoneTypes = [...zoneTypes, ...extraZoneTypes.map((n) => ({ name: n, icon: "⭐", default_color: "gray" }))];
+
+  // Persist zone-type config changes; reassign zones if a type was renamed.
+  const handleSaveZoneTypeConfig = async (newConfig, oldName, newName) => {
+    if (oldName && newName && oldName !== newName) {
+      const affected = zones.filter((z) => z.zone_type === oldName);
+      if (affected.length > 0) {
+        try {
+          await base44.entities.ShopFlowArea.bulkUpdate(affected.map((z) => ({ id: z.id, zone_type: newName })));
+          queryClient.invalidateQueries({ queryKey: ["shopFlowAreas"] });
+        } catch (e) { toast({ title: "Failed to reassign zones", description: e?.message, variant: "destructive" }); }
+      }
+    }
+    setZoneTypes(newConfig);
+    try {
+      if (zoneTypeRecords[0]) {
+        await base44.entities.ZoneTypeConfig.update(zoneTypeRecords[0].id, { config: JSON.stringify(newConfig) });
+      } else {
+        await base44.entities.ZoneTypeConfig.create({ label: "zone_types", config: JSON.stringify(newConfig) });
+      }
+      queryClient.invalidateQueries({ queryKey: ["zoneTypeConfig"] });
+      toast({ title: "✅ Zone types saved" });
+    } catch (e) {
+      toast({ title: "Failed to save zone types", description: e?.message, variant: "destructive" });
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] sm:h-screen bg-slate-50 overflow-hidden">
       {/* TEMP DEBUG BANNER — visible proof of seed/save success/failure */}
@@ -553,8 +627,40 @@ export default function Flow() {
               ✏️ Edit
             </button>
           </div>
+          {/* Separator */}
+          <div className="w-px h-6 bg-slate-300 mx-1" />
+          {/* Quick-access flow buttons — horizontally scrollable, no wrap */}
+          <div className="flex items-center gap-1 overflow-x-auto flex-nowrap max-w-[35vw] sm:max-w-[45vw] scrollbar-thin">
+            {flows.map((flow) => {
+              const hex = FLOW_COLORS[flow.color] || "#3b82f6";
+              const active = selectedFlowObj?.id === flow.id;
+              const label = flow.name.length > 20 ? flow.name.substring(0, 20) + "…" : flow.name;
+              return (
+                <button
+                  key={flow.id}
+                  type="button"
+                  title={flow.name}
+                  onClick={() => toggleFlowSelection(flow)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition flex-shrink-0"
+                  style={{
+                    background: active ? hex : "transparent",
+                    color: active ? "#fff" : "#334155",
+                    borderColor: active ? hex : "#cbd5e1",
+                  }}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: hex }} />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          {/* Separator */}
+          <div className="w-px h-6 bg-slate-300 mx-1" />
           <Button variant="outline" size="sm" onClick={() => setShowFlowManager(true)}>
             <Shuffle className="w-4 h-4 mr-1.5" />Flows
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowZoneTypesManager(true)}>
+            🏷️ Zone Types
           </Button>
           <Button size="sm" onClick={() => setShowAddDialog(true)} className="bg-amber-600 hover:bg-amber-700">
             <Plus className="w-4 h-4 mr-1.5" />Add Zone
@@ -584,6 +690,7 @@ export default function Flow() {
         <ZoneEditor
           zone={selectedZone}
           flows={flows}
+          zoneTypes={allZoneTypes}
           sop={sops.find((s) => s.zone_id === selectedZone.id)}
           onUpdate={(data) => updateZone.mutate({ id: selectedZone.id, data })}
           onDelete={() => deleteZone.mutate(selectedZone.id)}
@@ -629,7 +736,7 @@ export default function Flow() {
       </div>
 
       {/* Modals */}
-      <AddZoneDialog open={showAddDialog} onOpenChange={setShowAddDialog} onCreate={handleCreateZone} />
+      <AddZoneDialog open={showAddDialog} onOpenChange={setShowAddDialog} onCreate={handleCreateZone} zoneTypes={allZoneTypes} />
       <FlowManager
         open={showFlowManager}
         onOpenChange={setShowFlowManager}
@@ -659,6 +766,16 @@ export default function Flow() {
             await ensureFlowPath(flow, seqIds);
           }
         }}
+      />
+
+      {/* Zone Types Manager */}
+      <ZoneTypesManager
+        open={showZoneTypesManager}
+        onOpenChange={setShowZoneTypesManager}
+        zoneTypes={zoneTypes}
+        zones={zones}
+        onSaveConfig={handleSaveZoneTypeConfig}
+        toast={toast}
       />
 
       {/* SOP Viewer (Flow View training walkthrough) */}

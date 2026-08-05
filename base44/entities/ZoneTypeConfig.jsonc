@@ -1,0 +1,19 @@
+{
+  "name": "ZoneTypeConfig",
+  "type": "object",
+  "properties": {
+    "label": {
+      "type": "string",
+      "description": "Config key (e.g. 'zone_types')"
+    },
+    "config": {
+      "type": "string",
+      "description": "JSON array of {name, icon, default_color} for zone types",
+      "default": "[]"
+    }
+  },
+  "required": [
+    "label",
+    "config"
+  ]
+}
