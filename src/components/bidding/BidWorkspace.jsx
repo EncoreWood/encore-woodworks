@@ -316,7 +316,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
 
     // Build the AI prompt — branch on whether text extraction found readable room labels
     const needsVisionFallback = !!extractedSummary?.needsVisionFallback;
-    const highlightInstr = `\n\nFor EACH line item, also estimate an approximate bounding box on the floor plan image showing WHERE that cabinet run is located, and return it as highlight: { page_number, x, y, width, height }. ALL FOUR of x/y/width/height MUST be FRACTIONS of the image dimensions in the 0–1 range (NOT pixels):\n- x = left edge as a fraction of image width (0 = left edge, 1 = right edge)\n- y = TOP edge as a fraction of image height (0 = TOP of the image, 1 = bottom — use top-down image coordinates, NOT PDF bottom-up coordinates)\n- width = box width as a fraction of image width\n- height = box height as a fraction of image height\n- page_number = 1-based index of the image (the floor plan images provided to you, in the order given)\nDraw the box along the wall run where those cabinets sit (e.g. a base cabinet run along the kitchen perimeter wall, an upper run above it, a tall pantry along a wall). If you cannot confidently locate an item on the plan, omit its highlight — better to skip than place a wrong box.`;
+    const highlightInstr = `\n\nFor EACH line item, also estimate an approximate bounding box on the floor plan image showing WHERE that cabinet run is located, and return it as highlight: { page_number, x, y, width, height }. ALL FOUR of x/y/width/height MUST be FRACTIONS of the image dimensions in the 0–1 range (NOT pixels):\n- x = left edge as a fraction of image width (0 = left edge, 1 = right edge)\n- y = TOP edge as a fraction of image height (0 = TOP of the image, 1 = bottom — use top-down image coordinates, NOT PDF bottom-up coordinates)\n- width = box width as a fraction of image width\n- height = box height as a fraction of image height\n- page_number = 1-based index of the image (the floor plan images provided to you, in the order given)\nDraw the box along the wall run where those cabinets sit (e.g. a base cabinet run along the kitchen perimeter wall, an upper run above it, a tall pantry along a wall). If you cannot confidently locate an item on the plan, omit its highlight — better to skip than place a wrong box.\n\nALSO, for EACH room return room_box: { page_number, x, y, width, height } — the bounding box of that room's enclosed AREA on the floor plan (the space inside its walls where the room's text label sits). Use the SAME fraction conventions (x/y = top-left fraction, width/height = fraction of image). This anchors every cabinet highlight to the correct room. Locate the ACTUAL boundary/walls of that specific room — NOT a vague nearby area. If you can find the room's label but not exact walls, draw the box tightly around the label and its immediate enclosed space. Every cabinet highlight for a room MUST land INSIDE that room's room_box; if you are unsure of the exact wall position, center the highlight on the room's label rather than letting it drift toward a neighboring room.`;
     let aiPrompt;
     if (extractedSummary && needsVisionFallback) {
       const floorPages = (extractedSummary.selectedPages?.length ? extractedSummary.selectedPages : extractedPageSelection).join(', ');
@@ -371,6 +371,16 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
               type: "object",
               properties: {
                 room_name: { type: "string" },
+                room_box: {
+                  type: "object",
+                  properties: {
+                    page_number: { type: "number" },
+                    x: { type: "number" },
+                    y: { type: "number" },
+                    width: { type: "number" },
+                    height: { type: "number" }
+                  }
+                },
                 items: {
                   type: "array",
                   items: {
@@ -438,37 +448,70 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
     setRooms(newRooms);
 
     // Convert AI-estimated per-item bounding boxes into highlight annotations in the
-    // Annotate Plan tool's natural (scale=1) pixel space. Only highlights tagged
-    // source:"ai" are regenerated on re-analysis; manual highlights are preserved.
+    // Annotate Plan tool's natural (scale=1) pixel space. Each item highlight is cross-
+    // checked against the AI's room_box for its room: if the item box center falls OUTSIDE
+    // the room box, it's snapped back into the room (tiled within the room box) so highlights
+    // never drift into a neighboring room. Only source:"ai" highlights regenerate on
+    // re-analysis; manual highlights are preserved.
+    const fracBoxToNatural = (b, pm) => {
+      if (!b || !pm || !pm.naturalWidth || !pm.naturalHeight) return null;
+      const iw = pm.imageWidth || pm.naturalWidth;
+      const ih = pm.imageHeight || pm.naturalHeight;
+      const fx = (b.x || 0) > 1.5 ? (b.x || 0) / iw : (b.x || 0);
+      const fy = (b.y || 0) > 1.5 ? (b.y || 0) / ih : (b.y || 0);
+      const fw = (b.width || 0) > 1.5 ? (b.width || 0) / iw : (b.width || 0);
+      const fh = (b.height || 0) > 1.5 ? (b.height || 0) / ih : (b.height || 0);
+      const w = Math.max(0, fw * pm.naturalWidth);
+      const h = Math.max(0, fh * pm.naturalHeight);
+      if (w < 3 || h < 3) return null;
+      return { page: pm.pdfPage, x: Math.max(0, fx * pm.naturalWidth), y: Math.max(0, fy * pm.naturalHeight), w, h };
+    };
+
+    const roomBoxes = (result.rooms || []).map(room => room.room_box
+      ? fracBoxToNatural(room.room_box, analysisPagesList[Math.max(0, Math.floor((room.room_box.page_number || 1) - 1))])
+      : null);
+
     const aiHighlights = [];
-    (result.rooms || []).forEach((room) => {
-      (room.items || []).forEach((item) => {
-        const h = item.highlight;
-        if (!h || h.page_number == null) return;
-        const idx = Math.max(0, Math.floor(h.page_number) - 1);
-        const pageMeta = analysisPagesList[idx];
-        if (!pageMeta || !pageMeta.naturalWidth || !pageMeta.naturalHeight) return;
-        // AI returns fractions (0–1) of the image. Defensively also accept raw image
-        // pixels (any value > 1.5) in case the model ignores the fraction instruction.
-        const iw = pageMeta.imageWidth || pageMeta.naturalWidth;
-        const ih = pageMeta.imageHeight || pageMeta.naturalHeight;
-        const fx = (h.x || 0) > 1.5 ? (h.x || 0) / iw : (h.x || 0);
-        const fy = (h.y || 0) > 1.5 ? (h.y || 0) / ih : (h.y || 0);
-        const fw = (h.width || 0) > 1.5 ? (h.width || 0) / iw : (h.width || 0);
-        const fh = (h.height || 0) > 1.5 ? (h.height || 0) / ih : (h.height || 0);
-        // Fractions → natural (scale=1) px, the space annotations are stored/rendered in.
-        const w = Math.max(0, fw * pageMeta.naturalWidth);
-        const ht = Math.max(0, fh * pageMeta.naturalHeight);
-        if (w < 3 || ht < 3) return;
+    (result.rooms || []).forEach((room, ri) => {
+      const rb = roomBoxes[ri];
+      const roomItems = room.items || [];
+      const nItems = roomItems.length;
+      roomItems.forEach((item, ii) => {
         const cat = ["base", "upper", "tall", "misc"].includes(item.cabinet_category) ? item.cabinet_category : "misc";
+        let box = item.highlight
+          ? fracBoxToNatural(item.highlight, analysisPagesList[Math.max(0, Math.floor((item.highlight.page_number || 1) - 1))])
+          : null;
+        // Cross-check: if the highlight center is outside its room box (same page), discard
+        // it so the room-anchored fallback below places it back on the correct room.
+        if (box && rb && rb.w > 3 && rb.h > 3) {
+          const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
+          const inside = cx >= rb.x && cx <= rb.x + rb.w && cy >= rb.y && cy <= rb.y + rb.h;
+          if (!inside) box = null;
+        }
+        // Room-anchored fallback: tile a modest box inside the room box so the highlight
+        // sits ON the right room (centered on/near the room's label area) instead of drifting.
+        if (!box && rb && rb.w > 3 && rb.h > 3) {
+          const cols = Math.min(3, Math.max(1, nItems));
+          const rows = Math.ceil(nItems / cols) || 1;
+          const cellW = rb.w / cols, cellH = rb.h / rows;
+          const col = ii % cols, row = Math.floor(ii / cols);
+          box = {
+            page: rb.page,
+            x: rb.x + col * cellW + cellW * 0.2,
+            y: rb.y + row * cellH + cellH * 0.25,
+            w: cellW * 0.6,
+            h: cellH * 0.5,
+          };
+        }
+        if (!box || box.w < 3 || box.h < 3) return;
         aiHighlights.push({
           type: "highlight",
-          x: Math.max(0, fx * pageMeta.naturalWidth),
-          y: Math.max(0, fy * pageMeta.naturalHeight),
-          w,
-          h: ht,
+          x: box.x,
+          y: box.y,
+          w: box.w,
+          h: box.h,
           color: CATEGORY_HIGHLIGHT_COLOR[cat] || CATEGORY_HIGHLIGHT_COLOR.misc,
-          page: pageMeta.pdfPage,
+          page: box.page,
           source: "ai",
           room_name: room.room_name || "",
           item_name: item.name || "",

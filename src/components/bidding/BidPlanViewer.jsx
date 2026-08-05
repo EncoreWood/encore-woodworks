@@ -158,6 +158,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const canvasRef        = useRef(null);
   const pageContainerRef = useRef(null);
   const scrollRef        = useRef(null);
+  const outerDivRef      = useRef(null);
   const scaleDetectedRef = useRef(false);
 
   // ── Reset on open ─────────────────────────────────────────────────────────
@@ -239,6 +240,28 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     const w = scrollRef.current.clientWidth - 64;
     setScale(Math.min(Math.max(w / naturalPageWidth, 0.3), 3.0));
   }, [naturalPageWidth]);
+
+  // Zoom toward a fixed viewport anchor (cursor for wheel, center for buttons) so the
+  // point under the cursor / view center stays put instead of jumping to top-left.
+  const zoomTo = useCallback((newScale, anchorClientX, anchorClientY) => {
+    const container = scrollRef.current;
+    const box = outerDivRef.current;
+    newScale = Math.min(3, Math.max(0.3, Math.round(newScale * 100) / 100));
+    if (!container || !box) { setScale(newScale); return; }
+    if (Math.abs(newScale - scale) < 0.001) return;
+    const oldRect = box.getBoundingClientRect();
+    const fracX = oldRect.width > 0 ? (anchorClientX - oldRect.left) / oldRect.width : 0.5;
+    const fracY = oldRect.height > 0 ? (anchorClientY - oldRect.top) / oldRect.height : 0.5;
+    setScale(newScale);
+    requestAnimationFrame(() => {
+      const newRect = box.getBoundingClientRect();
+      if (newRect.width <= 0) return;
+      const desiredLeft = anchorClientX - fracX * newRect.width;
+      const desiredTop = anchorClientY - fracY * newRect.height;
+      container.scrollLeft += newRect.left - desiredLeft;
+      container.scrollTop += newRect.top - desiredTop;
+    });
+  }, [scale]);
 
   // ── Sync sizes from PDF page ──────────────────────────────────────────────
   const syncSizes = useCallback(() => {
@@ -748,9 +771,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
             <input type="color" value={color} onChange={e=>setColor(e.target.value)} className="w-7 h-7 rounded border cursor-pointer ml-1"/>
           ) : null}
           <div className="border-l h-5 mx-1"/>
-          <Button variant="outline" size="sm" className="h-8" onClick={()=>setScale(s=>Math.max(0.3,Math.round((s-0.1)*100)/100))}><ZoomOut className="w-4 h-4"/></Button>
+          <Button variant="outline" size="sm" className="h-8" onClick={()=>{ const r=scrollRef.current?.getBoundingClientRect(); zoomTo(scale-0.1, r?r.left+r.width/2:0, r?r.top+r.height/2:0); }}><ZoomOut className="w-4 h-4"/></Button>
           <span className="text-xs text-slate-600 w-9 text-center">{Math.round(scale*100)}%</span>
-          <Button variant="outline" size="sm" className="h-8" onClick={()=>setScale(s=>Math.min(3,Math.round((s+0.1)*100)/100))}><ZoomIn className="w-4 h-4"/></Button>
+          <Button variant="outline" size="sm" className="h-8" onClick={()=>{ const r=scrollRef.current?.getBoundingClientRect(); zoomTo(scale+0.1, r?r.left+r.width/2:0, r?r.top+r.height/2:0); }}><ZoomIn className="w-4 h-4"/></Button>
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={fitToPage}><Maximize2 className="w-3.5 h-3.5 mr-1"/>Fit</Button>
         </div>
 
@@ -762,7 +785,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
 
         {/* Main */}
         <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 overflow-auto bg-slate-200" ref={scrollRef} onWheel={e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();setScale(s=>Math.min(3,Math.max(0.3,Math.round((s - e.deltaY*0.001)*100)/100)));}}}>
+          <div className="flex-1 overflow-auto bg-slate-200" ref={scrollRef} onWheel={e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();zoomTo(scale - e.deltaY*0.001, e.clientX, e.clientY);}}}>
 
             {showNotesField && (
               <div className="p-3 border-b bg-white">
@@ -770,14 +793,17 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                 <textarea value={aiNotes} onChange={e=>setAiNotes(e.target.value)} className="w-full border rounded p-2 text-sm resize-none h-12 focus:outline-none focus:ring-1 focus:ring-amber-400" placeholder="Notes about the plan..."/>
               </div>
             )}
-            <div className="flex items-start justify-center min-h-full p-6">
-              {/* Outer div reserves the visually-scaled space so the scrollbar tracks correctly */}
-              <div style={{
+            <div className="min-h-full p-6">
+              {/* Outer div reserves the visually-scaled space so the scrollbar tracks correctly.
+                  margin:0 auto centers the page when it fits the viewport AND keeps the left/top
+                  edge scroll-reachable when zoomed in (flex justify-center clips the overflowed
+                  start side, making corners permanently unreachable). */}
+              <div ref={outerDivRef} style={{
                 width: displaySize.w * visualScale,
                 height: displaySize.h * visualScale,
                 flexShrink: 0,
                 position: "relative",
-                transition: "width 0.1s ease-out, height 0.1s ease-out",
+                margin: "0 auto",
               }}>
               <div
                 ref={pageContainerRef}
@@ -787,7 +813,6 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                   top: 0, left: 0,
                   transform: `scale(${visualScale})`,
                   transformOrigin: "top left",
-                  transition: "transform 0.1s ease-out",
                   willChange: "transform",
                   boxShadow: "0 10px 40px rgba(0,0,0,0.25)",
                 }}
