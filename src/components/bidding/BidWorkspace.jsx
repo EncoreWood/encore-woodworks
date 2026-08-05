@@ -23,6 +23,10 @@ const BID_STYLES = [
   { key: "high_end_face_frame", label: "Tier 3 Face Frame" },
 ];
 
+// Category → highlight color (matches the Annotate Plan highlight legend swatches:
+// Base = tan/amber, Upper = blue, Tall = red, Misc = gray)
+const CATEGORY_HIGHLIGHT_COLOR = { base: "#d97706", upper: "#3b82f6", tall: "#ef4444", misc: "#6b7280" };
+
 // Render a specific PDF page (1-indexed) to a PNG blob for AI vision analysis
 async function pdfToImageBlob(pdfUrl, pageNum = 1, scale = 2.0) {
   const pdfjs = await import('pdfjs-dist');
@@ -268,26 +272,30 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
      const roomNotesSection = roomNotes ? `\n\nAdditional notes from room annotations:\n${roomNotes}` : "";
      const mainPlanNotesSection = aiNotes ? `\n\nMain plan annotations and notes:\n${aiNotes}` : "";
 
-    // Render the floor-plan pages identified by the extraction function (fall back to page 1)
+    // Render the floor-plan pages identified by the extraction function (fall back to page 1).
+    // Track each rendered image's PDF page number + render scale so AI bounding boxes can be
+    // converted back into the Annotate Plan tool's natural (scale=1) pixel coordinate space.
     let analysisFileUrls = [planFileUrl];
+    let analysisPagesList = [{ pdfPage: 1, renderScale: 1.0 }];
     if (isPdf) {
       try {
         const selectedPages = (extractedPageSelection.length ? extractedPageSelection : [1]).slice(0, 4);
-        const uploaded = [];
+        analysisPagesList = [];
         for (const pageNum of selectedPages) {
           try {
             const blob = await pdfToImageBlob(planFileUrl, pageNum, 1.5);
             const { file_url } = await base44.integrations.Core.UploadFile({ file: new File([blob], `plan-page${pageNum}.png`, { type: 'image/png' }) });
-            uploaded.push(file_url);
+            analysisPagesList.push({ pdfPage: pageNum, renderScale: 1.5, fileUrl: file_url });
           } catch (e) {
             console.error(`Failed to render page ${pageNum}:`, e);
           }
         }
-        if (uploaded.length > 0) {
-          analysisFileUrls = uploaded;
+        if (analysisPagesList.length > 0) {
+          analysisFileUrls = analysisPagesList.map(p => p.fileUrl);
         } else {
           const blob = await pdfToImageBlob(planFileUrl, 1, 2.0);
           const { file_url } = await base44.integrations.Core.UploadFile({ file: new File([blob], 'plan-page1.png', { type: 'image/png' }) });
+          analysisPagesList = [{ pdfPage: 1, renderScale: 2.0, fileUrl: file_url }];
           analysisFileUrls = [file_url];
         }
       } catch (err) {
@@ -299,6 +307,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
 
     // Build the AI prompt — branch on whether text extraction found readable room labels
     const needsVisionFallback = !!extractedSummary?.needsVisionFallback;
+    const highlightInstr = `\n\nFor EACH line item, also estimate an approximate bounding box on the floor plan image showing WHERE that cabinet run is located, and return it as highlight: { page_number, x, y, width, height }:\n- page_number = 1-based index of the image (the floor plan images provided to you, in the order given)\n- x, y = top-left corner of the box in IMAGE PIXELS (the pixel coordinate space of that image)\n- width, height = box size in IMAGE PIXELS\nDraw the box along the wall run where those cabinets sit (e.g. a base cabinet run along the kitchen perimeter wall, an upper run above it, a tall pantry along a wall). If you cannot confidently locate an item on the plan, omit its highlight — better to skip than place a wrong box.`;
     let aiPrompt;
     if (extractedSummary && needsVisionFallback) {
       const floorPages = (extractedSummary.selectedPages?.length ? extractedSummary.selectedPages : extractedPageSelection).join(', ');
@@ -321,7 +330,7 @@ INSTRUCTIONS:
 IMPORTANT: Do NOT say "no rooms found" or "cannot identify rooms". The floor plan IS in the images — read it visually.
 
 For measure_type: use "lf" for cabinet runs (base, upper, tall), use "qty" for individual pieces (islands, towers, appliance panels).
-For cabinet_category: "base" = floor cabinets/islands, "upper" = wall-mounted upper cabs, "tall" = full-height pantries/towers, "misc" = accessories.`;
+For cabinet_category: "base" = floor cabinets/islands, "upper" = wall-mounted upper cabs, "tall" = full-height pantries/towers, "misc" = accessories.${highlightInstr}`;
     } else {
       aiPrompt = `You are a professional cabinet estimator analyzing architectural floor plans for a ${styleLabel} cabinet project. ${pricingNote}
 ${extractedDataSection}${mainPlanNotesSection}${roomNotesSection}
@@ -335,7 +344,7 @@ Group by room. For each room provide a list of items. Split Base Cabinets, Wall/
 For measure_type: use "lf" for cabinet runs (base, upper, tall), use "qty" for individual pieces (islands, towers, appliance panels).
 For cabinet_category: "base" = floor cabinets/islands, "upper" = wall-mounted upper cabs, "tall" = full-height pantries/towers, "misc" = accessories.
 
-A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scale conversions.`;
+A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scale conversions.${highlightInstr}`;
     }
 
     let result;
@@ -362,7 +371,17 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
                       cabinet_category: { type: "string" },
                       measure_type: { type: "string" },
                       quantity: { type: "number" },
-                      notes: { type: "string" }
+                      notes: { type: "string" },
+                      highlight: {
+                        type: "object",
+                        properties: {
+                          page_number: { type: "number" },
+                          x: { type: "number" },
+                          y: { type: "number" },
+                          width: { type: "number" },
+                          height: { type: "number" }
+                        }
+                      }
                     }
                   }
                 }
@@ -408,6 +427,43 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
     }));
 
     setRooms(newRooms);
+
+    // Convert AI-estimated per-item bounding boxes into highlight annotations in the
+    // Annotate Plan tool's natural (scale=1) pixel space. Only highlights tagged
+    // source:"ai" are regenerated on re-analysis; manual highlights are preserved.
+    const aiHighlights = [];
+    (result.rooms || []).forEach((room) => {
+      (room.items || []).forEach((item) => {
+        const h = item.highlight;
+        if (!h || h.page_number == null) return;
+        const idx = Math.max(0, Math.floor(h.page_number) - 1);
+        const pageMeta = analysisPagesList[idx];
+        if (!pageMeta) return;
+        const s = pageMeta.renderScale || 1;
+        const w = Math.max(0, (h.width || 0) / s);
+        const ht = Math.max(0, (h.height || 0) / s);
+        if (w < 3 || ht < 3) return;
+        const cat = ["base", "upper", "tall", "misc"].includes(item.cabinet_category) ? item.cabinet_category : "misc";
+        aiHighlights.push({
+          type: "highlight",
+          x: Math.max(0, (h.x || 0) / s),
+          y: Math.max(0, (h.y || 0) / s),
+          w,
+          h: ht,
+          color: CATEGORY_HIGHLIGHT_COLOR[cat] || CATEGORY_HIGHLIGHT_COLOR.misc,
+          page: pageMeta.pdfPage,
+          source: "ai",
+          room_name: room.room_name || "",
+          item_name: item.name || "",
+          _natural: true
+        });
+      });
+    });
+    if (aiHighlights.length > 0) {
+      const kept = (planAnnotations || []).filter(a => !(a.type === "highlight" && a.source === "ai"));
+      setPlanAnnotations([...kept, ...aiHighlights]);
+    }
+
     let finalNotes = result.general_notes || "";
     if (extractedSummary) {
       let extractionNote;

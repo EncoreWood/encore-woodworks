@@ -695,6 +695,15 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
             </div>
           )}
           {!pxPerFtNat && !detectingScale && <span className="text-xs text-amber-600">Use Calibrate tool to enable measurements</span>}
+          <div className="flex items-center gap-2 ml-auto">
+            <span className="text-xs text-slate-400 font-medium">Legend:</span>
+            {HIGHLIGHT_COLORS.slice(0, 4).map(hc => (
+              <span key={hc.label} className="inline-flex items-center gap-1 text-xs text-slate-600">
+                <span className="w-3 h-3 rounded-sm border border-slate-300" style={{ background: hc.color }} />
+                {hc.label}
+              </span>
+            ))}
+          </div>
         </div>
 
         {/* Toolbar */}
