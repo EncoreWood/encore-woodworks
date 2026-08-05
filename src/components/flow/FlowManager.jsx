@@ -23,7 +23,7 @@ export default function FlowManager({ open, onOpenChange, flows, onCreate, onDel
       toast({ title: "Duplicate flow", description: `A flow named "${exists.name}" already exists. Choose a different name.`, variant: "destructive" });
       return;
     }
-    onCreate({ name: newName.trim(), color: newColor });
+    onCreate({ name: newName.trim(), color: newColor, is_active: true, sort_order: flows.length + 1 });
     setNewName("");
     setNewColor("blue");
   };
