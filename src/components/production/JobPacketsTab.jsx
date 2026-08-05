@@ -9,6 +9,8 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import ProductionCard from "./ProductionCard";
 
+const STAGE_LABELS = { cut: "Cut", face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete", on_hold: "On Hold" };
+
 // A single room folder within a project
 function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, sharedCardProps, autoOpen, onAutoOpened }) {
   const [open, setOpen] = useState(false);
@@ -21,7 +23,9 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
   }, [autoOpen]);
   const [selected, setSelected] = useState(new Set());
 
-  const roomItems = items.filter(i => i.project_id === project.id && i.room_name === roomName && !i.is_job_info && !i.stage);
+  const roomItems = items.filter(i => i.project_id === project.id && i.room_name === roomName && !i.is_job_info);
+  const stagedItems = roomItems.filter(i => !i.stage);
+  const inProductionItems = roomItems.filter(i => i.stage);
 
   const toggleSelect = (id) => {
     setSelected(prev => {
@@ -32,16 +36,23 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
   };
 
   const toggleAll = () => {
-    if (selected.size === roomItems.length) {
+    if (selected.size === stagedItems.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(roomItems.map(i => i.id)));
+      setSelected(new Set(stagedItems.map(i => i.id)));
     }
   };
 
   const handleBulkSend = () => {
-    const toSend = roomItems.filter(i => selected.has(i.id));
+    const toSend = stagedItems.filter(i => selected.has(i.id));
     onSendToProduction(toSend);
+    setSelected(new Set());
+  };
+
+  const handleSendAll = () => {
+    if (stagedItems.length === 0) return;
+    if (!window.confirm(`Send ${stagedItems.length} card${stagedItems.length !== 1 ? "s" : ""} to production?`)) return;
+    onSendToProduction(stagedItems);
     setSelected(new Set());
   };
 
@@ -69,7 +80,9 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
                 <DialogTitle className="text-lg">
                   <span className="text-slate-500 font-normal">{project.project_name} /</span> {roomName}
                 </DialogTitle>
-                <p className="text-sm text-slate-400 mt-0.5">{roomItems.length} item{roomItems.length !== 1 ? "s" : ""}</p>
+                <p className="text-sm text-slate-400 mt-0.5">
+                  {stagedItems.length} staged{inProductionItems.length > 0 && ` · ${inProductionItems.length} in production`}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 {selected.size > 0 && (
@@ -80,6 +93,18 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
                   >
                     <ArrowRight className="w-4 h-4" />
                     Send {selected.size} to Production
+                  </Button>
+                )}
+                {stagedItems.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-2 border-green-300 text-green-700 hover:bg-green-50"
+                    onClick={handleSendAll}
+                    title="Send all staged cards to production"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                    Send All to Production
                   </Button>
                 )}
                 <Button
@@ -94,10 +119,10 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
           </DialogHeader>
 
           {/* Select all */}
-          {roomItems.length > 0 && (
+          {stagedItems.length > 0 && (
             <div className="flex items-center gap-2 px-1 pt-1 pb-2 border-b border-slate-100">
               <Checkbox
-                checked={selected.size === roomItems.length && roomItems.length > 0}
+                checked={selected.size === stagedItems.length && stagedItems.length > 0}
                 onCheckedChange={toggleAll}
                 id="select-all"
               />
@@ -126,31 +151,45 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1 pt-3">
-                {roomItems.map(item => (
+                {roomItems.map(item => {
+                  const isStaged = !item.stage;
+                  return (
                   <div key={item.id} className="relative">
-                    {/* Selection checkbox overlay */}
-                    <div className="absolute top-2 left-2 z-10">
-                      <Checkbox
-                        checked={selected.has(item.id)}
-                        onCheckedChange={() => toggleSelect(item.id)}
-                        className="bg-white shadow"
-                      />
-                    </div>
-                    {/* Send individually */}
-                    <div className="absolute top-2 right-2 z-10">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 px-2 text-xs bg-white hover:bg-green-50 hover:border-green-400 hover:text-green-700"
-                        onClick={() => onSendToProduction([item])}
-                        title="Send to Production"
-                      >
-                        <ArrowRight className="w-3 h-3" />
-                      </Button>
+                    {isStaged && (
+                      <>
+                        {/* Selection checkbox overlay */}
+                        <div className="absolute top-2 left-2 z-10">
+                          <Checkbox
+                            checked={selected.has(item.id)}
+                            onCheckedChange={() => toggleSelect(item.id)}
+                            className="bg-white shadow"
+                          />
+                        </div>
+                        {/* Send individually */}
+                        <div className="absolute top-2 right-2 z-10">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-xs bg-white hover:bg-green-50 hover:border-green-400 hover:text-green-700"
+                            onClick={() => onSendToProduction([item])}
+                            title="Send to Production"
+                          >
+                            <ArrowRight className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
+                    {/* Stage badge */}
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
+                      {isStaged ? (
+                        <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 text-[10px] px-2 py-0.5">Staged</Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0.5">In Production: {STAGE_LABELS[item.stage] || item.stage}</Badge>
+                      )}
                     </div>
                     <div
-                      className={`rounded-lg transition-all ${selected.has(item.id) ? "ring-2 ring-amber-400" : ""}`}
-                      onClick={() => toggleSelect(item.id)}
+                      className={`rounded-lg transition-all ${isStaged && selected.has(item.id) ? "ring-2 ring-amber-400" : ""}`}
+                      onClick={isStaged ? () => toggleSelect(item.id) : undefined}
                     >
                       <ProductionCard
                         item={item}
@@ -159,7 +198,8 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
                       />
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

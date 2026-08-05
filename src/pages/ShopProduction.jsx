@@ -583,7 +583,7 @@ export default function ShopProduction() {
             onFolderOpened={() => setOpenFolderContext(null)}
             onAddCard={(project, roomName) => {
               setPacketsFormContext({ project, roomName });
-              setEditingItem({ project_id: project.id, project_name: project.project_name, room_name: roomName, is_job_info: false, type: "cabinet", stage: "face_frame" });
+              setEditingItem({ project_id: project.id, project_name: project.project_name, room_name: roomName, is_job_info: false, type: "cabinet", stage: null });
               setShowForm(true);
             }}
             onSendToProduction={async (selectedItems) => {
@@ -591,7 +591,7 @@ export default function ShopProduction() {
                 await base44.entities.ProductionItem.update(item.id, {
                   ...item,
                   is_job_info: false,
-                  stage: item.stage || "face_frame"
+                  stage: item.stage || "cut"
                 });
               }
               queryClient.invalidateQueries({ queryKey: ["productionItems"] });
