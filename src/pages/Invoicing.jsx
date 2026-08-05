@@ -271,6 +271,10 @@ export default function Invoicing() {
         return sum + Math.max(0, currentTotal - collected);
       }, 0);
     }
+    // Deposit Invoice Sent total = sum of only the deposit invoice amounts actually entered.
+    if (status === "deposit_invoice_sent") {
+      return projectList.reduce((sum, p) => sum + (p.deposit_invoice_amount || 0), 0);
+    }
     const key = stageAmountKey[status];
     return projectList.reduce((sum, p) => sum + (p[key] || p.estimated_budget || 0), 0);
   };
