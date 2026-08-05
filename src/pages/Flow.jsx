@@ -494,7 +494,8 @@ export default function Flow() {
       // Clicking a zone that belongs to the viewed flow opens its SOP panel
       if (highlightedZoneIds.has(id)) setSopViewZoneId(id);
     } else {
-      // No flow selected — clicking any zone opens its SOP / info
+      // No flow selected — clicking any zone opens its SOP / info and highlights it
+      setSelectedZoneId(id);
       setSopViewZoneId(id);
     }
   };
@@ -784,7 +785,7 @@ export default function Flow() {
       {/* SOP Viewer (Flow View training walkthrough) */}
       <ZoneSopViewer
         open={!!sopViewZoneId}
-        onClose={() => setSopViewZoneId(null)}
+        onClose={() => { setSopViewZoneId(null); if (!viewingFlow) setSelectedZoneId(null); }}
         zone={zones.find((z) => z.id === sopViewZoneId)}
         sop={sops.find((s) => s.zone_id === sopViewZoneId)}
         flowName={selectedFlow}
