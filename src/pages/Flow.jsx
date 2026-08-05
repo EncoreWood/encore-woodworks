@@ -167,8 +167,13 @@ export default function Flow() {
           try { ds = JSON.parse(d.sequence || "[]"); } catch { ds = []; }
           for (const id of ds) if (!merged.includes(id)) merged.push(id);
         }
-        await base44.entities.ShopFlow.update(keeper.id, { sequence: JSON.stringify(merged) });
-        for (const d of dups) await base44.entities.ShopFlow.delete(d.id);
+        try {
+          await base44.entities.ShopFlow.update(keeper.id, { sequence: JSON.stringify(merged) });
+        } catch (e) { console.warn("Dedupe: keeper update skipped (likely already removed):", e?.message); }
+        for (const d of dups) {
+          try { await base44.entities.ShopFlow.delete(d.id); }
+          catch (e) { console.warn("Dedupe: dup delete skipped (already gone):", e?.message); }
+        }
 
         // Reset the flow's path to a single clean auto-generated route for the merged sequence
         const pathArrows = arrows.filter((a) => a.arrow_type === "flow_path" && a.flow_name === keeper.name);
@@ -216,10 +221,20 @@ export default function Flow() {
         .sort((a, b) => (a.flow_order ?? 999) - (b.flow_order ?? 999))
         .map((z) => z.id);
       if (ordered.length < 2) return;
-      await base44.entities.ShopFlow.update(cutFlow.id, { sequence: JSON.stringify(ordered) });
+      try {
+        await base44.entities.ShopFlow.update(cutFlow.id, { sequence: JSON.stringify(ordered) });
+      } catch (e) {
+        // The "Cut" flow may have been removed by the dedupe effect racing this
+        // bootstrap. Skip silently — the sequence will heal on the next load.
+        console.warn("Cut bootstrap: update skipped (flow not found):", e?.message);
+        return;
+      }
       // Regenerate the flow path so the walkthrough route + numbered badges render
       const oldPaths = arrows.filter((a) => a.arrow_type === "flow_path" && a.flow_name === "Cut");
-      for (const a of oldPaths) await base44.entities.ShopFlowArrow.delete(a.id);
+      for (const a of oldPaths) {
+        try { await base44.entities.ShopFlowArrow.delete(a.id); }
+        catch (e) { console.warn("Cut bootstrap: stale path delete skipped:", e?.message); }
+      }
       const pathData = generateFlowPath(zones, ordered);
       if (pathData) {
         await base44.entities.ShopFlowArrow.create({
