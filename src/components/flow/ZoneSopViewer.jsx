@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { X, ChevronLeft, ChevronRight, AlertTriangle, Video, Camera } from "lucide-react";
 import ImageLightbox from "./ImageLightbox";
+import VideoLightbox from "./VideoLightbox";
 
 export default function ZoneSopViewer({ open, onClose, zone, sop, flowName, stepIndex, totalSteps, hasPrev, hasNext, onPrev, onNext, onExitToEdit }) {
   const [lightboxUrl, setLightboxUrl] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(null);
   if (!open || !zone) return null;
   const stepLabel = totalSteps > 0 ? `Step ${stepIndex + 1} of ${totalSteps}` : "";
 
@@ -44,12 +46,18 @@ export default function ZoneSopViewer({ open, onClose, zone, sop, flowName, step
                   {sop.steps.map((s, i) => {
                     const text = typeof s === "string" ? s : s?.text;
                     const img = typeof s === "string" ? null : s?.image_url;
+                    const vid = typeof s === "string" ? null : s?.video_url;
                     return (
                       <li key={i} className="list-item">
                         <span>{text}</span>
                         {img && (
                           <button type="button" onClick={() => setLightboxUrl(img)} className="block mt-1">
                             <img src={img} alt="" className="w-full max-w-[220px] rounded-md border border-slate-200" />
+                          </button>
+                        )}
+                        {vid && (
+                          <button type="button" onClick={() => setVideoUrl(vid)} className="mt-1 inline-flex items-center gap-1.5 text-sm text-amber-700 font-medium hover:underline">
+                            <Video className="w-4 h-4" /> Watch step video
                           </button>
                         )}
                       </li>
@@ -112,6 +120,7 @@ export default function ZoneSopViewer({ open, onClose, zone, sop, flowName, step
         </div>
       )}
       <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
+      <VideoLightbox url={videoUrl} onClose={() => setVideoUrl(null)} />
     </div>
   );
 }

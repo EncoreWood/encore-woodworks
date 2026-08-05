@@ -7,14 +7,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Trash2, X, Loader2, Upload, Image as ImageIcon } from "lucide-react";
+import { Plus, Trash2, X, Loader2, Upload, Image as ImageIcon, Video } from "lucide-react";
 
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 // Steps are stored as objects {text, image_url}. Older records stored plain
 // strings — normalize them on load so the editor always works with objects.
 const normalizeStep = (s) =>
-  typeof s === "string" ? { text: s, image_url: "" } : { text: s?.text || "", image_url: s?.image_url || "" };
+  typeof s === "string" ? { text: s, image_url: "", video_url: "" } : { text: s?.text || "", image_url: s?.image_url || "", video_url: s?.video_url || "" };
 
 const EMPTY = {
   title: "",
@@ -128,7 +128,7 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop, z
   const addStep = () => {
     const v = stepInput.trim();
     if (!v) return;
-    setForm((f) => ({ ...f, steps: [...f.steps, { text: v, image_url: "" }] }));
+    setForm((f) => ({ ...f, steps: [...f.steps, { text: v, image_url: "", video_url: "" }] }));
     setStepInput("");
   };
   const removeStep = (i) => setForm((f) => ({ ...f, steps: f.steps.filter((_, idx) => idx !== i) }));
@@ -147,6 +147,21 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop, z
   };
   const removeStepImage = (i) =>
     setForm((f) => ({ ...f, steps: f.steps.map((x, idx) => (idx === i ? { ...x, image_url: "" } : x)) }));
+
+  const handleStepVideoUpload = async (e, i) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingStep(i);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setForm((f) => ({ ...f, steps: f.steps.map((x, idx) => (idx === i ? { ...x, video_url: file_url } : x)) }));
+    } finally {
+      setUploadingStep(null);
+      e.target.value = "";
+    }
+  };
+  const removeStepVideo = (i) =>
+    setForm((f) => ({ ...f, steps: f.steps.map((x, idx) => (idx === i ? { ...x, video_url: "" } : x)) }));
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -216,12 +231,22 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop, z
                       {uploadingStep === i ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ImageIcon className="w-3.5 h-3.5" />}
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => handleStepImageUpload(e, i)} />
                     </label>
+                    <label className="h-8 w-8 flex items-center justify-center rounded-md border border-slate-200 cursor-pointer hover:bg-slate-50 text-slate-500" title="Add video to step">
+                      {uploadingStep === i ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Video className="w-3.5 h-3.5" />}
+                      <input type="file" accept="video/*" className="hidden" onChange={(e) => handleStepVideoUpload(e, i)} />
+                    </label>
                     <Button size="ghost" className="h-8 w-8 p-0 text-red-600" onClick={() => removeStep(i)}><Trash2 className="w-3.5 h-3.5" /></Button>
                   </div>
                   {s.image_url && (
                     <div className="ml-7 relative w-20 h-20 rounded-md overflow-hidden border border-slate-200">
                       <img src={s.image_url} alt="" className="w-full h-full object-cover" />
                       <button onClick={() => removeStepImage(i)} className="absolute top-0 right-0 bg-red-600 text-white rounded-bl p-0.5"><X className="w-3 h-3" /></button>
+                    </div>
+                  )}
+                  {s.video_url && (
+                    <div className="ml-7 flex items-center gap-2">
+                      <video src={s.video_url} className="h-12 w-20 object-cover rounded-md border border-slate-200 bg-slate-100" preload="metadata" muted />
+                      <button onClick={() => removeStepVideo(i)} className="text-red-600"><X className="w-3.5 h-3.5" /></button>
                     </div>
                   )}
                 </div>

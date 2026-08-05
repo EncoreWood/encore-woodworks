@@ -32,7 +32,7 @@
     },
     "steps": {
       "type": "array",
-      "description": "Ordered list of procedure steps (each {text, image_url})",
+      "description": "Ordered list of procedure steps (each {text, image_url, video_url})",
       "items": {
         "type": "object",
         "properties": {
@@ -40,6 +40,9 @@
             "type": "string"
           },
           "image_url": {
+            "type": "string"
+          },
+          "video_url": {
             "type": "string"
           }
         }
