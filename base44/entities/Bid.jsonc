@@ -82,6 +82,10 @@
           "room_name": {
             "type": "string"
           },
+          "cabinet_style": {
+            "type": "string",
+            "description": "Per-room cabinet style override (a BidPricingConfig style_key). If empty/null, the room inherits the bid-level default style (bid_type)."
+          },
           "ceiling_height": {
             "type": "string",
             "description": "Ceiling height in inches"

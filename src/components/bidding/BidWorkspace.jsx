@@ -865,6 +865,21 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
                 {saved ? <><Check className="w-4 h-4 mr-1" />Saved!</> : isSaving ? "Saving..." : <><Save className="w-4 h-4 mr-1" />Save Bid</>}
               </Button>
             </div>
+            <div className="mt-3 pt-3 border-t border-slate-700 space-y-1">
+              {rooms.map(room => {
+                const effKey = room.cabinet_style || bidType;
+                const label = pricingConfigs.find(c => c.style_key === effKey)?.style_label || effKey || "—";
+                return (
+                  <div key={room.id} className="flex items-center justify-between text-xs gap-2">
+                    <span className="text-slate-300 truncate">
+                      {room.room_name || "Room"} — <span className="font-semibold text-slate-100">{label}</span>
+                      {!room.cabinet_style && <span className="text-slate-500"> (default)</span>}
+                    </span>
+                    <span className="text-amber-300 font-semibold whitespace-nowrap">${getRoomTotal(room).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                  </div>
+                );
+              })}
+            </div>
           </Card>
         )}
       </div>

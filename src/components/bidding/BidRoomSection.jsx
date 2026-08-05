@@ -29,9 +29,13 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
     onChange({ ...room, pdf_annotations: paths, pdf_notes: notes });
   };
 
+  // Effective cabinet style for this room: explicit override, else the bid-level default.
+  const roomStyleKey = room.cabinet_style || bidType;
+  const defaultStyleLabel = pricingConfigs.find(c => c.style_key === bidType)?.style_label || bidType || "Default";
+
   const getPrice = (category, measureType, catalogItem) => {
     if (measureType === "lf" && ["base", "upper", "tall"].includes(category)) {
-      const cfg = pricingConfigs.find(c => c.style_key === bidType);
+      const cfg = pricingConfigs.find(c => c.style_key === roomStyleKey);
       if (cfg) {
         if (category === "base") return cfg.bases_lf || 0;
         if (category === "upper") return cfg.uppers_lf || 0;
@@ -39,6 +43,24 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
       }
     }
     return catalogItem?.default_price || 0;
+  };
+
+  // When a room's cabinet style changes, re-bake the LF rate on base/upper/tall line
+  // items so room & bid totals reflect the new style immediately. "" = inherit bid default.
+  const applyRoomStyle = (styleKey) => {
+    const effectiveKey = styleKey || bidType;
+    const cfg = pricingConfigs.find(c => c.style_key === effectiveKey);
+    const newItems = (room.items || []).map(item => {
+      if (item.measure_type === "lf" && cfg && ["base", "upper", "tall"].includes(item.cabinet_category)) {
+        let rate = item.unit_price;
+        if (item.cabinet_category === "base") rate = cfg.bases_lf || 0;
+        else if (item.cabinet_category === "upper") rate = cfg.uppers_lf || 0;
+        else if (item.cabinet_category === "tall") rate = cfg.tall_lf || 0;
+        return { ...item, unit_price: rate };
+      }
+      return item;
+    });
+    onChange({ ...room, cabinet_style: styleKey || null, items: newItems });
   };
 
   const addFromCatalog = (catalogId) => {
@@ -148,6 +170,20 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
           className="flex-1 font-bold text-white bg-transparent border-none shadow-none h-auto p-0 focus-visible:ring-0 placeholder:text-slate-500 text-base"
           placeholder="Room Name"
         />
+        {/* Cabinet style override (per room) */}
+        <div className="flex-shrink-0 flex items-center gap-1" onClick={e => e.stopPropagation()}>
+          <Select value={room.cabinet_style || "__bid__"} onValueChange={v => applyRoomStyle(v === "__bid__" ? "" : v)}>
+            <SelectTrigger className="h-7 w-[150px] text-xs bg-slate-700 border-slate-600 text-slate-100 hover:bg-slate-600">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__bid__">Same as bid ({defaultStyleLabel})</SelectItem>
+              {pricingConfigs.map(cfg => (
+                <SelectItem key={cfg.style_key} value={cfg.style_key}>{cfg.style_label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         {/* PDF Attach */}
         {room.pdf_url ? (
           <Button

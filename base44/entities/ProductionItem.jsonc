@@ -15,6 +15,10 @@
       ],
       "description": "Type of production item"
     },
+    "cabinet_style": {
+      "type": "string",
+      "description": "Cabinet style for this item's room (style_key or label), inherited from the bid room override so the shop knows which style to build without checking the bid"
+    },
     "stage": {
       "type": "string",
       "enum": [
