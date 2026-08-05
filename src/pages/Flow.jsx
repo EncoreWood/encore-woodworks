@@ -196,8 +196,9 @@ export default function Flow() {
     })();
   }, [isLoading, flows, arrows, zones]);
 
-  // One-time bootstrap: give the default "Cut" flow a sequence (ordered production zones)
-  // so flow-view highlighting + walkthrough are demonstrable out of the box.
+  // Bootstrap + self-heal: ensure the default "Cut" flow has a valid sequence
+  // (ordered production zones). Re-seeds if the sequence is empty OR contains
+  // orphaned IDs (e.g. zones were deleted and re-created with new IDs).
   const cutSeedRef = useRef(false);
   useEffect(() => {
     if (cutSeedRef.current || isLoading || flows.length === 0 || zones.length === 0) return;
@@ -207,26 +208,27 @@ export default function Flow() {
       if (!cutFlow) return;
       let seq = [];
       try { seq = JSON.parse(cutFlow.sequence || "[]"); } catch { seq = []; }
-      if (seq.length > 0) return; // already has a sequence — leave it
+      const orphanCount = seq.filter((id) => !zones.find((z) => z.id === id)).length;
+      // Re-seed if empty OR every ID is orphaned (zones were wiped/re-created)
+      if (seq.length > 0 && orphanCount < seq.length) return; // at least one valid ref — leave it
       const ordered = zones
         .filter((z) => z.flow_order != null)
         .sort((a, b) => (a.flow_order ?? 999) - (b.flow_order ?? 999))
         .map((z) => z.id);
       if (ordered.length < 2) return;
       await base44.entities.ShopFlow.update(cutFlow.id, { sequence: JSON.stringify(ordered) });
-      // Also generate the flow path so the walkthrough route + numbered badges render
-      const hasPath = arrows.some((a) => a.arrow_type === "flow_path" && a.flow_name === "Cut");
-      if (!hasPath) {
-        const pathData = generateFlowPath(zones, ordered);
-        if (pathData) {
-          await base44.entities.ShopFlowArrow.create({
-            arrow_type: "flow_path", flow_name: "Cut",
-            start_x: pathData.points[0][0], start_y: pathData.points[0][1],
-            end_x: pathData.points[pathData.points.length - 1][0], end_y: pathData.points[pathData.points.length - 1][1],
-            label: JSON.stringify(pathData),
-            color: FLOW_COLORS[cutFlow.color] || "#64748b", stroke_width: 2, arrowhead_style: "filled",
-          });
-        }
+      // Regenerate the flow path so the walkthrough route + numbered badges render
+      const oldPaths = arrows.filter((a) => a.arrow_type === "flow_path" && a.flow_name === "Cut");
+      for (const a of oldPaths) await base44.entities.ShopFlowArrow.delete(a.id);
+      const pathData = generateFlowPath(zones, ordered);
+      if (pathData) {
+        await base44.entities.ShopFlowArrow.create({
+          arrow_type: "flow_path", flow_name: "Cut",
+          start_x: pathData.points[0][0], start_y: pathData.points[0][1],
+          end_x: pathData.points[pathData.points.length - 1][0], end_y: pathData.points[pathData.points.length - 1][1],
+          label: JSON.stringify(pathData),
+          color: FLOW_COLORS[cutFlow.color] || "#64748b", stroke_width: 2, arrowhead_style: "filled",
+        });
       }
       queryClient.invalidateQueries({ queryKey: ["shopFlows"] });
       queryClient.invalidateQueries({ queryKey: ["shopFlowArrows"] });
@@ -458,10 +460,30 @@ export default function Flow() {
     if (!flowName) return;
     setCheckedFlows((prev) => new Set([...prev, flowName]));
     const flowObj = flows.find((f) => f.name === flowName);
-    // Verify the actual data structure holding the flow's zone IDs
-    console.log('Active flow:', flowObj);
+
+    // ===== TEMP DEBUG: verify the actual flow sequence data =====
+    let rawSeq = [];
+    try { rawSeq = JSON.parse(flowObj?.sequence || "[]"); } catch { rawSeq = []; }
+    console.log(`=== FLOW DEBUG: ${flowName} ===`);
+    console.log('Flow sequence (zone IDs):', rawSeq);
+    console.log('Total zones in DB:', zones.length);
+    rawSeq.forEach((zoneId, index) => {
+      const zone = zones.find((z) => z.id === zoneId);
+      if (!zone) {
+        console.log(`Step ${index + 1}: ZONE ID ${zoneId} — ⚠️ NOT FOUND (orphaned reference)`);
+      } else {
+        console.log(`Step ${index + 1}: ${zone.name} (id: ${zone.id}) — width: ${zone.width}, height: ${zone.height}, x: ${zone.x}, y: ${zone.y}`);
+      }
+    });
+    const orphanCount = rawSeq.filter((id) => !zones.find((z) => z.id === id)).length;
+    const tinyCount = rawSeq
+      .map((id) => zones.find((z) => z.id === id))
+      .filter((z) => z && (z.width < 5 || z.height < 5)).length;
+    console.log(`Orphaned IDs: ${orphanCount}/${rawSeq.length} | Tiny zones (<5%): ${tinyCount}/${rawSeq.length}`);
+    console.log('=== END FLOW DEBUG ===');
+    // ===== END TEMP DEBUG =====
+
     const seq = getFlowSequenceIds(flowObj, zones);
-    console.log('Zone IDs in this flow:', flowObj?.sequence || flowObj?.zone_ids, '→ resolved:', seq);
     // In View mode, auto-open the first stage to start the walkthrough
     if (mode === "view" && seq.length > 0) setSopViewZoneId(seq[0]);
   };
