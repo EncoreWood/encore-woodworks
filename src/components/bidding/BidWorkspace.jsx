@@ -33,12 +33,17 @@ async function pdfToImageBlob(pdfUrl, pageNum = 1, scale = 2.0) {
   pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
   const pdf = await pdfjs.getDocument(pdfUrl).promise;
   const page = await pdf.getPage(pageNum);
+  // Natural (scale=1) viewport — this is the SAME coordinate space the Annotate Plan
+  // tool (react-pdf) stores annotations in, regardless of the scale we render the
+  // image at for the AI. Returning it lets us convert AI fractions → natural px exactly.
+  const natural = page.getViewport({ scale: 1 });
   const viewport = page.getViewport({ scale });
   const canvas = document.createElement('canvas');
   canvas.width = viewport.width;
   canvas.height = viewport.height;
   await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  return { blob, naturalWidth: natural.width, naturalHeight: natural.height, imageWidth: viewport.width, imageHeight: viewport.height };
 }
 
 // project prop: optional pre-linked project object (when opened from ProjectDetails)
@@ -273,19 +278,22 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
      const mainPlanNotesSection = aiNotes ? `\n\nMain plan annotations and notes:\n${aiNotes}` : "";
 
     // Render the floor-plan pages identified by the extraction function (fall back to page 1).
-    // Track each rendered image's PDF page number + render scale so AI bounding boxes can be
-    // converted back into the Annotate Plan tool's natural (scale=1) pixel coordinate space.
+    // For each rendered image we capture its PDF page number plus the page's natural
+    // (scale=1) pixel dimensions — the exact space the Annotate Plan tool stores
+    // annotations in — so AI-returned box fractions map to the correct on-plan location
+    // regardless of what render scale the image was rasterized at.
     let analysisFileUrls = [planFileUrl];
-    let analysisPagesList = [{ pdfPage: 1, renderScale: 1.0 }];
+    let analysisPagesList = [{ pdfPage: 1, naturalWidth: 0, naturalHeight: 0, imageWidth: 0, imageHeight: 0 }];
     if (isPdf) {
       try {
         const selectedPages = (extractedPageSelection.length ? extractedPageSelection : [1]).slice(0, 4);
         analysisPagesList = [];
         for (const pageNum of selectedPages) {
           try {
-            const blob = await pdfToImageBlob(planFileUrl, pageNum, 1.5);
-            const { file_url } = await base44.integrations.Core.UploadFile({ file: new File([blob], `plan-page${pageNum}.png`, { type: 'image/png' }) });
-            analysisPagesList.push({ pdfPage: pageNum, renderScale: 1.5, fileUrl: file_url });
+            const rendered = await pdfToImageBlob(planFileUrl, pageNum, 1.5);
+            console.log(`[AI plan] page ${pageNum}: image ${rendered.imageWidth}x${rendered.imageHeight}px, natural(scale=1) ${rendered.naturalWidth}x${rendered.naturalHeight}px`);
+            const { file_url } = await base44.integrations.Core.UploadFile({ file: new File([rendered.blob], `plan-page${pageNum}.png`, { type: 'image/png' }) });
+            analysisPagesList.push({ pdfPage: pageNum, naturalWidth: rendered.naturalWidth, naturalHeight: rendered.naturalHeight, imageWidth: rendered.imageWidth, imageHeight: rendered.imageHeight, fileUrl: file_url });
           } catch (e) {
             console.error(`Failed to render page ${pageNum}:`, e);
           }
@@ -293,9 +301,10 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
         if (analysisPagesList.length > 0) {
           analysisFileUrls = analysisPagesList.map(p => p.fileUrl);
         } else {
-          const blob = await pdfToImageBlob(planFileUrl, 1, 2.0);
-          const { file_url } = await base44.integrations.Core.UploadFile({ file: new File([blob], 'plan-page1.png', { type: 'image/png' }) });
-          analysisPagesList = [{ pdfPage: 1, renderScale: 2.0, fileUrl: file_url }];
+          const rendered = await pdfToImageBlob(planFileUrl, 1, 2.0);
+          console.log(`[AI plan] fallback page 1: image ${rendered.imageWidth}x${rendered.imageHeight}px, natural ${rendered.naturalWidth}x${rendered.naturalHeight}px`);
+          const { file_url } = await base44.integrations.Core.UploadFile({ file: new File([rendered.blob], 'plan-page1.png', { type: 'image/png' }) });
+          analysisPagesList = [{ pdfPage: 1, naturalWidth: rendered.naturalWidth, naturalHeight: rendered.naturalHeight, imageWidth: rendered.imageWidth, imageHeight: rendered.imageHeight, fileUrl: file_url }];
           analysisFileUrls = [file_url];
         }
       } catch (err) {
@@ -307,7 +316,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
 
     // Build the AI prompt — branch on whether text extraction found readable room labels
     const needsVisionFallback = !!extractedSummary?.needsVisionFallback;
-    const highlightInstr = `\n\nFor EACH line item, also estimate an approximate bounding box on the floor plan image showing WHERE that cabinet run is located, and return it as highlight: { page_number, x, y, width, height }:\n- page_number = 1-based index of the image (the floor plan images provided to you, in the order given)\n- x, y = top-left corner of the box in IMAGE PIXELS (the pixel coordinate space of that image)\n- width, height = box size in IMAGE PIXELS\nDraw the box along the wall run where those cabinets sit (e.g. a base cabinet run along the kitchen perimeter wall, an upper run above it, a tall pantry along a wall). If you cannot confidently locate an item on the plan, omit its highlight — better to skip than place a wrong box.`;
+    const highlightInstr = `\n\nFor EACH line item, also estimate an approximate bounding box on the floor plan image showing WHERE that cabinet run is located, and return it as highlight: { page_number, x, y, width, height }. ALL FOUR of x/y/width/height MUST be FRACTIONS of the image dimensions in the 0–1 range (NOT pixels):\n- x = left edge as a fraction of image width (0 = left edge, 1 = right edge)\n- y = TOP edge as a fraction of image height (0 = TOP of the image, 1 = bottom — use top-down image coordinates, NOT PDF bottom-up coordinates)\n- width = box width as a fraction of image width\n- height = box height as a fraction of image height\n- page_number = 1-based index of the image (the floor plan images provided to you, in the order given)\nDraw the box along the wall run where those cabinets sit (e.g. a base cabinet run along the kitchen perimeter wall, an upper run above it, a tall pantry along a wall). If you cannot confidently locate an item on the plan, omit its highlight — better to skip than place a wrong box.`;
     let aiPrompt;
     if (extractedSummary && needsVisionFallback) {
       const floorPages = (extractedSummary.selectedPages?.length ? extractedSummary.selectedPages : extractedPageSelection).join(', ');
@@ -438,16 +447,24 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
         if (!h || h.page_number == null) return;
         const idx = Math.max(0, Math.floor(h.page_number) - 1);
         const pageMeta = analysisPagesList[idx];
-        if (!pageMeta) return;
-        const s = pageMeta.renderScale || 1;
-        const w = Math.max(0, (h.width || 0) / s);
-        const ht = Math.max(0, (h.height || 0) / s);
+        if (!pageMeta || !pageMeta.naturalWidth || !pageMeta.naturalHeight) return;
+        // AI returns fractions (0–1) of the image. Defensively also accept raw image
+        // pixels (any value > 1.5) in case the model ignores the fraction instruction.
+        const iw = pageMeta.imageWidth || pageMeta.naturalWidth;
+        const ih = pageMeta.imageHeight || pageMeta.naturalHeight;
+        const fx = (h.x || 0) > 1.5 ? (h.x || 0) / iw : (h.x || 0);
+        const fy = (h.y || 0) > 1.5 ? (h.y || 0) / ih : (h.y || 0);
+        const fw = (h.width || 0) > 1.5 ? (h.width || 0) / iw : (h.width || 0);
+        const fh = (h.height || 0) > 1.5 ? (h.height || 0) / ih : (h.height || 0);
+        // Fractions → natural (scale=1) px, the space annotations are stored/rendered in.
+        const w = Math.max(0, fw * pageMeta.naturalWidth);
+        const ht = Math.max(0, fh * pageMeta.naturalHeight);
         if (w < 3 || ht < 3) return;
         const cat = ["base", "upper", "tall", "misc"].includes(item.cabinet_category) ? item.cabinet_category : "misc";
         aiHighlights.push({
           type: "highlight",
-          x: Math.max(0, (h.x || 0) / s),
-          y: Math.max(0, (h.y || 0) / s),
+          x: Math.max(0, fx * pageMeta.naturalWidth),
+          y: Math.max(0, fy * pageMeta.naturalHeight),
           w,
           h: ht,
           color: CATEGORY_HIGHLIGHT_COLOR[cat] || CATEGORY_HIGHLIGHT_COLOR.misc,
