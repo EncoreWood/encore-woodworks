@@ -23,13 +23,13 @@ const BID_STYLES = [
   { key: "high_end_face_frame", label: "Tier 3 Face Frame" },
 ];
 
-// Convert a PDF's first page to a PNG blob for AI vision analysis
-async function pdfToImageBlob(pdfUrl) {
+// Render a specific PDF page (1-indexed) to a PNG blob for AI vision analysis
+async function pdfToImageBlob(pdfUrl, pageNum = 1, scale = 2.0) {
   const pdfjs = await import('pdfjs-dist');
   pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
   const pdf = await pdfjs.getDocument(pdfUrl).promise;
-  const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 2.0 });
+  const page = await pdf.getPage(pageNum);
+  const viewport = page.getViewport({ scale });
   const canvas = document.createElement('canvas');
   canvas.width = viewport.width;
   canvas.height = viewport.height;
@@ -221,13 +221,19 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
     // Step 1: Extract real vector data from the PDF (rooms, dimensions, scale)
     let extractedSummary = null;
     let cabinetPricing = [];
+    let extractedPageSelection = [];
+    let extractedTotalPages = 0;
     if (isPdf) {
       try {
         const extractResponse = await base44.functions.invoke('extractPlanMeasurements', { pdfUrl: planFileUrl });
         const extracted = extractResponse?.data || extractResponse;
-        if (extracted?.success && extracted.aiReadySummary) {
-          extractedSummary = extracted.aiReadySummary;
-          cabinetPricing = extracted.cabinetPricing || [];
+        if (extracted?.success) {
+          extractedTotalPages = extracted.totalPages || 0;
+          extractedPageSelection = extracted.pageSelection?.selectedPages || [];
+          if (extracted.aiReadySummary) {
+            extractedSummary = extracted.aiReadySummary;
+            cabinetPricing = extracted.cabinetPricing || [];
+          }
           setExtractedData(extracted);
         }
       } catch (err) {
@@ -258,13 +264,28 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
      const roomNotesSection = roomNotes ? `\n\nAdditional notes from room annotations:\n${roomNotes}` : "";
      const mainPlanNotesSection = aiNotes ? `\n\nMain plan annotations and notes:\n${aiNotes}` : "";
 
-    // Convert PDF to image for AI vision analysis
-    let analysisFileUrl = planFileUrl;
+    // Render the floor-plan pages identified by the extraction function (fall back to page 1)
+    let analysisFileUrls = [planFileUrl];
     if (isPdf) {
       try {
-        const blob = await pdfToImageBlob(planFileUrl);
-        const { file_url } = await base44.integrations.Core.UploadFile({ file: new File([blob], 'plan-page1.png', { type: 'image/png' }) });
-        analysisFileUrl = file_url;
+        const selectedPages = (extractedPageSelection.length ? extractedPageSelection : [1]).slice(0, 4);
+        const uploaded = [];
+        for (const pageNum of selectedPages) {
+          try {
+            const blob = await pdfToImageBlob(planFileUrl, pageNum, 1.5);
+            const { file_url } = await base44.integrations.Core.UploadFile({ file: new File([blob], `plan-page${pageNum}.png`, { type: 'image/png' }) });
+            uploaded.push(file_url);
+          } catch (e) {
+            console.error(`Failed to render page ${pageNum}:`, e);
+          }
+        }
+        if (uploaded.length > 0) {
+          analysisFileUrls = uploaded;
+        } else {
+          const blob = await pdfToImageBlob(planFileUrl, 1, 2.0);
+          const { file_url } = await base44.integrations.Core.UploadFile({ file: new File([blob], 'plan-page1.png', { type: 'image/png' }) });
+          analysisFileUrls = [file_url];
+        }
       } catch (err) {
         setAnalyzeError("Could not convert PDF for AI analysis. Try uploading a PNG or JPG image instead, or add rooms manually.");
         setIsAnalyzing(false);
@@ -272,11 +293,33 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
       }
     }
 
-    let result;
-    try {
-      result = await base44.integrations.Core.InvokeLLM({
-      model: "gemini_3_1_pro",
-      prompt: `You are a professional cabinet estimator analyzing architectural floor plans for a ${styleLabel} cabinet project. ${pricingNote}
+    // Build the AI prompt — branch on whether text extraction found readable room labels
+    const needsVisionFallback = !!extractedSummary?.needsVisionFallback;
+    let aiPrompt;
+    if (extractedSummary && needsVisionFallback) {
+      const floorPages = (extractedSummary.selectedPages?.length ? extractedSummary.selectedPages : extractedPageSelection).join(', ');
+      aiPrompt = `You are estimating cabinetry for a residential project from architectural plans.
+
+PDF ANALYSIS:
+- Total pages in PDF: ${extractedTotalPages}
+- Floor plan pages identified: ${floorPages}
+- Text extraction found NO readable room labels (this PDF uses CAD vector-outline text, not embedded fonts)
+- ${extractedSummary.totalLineSegments || 0} wall line segments were extracted from the vector geometry
+- Text extraction quality: ${extractedSummary.textExtractionQuality || 'unknown'}${mainPlanNotesSection}${roomNotesSection}
+
+INSTRUCTIONS:
+1. Look at the floor plan images provided and identify ALL rooms that need cabinetry
+2. Read room names from the visual labels on the plan (KITCHEN, BATH, PANTRY, LAUNDRY, etc.)
+3. Read dimension annotations from the plan visually (e.g. "16'-0\"", "12'-6 1/2\"")
+4. For each room with cabinetry, estimate base/upper/tall cabinet linear footage
+5. Skip rooms that don't need cabinetry (bedrooms, hallways, garages, etc.)
+
+IMPORTANT: Do NOT say "no rooms found" or "cannot identify rooms". The floor plan IS in the images — read it visually.
+
+For measure_type: use "lf" for cabinet runs (base, upper, tall), use "qty" for individual pieces (islands, towers, appliance panels).
+For cabinet_category: "base" = floor cabinets/islands, "upper" = wall-mounted upper cabs, "tall" = full-height pantries/towers, "misc" = accessories.`;
+    } else {
+      aiPrompt = `You are a professional cabinet estimator analyzing architectural floor plans for a ${styleLabel} cabinet project. ${pricingNote}
 ${extractedDataSection}${mainPlanNotesSection}${roomNotesSection}
 
 CRITICAL: First, locate and read the SCALE RATIO on the plans (e.g., "1/4" = 1", "1/8" = 1", etc.). Use this scale to accurately convert measured distances to actual linear feet. If no scale is visible, assume 1/4" = 1" standard architectural scale.${extractedInstructions}
@@ -288,8 +331,15 @@ Group by room. For each room provide a list of items. Split Base Cabinets, Wall/
 For measure_type: use "lf" for cabinet runs (base, upper, tall), use "qty" for individual pieces (islands, towers, appliance panels).
 For cabinet_category: "base" = floor cabinets/islands, "upper" = wall-mounted upper cabs, "tall" = full-height pantries/towers, "misc" = accessories.
 
-A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scale conversions.`,
-      file_urls: [analysisFileUrl],
+A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scale conversions.`;
+    }
+
+    let result;
+    try {
+      result = await base44.integrations.Core.InvokeLLM({
+      model: "gemini_3_1_pro",
+      prompt: aiPrompt,
+      file_urls: analysisFileUrls,
       response_json_schema: {
         type: "object",
         properties: {
@@ -356,8 +406,14 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
     setRooms(newRooms);
     let finalNotes = result.general_notes || "";
     if (extractedSummary) {
-      const dimCount = (extractedSummary.dimensionAnnotations || []).length;
-      const extractionNote = `Estimates based on ${dimCount} dimension annotations extracted directly from the PDF vector data. Scale detected: ${extractedSummary.detectedScale || '1/4'}" = 1'-0". Room labels extracted from PDF text (not visual guessing). All dimensions must be field-verified prior to fabrication.`;
+      let extractionNote;
+      if (extractedSummary.needsVisionFallback) {
+        const pages = extractedPageSelection.length ? extractedPageSelection : (extractedSummary.selectedPages || []);
+        extractionNote = `Estimates based on AI visual analysis of ${pages.length} floor plan page(s) (pages ${pages.join(', ') || '1'}). PDF text layer was not extractable (CAD vector-outline text). ${extractedSummary.totalLineSegments || 0} wall line segments extracted from vector geometry. All dimensions must be field-verified prior to fabrication.`;
+      } else {
+        const dimCount = (extractedSummary.dimensionAnnotations || []).length;
+        extractionNote = `Estimates based on ${dimCount} dimension annotations extracted directly from the PDF vector data. Scale detected: ${extractedSummary.detectedScale || '1/4'}" = 1'-0". Room labels extracted from PDF text (not visual guessing). All dimensions must be field-verified prior to fabrication.`;
+      }
       finalNotes = finalNotes ? `${finalNotes}\n\n${extractionNote}` : extractionNote;
     }
     setAiNotes(finalNotes);
@@ -638,28 +694,39 @@ A typical home has 40–120+ LF of cabinetry. Be thorough and accurate with scal
               )}
               {extractedData?.success && extractedData.aiReadySummary && (
                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <FileText className="w-4 h-4 text-blue-600" />
-                    <h4 className="font-semibold text-sm text-blue-900">PDF Data Extracted</h4>
+                    <h4 className="font-semibold text-sm text-blue-900">PDF Analysis Complete</h4>
+                    {extractedData.aiReadySummary.needsVisionFallback && (
+                      <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">Using AI vision (CAD text not extractable)</span>
+                    )}
                   </div>
-                  <p className="text-xs text-blue-800 mb-1">Scale: {extractedData.aiReadySummary.detectedScale}" = 1'-0"</p>
-                  <p className="text-xs text-blue-800 mb-1">Rooms found: {extractedData.aiReadySummary.roomLabels?.length || 0}</p>
-                  <p className="text-xs text-blue-800 mb-2">Dimension annotations: {extractedData.aiReadySummary.dimensionAnnotations?.length || 0}</p>
-                  <details className="text-xs text-blue-900">
-                    <summary className="cursor-pointer font-medium hover:text-blue-700">View rooms and dimensions</summary>
-                    <div className="mt-2 space-y-2 pl-2">
-                      {(extractedData.aiReadySummary.roomsWithNearbyDimensions || []).map(room => (
-                        <div key={room.label}>
-                          <strong className="text-blue-900">{room.label}</strong>
-                          <ul className="ml-4 list-disc">
-                            {(room.nearbyDimensions || []).map((d, i) => (
-                              <li key={i}>{d.text}{d.feet != null ? ` (${d.feet.toFixed(1)} ft)` : ""}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  </details>
+                  <p className="text-xs text-blue-800 mb-1">
+                    {extractedData.totalPages || 0} pages → {(extractedData.pageSelection?.selectedPages || []).length} floor plan pages identified
+                    {extractedData.aiReadySummary.totalLineSegments > 0 && ` · ${extractedData.aiReadySummary.totalLineSegments} wall segments extracted`}
+                    {!extractedData.aiReadySummary.needsVisionFallback && ` · ${extractedData.aiReadySummary.roomLabels?.length || 0} rooms found · ${extractedData.aiReadySummary.dimensionAnnotations?.length || 0} dimensions`}
+                  </p>
+                  <p className="text-xs text-blue-700 mb-2">
+                    Pages selected: {(extractedData.pageSelection?.selectedPages || []).join(', ') || '1'}
+                    {extractedData.aiReadySummary.detectedScale && ` · Scale: ${extractedData.aiReadySummary.detectedScale}" = 1'-0"`}
+                  </p>
+                  {!extractedData.aiReadySummary.needsVisionFallback && (
+                    <details className="text-xs text-blue-900">
+                      <summary className="cursor-pointer font-medium hover:text-blue-700">View rooms and dimensions</summary>
+                      <div className="mt-2 space-y-2 pl-2">
+                        {(extractedData.aiReadySummary.roomsWithNearbyDimensions || []).map(room => (
+                          <div key={room.label}>
+                            <strong className="text-blue-900">{room.label}</strong>
+                            <ul className="ml-4 list-disc">
+                              {(room.nearbyDimensions || []).map((d, i) => (
+                                <li key={i}>{d.text}{d.feet != null ? ` (${d.feet.toFixed(1)} ft)` : ""}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
                 </div>
               )}
             </div>
