@@ -40,6 +40,19 @@ function drawArrow(ctx, from, to, withHead) {
   }
 }
 
+// Distance from point (px,py) to segment (x1,y1)-(x2,y2).
+function pointSegDist(px, py, x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const len2 = dx * dx + dy * dy || 1;
+  let t = ((px - x1) * dx + (py - y1) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+}
+function hexToRgb(hex) {
+  const h = (hex || "#000000").replace('#', '');
+  return [parseInt(h.slice(0, 2), 16) || 0, parseInt(h.slice(2, 4), 16) || 0, parseInt(h.slice(4, 6), 16) || 0];
+}
+
 // ─── Coordinate helpers ──────────────────────────────────────────────────────
 // All annotations are stored in "natural" coordinates: the pixel position at scale=1.
 // The canvas drawing-buffer is always naturalW × naturalH.
@@ -78,6 +91,12 @@ function annToNatural(ann, nw, nh) {
   if (ann.type === "arrow" || ann.type === "line") {
     if (ann.rstart) {
       return { ...ann, start: toNatPt(ann.rstart, nw, nh), end: toNatPt(ann.rend, nw, nh), rstart: undefined, rend: undefined, _natural: true };
+    }
+    return { ...ann, _natural: true };
+  }
+  if (ann.type === "strip") {
+    if (ann.rx1 !== undefined) {
+      return { ...ann, x1: ann.rx1 * nw, y1: ann.ry1 * nh, x2: ann.rx2 * nw, y2: ann.ry2 * nh, rx1: undefined, ry1: undefined, rx2: undefined, ry2: undefined, _natural: true };
     }
     return { ...ann, _natural: true };
   }
@@ -365,6 +384,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       } else if (a.type === "arrow" || a.type === "line") {
         const s = a.start, en = a.end;
         if (Math.hypot(pos.x-s.x, pos.y-s.y)<T || Math.hypot(pos.x-en.x, pos.y-en.y)<T) return {kind:"ann",idx:i};
+      } else if (a.type === "strip") {
+        const half = (a.thickness || 20) / 2;
+        if (pointSegDist(pos.x, pos.y, a.x1, a.y1, a.x2, a.y2) <= half + T) return {kind:"ann",idx:i};
       }
     }
     return null;
@@ -376,6 +398,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     if (ann.type === "highlight") return { ...ann, x: ann.x+dx, y: ann.y+dy };
     if (ann.type === "text") return { ...ann, x: ann.x+dx, y: ann.y+dy };
     if (ann.type === "arrow" || ann.type === "line") return { ...ann, start:{x:ann.start.x+dx,y:ann.start.y+dy}, end:{x:ann.end.x+dx,y:ann.end.y+dy} };
+    if (ann.type === "strip") return { ...ann, x1:ann.x1+dx, y1:ann.y1+dy, x2:ann.x2+dx, y2:ann.y2+dy };
     return ann;
   };
   const translateMeas = (m, dx, dy) => ({
@@ -411,7 +434,24 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       const hit = hitTest(pos);
       if (hit) {
         setSelectedAnn(hit);
-        dragRef.current = { ...hit, lastPos: pos, moved: false };
+        // For strips, detect endpoint / thickness-handle grabs so they can be edited
+        // (drag endpoints, resize thickness) instead of just translating the whole strip.
+        let mode = "move";
+        if (hit.kind === "ann") {
+          const a = annList[hit.idx];
+          if (a?.type === "strip") {
+            const Te = 12 * naturalRef.current.w / displaySize.w;
+            if (Math.hypot(pos.x - a.x1, pos.y - a.y1) < Te) mode = "end1";
+            else if (Math.hypot(pos.x - a.x2, pos.y - a.y2) < Te) mode = "end2";
+            else {
+              const dx = a.x2 - a.x1, dy = a.y2 - a.y1, sl = Math.hypot(dx, dy) || 1;
+              const nx = -dy / sl, ny = dx / sl, half = (a.thickness || 20) / 2;
+              const th = { x: (a.x1 + a.x2) / 2 + nx * half, y: (a.y1 + a.y2) / 2 + ny * half };
+              if (Math.hypot(pos.x - th.x, pos.y - th.y) < Te * 1.4) mode = "thickness";
+            }
+          }
+        }
+        dragRef.current = { ...hit, lastPos: pos, moved: false, mode };
         setDeletePopup(null);
       } else {
         setSelectedAnn(null);
@@ -460,13 +500,32 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     const pos = getPos(e);
 
     if (tool === "pointer" && dragRef.current) {
-      const { kind, idx, lastPos } = dragRef.current;
+      const { kind, idx, lastPos, mode } = dragRef.current;
       const dx = pos.x - lastPos.x, dy = pos.y - lastPos.y;
       if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
         dragRef.current.moved = true;
         dragRef.current.lastPos = pos;
-        if (kind === "ann") setAnnList(p => p.map((a,i) => i===idx ? translateAnn(a,dx,dy) : a));
-        else setMeasurements(p => p.map((m,i) => i===idx ? translateMeas(m,dx,dy) : m));
+        if (kind === "ann") {
+          const a = annList[idx];
+          if (a?.type === "strip" && mode && mode !== "move") {
+            setAnnList(p => p.map((x, i) => {
+              if (i !== idx) return x;
+              if (mode === "end1") return { ...x, x1: x.x1 + dx, y1: x.y1 + dy };
+              if (mode === "end2") return { ...x, x2: x.x2 + dx, y2: x.y2 + dy };
+              if (mode === "thickness") {
+                const mx = (x.x1 + x.x2) / 2, my = (x.y1 + x.y2) / 2;
+                const sdx = x.x2 - x.x1, sdy = x.y2 - x.y1, sl = Math.hypot(sdx, sdy) || 1;
+                const perp = Math.abs((pos.x - mx) * (-sdy) + (pos.y - my) * (sdx)) / sl;
+                return { ...x, thickness: Math.max(8, Math.round(perp * 2)) };
+              }
+              return x;
+            }));
+          } else {
+            setAnnList(p => p.map((a, i) => i === idx ? translateAnn(a, dx, dy) : a));
+          }
+        } else {
+          setMeasurements(p => p.map((m, i) => i === idx ? translateMeas(m, dx, dy) : m));
+        }
       }
       return;
     }
@@ -522,6 +581,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       if (a.type==="highlight") return !(x>=a.x && x<=a.x+a.w && y>=a.y && y<=a.y+a.h);
       if (a.type==="pen") return !(a.points||[]).some(pt=>Math.hypot(pt.x-x,pt.y-y)<T);
       if (a.type==="arrow"||a.type==="line") return Math.hypot(a.start.x-x,a.start.y-y)>=T && Math.hypot(a.end.x-x,a.end.y-y)>=T;
+      if (a.type==="strip") return pointSegDist(x,y,a.x1,a.y1,a.x2,a.y2) >= ((a.thickness||20)/2 + T);
       if (a.type==="text") return Math.hypot(a.x-x,a.y-y)>=T*2;
       return true;
     }));
@@ -564,6 +624,34 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         if (isSel) { ctx.strokeStyle="#3b82f6"; ctx.lineWidth=2.5; ctx.strokeRect(ann.x-2,ann.y-2,ann.w+4,ann.h+4); }
         const lbl=HIGHLIGHT_COLORS.find(c=>c.color===ann.color)?.label;
         if (lbl) { ctx.font="bold 10px sans-serif"; ctx.fillStyle=`rgba(${r},${g},${b},1)`; ctx.fillText(lbl,ann.x+3,ann.y+12); }
+
+      } else if (ann.type==="strip") {
+        const [sr,sg,sb]=hexToRgb(ann.color);
+        const thickness = ann.thickness || 20;
+        const dx = ann.x2 - ann.x1, dy = ann.y2 - ann.y1;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len, ny = dx / len; // perpendicular unit
+        const half = thickness / 2;
+        ctx.fillStyle=`rgba(${sr},${sg},${sb},0.35)`; ctx.strokeStyle=`rgba(${sr},${sg},${sb},0.8)`; ctx.lineWidth=isSel?2.5:1.5;
+        ctx.beginPath();
+        ctx.moveTo(ann.x1+nx*half, ann.y1+ny*half);
+        ctx.lineTo(ann.x2+nx*half, ann.y2+ny*half);
+        ctx.lineTo(ann.x2-nx*half, ann.y2-ny*half);
+        ctx.lineTo(ann.x1-nx*half, ann.y1-ny*half);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+        // center line
+        ctx.strokeStyle=`rgba(${sr},${sg},${sb},0.9)`; ctx.lineWidth=isSel?2:1;
+        ctx.beginPath(); ctx.moveTo(ann.x1,ann.y1); ctx.lineTo(ann.x2,ann.y2); ctx.stroke();
+        if (isSel) {
+          ctx.fillStyle="#3b82f6";
+          [{x:ann.x1,y:ann.y1},{x:ann.x2,y:ann.y2}].forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);ctx.fill();});
+          const mid={x:(ann.x1+ann.x2)/2,y:(ann.y1+ann.y2)/2};
+          const th={x:mid.x+nx*half,y:mid.y+ny*half};
+          ctx.fillStyle="#3b82f6"; ctx.strokeStyle="#fff"; ctx.lineWidth=1.5;
+          ctx.beginPath(); ctx.rect(th.x-5,th.y-5,10,10); ctx.fill(); ctx.stroke();
+        }
+        const sLbl=HIGHLIGHT_COLORS.find(c=>c.color===ann.color)?.label;
+        if (sLbl) { ctx.font="bold 10px sans-serif"; ctx.fillStyle=`rgba(${sr},${sg},${sb},1)`; ctx.fillText(sLbl, ann.x1+3, ann.y1-4); }
 
       } else if (ann.type==="pen") {
         ctx.strokeStyle=isSel?"#3b82f6":ann.color; ctx.lineWidth=isSel?3.5:2.5;
