@@ -135,6 +135,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const [textValue, setTextValue]       = useState("");
   const [isPointerDown, setIsPointerDown] = useState(false);
   const [aiNotes, setAiNotes]           = useState(initialNotes);
+  // Active room for tagging newly drawn highlights — drives per-room "Price from
+  // Plan Marks" measurement. "" = no room (marks won't be attributed to any room).
+  const [activeRoomId, setActiveRoomId] = useState("");
 
   // Scale / calibration
   const [detectedScale, setDetectedScale]   = useState(null);
@@ -563,10 +566,13 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       setCurrentLine(null);
     } else if (tool==="highlight" && currentLine) {
       const w=Math.abs(pos.x-currentLine.start.x), h=Math.abs(pos.y-currentLine.start.y);
+      const rm = rooms.find(r => r.id === activeRoomId);
       if (w>3 && h>3) setAnnList(p => [...p, {
         type:"highlight",
         x:Math.min(currentLine.start.x,pos.x), y:Math.min(currentLine.start.y,pos.y),
-        w, h, color:highlightColor, page:pageNumber, _natural:true
+        w, h, color:highlightColor, page:pageNumber, _natural:true,
+        room_id: activeRoomId || null,
+        room_name: rm?.room_name || null
       }]);
       setCurrentLine(null);
     }
@@ -603,7 +609,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     setPendingCalib(null); setCalibKnownFeet("");
   };
 
-  const handleSave = () => { onSave([...annList, ...measurements], aiNotes); onOpenChange(false); };
+  const handleSave = () => { onSave([...annList, ...measurements], aiNotes, pxPerFtNat); onOpenChange(false); };
 
   // ── Canvas render ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -854,6 +860,13 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                 </button>
               ))}
               <input type="color" value={highlightColor} onChange={e=>setHighlightColor(e.target.value)} title="Custom" className="w-6 h-6 rounded border cursor-pointer"/>
+              <Select value={activeRoomId || "__none__"} onValueChange={v => setActiveRoomId(v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-7 w-[150px] text-xs ml-1"><SelectValue placeholder="Room (for marks)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No room (all)</SelectItem>
+                  {rooms.map(r => <SelectItem key={r.id} value={r.id}>{r.room_name || "Room"}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           ) : !["pointer","eraser","measure","calibrate"].includes(tool) ? (
             <input type="color" value={color} onChange={e=>setColor(e.target.value)} className="w-7 h-7 rounded border cursor-pointer ml-1"/>

@@ -118,6 +118,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const [rooms, setRooms] = useState([]);
   const [aiNotes, setAiNotes] = useState("");
   const [planAnnotations, setPlanAnnotations] = useState([]);
+  const [planScalePxPerFt, setPlanScalePxPerFt] = useState(null);
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState("draft");
   const [isUploading, setIsUploading] = useState(false);
@@ -177,6 +178,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
       setNotes(b.notes || "");
       setStatus(b.status || "draft");
       setPlanAnnotations(b.plan_annotations || []);
+      setPlanScalePxPerFt(b.plan_scale_px_per_ft || null);
     }
   }, [bidData]);
 
@@ -474,6 +476,7 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
     const newRooms = takeoff.rooms.map((room, ri) => ({
       id: `room_${Date.now()}_${ri}`,
       room_name: room.room_name || `Room ${ri + 1}`,
+      pricing_source: "ai",
       items: (room.items || []).map((item, ii) => {
         const cat = ["base", "upper", "tall", "misc"].includes(item.cabinet_category) ? item.cabinet_category : "base";
         const mt = item.measure_type === "qty" ? "qty" : "lf";
@@ -494,206 +497,12 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
     }));
     const newTotal = newRooms.reduce((s, r) => s + getRoomTotal(r), 0);
 
-    // ── CALL #2: HIGHLIGHTING (best-effort, never affects pricing) ──────────────
-    // Separate call so geometry estimation can't degrade the takeoff. If this fails
-    // or returns nothing, the analysis still succeeds with full pricing — just no
-    // highlights on the Annotate Plan overlay.
-    let aiHighlights = [];
-    try {
-      const highlightPayload = takeoff.rooms.map((room, ri) => ({
-        room_name: room.room_name || `Room ${ri + 1}`,
-        items: (room.items || []).map(item => ({
-          name: item.name || "",
-          cabinet_category: item.cabinet_category || "misc"
-        }))
-      }));
-
-      // ── Extract real wall line segments from the PDF vector geometry (client-side) ──
-      // The takeoff already confirmed this PDF has vector data. We pull the actual wall
-      // segments via pdfjs's operator list in the same natural (scale=1) coordinate space
-      // the Annotate Plan tool stores annotations in, so a strip drawn along segment N
-      // lands pixel-accurate on the real wall — no AI coordinate guessing. The AI's job
-      // shrinks to CLASSIFICATION (which wall = this room's cabinet run), not measurement.
-      const allWallSegments = []; // [{ index, page, x1,y1,x2,y2 (fractions 0-1), _nat:{natural px} }]
-      try {
-        for (const pm of analysisPagesList) {
-          if (!pm.pdfPage || !pm.naturalWidth) continue;
-          const raw = await extractWallSegments(planFileUrl, pm.pdfPage);
-          const walls = filterWallSegments(raw, pm.naturalWidth, pm.naturalHeight);
-          for (const w of walls) {
-            allWallSegments.push({
-              index: allWallSegments.length,
-              page: pm.pdfPage,
-              x1: +(w.x1 / pm.naturalWidth).toFixed(4),
-              y1: +(w.y1 / pm.naturalHeight).toFixed(4),
-              x2: +(w.x2 / pm.naturalWidth).toFixed(4),
-              y2: +(w.y2 / pm.naturalHeight).toFixed(4),
-              _nat: w
-            });
-            if (allWallSegments.length >= 120) break; // cap total candidates for the prompt
-          }
-          if (allWallSegments.length >= 120) break;
-        }
-      } catch (err) {
-        console.warn("Wall segment extraction failed (will fall back to box highlights):", err);
-      }
-
-      // Cabinet depth (~24") → natural px, used as strip thickness. From the detected
-      // architectural scale; falls back to ~4% of page size if scale is unknown.
-      const scaleIpf = parseScaleInchesPerFoot(extractedSummary?.detectedScale);
-      const depthPxByPage = {};
-      for (const pm of analysisPagesList) {
-        if (!pm.naturalWidth) continue;
-        depthPxByPage[pm.pdfPage] = scaleIpf > 0
-          ? Math.max(8, 2 * scaleIpf * 72) // 24" = 2 ft × px/ft (px/ft = ipf × 72)
-          : Math.max(8, Math.min(pm.naturalWidth, pm.naturalHeight) * 0.04);
-      }
-
-      const wallListForPrompt = allWallSegments.map(w => ({ index: w.index, page: w.page, x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2 }));
-
-      const highlightResult = await base44.integrations.Core.InvokeLLM({
-        model: "gemini_3_1_pro",
-        prompt: `You are locating cabinetry on an architectural floor plan for HIGHLIGHTING ONLY. A separate takeoff already produced the room/item list (do NOT modify names, categories, or quantities, and do NOT add/remove rooms/items). Your ONLY job: for each item, decide HOW its cabinet run sits on the plan and return its highlight.
-
-Two highlight kinds — pick ONE per item:
-1. "wall" — the cabinet run sits ALONG a wall / counter line (perimeter base/upper/tall runs, vanities, pantry/tall walls, wall runs against an interior/exterior wall). Pick the wall segment from the WALL SEGMENTS list that this run hugs. Return: { "kind":"wall", "segment_index": <N>, "page_number": <page of that segment> }.
-2. "free" — the item is freestanding in open floor space (kitchen islands, free-standing towers). No wall segment applies. Return: { "kind":"free", "box": { "page_number": <n>, "x": <fx>, "y": <fy>, "width": <fw>, "height": <fh> } } as a fraction rectangle covering the item's footprint.
-
-STRONGLY PREFER "wall" for perimeter/run cabinets (base/upper/tall runs along a wall) — it is far more accurate because the segment's exact geometry is already known. Use "free" ONLY for genuinely freestanding pieces such as kitchen islands.
-
-For "free" boxes, coordinates are FRACTIONS of the image (0–1), top-down image coords (0 = top, 1 = bottom — NOT PDF bottom-up). For "wall", just reference segment_index from the list — do NOT estimate coordinates yourself.
-
-For each room also return a room_box (the room's enclosed area where its label sits) as fraction coordinates { page_number, x, y, width, height }; this is used only as a fallback for items the AI can't anchor.
-
-WALL SEGMENTS (index, page, x1,y1,x2,y2 as 0-1 fractions, top-down):
-${JSON.stringify(wallListForPrompt)}
-
-ROOM/ITEM LIST (return rooms/items in the SAME order, one highlight per item):
-${JSON.stringify(highlightPayload)}`,
-        file_urls: analysisFileUrls,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            rooms: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  room_name: { type: "string" },
-                  room_box: {
-                    type: "object",
-                    properties: {
-                      page_number: { type: "number" },
-                      x: { type: "number" }, y: { type: "number" },
-                      width: { type: "number" }, height: { type: "number" }
-                    }
-                  },
-                  items: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        name: { type: "string" },
-                        highlight: {
-                          type: "object",
-                          properties: {
-                            kind: { type: "string" },
-                            segment_index: { type: "number" },
-                            page_number: { type: "number" },
-                            box: {
-                              type: "object",
-                              properties: {
-                                page_number: { type: "number" },
-                                x: { type: "number" }, y: { type: "number" },
-                                width: { type: "number" }, height: { type: "number" }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      });
-
-      const fracBoxToNatural = (b, pm) => {
-        if (!b || !pm || !pm.naturalWidth || !pm.naturalHeight) return null;
-        const iw = pm.imageWidth || pm.naturalWidth;
-        const ih = pm.imageHeight || pm.naturalHeight;
-        const fx = (b.x || 0) > 1.5 ? (b.x || 0) / iw : (b.x || 0);
-        const fy = (b.y || 0) > 1.5 ? (b.y || 0) / ih : (b.y || 0);
-        const fw = (b.width || 0) > 1.5 ? (b.width || 0) / iw : (b.width || 0);
-        const fh = (b.height || 0) > 1.5 ? (b.height || 0) / ih : (b.height || 0);
-        const w = Math.max(0, fw * pm.naturalWidth);
-        const h = Math.max(0, fh * pm.naturalHeight);
-        if (w < 3 || h < 3) return null;
-        return { page: pm.pdfPage, x: Math.max(0, fx * pm.naturalWidth), y: Math.max(0, fy * pm.naturalHeight), w, h };
-      };
-
-      const roomBoxes = (highlightResult.rooms || []).map(room => room.room_box
-        ? fracBoxToNatural(room.room_box, analysisPagesList[Math.max(0, Math.floor((room.room_box.page_number || 1) - 1))])
-        : null);
-
-      (highlightResult.rooms || []).forEach((room, ri) => {
-        const rb = roomBoxes[ri];
-        const tRoom = newRooms[ri];
-        const tItems = tRoom?.items || [];
-        const hlItems = room.items || [];
-        const nItems = hlItems.length;
-        hlItems.forEach((item, ii) => {
-          const cat = tItems[ii]?.cabinet_category || "misc";
-          const color = CATEGORY_HIGHLIGHT_COLOR[cat] || CATEGORY_HIGHLIGHT_COLOR.misc;
-          const roomName = tRoom?.room_name || room.room_name || "";
-          const itemName = tItems[ii]?.name || item.name || "";
-          const hl = item.highlight || {};
-
-          // ── Wall-anchored strip (preferred): geometry from extracted vector data ──
-          // The AI only picks which wall segment; position/length come from the real
-          // extracted coordinates, so the strip hugs the actual wall/counter line.
-          if (hl.kind === "wall" && Number.isInteger(hl.segment_index)) {
-            const seg = allWallSegments[hl.segment_index];
-            const segPage = hl.page_number || seg?.page;
-            const pm = analysisPagesList.find(p => p.pdfPage === segPage) || analysisPagesList[0];
-            if (seg && pm) {
-              const nat = seg._nat;
-              const thickness = depthPxByPage[pm.pdfPage] || Math.max(8, Math.min(pm.naturalWidth, pm.naturalHeight) * 0.04);
-              aiHighlights.push({
-                type: "strip", x1: nat.x1, y1: nat.y1, x2: nat.x2, y2: nat.y2,
-                thickness, color, page: pm.pdfPage, source: "ai",
-                room_name: roomName, item_name: itemName, _natural: true
-              });
-              return;
-            }
-          }
-
-          // ── Freestanding box (islands etc.): AI-estimated footprint ──
-          let box = hl.box ? fracBoxToNatural(hl.box, analysisPagesList[Math.max(0, Math.floor((hl.box.page_number || 1) - 1))]) : null;
-          if (box && rb && rb.w > 3 && rb.h > 3) {
-            const cx = box.x + box.w / 2, cy = box.y + box.h / 2;
-            if (!(cx >= rb.x && cx <= rb.x + rb.w && cy >= rb.y && cy <= rb.y + rb.h)) box = null;
-          }
-          if (!box && rb && rb.w > 3 && rb.h > 3) {
-            const cols = Math.min(3, Math.max(1, nItems));
-            const rows = Math.ceil(nItems / cols) || 1;
-            const cellW = rb.w / cols, cellH = rb.h / rows;
-            const col = ii % cols, row = Math.floor(ii / cols);
-            box = { page: rb.page, x: rb.x + col * cellW + cellW * 0.2, y: rb.y + row * cellH + cellH * 0.25, w: cellW * 0.6, h: cellH * 0.5 };
-          }
-          if (!box || box.w < 3 || box.h < 3) return;
-          aiHighlights.push({
-            type: "highlight", x: box.x, y: box.y, w: box.w, h: box.h,
-            color, page: box.page, source: "ai",
-            room_name: roomName, item_name: itemName, _natural: true
-          });
-        });
-      });
-    } catch (err) {
-      console.warn("Highlight call failed (non-blocking, pricing unaffected):", err);
-    }
+    // ── Persist detected scale (natural px per real foot) for plan-mark pricing ──
+    // Used by the per-room "Price from Plan Marks" feature to convert the user's
+    // manual highlight lengths on the Annotate Plan overlay into real linear feet.
+    // (AI auto-highlighting has been removed — the AI now only performs the takeoff.)
+    const detectedIpf = parseScaleInchesPerFoot(extractedSummary?.detectedScale);
+    if (detectedIpf > 0) setPlanScalePxPerFt(detectedIpf * 72);
 
     // Final notes (unchanged behavior)
     let finalNotes = takeoff.general_notes || "";
@@ -710,13 +519,22 @@ ${JSON.stringify(highlightPayload)}`,
     }
 
     // ── Apply results (with variance safety check on re-analyze) ────────────────
+    // Preserve rooms the user switched to "Price from Plan Marks" — re-analysis
+    // must NOT overwrite their manually-measured pricing. Match by room name
+    // (case-insensitive). Rooms still on the AI estimate are replaced by the new takeoff.
     const applyResults = () => {
-      setRooms(newRooms);
+      const preserved = {};
+      rooms.forEach(r => { if (r.pricing_source === "plan_marks") preserved[(r.room_name || "").trim().toLowerCase()] = r; });
+      const merged = newRooms.map(nr => {
+        const key = (nr.room_name || "").trim().toLowerCase();
+        return preserved[key] ? preserved[key] : nr;
+      });
+      const newKeys = new Set(newRooms.map(r => (r.room_name || "").trim().toLowerCase()));
+      Object.values(preserved).forEach(r => {
+        if (!newKeys.has((r.room_name || "").trim().toLowerCase())) merged.push(r);
+      });
+      setRooms(merged);
       setAiNotes(finalNotes);
-      if (aiHighlights.length > 0) {
-        const kept = (planAnnotations || []).filter(a => !(a.source === "ai" && (a.type === "highlight" || a.type === "strip")));
-        setPlanAnnotations([...kept, ...aiHighlights]);
-      }
     };
 
     const prevTotal = grandTotal;
@@ -724,7 +542,7 @@ ${JSON.stringify(highlightPayload)}`,
       const diff = Math.abs(newTotal - prevTotal);
       const pct = (diff / prevTotal) * 100;
       if (pct > 15) {
-        setPendingAnalysis({ newRooms, finalNotes, aiHighlights, prevTotal, newTotal, pct });
+        setPendingAnalysis({ newRooms, finalNotes, prevTotal, newTotal, pct });
         setIsAnalyzing(false);
         return;
       }
@@ -760,7 +578,8 @@ ${JSON.stringify(highlightPayload)}`,
       ai_notes: aiNotes,
       notes,
       status,
-      plan_annotations: planAnnotations
+      plan_annotations: planAnnotations,
+      plan_scale_px_per_ft: planScalePxPerFt || null
     };
     if (bidId) {
       await base44.entities.Bid.update(bidId, bidData);
@@ -813,7 +632,8 @@ ${JSON.stringify(highlightPayload)}`,
       ai_notes: aiNotes,
       notes,
       status,
-      plan_annotations: planAnnotations
+      plan_annotations: planAnnotations,
+      plan_scale_px_per_ft: planScalePxPerFt || null
     };
     if (bidId) {
       await base44.entities.Bid.update(bidId, data);
@@ -1016,10 +836,17 @@ ${JSON.stringify(highlightPayload)}`,
                       </p>
                       <div className="flex gap-2 mt-3">
                         <Button size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={() => {
-                          setRooms(pendingAnalysis.newRooms);
+                          const prev = rooms;
+                          const preserved = {};
+                          prev.forEach(r => { if (r.pricing_source === "plan_marks") preserved[(r.room_name || "").trim().toLowerCase()] = r; });
+                          const merged = pendingAnalysis.newRooms.map(nr => {
+                            const k = (nr.room_name || "").trim().toLowerCase();
+                            return preserved[k] ? preserved[k] : nr;
+                          });
+                          const newKeys = new Set(pendingAnalysis.newRooms.map(r => (r.room_name || "").trim().toLowerCase()));
+                          Object.values(preserved).forEach(r => { if (!newKeys.has((r.room_name || "").trim().toLowerCase())) merged.push(r); });
+                          setRooms(merged);
                           setAiNotes(pendingAnalysis.finalNotes);
-                          const kept = (planAnnotations || []).filter(a => !(a.source === "ai" && (a.type === "highlight" || a.type === "strip")));
-                          setPlanAnnotations([...kept, ...pendingAnalysis.aiHighlights]);
                           setPendingAnalysis(null);
                         }}>Apply New Numbers</Button>
                         <Button size="sm" variant="outline" onClick={() => setPendingAnalysis(null)}>Keep Existing</Button>
@@ -1098,6 +925,8 @@ ${JSON.stringify(highlightPayload)}`,
               sketchPaths={room.sketch_paths || []}
               specs={specs}
               linkedProjectId={linkedProjectId}
+              planAnnotations={planAnnotations}
+              planScalePxPerFt={planScalePxPerFt}
             />
           ))}
 
@@ -1187,12 +1016,15 @@ ${JSON.stringify(highlightPayload)}`,
         onOpenChange={setShowPlanViewer}
         pdfUrl={planFileUrl}
         annotations={planAnnotations}
-        onSave={async (savedAnnotations, notes) => {
+        onSave={async (savedAnnotations, notes, scalePxPerFt) => {
           setPlanAnnotations(savedAnnotations);
           setAiNotes(notes);
+          if (scalePxPerFt && scalePxPerFt > 0) setPlanScalePxPerFt(scalePxPerFt);
           // Persist immediately so annotations survive page reload
           if (bidId) {
-            await base44.entities.Bid.update(bidId, { plan_annotations: savedAnnotations, ai_notes: notes });
+            const patch = { plan_annotations: savedAnnotations, ai_notes: notes };
+            if (scalePxPerFt && scalePxPerFt > 0) patch.plan_scale_px_per_ft = scalePxPerFt;
+            await base44.entities.Bid.update(bidId, patch);
           }
         }}
         projectName={projectName}

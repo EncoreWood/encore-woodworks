@@ -86,6 +86,22 @@
             "type": "string",
             "description": "Per-room cabinet style override (a BidPricingConfig style_key). If empty/null, the room inherits the bid-level default style (bid_type)."
           },
+          "pricing_source": {
+            "type": "string",
+            "enum": [
+              "ai",
+              "plan_marks"
+            ],
+            "default": "ai",
+            "description": "Whether this room's pricing comes from the AI takeoff estimate or from the user's manual plan marks"
+          },
+          "ai_items_snapshot": {
+            "type": "array",
+            "description": "Snapshot of the AI-estimate items captured when the room was switched to plan_marks, so the user can toggle back",
+            "items": {
+              "type": "object"
+            }
+          },
           "ceiling_height": {
             "type": "string",
             "description": "Ceiling height in inches"
@@ -155,6 +171,10 @@
     },
     "total_lf": {
       "type": "number"
+    },
+    "plan_scale_px_per_ft": {
+      "type": "number",
+      "description": "Detected/calibrated plan scale in natural-px per real foot, used to convert manual plan-mark lengths into linear feet for 'Price from Plan Marks' pricing"
     },
     "ai_notes": {
       "type": "string"
