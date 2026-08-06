@@ -33,9 +33,11 @@ export function measureRoomMarks(room, planAnnotations, planScalePxPerFt) {
 //   - marks-driven misc LF runs (notes === "Priced from plan marks") are re-derived
 //   - user-added line items (qty pieces, percentage upgrades, custom misc LF) are kept
 // ai_items_snapshot and pricing_source are preserved so the user can still toggle back.
-// Returns the original room unchanged if it isn't in plan_marks mode or scale is missing.
+// Always computes LF items from the current marks and sets the room to plan_marks mode.
+// Callers decide which rooms to apply this to (the toggle forces it on an "ai" room;
+// the live re-pricing only applies it to rooms already in plan_marks). Returns the
+// original room unchanged only when the plan scale is unavailable.
 export function recomputePlanMarkRoom(room, planAnnotations, planScalePxPerFt, pricingConfigs, bidType) {
-  if (room.pricing_source !== "plan_marks") return room;
   if (!planScalePxPerFt || planScalePxPerFt <= 0) return room;
   const sums = measureRoomMarks(room, planAnnotations, planScalePxPerFt);
 
