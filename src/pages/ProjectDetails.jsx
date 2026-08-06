@@ -38,6 +38,7 @@ import RoomFilesSection from "../components/projects/RoomFilesSection";
 import JobMeasurementsTab from "../components/measurements/JobMeasurementsTab";
 import ProjectTimelineSection from "../components/projects/ProjectTimelineSection";
 import GoogleFolderButton from "../components/projects/GoogleFolderButton";
+import JobPacketsRoomModal from "../components/production/JobPacketsRoomModal";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -116,6 +117,13 @@ export default function ProjectDetails() {
   const [roomGlbPickerIdx, setRoomGlbPickerIdx] = useState(null);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
+
+  const { data: productionItems = [] } = useQuery({
+    queryKey: ["productionItems", projectId],
+    queryFn: () => base44.entities.ProductionItem.filter({ project_id: projectId }),
+    enabled: !!projectId,
+    staleTime: 30_000,
+  });
 
   const { data: project, isLoading } = useQuery({
     queryKey: ["project", projectId],
@@ -443,6 +451,12 @@ export default function ProjectDetails() {
                             <h3 className={cn("font-medium", room.completed ? "text-emerald-700" : "text-slate-900")}>{room.room_name || `Room ${idx + 1}`}</h3>
                             <div className="flex items-center gap-2">
                               {room.cabinet_count && <Badge variant="outline" className="text-xs">{room.cabinet_count} cabinets</Badge>}
+                              <JobPacketsRoomModal
+                                project={project}
+                                roomName={room.room_name || `Room ${idx + 1}`}
+                                items={productionItems}
+                                currentUser={currentUser}
+                              />
                               {room.glb_url ? (
                                 <>
                                   <Button
