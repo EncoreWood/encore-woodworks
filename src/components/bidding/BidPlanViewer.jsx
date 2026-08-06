@@ -575,9 +575,14 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
 
     if (tool === "pointer") {
       if (dragRef.current && !dragRef.current.moved && dragRef.current.wasSelected) {
-        // Show delete popup in CSS coords — only on a repeat click of an already-selected mark
-        const cssPos = getPosCSS(e);
-        setDeletePopup({ cssX: cssPos.x, cssY: cssPos.y, ...selectedAnn });
+        // For room-assignable marks (highlight/strip) the selection popover already provides
+        // a delete button — only show the bare "Delete?" popup for other types / measurements.
+        const sel = dragRef.current.kind === "ann" ? annList[dragRef.current.idx] : null;
+        const isRoomMark = sel && (sel.type === "highlight" || sel.type === "strip");
+        if (!isRoomMark) {
+          const cssPos = getPosCSS(e);
+          setDeletePopup({ cssX: cssPos.x, cssY: cssPos.y, ...selectedAnn });
+        }
       }
       dragRef.current = null;
       return;
@@ -655,12 +660,12 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         ctx.fillRect(ann.x,ann.y,ann.w,ann.h); ctx.strokeRect(ann.x,ann.y,ann.w,ann.h);
         if (isSel) {
           ctx.strokeStyle="#3b82f6"; ctx.lineWidth=2.5; ctx.strokeRect(ann.x-2,ann.y-2,ann.w+4,ann.h+4);
-          // Resize handles: 4 corners + 4 edges
-          ctx.fillStyle="#fff"; ctx.strokeStyle="#3b82f6"; ctx.lineWidth=1.5;
-          const hs=7;
+          // Resize handles: 4 corners + 4 edges (circles, visible at any zoom)
+          ctx.fillStyle="#fff"; ctx.strokeStyle="#3b82f6"; ctx.lineWidth=2;
+          const hr=6;
           [[ann.x,ann.y],[ann.x+ann.w,ann.y],[ann.x,ann.y+ann.h],[ann.x+ann.w,ann.y+ann.h],
            [ann.x+ann.w/2,ann.y],[ann.x+ann.w/2,ann.y+ann.h],[ann.x,ann.y+ann.h/2],[ann.x+ann.w,ann.y+ann.h/2]
-          ].forEach(([hx,hy])=>{ ctx.fillRect(hx-hs/2,hy-hs/2,hs,hs); ctx.strokeRect(hx-hs/2,hy-hs/2,hs,hs); });
+          ].forEach(([hx,hy])=>{ ctx.beginPath(); ctx.arc(hx,hy,hr,0,Math.PI*2); ctx.fill(); ctx.stroke(); });
         }
         const lbl=HIGHLIGHT_COLORS.find(c=>c.color===ann.color)?.label;
         if (lbl) { ctx.font="bold 10px sans-serif"; ctx.fillStyle=`rgba(${r},${g},${b},1)`; ctx.fillText(lbl,ann.x+3,ann.y+12); }
@@ -917,30 +922,6 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         {tool==="pointer"   && <div className="px-4 py-1.5 bg-slate-50 border-b text-xs text-slate-600 font-medium flex-shrink-0">Click to select • Drag to move • Drag corners/edges to resize • Click selected to delete</div>}
         {tool==="highlight" && <div className="px-4 py-1.5 bg-amber-50 border-b text-xs text-amber-700 font-medium flex-shrink-0">{activeRoomId ? `Drawing & viewing marks for: ${rooms.find(r=>r.id===activeRoomId)?.room_name||"room"}` : "All rooms — draw a mark, then click it to assign it to a room"}</div>}
 
-        {/* Selected-highlight properties: assign / reassign room */}
-        {selectedAnn?.kind === "ann" && annList[selectedAnn.idx]?.type === "highlight" && (() => {
-          const sel = annList[selectedAnn.idx];
-          const cat = HIGHLIGHT_COLORS.find(c=>c.color===sel.color)?.label || "Highlight";
-          return (
-            <div className="px-4 py-1.5 bg-blue-50 border-b text-xs flex items-center gap-2 flex-wrap flex-shrink-0">
-              <span className="font-semibold text-blue-900">Selected: {cat}</span>
-              <span className="text-slate-300">|</span>
-              <span className="text-slate-600 font-medium">Room:</span>
-              <Select value={sel.room_id || "__none__"} onValueChange={v => {
-                const rid = v === "__none__" ? "" : v;
-                const rm = rooms.find(r => r.id === rid);
-                setAnnList(p => p.map((a,i) => i === selectedAnn.idx ? { ...a, room_id: rid || null, room_name: rm?.room_name || null } : a));
-              }}>
-                <SelectTrigger className="h-7 w-[180px] text-xs"><SelectValue placeholder="Assign to room" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">No room (unassigned)</SelectItem>
-                  {rooms.map(r => <SelectItem key={r.id} value={r.id}>{r.room_name || "Room"}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              {sel.room_id && <span className="text-emerald-600 font-medium">✓ assigned</span>}
-            </div>
-          );
-        })()}
         {tool==="measure"   && <div className="px-4 py-1.5 bg-orange-50 border-b text-xs text-orange-700 font-medium flex-shrink-0">{!measureStart?"Click first point":"Click second point"}</div>}
         {tool==="calibrate" && <div className="px-4 py-1.5 bg-violet-50 border-b text-xs text-violet-700 font-medium flex-shrink-0">{!calibStart?"Click first point on scale bar":"Click second point"}</div>}
         {tool==="trace"     && <div className="px-4 py-1.5 bg-emerald-50 border-b text-xs text-emerald-700 font-medium flex-shrink-0">{tracePoints.length===0?"Click corners of room perimeter":tracePoints.length<3?`${tracePoints.length} point(s) placed — keep clicking corners`:`${tracePoints.length} points — click near first point (red circle) to close`}</div>}
@@ -1027,6 +1008,40 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                     <button onClick={()=>setDeletePopup(null)} className="text-xs text-slate-400 hover:text-slate-700 px-1">✕</button>
                   </div>
                 )}
+
+                {/* Selection popover for room-assignable marks — room picker + delete, at the mark */}
+                {(() => {
+                  const sel = selectedAnn?.kind === "ann" ? annList[selectedAnn.idx] : null;
+                  if (!sel || (sel.type !== "highlight" && sel.type !== "strip")) return null;
+                  const np = sel.type === "highlight"
+                    ? { x: sel.x, y: sel.y }
+                    : { x: Math.min(sel.x1, sel.x2), y: Math.min(sel.y1, sel.y2) };
+                  const css = natToCSS(np);
+                  const cat = sel.type === "highlight"
+                    ? (HIGHLIGHT_COLORS.find(c=>c.color===sel.color)?.label || "Highlight")
+                    : "Strip";
+                  const left = Math.min(Math.max(2, css.x), (displaySize.w || 9999) - 250);
+                  const top = Math.max(4, css.y - 48);
+                  return (
+                    <div style={{position:"absolute", left, top, zIndex:35}}
+                      className="flex items-center gap-1.5 bg-white border-2 border-blue-400 shadow-2xl rounded-lg px-2.5 py-1.5">
+                      <span className="text-xs font-bold text-blue-900 whitespace-nowrap">{cat}</span>
+                      <span className="text-slate-300">|</span>
+                      <select value={sel.room_id || ""} onChange={e => {
+                        const rid = e.target.value;
+                        const rm = rooms.find(r => r.id === rid);
+                        setAnnList(p => p.map((a,i) => i === selectedAnn.idx ? { ...a, room_id: rid || null, room_name: rm?.room_name || null } : a));
+                      }} className="h-7 w-[150px] text-xs border border-slate-300 rounded px-1 bg-white">
+                        <option value="">No room</option>
+                        {rooms.map(r => <option key={r.id} value={r.id}>{r.room_name || "Room"}</option>)}
+                      </select>
+                      <button onClick={()=>{ setAnnList(p=>p.filter((_,i)=>i!==selectedAnn.idx)); setSelectedAnn(null); }}
+                        title="Delete mark" className="text-red-500 hover:text-red-700 p-1 flex items-center">
+                        <Trash2 className="w-3.5 h-3.5"/>
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
               </div>{/* end outer size-reserving div */}
             </div>
