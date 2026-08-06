@@ -379,6 +379,8 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     for (let j = pageAnns.length-1; j >= 0; j--) {
       const {a,i} = pageAnns[j];
       if (a.type === "highlight") {
+        // Hidden by the active room filter? skip selection so invisible marks can't be grabbed.
+        if (activeRoomId && a.room_id !== activeRoomId) continue;
         if (pos.x >= a.x && pos.x <= a.x+a.w && pos.y >= a.y && pos.y <= a.y+a.h) return {kind:"ann",idx:i};
       } else if (a.type === "text") {
         if (Math.hypot(pos.x-a.x, pos.y-a.y) < T*2) return {kind:"ann",idx:i};
@@ -452,9 +454,22 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
               const th = { x: (a.x1 + a.x2) / 2 + nx * half, y: (a.y1 + a.y2) / 2 + ny * half };
               if (Math.hypot(pos.x - th.x, pos.y - th.y) < Te * 1.4) mode = "thickness";
             }
+          } else if (a?.type === "highlight" && selectedAnn?.kind === "ann" && selectedAnn.idx === hit.idx) {
+            // Box-highlight resize handles — only detected once the highlight is already
+            // selected, so the first click selects it (and reveals the handles).
+            const Te = 12 * naturalRef.current.w / displaySize.w;
+            const corners = {
+              nw:[a.x, a.y], ne:[a.x+a.w, a.y], sw:[a.x, a.y+a.h], se:[a.x+a.w, a.y+a.h],
+              n:[a.x+a.w/2, a.y], s:[a.x+a.w/2, a.y+a.h],
+              w:[a.x, a.y+a.h/2], e:[a.x+a.w, a.y+a.h/2],
+            };
+            for (const [dir, [hx,hy]] of Object.entries(corners)) {
+              if (Math.hypot(pos.x-hx, pos.y-hy) < Te) { mode = dir; break; }
+            }
           }
         }
-        dragRef.current = { ...hit, lastPos: pos, moved: false, mode };
+        const wasSelected = selectedAnn?.kind === hit.kind && selectedAnn.idx === hit.idx;
+        dragRef.current = { ...hit, lastPos: pos, moved: false, mode, wasSelected };
         setDeletePopup(null);
       } else {
         setSelectedAnn(null);
@@ -523,6 +538,17 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
               }
               return x;
             }));
+          } else if (a?.type === "highlight" && mode && mode !== "move") {
+            // Resize the box from the dragged handle (absolute pointer → new rect).
+            setAnnList(p => p.map((x, i) => {
+              if (i !== idx) return x;
+              let nL = x.x, nR = x.x + x.w, nT = x.y, nB = x.y + x.h;
+              if (mode.includes("w")) nL = pos.x;
+              if (mode.includes("e")) nR = pos.x;
+              if (mode.includes("n")) nT = pos.y;
+              if (mode.includes("s")) nB = pos.y;
+              return { ...x, x: Math.min(nL,nR), y: Math.min(nT,nB), w: Math.max(3, Math.abs(nR-nL)), h: Math.max(3, Math.abs(nB-nT)) };
+            }));
           } else {
             setAnnList(p => p.map((a, i) => i === idx ? translateAnn(a, dx, dy) : a));
           }
@@ -548,8 +574,8 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     const pos = getPos(e);
 
     if (tool === "pointer") {
-      if (dragRef.current && !dragRef.current.moved && selectedAnn) {
-        // Show delete popup in CSS coords
+      if (dragRef.current && !dragRef.current.moved && dragRef.current.wasSelected) {
+        // Show delete popup in CSS coords — only on a repeat click of an already-selected mark
         const cssPos = getPosCSS(e);
         setDeletePopup({ cssX: cssPos.x, cssY: cssPos.y, ...selectedAnn });
       }
@@ -619,7 +645,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Draw saved annotations (all in natural px == canvas buffer px)
-    annList.filter(a => a.page===pageNumber).forEach(ann => {
+    annList.filter(a => a.page===pageNumber && !(activeRoomId && a.type==="highlight" && a.room_id !== activeRoomId)).forEach(ann => {
       const isSel = selectedAnn?.kind==="ann" && annList.indexOf(ann)===selectedAnn.idx;
       ctx.strokeStyle=ann.color; ctx.fillStyle=ann.color; ctx.lineWidth=2.5; ctx.lineCap="round"; ctx.lineJoin="round";
 
@@ -627,9 +653,18 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         const [r,g,b]=[parseInt(ann.color.slice(1,3),16),parseInt(ann.color.slice(3,5),16),parseInt(ann.color.slice(5,7),16)];
         ctx.fillStyle=`rgba(${r},${g},${b},0.35)`; ctx.strokeStyle=`rgba(${r},${g},${b},0.7)`; ctx.lineWidth=isSel?2.5:1.5;
         ctx.fillRect(ann.x,ann.y,ann.w,ann.h); ctx.strokeRect(ann.x,ann.y,ann.w,ann.h);
-        if (isSel) { ctx.strokeStyle="#3b82f6"; ctx.lineWidth=2.5; ctx.strokeRect(ann.x-2,ann.y-2,ann.w+4,ann.h+4); }
+        if (isSel) {
+          ctx.strokeStyle="#3b82f6"; ctx.lineWidth=2.5; ctx.strokeRect(ann.x-2,ann.y-2,ann.w+4,ann.h+4);
+          // Resize handles: 4 corners + 4 edges
+          ctx.fillStyle="#fff"; ctx.strokeStyle="#3b82f6"; ctx.lineWidth=1.5;
+          const hs=7;
+          [[ann.x,ann.y],[ann.x+ann.w,ann.y],[ann.x,ann.y+ann.h],[ann.x+ann.w,ann.y+ann.h],
+           [ann.x+ann.w/2,ann.y],[ann.x+ann.w/2,ann.y+ann.h],[ann.x,ann.y+ann.h/2],[ann.x+ann.w,ann.y+ann.h/2]
+          ].forEach(([hx,hy])=>{ ctx.fillRect(hx-hs/2,hy-hs/2,hs,hs); ctx.strokeRect(hx-hs/2,hy-hs/2,hs,hs); });
+        }
         const lbl=HIGHLIGHT_COLORS.find(c=>c.color===ann.color)?.label;
         if (lbl) { ctx.font="bold 10px sans-serif"; ctx.fillStyle=`rgba(${r},${g},${b},1)`; ctx.fillText(lbl,ann.x+3,ann.y+12); }
+        if (ann.room_name) { ctx.font="9px sans-serif"; ctx.fillStyle=`rgba(${r},${g},${b},0.95)`; ctx.fillText(ann.room_name, ann.x+3, ann.y+23); }
 
       } else if (ann.type==="strip") {
         const [sr,sg,sb]=hexToRgb(ann.color);
@@ -861,9 +896,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
               ))}
               <input type="color" value={highlightColor} onChange={e=>setHighlightColor(e.target.value)} title="Custom" className="w-6 h-6 rounded border cursor-pointer"/>
               <Select value={activeRoomId || "__none__"} onValueChange={v => setActiveRoomId(v === "__none__" ? "" : v)}>
-                <SelectTrigger className="h-7 w-[150px] text-xs ml-1"><SelectValue placeholder="Room (for marks)" /></SelectTrigger>
+                <SelectTrigger className="h-7 w-[160px] text-xs ml-1"><SelectValue placeholder="All rooms" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">No room (all)</SelectItem>
+                  <SelectItem value="__none__">All rooms</SelectItem>
                   {rooms.map(r => <SelectItem key={r.id} value={r.id}>{r.room_name || "Room"}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -879,7 +914,33 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         </div>
 
         {/* Tool hint */}
-        {tool==="pointer"   && <div className="px-4 py-1.5 bg-slate-50 border-b text-xs text-slate-600 font-medium flex-shrink-0">Click to select • Drag to move • Click selected to delete</div>}
+        {tool==="pointer"   && <div className="px-4 py-1.5 bg-slate-50 border-b text-xs text-slate-600 font-medium flex-shrink-0">Click to select • Drag to move • Drag corners/edges to resize • Click selected to delete</div>}
+        {tool==="highlight" && <div className="px-4 py-1.5 bg-amber-50 border-b text-xs text-amber-700 font-medium flex-shrink-0">{activeRoomId ? `Drawing & viewing marks for: ${rooms.find(r=>r.id===activeRoomId)?.room_name||"room"}` : "All rooms — draw a mark, then click it to assign it to a room"}</div>}
+
+        {/* Selected-highlight properties: assign / reassign room */}
+        {selectedAnn?.kind === "ann" && annList[selectedAnn.idx]?.type === "highlight" && (() => {
+          const sel = annList[selectedAnn.idx];
+          const cat = HIGHLIGHT_COLORS.find(c=>c.color===sel.color)?.label || "Highlight";
+          return (
+            <div className="px-4 py-1.5 bg-blue-50 border-b text-xs flex items-center gap-2 flex-wrap flex-shrink-0">
+              <span className="font-semibold text-blue-900">Selected: {cat}</span>
+              <span className="text-slate-300">|</span>
+              <span className="text-slate-600 font-medium">Room:</span>
+              <Select value={sel.room_id || "__none__"} onValueChange={v => {
+                const rid = v === "__none__" ? "" : v;
+                const rm = rooms.find(r => r.id === rid);
+                setAnnList(p => p.map((a,i) => i === selectedAnn.idx ? { ...a, room_id: rid || null, room_name: rm?.room_name || null } : a));
+              }}>
+                <SelectTrigger className="h-7 w-[180px] text-xs"><SelectValue placeholder="Assign to room" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No room (unassigned)</SelectItem>
+                  {rooms.map(r => <SelectItem key={r.id} value={r.id}>{r.room_name || "Room"}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {sel.room_id && <span className="text-emerald-600 font-medium">✓ assigned</span>}
+            </div>
+          );
+        })()}
         {tool==="measure"   && <div className="px-4 py-1.5 bg-orange-50 border-b text-xs text-orange-700 font-medium flex-shrink-0">{!measureStart?"Click first point":"Click second point"}</div>}
         {tool==="calibrate" && <div className="px-4 py-1.5 bg-violet-50 border-b text-xs text-violet-700 font-medium flex-shrink-0">{!calibStart?"Click first point on scale bar":"Click second point"}</div>}
         {tool==="trace"     && <div className="px-4 py-1.5 bg-emerald-50 border-b text-xs text-emerald-700 font-medium flex-shrink-0">{tracePoints.length===0?"Click corners of room perimeter":tracePoints.length<3?`${tracePoints.length} point(s) placed — keep clicking corners`:`${tracePoints.length} points — click near first point (red circle) to close`}</div>}

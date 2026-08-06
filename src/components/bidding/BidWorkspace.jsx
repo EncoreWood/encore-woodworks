@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -140,11 +140,18 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const [projectSearch, setProjectSearch] = useState("");
   const [allProjects, setAllProjects] = useState([]);
 
+  // The bid editor is a long-lived form — disable background polling / focus refetch
+  // so a 30s poll (or tab switch) never clobbers in-progress local edits (rooms,
+  // annotations, notes) with the server snapshot. We hydrate from the server exactly
+  // once per bidId (see hydratedBidIdRef below).
   const { data: bidData } = useQuery({
     queryKey: ["bid", bidId],
     queryFn: () => base44.entities.Bid.filter({ id: bidId }),
     enabled: !!bidId,
+    refetchInterval: false,
+    refetchOnWindowFocus: false,
   });
+  const hydratedBidIdRef = useRef(null);
 
   useEffect(() => {
     loadPricing();
@@ -163,7 +170,12 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   }, [linkedProject, bidId]);
 
   useEffect(() => {
-    if (bidData?.[0]) {
+    // Hydrate local state from the server exactly ONCE per bidId. After this, local
+    // edits are the source of truth until the user clicks Save — background refetches
+    // (polling/focus) must NEVER overwrite rooms, annotations, or notes the user is
+    // actively editing. This is the guard that prevents Annotate Plan from wiping rooms.
+    if (bidData?.[0] && hydratedBidIdRef.current !== bidId) {
+      hydratedBidIdRef.current = bidId;
       const b = bidData[0];
       setProjectName(b.project_name || "");
       setClientName(b.client_name || "");
