@@ -9,6 +9,7 @@ import PDFAnnotator from "../production/PDFAnnotator";
 
 import { getCategoryStyle } from "./BidCatalogEditor";
 import SketchPreviewGenerator from "./SketchPreviewGenerator";
+import { measureRoomMarks, recomputePlanMarkRoom } from "@/components/bidding/planMarkPricing";
 
 export default function BidRoomSection({ room, catalogItems, categories, pricingConfigs, bidType, onChange, onDelete, sketchPaths = [], specs = {}, linkedProjectId = null, planAnnotations = [], planScalePxPerFt = null }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -63,68 +64,23 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
     onChange({ ...room, cabinet_style: styleKey || null, items: newItems });
   };
 
-  // Category → highlight color mapping (matches Annotate Plan legend)
-  const CATEGORY_BY_COLOR = { "#d97706": "base", "#3b82f6": "upper", "#ef4444": "tall", "#6b7280": "misc" };
-
-  // Sum manual highlight lengths per cabinet category for THIS room, converted to
-  // real linear feet using the plan's detected scale (natural px per foot).
-  const measureRoomMarks = () => {
-    const sums = { base: 0, upper: 0, tall: 0, misc: 0 };
-    if (!planScalePxPerFt || planScalePxPerFt <= 0) return sums;
-    (planAnnotations || []).forEach(a => {
-      if (a.type !== "highlight") return;
-      if (a.source === "ai") return; // only the user's manual marks
-      const matchRoom = a.room_id
-        ? (a.room_id === room.id)
-        : ((a.room_name || "").trim().toLowerCase() === (room.room_name || "").trim().toLowerCase() && (room.room_name || "").trim() !== "");
-      if (!matchRoom) return;
-      const cat = CATEGORY_BY_COLOR[(a.color || "").toLowerCase()];
-      if (!cat) return;
-      const lenPx = Math.max(a.w || 0, a.h || 0);
-      if (lenPx <= 0) return;
-      sums[cat] += lenPx / planScalePxPerFt;
-    });
-    return sums;
-  };
-
   // Switch this room's pricing to come from the user's manual plan marks.
-  // Snapshots the AI-estimate items so the user can toggle back.
+  // Snapshots the AI-estimate items so the user can toggle back. The actual LF/price
+  // math lives in the shared planMarkPricing module so live re-pricing (on Annotate
+  // Plan save) and this one-time toggle stay identical.
   const handlePriceFromMarks = () => {
     if (!planScalePxPerFt || planScalePxPerFt <= 0) {
       alert("Plan scale not detected. Open Annotate Plan and use the Calibrate tool (or run AI analysis to auto-detect the scale) before pricing from plan marks.");
       return;
     }
-    const sums = measureRoomMarks();
+    const sums = measureRoomMarks(room, planAnnotations, planScalePxPerFt);
     if (!Object.values(sums).some(v => v > 0)) {
       alert("No manual marks found for this room. Open Annotate Plan, pick this room in the 'Room (for marks)' dropdown, then draw Base/Upper/Tall/Misc highlights along the cabinet runs.");
       return;
     }
     const snapshot = room.ai_items_snapshot || room.items || [];
-    // Keep non-LF items (qty pieces, percentage upgrades); replace LF base/upper/tall runs
-    const kept = (room.items || []).filter(i => i.measure_type !== "lf" || !["base", "upper", "tall"].includes(i.cabinet_category));
-    const cfg = pricingConfigs.find(c => c.style_key === (room.cabinet_style || bidType));
-    const newLfItems = [];
-    ["base", "upper", "tall", "misc"].forEach(cat => {
-      const lf = sums[cat];
-      if (lf <= 0) return;
-      let rate = 0;
-      if (cfg) {
-        if (cat === "base") rate = cfg.bases_lf || 0;
-        else if (cat === "upper") rate = cfg.uppers_lf || 0;
-        else if (cat === "tall") rate = cfg.tall_lf || 0;
-      }
-      const existing = (room.items || []).find(i => i.measure_type === "lf" && i.cabinet_category === cat);
-      newLfItems.push({
-        id: existing?.id || `item_${Date.now()}_${cat}`,
-        name: existing?.name || `${cat.charAt(0).toUpperCase() + cat.slice(1)} Cabinets (from plan)`,
-        cabinet_category: cat,
-        measure_type: "lf",
-        quantity: Math.round(lf * 10) / 10,
-        unit_price: rate,
-        notes: "Priced from plan marks"
-      });
-    });
-    onChange({ ...room, items: [...kept, ...newLfItems], pricing_source: "plan_marks", ai_items_snapshot: snapshot });
+    const rebuilt = recomputePlanMarkRoom({ ...room, ai_items_snapshot: snapshot }, planAnnotations, planScalePxPerFt, pricingConfigs, bidType);
+    onChange(rebuilt);
   };
 
   // Toggle back to the AI estimate (restores the snapshotted items).

@@ -14,6 +14,7 @@ import BidCatalogEditor from "./BidCatalogEditor";
 import BidRoomSection from "./BidRoomSection";
 import BidClientView from "./BidClientView";
 import BidPlanViewer from "./BidPlanViewer";
+import { recomputePlanMarkRoom } from "@/components/bidding/planMarkPricing";
 
 const BID_STYLES = [
   { key: "basic_euro",          label: "Tier 1 Euro" },
@@ -1031,7 +1032,14 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
         onSave={async (savedAnnotations, notes, scalePxPerFt) => {
           setPlanAnnotations(savedAnnotations);
           setAiNotes(notes);
+          const effScale = (scalePxPerFt && scalePxPerFt > 0) ? scalePxPerFt : planScalePxPerFt;
           if (scalePxPerFt && scalePxPerFt > 0) setPlanScalePxPerFt(scalePxPerFt);
+          // Live re-pricing: any room already in "Priced from Plan" mode re-sums its LF
+          // from the freshly saved marks, so pricing stays current without re-toggling.
+          // Rooms still on the AI estimate are left untouched.
+          setRooms(prev => prev.map(r => r.pricing_source === "plan_marks"
+            ? recomputePlanMarkRoom(r, savedAnnotations, effScale, pricingConfigs, bidType)
+            : r));
           // Persist immediately so annotations survive page reload
           if (bidId) {
             const patch = { plan_annotations: savedAnnotations, ai_notes: notes };
