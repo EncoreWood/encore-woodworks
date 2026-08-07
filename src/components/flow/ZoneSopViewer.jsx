@@ -248,7 +248,14 @@ export default function ZoneSopViewer({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <Dialog
+        open={open}
+        // While an image/video lightbox is open, ignore any close request Radix
+        // fires (outside-pointerdown on the portaled lightbox, overlay, etc.).
+        // The lightbox's own button clears only the lightbox state, leaving the
+        // SOP walkthrough open on the same step.
+        onOpenChange={(o) => { if (!o && (lightboxUrl || videoUrl)) return; if (!o) onClose(); }}
+      >
         <DialogContent
           className="max-w-3xl max-h-[88vh] flex flex-col"
           // The lightbox stops its own pointerdown from reaching the document,
