@@ -30,7 +30,7 @@ const EMPTY = {
   photos: [],
 };
 
-export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop, zoneType }) {
+export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop, zoneType, zoneName }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [form, setForm] = useState(EMPTY);
@@ -57,22 +57,23 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop, z
     } else {
       const defaultTitle = zone?.name
         ? `${zone.name} Operation`
+        : zoneName ? `${zoneName} Operation`
         : zoneType ? `${cap(zoneType)} Operation` : "";
       setForm({ ...EMPTY, title: defaultTitle });
     }
     setPpeInput("");
     setStepInput("");
-  }, [open, existingSop, zone, zoneType]);
+  }, [open, existingSop, zone, zoneType, zoneName]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["shopZoneSops"] });
 
   const handleSave = async () => {
-    if (!form.title.trim() || (!zone && !zoneType)) return;
+    if (!form.title.trim() || (!zone && !zoneType && !zoneName)) return;
     setSaving(true);
     try {
       const payload = {
         zone_id: zone?.id || null,
-        zone_name: zone?.name || (zoneType ? cap(zoneType) : ""),
+        zone_name: zone?.name || zoneName || (zoneType ? cap(zoneType) : ""),
         zone_type: zoneType || zone?.zone_type || null,
         title: form.title.trim(),
         overview: form.overview,
@@ -196,7 +197,7 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop, z
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>📋 SOP: {zone?.name || `${cap(zoneType)} (type)`}</DialogTitle>
+          <DialogTitle>📋 SOP: {zone?.name || zoneName || `${cap(zoneType)} (type)`}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">

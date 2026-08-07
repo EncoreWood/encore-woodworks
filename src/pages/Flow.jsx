@@ -571,7 +571,9 @@ export default function Flow() {
   // type-level SOP shared by all zones of that zone_type.
   const viewedZone = zones.find((z) => z.id === sopViewZoneId);
   const viewedSop = sopViewZoneId
-    ? (sops.find((s) => s.zone_id === sopViewZoneId) || (viewedZone ? sops.find((s) => !s.zone_id && s.zone_type === viewedZone.zone_type) : null))
+    ? (sops.find((s) => s.zone_id === sopViewZoneId)
+      || (viewedZone ? sops.find((s) => !s.zone_id && s.zone_name === viewedZone.name) : null)
+      || (viewedZone ? sops.find((s) => !s.zone_id && s.zone_type === viewedZone.zone_type) : null))
     : null;
 
   // Quick-access flow buttons: click → enter View mode + highlight that flow; click active → exit.
