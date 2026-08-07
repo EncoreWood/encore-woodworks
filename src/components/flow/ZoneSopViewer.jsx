@@ -258,10 +258,11 @@ export default function ZoneSopViewer({
       >
         <DialogContent
           className="max-w-3xl max-h-[88vh] flex flex-col"
-          // The lightbox stops its own pointerdown from reaching the document,
-          // so Radix never fires onInteractOutside for it. We only need to keep
-          // Escape from dismissing this dialog while a lightbox is open (the
-          // lightbox's own Escape handler closes just the lightbox).
+          // Don't let Radix set pointer-events:none on the portaled lightbox
+          // (a body sibling) — otherwise the lightbox's button is unclickable.
+          disableOutsidePointerEvents={false}
+          // Keep Escape from dismissing this dialog while a lightbox is open
+          // (the lightbox's own Escape handler closes just the lightbox).
           onEscapeKeyDown={(e) => { if (lightboxUrl || videoUrl) e.preventDefault(); }}
         >
           <DialogHeader>
