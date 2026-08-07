@@ -5,14 +5,35 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2, CheckCircle2, AlertCircle, RefreshCw, Search, Archive, Factory, FileText, ChevronDown, ChevronUp, ChevronRight, PenLine, PackageX } from "lucide-react";
+import { Plus, Pencil, Trash2, CheckCircle2, AlertCircle, RefreshCw, Search, Archive, Factory, FileText, ChevronDown, ChevronUp, ChevronRight, PenLine, PackageX, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import PickupItemForm from "../components/pickup/PickupItemForm";
-import MissingItemsTab from "../components/pickup/MissingItemsTab";
 import { cn } from "@/lib/utils";
 import { getPickupCardStyle } from "@/lib/pickupCardStyle";
+
+// Bridge MissingItem.status <-> the unified stage vocabulary so missing-item
+// reports (created from the production board) appear in this single list as
+// items that simply happen to be in the "Missing" stage — not a separate dataset.
+const missingStatusToStage = { open: "open", ordered: "in_progress", resolved: "resolved" };
+const stageToMissingStatus = { open: "open", in_progress: "ordered", ready_at_shop: "ordered", installers: "ordered", resolved: "resolved" };
+const adaptMissing = (m) => ({
+  id: m.id, _source: "missing",
+  project_id: m.project_id, project_name: m.project_name, room_name: m.room_name,
+  title: m.production_item_name || m.item_description || "Missing item",
+  type: "missing",
+  stage: missingStatusToStage[m.status] || "open",
+  status: m.status,
+  priority: "medium",
+  notes: [m.item_description, m.description].filter(Boolean).join(" — "),
+  reported_by: m.reported_by,
+  production_item_id: m.production_item_id, production_stage: m.production_stage,
+  archived: m.archived, files: [], sketch_url: null, pts: 0,
+});
+const adaptPickup = (p) => ({
+  ...p, _source: "pickup",
+  stage: p.stage || p.status || "open",
+});
 
 const typeConfig = {
   missing: { label: "Missing", color: "bg-red-100 text-red-700", icon: AlertCircle },
@@ -26,12 +47,14 @@ const statusConfig = {
   resolved: { label: "Resolved", color: "bg-emerald-100 text-emerald-700" }
 };
 
+// Unified flow: Missing → Ordered → In Shop → Installers → Resolved/Picked Up.
+// "Send to Production" is a separate action that pushes an item into the shop queue.
 const stageConfig = {
-  open:         { label: "Open",          color: "bg-slate-100 text-slate-600 border-slate-300" },
-  in_progress:  { label: "In Progress",   color: "bg-amber-100 text-amber-700 border-amber-300" },
-  ready_at_shop:{ label: "Ready at Shop", color: "bg-blue-100 text-blue-700 border-blue-300" },
-  installers:   { label: "Installers",    color: "bg-purple-100 text-purple-700 border-purple-300" },
-  resolved:     { label: "Resolved",      color: "bg-emerald-100 text-emerald-700 border-emerald-300" }
+  open:         { label: "Missing",   color: "bg-red-100 text-red-700 border-red-300" },
+  in_progress:  { label: "Ordered",   color: "bg-amber-100 text-amber-700 border-amber-300" },
+  ready_at_shop:{ label: "In Shop",    color: "bg-blue-100 text-blue-700 border-blue-300" },
+  installers:   { label: "Installers", color: "bg-purple-100 text-purple-700 border-purple-300" },
+  resolved:     { label: "Resolved",   color: "bg-emerald-100 text-emerald-700 border-emerald-300" }
 };
 
 const STAGE_ORDER = ["open", "in_progress", "ready_at_shop", "installers", "resolved"];
@@ -90,8 +113,23 @@ export default function PickupList() {
     refetchInterval: showForm ? false : 30_000,  // pause polling while form is open
   });
 
+  // MissingItem records (reported from the production board) are merged into the
+  // same single list — "missing" is just a stage, not a separate page/dataset.
+  const { data: allMissingItems = [] } = useQuery({
+    queryKey: ["missingItems"],
+    queryFn: () => base44.entities.MissingItem.list("-reported_at"),
+    refetchInterval: showForm ? false : 30_000,
+  });
+
   const [showArchived, setShowArchived] = useState(false);
   const pickupItems = allPickupItems.filter(i => showArchived ? i.archived : !i.archived);
+  const missingItems = allMissingItems.filter(i => showArchived ? i.archived : !i.archived);
+  // Unified list: PickupItems keep their rich fields; MissingItems are adapted
+  // into the same shape so the existing rendering works for both.
+  const unifiedItems = [
+    ...pickupItems.map(adaptPickup),
+    ...missingItems.map(adaptMissing),
+  ];
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -163,27 +201,61 @@ export default function PickupList() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.PickupItem.delete(id),
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ["pickupItems"] });
-      const prev = queryClient.getQueryData(["pickupItems"]);
-      queryClient.setQueryData(["pickupItems"], (old = []) => old.filter(item => item.id !== id));
-      return { prev };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) queryClient.setQueryData(["pickupItems"], ctx.prev);
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pickupItems"] })
+    mutationFn: (item) => item._source === "missing"
+      ? base44.entities.MissingItem.delete(item.id)
+      : base44.entities.PickupItem.delete(item.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pickupItems"] });
+      queryClient.invalidateQueries({ queryKey: ["missingItems"] });
+    }
   });
 
   const handleStageCycle = (item) => {
     const currentStage = item.stage || "open";
     const currentIdx = STAGE_ORDER.indexOf(currentStage);
     const nextStage = STAGE_ORDER[(currentIdx + 1) % STAGE_ORDER.length];
+    // MissingItem records only carry a `status` field — map the unified stage back to it.
+    if (item._source === "missing") {
+      base44.entities.MissingItem.update(item.id, { status: stageToMissingStatus[nextStage] })
+        .then(() => queryClient.invalidateQueries({ queryKey: ["missingItems"] }));
+      return;
+    }
     // Sync status field: resolved when stage=resolved, otherwise open/in_progress
     const newStatus = nextStage === "resolved" ? "resolved" : nextStage === "open" ? "open" : "in_progress";
     updateMutation.mutate({ id: item.id, data: { stage: nextStage, status: newStatus } });
   };
+
+  // "Send to Production" — push an item into the shop's production queue (a real
+  // ProductionItem card the shop builds/cuts), linked back via production_item_id.
+  // Available once an item is confirmed as needed and not already sent.
+  const sendToProductionMutation = useMutation({
+    mutationFn: async (item) => {
+      const prod = await base44.entities.ProductionItem.create({
+        name: item.title,
+        type: "pickup",
+        stage: "cut",
+        project_id: item.project_id,
+        project_name: item.project_name,
+        room_name: item.room_name || "",
+        notes: item.notes || "",
+        priority: item.priority || "medium",
+        files: item.files || [],
+        sketch_url: item.sketch_url || null,
+        pts: item.pts || undefined,
+      });
+      if (item._source === "missing") {
+        await base44.entities.MissingItem.update(item.id, { production_item_id: prod.id, production_stage: "cut" });
+      } else {
+        await base44.entities.PickupItem.update(item.id, { production_item_id: prod.id, production_stage: "cut" });
+      }
+      return prod;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pickupItems"] });
+      queryClient.invalidateQueries({ queryKey: ["missingItems"] });
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+    }
+  });
 
   const handleStatusCycle = (item) => {
     const order = ["open", "in_progress", "resolved"];
@@ -191,7 +263,7 @@ export default function PickupList() {
     updateMutation.mutate({ id: item.id, data: { status: next } });
   };
 
-  const filtered = pickupItems.filter(item => {
+  const filtered = unifiedItems.filter(item => {
     if (filterProjectId !== "all" && item.project_id !== filterProjectId) return false;
     if (filterStatus !== "all") {
       const itemStage = item.stage || item.status || "open";
@@ -200,7 +272,8 @@ export default function PickupList() {
     if (filterType !== "all" && item.type !== filterType) return false;
     if (search && !item.title.toLowerCase().includes(search.toLowerCase()) &&
         !item.project_name?.toLowerCase().includes(search.toLowerCase()) &&
-        !item.room_name?.toLowerCase().includes(search.toLowerCase())) return false;
+        !item.room_name?.toLowerCase().includes(search.toLowerCase()) &&
+        !item.reported_by?.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
@@ -214,16 +287,23 @@ export default function PickupList() {
 
   const archiveMutation = useMutation({
     mutationFn: async (item) => {
-      await base44.entities.PickupItem.update(item.id, { archived: true, status: "resolved" });
+      if (item._source === "missing") {
+        await base44.entities.MissingItem.update(item.id, { archived: true, status: "resolved" });
+      } else {
+        await base44.entities.PickupItem.update(item.id, { archived: true, status: "resolved" });
+      }
       if (item.production_item_id) {
         await base44.entities.ProductionItem.delete(item.production_item_id);
         queryClient.invalidateQueries({ queryKey: ["productionItems"] });
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pickupItems"] })
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["pickupItems"] });
+      queryClient.invalidateQueries({ queryKey: ["missingItems"] });
+    }
   });
 
-  const openCount = allPickupItems.filter(i => !i.archived && (i.stage || i.status) !== "resolved").length;
+  const openCount = unifiedItems.filter(i => (i.stage || i.status) !== "resolved").length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-gray-50 to-slate-200">
@@ -253,270 +333,272 @@ export default function PickupList() {
           </div>
         </div>
 
-        <Tabs defaultValue="pickup">
-          <TabsList className="mb-5">
-            <TabsTrigger value="pickup" className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4" /> Pickup List
-            </TabsTrigger>
-            <TabsTrigger value="missing" className="flex items-center gap-2">
-              <PackageX className="w-4 h-4" /> Missing Items
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="pickup" className="mt-0">
-
-        {/* Filters */}
-        <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6 flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search items..."
-              className="pl-9 h-9"
-            />
+        <div>
+          {/* Filters */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6 flex flex-wrap gap-3 items-center">
+            <div className="relative flex-1 min-w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search items..."
+                className="pl-9 h-9"
+              />
+            </div>
+            <Select value={filterProjectId} onValueChange={setFilterProjectId}>
+              <SelectTrigger className="w-48 h-9">
+                <SelectValue placeholder="All Projects" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Projects</SelectItem>
+                {projects.map(p => (
+                  <SelectItem key={p.id} value={p.id}>{p.project_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-44 h-9">
+                <SelectValue placeholder="All Stages" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stages</SelectItem>
+                <SelectItem value="open">Missing</SelectItem>
+                <SelectItem value="in_progress">Ordered</SelectItem>
+                <SelectItem value="ready_at_shop">In Shop</SelectItem>
+                <SelectItem value="installers">Installers</SelectItem>
+                <SelectItem value="resolved">Resolved</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterType} onValueChange={setFilterType}>
+              <SelectTrigger className="w-36 h-9">
+                <SelectValue placeholder="All Types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="missing">Missing</SelectItem>
+                <SelectItem value="reorder">Reorder</SelectItem>
+                <SelectItem value="task">Task</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={filterProjectId} onValueChange={setFilterProjectId}>
-            <SelectTrigger className="w-48 h-9">
-              <SelectValue placeholder="All Projects" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Projects</SelectItem>
-              {projects.map(p => (
-                <SelectItem key={p.id} value={p.id}>{p.project_name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-44 h-9">
-              <SelectValue placeholder="All Stages" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Stages</SelectItem>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="ready_at_shop">Ready at Shop</SelectItem>
-              <SelectItem value="installers">Installers</SelectItem>
-              <SelectItem value="resolved">Resolved</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterType} onValueChange={setFilterType}>
-            <SelectTrigger className="w-36 h-9">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="missing">Missing</SelectItem>
-              <SelectItem value="reorder">Reorder</SelectItem>
-              <SelectItem value="task">Task</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
 
-        {/* Grouped by Project */}
-        {Object.keys(grouped).length === 0 ? (
-          <div className="text-center py-20 text-slate-400">
-            <CheckCircle2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-lg font-medium">No pickup items found</p>
-            <p className="text-sm mt-1">Add items from here, project cards, or the production board</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {Object.entries(grouped).map(([projectId, group]) => {
-              const project = projects.find(p => p.id === projectId);
-              const cardColor = project?.card_color;
-              return (
-                <div key={projectId} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                  <div
-                     className="px-5 py-3 border-b border-slate-100 flex items-center justify-between cursor-pointer select-none"
-                     style={cardColor ? { borderLeft: `4px solid ${cardColor}`, backgroundColor: cardColor + "15" } : { borderLeft: "4px solid #94a3b8" }}
-                     onClick={() => toggleProject(projectId)}
-                   >
-                     <div className="flex items-center gap-3">
-                       {expandedProjects.has(projectId) ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
-                       <h2 className="font-semibold text-slate-900">{group.projectName}</h2>
-                      <Badge variant="outline" className="text-xs">
-                        {group.items.filter(i => i.status !== "resolved").length} open
-                      </Badge>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-amber-600 hover:text-amber-700 h-7"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingItem({ project_id: projectId, project_name: group.projectName, source: "manual" });
-                        setShowForm(true);
-                      }}
+          {/* Grouped by Project */}
+          {Object.keys(grouped).length === 0 ? (
+            <div className="text-center py-20 text-slate-400">
+              <CheckCircle2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="text-lg font-medium">No pickup or missing items found</p>
+              <p className="text-sm mt-1">Add items from here, project rooms, or the production board</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(grouped).map(([projectId, group]) => {
+                const project = projects.find(p => p.id === projectId);
+                const cardColor = project?.card_color;
+                return (
+                  <div key={projectId} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <div
+                      className="px-5 py-3 border-b border-slate-100 flex items-center justify-between cursor-pointer select-none"
+                      style={cardColor ? { borderLeft: `4px solid ${cardColor}`, backgroundColor: cardColor + "15" } : { borderLeft: "4px solid #94a3b8" }}
+                      onClick={() => toggleProject(projectId)}
                     >
-                      <Plus className="w-3 h-3 mr-1" /> Add Item
-                    </Button>
-                  </div>
-
-                  {/* Group by room */}
-                  {expandedProjects.has(projectId) && (() => {
-                    const byRoom = group.items.reduce((acc, item) => {
-                      const room = item.room_name || "General";
-                      if (!acc[room]) acc[room] = [];
-                      acc[room].push(item);
-                      return acc;
-                    }, {});
-                    return Object.entries(byRoom).map(([room, roomItems]) => {
-                      const roomStage = getRoomStage(roomItems);
-                      const roomColor = roomStageColors[roomStage];
-                      const roomKey = `${projectId}-${room}`;
-                      const isRoomExpanded = expandedRooms.has(roomKey);
-                      return (
-                      <div key={room}>
-                        <div
-                          className="px-5 py-2 border-b border-slate-100 flex items-center gap-2 cursor-pointer select-none"
-                          style={{ borderLeft: `4px solid ${roomColor.border}`, backgroundColor: roomColor.bg }}
-                          onClick={() => toggleRoom(roomKey)}
-                        >
-                          {isRoomExpanded ? <ChevronDown className="w-3 h-3 text-slate-400" /> : <ChevronRight className="w-3 h-3 text-slate-400" />}
-                          <span className={cn("text-xs font-semibold uppercase tracking-wider", roomColor.text)}>{room}</span>
-                          <Badge variant="outline" className={cn("text-xs border-0 bg-white/50", roomColor.text)}>
-                            {roomColor.label}
-                          </Badge>
-                          <span className="text-xs text-slate-400">{roomItems.length} item{roomItems.length !== 1 ? "s" : ""}</span>
-                        </div>
-                        {isRoomExpanded && (
-                        <div className="divide-y divide-slate-50">
-                          {roomItems.map(item => {
-                            const TypeIcon = typeConfig[item.type]?.icon || AlertCircle;
-                            const hasAttachments = (item.files && item.files.length > 0) || item.sketch_url;
-                            const isExpanded = expandedItems.has(item.id);
-                            return (
-                              <div key={item.id} className={cn("border-b border-slate-50 last:border-0", item.status === "resolved" && "opacity-50")}>
-                                <div
-                                  className="px-5 py-3 flex items-center gap-3 transition-colors"
-                                  style={{ borderLeft: getPickupCardStyle(item.priority).borderLeft || "4px solid transparent", backgroundColor: getPickupCardStyle(item.priority).backgroundColor || undefined }}
-                                >
-                                  <button onClick={() => handleStageCycle(item)} title="Click to advance stage">
-                                   <TypeIcon className={cn("w-5 h-5 flex-shrink-0", (item.stage || item.status) === "resolved" ? "text-emerald-500" : "text-slate-400")} />
-                                  </button>
-                                  <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className={cn("text-sm font-medium text-slate-900", item.status === "resolved" && "line-through")}>{item.title}</p>
-                                    {item.pts > 0 && <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5">{item.pts} PTS</span>}
-                                  </div>
-                                  {item.notes && <p className="text-xs text-slate-500 mt-0.5 truncate">{item.notes}</p>}
-                                  {hasAttachments && (
-                                      <div className="flex items-center gap-2 mt-1">
-                                        {item.files?.length > 0 && <span className="text-xs text-slate-400 flex items-center gap-1"><FileText className="w-3 h-3" />{item.files.length} file{item.files.length !== 1 ? "s" : ""}</span>}
-                                        {item.sketch_url && <span className="text-xs text-slate-400 flex items-center gap-1"><PenLine className="w-3 h-3" />Sketch</span>}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2 flex-shrink-0">
-                                    <Badge className={cn("text-xs border-0", typeConfig[item.type]?.color)}>{typeConfig[item.type]?.label}</Badge>
-                                    <Badge className={cn("text-xs font-semibold border-0",
-                                      item.priority === "high" ? "bg-red-200 text-red-800" :
-                                      item.priority === "medium" ? "bg-yellow-100 text-yellow-800" :
-                                      "bg-slate-100 text-slate-600"
-                                    )}>
-                                      {item.priority === "high" ? "🔴 High" : item.priority === "medium" ? "🟡 Medium" : "Low"}
-                                    </Badge>
-                                    {(() => {
-                                      const stg = item.stage || item.status || "open";
-                                      const sc = stageConfig[stg] || stageConfig.open;
-                                      return (
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); handleStageCycle(item); }}
-                                          title="Click to advance stage"
-                                          className={cn("text-xs font-semibold border rounded-full px-2 py-0.5 transition-all hover:opacity-80", sc.color)}
-                                        >
-                                          {sc.label}
-                                        </button>
-                                      );
-                                    })()}
-                                    {item.production_item_id && (() => {
-                                      const stageInfo = productionStageColors[item.production_stage] || productionStageColors.face_frame;
-                                      return (
-                                        <Link to={createPageUrl("ShopProduction")} title="View in Production" onClick={(e) => e.stopPropagation()}>
-                                          <Badge variant="outline" className={`text-xs gap-1 cursor-pointer hover:opacity-80 ${stageInfo.color}`}>
-                                            <Factory className="w-2.5 h-2.5" />
-                                            {stageInfo.label}
-                                          </Badge>
-                                        </Link>
-                                      );
-                                    })()}
-                                    {item.source && item.source !== "manual" && !item.production_item_id && (
-                                      <Badge variant="outline" className="text-xs text-slate-400">{item.source}</Badge>
-                                    )}
-                                    {hasAttachments && (
-                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400" onClick={() => toggleExpanded(item.id)}>
-                                        {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                                      </Button>
-                                    )}
-                                    {!item.archived && (
-                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" title="Archive"
-                                        onClick={(e) => { e.stopPropagation(); archiveMutation.mutate(item); }}>
-                                        <Archive className="w-3 h-3" />
-                                      </Button>
-                                    )}
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingItem(item); setShowForm(true); }}>
-                                      <Pencil className="w-3 h-3" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => {
-                                      if (confirm("Delete this item?")) deleteMutation.mutate(item.id);
-                                    }}>
-                                      <Trash2 className="w-3 h-3" />
-                                    </Button>
-                                  </div>
-                                </div>
-                                {/* Expanded attachments */}
-                                {isExpanded && hasAttachments && (
-                                  <div className="px-5 pb-4 space-y-3 bg-slate-50 border-t border-slate-100">
-                                    {item.sketch_url && (
-                                      <div className="pt-3">
-                                        <p className="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1"><PenLine className="w-3 h-3" /> Sketch</p>
-                                        <img src={item.sketch_url} alt="Sketch" className="w-full max-w-xs rounded-lg border border-slate-200 max-h-48 object-contain bg-white" />
-                                      </div>
-                                    )}
-                                    {item.files && item.files.length > 0 && (
-                                      <div className="pt-3 space-y-2">
-                                        <p className="text-xs font-semibold text-slate-500 flex items-center gap-1"><FileText className="w-3 h-3" /> Files</p>
-                                        {item.files.map((file, idx) => {
-                                          if (!file.url) return null;
-                                          const isImg = file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-                                          const isPdf = file.url.match(/\.pdf$/i);
-                                          if (isImg) return (
-                                            <img key={idx} src={file.url} alt={file.name} className="w-full rounded-md border border-slate-200 max-h-48 object-contain bg-white" />
-                                          );
-                                          return (
-                                            <button key={idx}
-                                              onClick={() => window.open(file.url, "_blank", "noopener,noreferrer")}
-                                              className="flex items-center gap-2 text-xs text-amber-600 hover:text-amber-800 underline">
-                                              <FileText className="w-3 h-3 text-red-500 flex-shrink-0" />
-                                              {file.name}
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                        )}
+                      <div className="flex items-center gap-3">
+                        {expandedProjects.has(projectId) ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronRight className="w-4 h-4 text-slate-400" />}
+                        <h2 className="font-semibold text-slate-900">{group.projectName}</h2>
+                        <Badge variant="outline" className="text-xs">
+                          {group.items.filter(i => (i.stage || i.status) !== "resolved").length} open
+                        </Badge>
                       </div>
-                      );
-                    });
-                  })()}
-                </div>
-              );
-            })}
-          </div>
-        )}
-          </TabsContent>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-amber-600 hover:text-amber-700 h-7"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingItem({ project_id: projectId, project_name: group.projectName, source: "manual" });
+                          setShowForm(true);
+                        }}
+                      >
+                        <Plus className="w-3 h-3 mr-1" /> Add Item
+                      </Button>
+                    </div>
 
-          <TabsContent value="missing" className="mt-0">
-            <MissingItemsTab />
-          </TabsContent>
-        </Tabs>
+                    {/* Group by room */}
+                    {expandedProjects.has(projectId) && (() => {
+                      const byRoom = group.items.reduce((acc, item) => {
+                        const room = item.room_name || "General";
+                        if (!acc[room]) acc[room] = [];
+                        acc[room].push(item);
+                        return acc;
+                      }, {});
+                      return Object.entries(byRoom).map(([room, roomItems]) => {
+                        const roomStage = getRoomStage(roomItems);
+                        const roomColor = roomStageColors[roomStage];
+                        const roomKey = `${projectId}-${room}`;
+                        const isRoomExpanded = expandedRooms.has(roomKey);
+                        return (
+                        <div key={room}>
+                          <div
+                            className="px-5 py-2 border-b border-slate-100 flex items-center gap-2 cursor-pointer select-none"
+                            style={{ borderLeft: `4px solid ${roomColor.border}`, backgroundColor: roomColor.bg }}
+                            onClick={() => toggleRoom(roomKey)}
+                          >
+                            {isRoomExpanded ? <ChevronDown className="w-3 h-3 text-slate-400" /> : <ChevronRight className="w-3 h-3 text-slate-400" />}
+                            <span className={cn("text-xs font-semibold uppercase tracking-wider", roomColor.text)}>{room}</span>
+                            <Badge variant="outline" className={cn("text-xs border-0 bg-white/50", roomColor.text)}>
+                              {roomColor.label}
+                            </Badge>
+                            <span className="text-xs text-slate-400">{roomItems.length} item{roomItems.length !== 1 ? "s" : ""}</span>
+                          </div>
+                          {isRoomExpanded && (
+                          <div className="divide-y divide-slate-50">
+                            {roomItems.map(item => {
+                              const TypeIcon = typeConfig[item.type]?.icon || AlertCircle;
+                              const hasAttachments = (item.files && item.files.length > 0) || item.sketch_url;
+                              const isExpanded = expandedItems.has(item.id);
+                              const isResolved = (item.stage || item.status) === "resolved";
+                              return (
+                                <div key={item._source + item.id} className={cn("border-b border-slate-50 last:border-0", isResolved && "opacity-50")}>
+                                  <div
+                                    className="px-5 py-3 flex items-center gap-3 transition-colors"
+                                    style={{ borderLeft: getPickupCardStyle(item.priority).borderLeft || "4px solid transparent", backgroundColor: getPickupCardStyle(item.priority).backgroundColor || undefined }}
+                                  >
+                                    <button onClick={() => handleStageCycle(item)} title="Click to advance stage">
+                                      <TypeIcon className={cn("w-5 h-5 flex-shrink-0", isResolved ? "text-emerald-500" : "text-slate-400")} />
+                                    </button>
+                                    <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <p className={cn("text-sm font-medium text-slate-900", isResolved && "line-through")}>{item.title}</p>
+                                      {item.pts > 0 && <span className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5">{item.pts} PTS</span>}
+                                      {item._source === "missing" && (
+                                        <span className="text-[10px] font-semibold text-red-600 bg-red-50 border border-red-200 rounded px-1 py-0.5" title="Reported from the production board">reported</span>
+                                      )}
+                                    </div>
+                                    {item.notes && <p className="text-xs text-slate-500 mt-0.5 truncate">{item.notes}</p>}
+                                    {item.reported_by && <p className="text-[11px] text-slate-400 mt-0.5">by {item.reported_by}</p>}
+                                    {hasAttachments && (
+                                        <div className="flex items-center gap-2 mt-1">
+                                          {item.files?.length > 0 && <span className="text-xs text-slate-400 flex items-center gap-1"><FileText className="w-3 h-3" />{item.files.length} file{item.files.length !== 1 ? "s" : ""}</span>}
+                                          {item.sketch_url && <span className="text-xs text-slate-400 flex items-center gap-1"><PenLine className="w-3 h-3" />Sketch</span>}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 flex-shrink-0">
+                                      {item.type && typeConfig[item.type] && (
+                                        <Badge className={cn("text-xs border-0", typeConfig[item.type]?.color)}>{typeConfig[item.type]?.label}</Badge>
+                                      )}
+                                      {item._source === "pickup" && (
+                                        <Badge className={cn("text-xs font-semibold border-0",
+                                          item.priority === "high" ? "bg-red-200 text-red-800" :
+                                          item.priority === "medium" ? "bg-yellow-100 text-yellow-800" :
+                                          "bg-slate-100 text-slate-600"
+                                        )}>
+                                          {item.priority === "high" ? "🔴 High" : item.priority === "medium" ? "🟡 Medium" : "Low"}
+                                        </Badge>
+                                      )}
+                                      {(() => {
+                                        const stg = item.stage || item.status || "open";
+                                        const sc = stageConfig[stg] || stageConfig.open;
+                                        return (
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); handleStageCycle(item); }}
+                                            title="Click to advance stage"
+                                            className={cn("text-xs font-semibold border rounded-full px-2 py-0.5 transition-all hover:opacity-80", sc.color)}
+                                          >
+                                            {sc.label}
+                                          </button>
+                                        );
+                                      })()}
+                                      {item.production_item_id ? (() => {
+                                        const stageInfo = productionStageColors[item.production_stage] || productionStageColors.face_frame;
+                                        return (
+                                          <Link to={createPageUrl("ShopProduction")} title="View in Production" onClick={(e) => e.stopPropagation()}>
+                                            <Badge variant="outline" className={`text-xs gap-1 cursor-pointer hover:opacity-80 ${stageInfo.color}`}>
+                                              <Factory className="w-2.5 h-2.5" />
+                                              {stageInfo.label}
+                                            </Badge>
+                                          </Link>
+                                        );
+                                      })() : !isResolved ? (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-7 text-xs text-green-700 border-green-200 hover:bg-green-50 gap-1"
+                                          disabled={sendToProductionMutation.isPending}
+                                          onClick={(e) => { e.stopPropagation(); sendToProductionMutation.mutate(item); }}
+                                          title="Send to the shop production queue so it can be built/cut"
+                                        >
+                                          <ArrowRight className="w-3 h-3" /> Send to Production
+                                        </Button>
+                                      ) : null}
+                                      {hasAttachments && (
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400" onClick={() => toggleExpanded(item.id)}>
+                                          {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                                        </Button>
+                                      )}
+                                      {!item.archived && (
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" title="Archive"
+                                          onClick={(e) => { e.stopPropagation(); archiveMutation.mutate(item); }}>
+                                          <Archive className="w-3 h-3" />
+                                        </Button>
+                                      )}
+                                      {item._source === "pickup" && (
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingItem(item); setShowForm(true); }}>
+                                          <Pencil className="w-3 h-3" />
+                                        </Button>
+                                      )}
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => {
+                                        if (confirm("Delete this item?")) deleteMutation.mutate(item);
+                                      }}>
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                  {/* Expanded attachments */}
+                                  {isExpanded && hasAttachments && (
+                                    <div className="px-5 pb-4 space-y-3 bg-slate-50 border-t border-slate-100">
+                                      {item.sketch_url && (
+                                        <div className="pt-3">
+                                          <p className="text-xs font-semibold text-slate-500 mb-1 flex items-center gap-1"><PenLine className="w-3 h-3" /> Sketch</p>
+                                          <img src={item.sketch_url} alt="Sketch" className="w-full max-w-xs rounded-lg border border-slate-200 max-h-48 object-contain bg-white" />
+                                        </div>
+                                      )}
+                                      {item.files && item.files.length > 0 && (
+                                        <div className="pt-3 space-y-2">
+                                          <p className="text-xs font-semibold text-slate-500 flex items-center gap-1"><FileText className="w-3 h-3" /> Files</p>
+                                          {item.files.map((file, idx) => {
+                                            if (!file.url) return null;
+                                            const isImg = file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                                            if (isImg) return (
+                                              <img key={idx} src={file.url} alt={file.name} className="w-full rounded-md border border-slate-200 max-h-48 object-contain bg-white" />
+                                            );
+                                            return (
+                                              <button key={idx}
+                                                onClick={() => window.open(file.url, "_blank", "noopener,noreferrer")}
+                                                className="flex items-center gap-2 text-xs text-amber-600 hover:text-amber-800 underline">
+                                                <FileText className="w-3 h-3 text-red-500 flex-shrink-0" />
+                                                {file.name}
+                                              </button>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          )}
+                        </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
       <PickupItemForm
         open={showForm}

@@ -39,6 +39,7 @@ import JobMeasurementsTab from "../components/measurements/JobMeasurementsTab";
 import ProjectTimelineSection from "../components/projects/ProjectTimelineSection";
 import GoogleFolderButton from "../components/projects/GoogleFolderButton";
 import JobPacketsRoomModal from "../components/production/JobPacketsRoomModal";
+import RoomPickupMissingModal from "../components/pickup/RoomPickupMissingModal";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -456,6 +457,10 @@ export default function ProjectDetails() {
                                 roomName={room.room_name || `Room ${idx + 1}`}
                                 items={productionItems}
                                 currentUser={currentUser}
+                              />
+                              <RoomPickupMissingModal
+                                project={project}
+                                roomName={room.room_name || `Room ${idx + 1}`}
                               />
                               {room.glb_url ? (
                                 <>
