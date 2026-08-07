@@ -11,10 +11,13 @@ import { Plus, Trash2, X, Loader2, Upload, Image as ImageIcon, Video } from "luc
 
 const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
-// Steps are stored as objects {text, image_url}. Older records stored plain
-// strings — normalize them on load so the editor always works with objects.
+// Steps are stored as objects {text, image_url, video_url, subtasks}. Older
+// records stored plain strings — normalize them on load so the editor always
+// works with objects (with an empty subtasks array).
 const normalizeStep = (s) =>
-  typeof s === "string" ? { text: s, image_url: "", video_url: "" } : { text: s?.text || "", image_url: s?.image_url || "", video_url: s?.video_url || "" };
+  typeof s === "string"
+    ? { text: s, image_url: "", video_url: "", subtasks: [] }
+    : { text: s?.text || "", image_url: s?.image_url || "", video_url: s?.video_url || "", subtasks: Array.isArray(s?.subtasks) ? s.subtasks : [] };
 
 const EMPTY = {
   title: "",
@@ -33,6 +36,7 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop, z
   const [form, setForm] = useState(EMPTY);
   const [ppeInput, setPpeInput] = useState("");
   const [stepInput, setStepInput] = useState("");
+  const [subtaskInputs, setSubtaskInputs] = useState({});
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadingStep, setUploadingStep] = useState(null);
@@ -132,6 +136,17 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop, z
     setStepInput("");
   };
   const removeStep = (i) => setForm((f) => ({ ...f, steps: f.steps.filter((_, idx) => idx !== i) }));
+
+  const addSubtask = (i) => {
+    const v = (subtaskInputs[i] || "").trim();
+    if (!v) return;
+    setForm((f) => ({ ...f, steps: f.steps.map((x, idx) => (idx === i ? { ...x, subtasks: [...(x.subtasks || []), v] } : x)) }));
+    setSubtaskInputs((p) => ({ ...p, [i]: "" }));
+  };
+  const removeSubtask = (stepIdx, subIdx) =>
+    setForm((f) => ({ ...f, steps: f.steps.map((x, idx) => (idx === stepIdx ? { ...x, subtasks: (x.subtasks || []).filter((_, s) => s !== subIdx) } : x)) }));
+  const updateSubtask = (stepIdx, subIdx, val) =>
+    setForm((f) => ({ ...f, steps: f.steps.map((x, idx) => (idx === stepIdx ? { ...x, subtasks: (x.subtasks || []).map((s, si) => (si === subIdx ? val : s)) } : x)) }));
 
   const handleStepImageUpload = async (e, i) => {
     const file = e.target.files?.[0];
@@ -249,6 +264,31 @@ export default function ZoneSopEditor({ open, onOpenChange, zone, existingSop, z
                       <button onClick={() => removeStepVideo(i)} className="text-red-600"><X className="w-3.5 h-3.5" /></button>
                     </div>
                   )}
+                  {/* Subtasks */}
+                  <div className="ml-7 space-y-1">
+                    {(s.subtasks || []).map((sub, si) => (
+                      <div key={si} className="flex items-center gap-1.5">
+                        <span className="text-slate-300 text-xs">↳</span>
+                        <Input
+                          value={sub}
+                          onChange={(e) => updateSubtask(i, si, e.target.value)}
+                          className="h-7 text-xs flex-1"
+                          placeholder="Subtask..."
+                        />
+                        <Button size="ghost" className="h-7 w-7 p-0 text-red-600" onClick={() => removeSubtask(i, si)}><Trash2 className="w-3 h-3" /></Button>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        value={subtaskInputs[i] || ""}
+                        onChange={(e) => setSubtaskInputs((p) => ({ ...p, [i]: e.target.value }))}
+                        onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSubtask(i))}
+                        placeholder="+ Add subtask"
+                        className="h-7 text-xs flex-1"
+                      />
+                      <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => addSubtask(i)}><Plus className="w-3 h-3" /></Button>
+                    </div>
+                  </div>
                 </div>
               ))}
               <div className="flex items-center gap-2">

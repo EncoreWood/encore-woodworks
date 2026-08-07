@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 import { X, ChevronLeft, ChevronRight, AlertTriangle, Video, Camera } from "lucide-react";
 import ImageLightbox from "./ImageLightbox";
 import VideoLightbox from "./VideoLightbox";
@@ -7,6 +9,8 @@ import VideoLightbox from "./VideoLightbox";
 export default function ZoneSopViewer({ open, onClose, zone, sop, flowName, stepIndex, totalSteps, hasPrev, hasNext, onPrev, onNext, onExitToEdit }) {
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [videoUrl, setVideoUrl] = useState(null);
+  const [expanded, setExpanded] = useState({});
+  const [checked, setChecked] = useState({});
   if (!open || !zone) return null;
   const stepLabel = totalSteps > 0 ? `Step ${stepIndex + 1} of ${totalSteps}` : "";
 
@@ -47,19 +51,47 @@ export default function ZoneSopViewer({ open, onClose, zone, sop, flowName, step
                     const text = typeof s === "string" ? s : s?.text;
                     const img = typeof s === "string" ? null : s?.image_url;
                     const vid = typeof s === "string" ? null : s?.video_url;
+                    const subtasks = typeof s === "string" ? [] : (Array.isArray(s?.subtasks) ? s.subtasks : []);
+                    const hasSubs = subtasks.length > 0;
+                    const isExpanded = !!expanded[i];
                     return (
                       <li key={i} className="list-item">
-                        <span>{text}</span>
-                        {img && (
-                          <button type="button" onClick={() => setLightboxUrl(img)} className="block mt-1">
-                            <img src={img} alt="" className="w-full max-w-[220px] rounded-md border border-slate-200" />
-                          </button>
-                        )}
-                        {vid && (
-                          <button type="button" onClick={() => setVideoUrl(vid)} className="mt-1 inline-flex items-center gap-1.5 text-sm text-amber-700 font-medium hover:underline">
-                            <Video className="w-4 h-4" /> Watch step video
-                          </button>
-                        )}
+                        <div className="flex items-start gap-1.5">
+                          <div className="flex-1">
+                            <span className="flex items-center gap-1.5">
+                              {hasSubs && (
+                                <button type="button" onClick={() => setExpanded((p) => ({ ...p, [i]: !p[i] }))} className="text-slate-400 hover:text-slate-700 flex-shrink-0" title={isExpanded ? "Collapse subtasks" : "Expand subtasks"}>
+                                  <ChevronRight className={cn("w-3.5 h-3.5 transition-transform", isExpanded && "rotate-90")} />
+                                </button>
+                              )}
+                              <span>{text}</span>
+                            </span>
+                            {img && (
+                              <button type="button" onClick={() => setLightboxUrl(img)} className="block mt-1">
+                                <img src={img} alt="" className="w-full max-w-[220px] rounded-md border border-slate-200" />
+                              </button>
+                            )}
+                            {vid && (
+                              <button type="button" onClick={() => setVideoUrl(vid)} className="mt-1 inline-flex items-center gap-1.5 text-sm text-amber-700 font-medium hover:underline">
+                                <Video className="w-4 h-4" /> Watch step video
+                              </button>
+                            )}
+                            {hasSubs && isExpanded && (
+                              <ul className="mt-1.5 space-y-1 border-l border-slate-200 pl-3">
+                                {subtasks.map((sub, si) => {
+                                  const k = `${i}-${si}`;
+                                  const done = !!checked[k];
+                                  return (
+                                    <li key={si} className="flex items-start gap-1.5">
+                                      <Checkbox checked={done} onCheckedChange={(v) => setChecked((p) => ({ ...p, [k]: !!v }))} className="mt-0.5 h-3.5 w-3.5" />
+                                      <span className={cn("text-xs text-slate-600", done && "line-through text-slate-400")}>{sub}</span>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
+                          </div>
+                        </div>
                       </li>
                     );
                   })}

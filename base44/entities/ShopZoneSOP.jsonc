@@ -32,7 +32,7 @@
     },
     "steps": {
       "type": "array",
-      "description": "Ordered list of procedure steps (each {text, image_url, video_url})",
+      "description": "Ordered list of procedure steps (each {text, image_url, video_url, subtasks})",
       "items": {
         "type": "object",
         "properties": {
@@ -44,6 +44,14 @@
           },
           "video_url": {
             "type": "string"
+          },
+          "subtasks": {
+            "type": "array",
+            "description": "Optional nested subtasks under this step",
+            "items": {
+              "type": "string"
+            },
+            "default": []
           }
         }
       },
