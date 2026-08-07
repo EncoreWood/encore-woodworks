@@ -19,6 +19,10 @@ export default function ImageLightbox({ url, onClose }) {
     <div
       className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 cursor-zoom-out"
       onClick={onClose}
+      // Stop pointerdown from bubbling to the document so the underlying SOP
+      // dialog's Radix outside-click detector never sees it — the lightbox
+      // stays fully isolated and its own click/Escape handlers do the closing.
+      onPointerDown={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"
     >

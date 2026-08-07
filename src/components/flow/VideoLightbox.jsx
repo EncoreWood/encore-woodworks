@@ -19,6 +19,7 @@ export default function VideoLightbox({ url, onClose }) {
     <div
       className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
       onClick={onClose}
+      onPointerDown={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"
     >
