@@ -249,7 +249,15 @@ export default function ZoneSopViewer({
   return (
     <>
       <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-        <DialogContent className="max-w-3xl max-h-[88vh] flex flex-col">
+        <DialogContent
+          className="max-w-3xl max-h-[88vh] flex flex-col"
+          // While an image/video lightbox is open, the lightbox is portaled
+          // OUTSIDE this dialog — Radix would otherwise treat clicks on it as
+          // "outside the dialog" and dismiss the SOP popup. Block that so the
+          // lightbox closes independently and the walkthrough stays put.
+          onInteractOutside={(e) => { if (lightboxUrl || videoUrl) e.preventDefault(); }}
+          onEscapeKeyDown={(e) => { if (lightboxUrl || videoUrl) e.preventDefault(); }}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <span className="text-xl">{zone.icon}</span>
