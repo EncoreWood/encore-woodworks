@@ -448,10 +448,12 @@ export default function ProjectDetails() {
                         />
                         <DoorOpen className={cn("w-5 h-5 mt-0.5", room.completed ? "text-emerald-600" : "text-amber-500")} />
                         <div className="flex-1">
-                          <div className="flex items-center justify-between mb-2">
-                            <h3 className={cn("font-medium", room.completed ? "text-emerald-700" : "text-slate-900")}>{room.room_name || `Room ${idx + 1}`}</h3>
-                            <div className="flex items-center gap-2">
+                          <div className="mb-2">
+                            <div className="flex items-center gap-2 flex-wrap mb-2">
+                              <h3 className={cn("font-medium", room.completed ? "text-emerald-700" : "text-slate-900")}>{room.room_name || `Room ${idx + 1}`}</h3>
                               {room.cabinet_count && <Badge variant="outline" className="text-xs">{room.cabinet_count} cabinets</Badge>}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                               <JobPacketsRoomModal
                                 project={project}
                                 roomName={room.room_name || `Room ${idx + 1}`}
