@@ -66,6 +66,7 @@ export default function Kanban() {
     "pre-production": [
       { id: "inquiry", label: "Inquiry", color: "bg-slate-100" },
       { id: "quoted", label: "Quoted", color: "bg-blue-50" },
+      { id: "likely_approved", label: "Likely to Be Approved", color: "bg-amber-50" },
       { id: "approved", label: "Approved", color: "bg-emerald-50" }
     ],
     production: [
@@ -92,7 +93,22 @@ export default function Kanban() {
   const loadCustomColumns = () => {
     try {
       const saved = localStorage.getItem("kanban_custom_columns");
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Migration: guarantee the default "Likely to Be Approved" column is present
+        // in Pre Production for every browser, even ones with an older saved config.
+        // Insert it right before "approved" if it's missing. Other customizations are kept.
+        const pp = Array.isArray(parsed["pre-production"]) ? parsed["pre-production"] : [];
+        if (!pp.some(c => c.id === "likely_approved")) {
+          const approvedIdx = pp.findIndex(c => c.id === "approved");
+          const newCol = { id: "likely_approved", label: "Likely to Be Approved", color: "bg-amber-50" };
+          if (approvedIdx >= 0) pp.splice(approvedIdx, 0, newCol);
+          else pp.push(newCol);
+          parsed["pre-production"] = pp;
+          localStorage.setItem("kanban_custom_columns", JSON.stringify(parsed));
+        }
+        return parsed;
+      }
     } catch {}
     return defaultColumnsByTab;
   };
