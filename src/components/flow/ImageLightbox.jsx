@@ -13,12 +13,13 @@ export default function ImageLightbox({ url, onClose }) {
 
   if (!url) return null;
 
-  // Portaled to <body> and isolated: stopPropagation on pointerdown keeps the
-  // underlying SOP dialog's Radix outside-click detector from seeing clicks
-  // here, so the dialog never tries to dismiss when the lightbox is used.
+  // Radix modal dialogs set body{pointer-events:none} while open, which would
+  // make this body-level portal unclickable. Explicit pointer-events:auto on
+  // the container (and the button) overrides that so the lightbox works.
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center p-4 gap-4"
+      className="fixed inset-0 z-[9999] bg-black/95 flex flex-col items-center justify-center p-4 gap-4"
+      style={{ pointerEvents: "auto" }}
       onPointerDown={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"
@@ -32,6 +33,7 @@ export default function ImageLightbox({ url, onClose }) {
         type="button"
         onClick={onClose}
         className="px-8 py-3 rounded-xl bg-white text-slate-900 font-semibold text-base shadow-xl hover:bg-slate-100 active:scale-95 transition"
+        style={{ pointerEvents: "auto", position: "relative", zIndex: 10000 }}
       >
         Return to SOP
       </button>

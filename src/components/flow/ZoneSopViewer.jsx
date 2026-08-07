@@ -258,11 +258,12 @@ export default function ZoneSopViewer({
       >
         <DialogContent
           className="max-w-3xl max-h-[88vh] flex flex-col"
-          // Don't let Radix set pointer-events:none on the portaled lightbox
-          // (a body sibling) — otherwise the lightbox's button is unclickable.
-          disableOutsidePointerEvents={false}
+          // Radix forces body{pointer-events:none} while this modal is open;
+          // the lightbox overrides that with pointer-events:auto on itself.
           // Keep Escape from dismissing this dialog while a lightbox is open
-          // (the lightbox's own Escape handler closes just the lightbox).
+          // (the lightbox's own Escape handler closes just the lightbox), and
+          // ignore Radix's outside-click dismissal while a lightbox is open so
+          // clicking "Return to SOP" only closes the lightbox.
           onEscapeKeyDown={(e) => { if (lightboxUrl || videoUrl) e.preventDefault(); }}
         >
           <DialogHeader>

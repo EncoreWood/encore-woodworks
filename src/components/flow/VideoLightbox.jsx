@@ -13,7 +13,8 @@ export default function VideoLightbox({ url, onClose }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] bg-black/95 flex flex-col items-center justify-center p-4 gap-4"
+      className="fixed inset-0 z-[9999] bg-black/95 flex flex-col items-center justify-center p-4 gap-4"
+      style={{ pointerEvents: "auto" }}
       onPointerDown={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"
@@ -28,6 +29,7 @@ export default function VideoLightbox({ url, onClose }) {
         type="button"
         onClick={onClose}
         className="px-8 py-3 rounded-xl bg-white text-slate-900 font-semibold text-base shadow-xl hover:bg-slate-100 active:scale-95 transition"
+        style={{ pointerEvents: "auto", position: "relative", zIndex: 10000 }}
       >
         Return to SOP
       </button>
