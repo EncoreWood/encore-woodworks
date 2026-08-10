@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, FolderOpen, Folder, ChevronRight, ArrowRight, Package, Search, X, ExternalLink } from "lucide-react";
+import { Plus, FolderOpen, Folder, ChevronRight, ArrowRight, Package, Search, X, ExternalLink, Boxes } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { useQuery } from "@tanstack/react-query";
+import { base44 } from "@/api/base44Client";
 import ProductionCard from "./ProductionCard";
+import RoomFilesModal from "./RoomFilesModal";
 
 const STAGE_LABELS = { cut: "Cut", face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete", on_hold: "On Hold" };
 
@@ -22,6 +25,15 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
     }
   }, [autoOpen]);
   const [selected, setSelected] = useState(new Set());
+  const [showRoomFiles, setShowRoomFiles] = useState(false);
+
+  const { data: roomFileCount = 0 } = useQuery({
+    queryKey: ["roomFiles", project.id, roomName],
+    queryFn: () => base44.entities.RoomFile.filter({ project_id: project.id }),
+    select: (all) => all.filter(f => f.room_name?.toLowerCase() === roomName?.toLowerCase()).length,
+    enabled: !!project.id && !!roomName,
+    staleTime: 60_000,
+  });
 
   const roomItems = items.filter(i => i.project_id === project.id && i.room_name === roomName && !i.is_job_info);
   const stagedItems = roomItems.filter(i => !i.stage);
@@ -85,6 +97,15 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowRoomFiles(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 transition-colors shadow-sm"
+                  title="View room files & images"
+                >
+                  <Boxes className="w-4 h-4" />
+                  {roomFileCount > 0 && <span className="text-xs font-bold">{roomFileCount}</span>}
+                  <span className="text-xs font-medium">Room Files</span>
+                </button>
                 {selected.size > 0 && (
                   <Button
                     size="sm"
@@ -204,10 +225,19 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
             )}
           </div>
         </DialogContent>
-      </Dialog>
-    </>
-  );
-}
+        </Dialog>
+
+        {showRoomFiles && (
+        <RoomFilesModal
+          projectId={project.id}
+          projectName={project.project_name}
+          roomName={roomName}
+          onClose={() => setShowRoomFiles(false)}
+        />
+        )}
+        </>
+        );
+        }
 
 // Main tab component
 export default function JobPacketsTab({ projects, items, openFolderContext, onFolderOpened, onAddCard, onSendToProduction, sharedCardProps, scrollToProjectId }) {
