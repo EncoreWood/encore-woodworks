@@ -311,9 +311,9 @@ export default function JobPacketsTab({ projects, items, openFolderContext, onFo
                 </p>
               </div>
               <Link
-                to={`${createPageUrl("Kanban")}?project=${project.id}`}
+                to={`${createPageUrl("ProjectDetails")}?id=${project.id}`}
                 className="flex-shrink-0 text-slate-400 hover:text-amber-600 transition-colors p-1"
-                title="Open in Projects Board"
+                title="Open project"
               >
                 <ExternalLink className="w-4 h-4" />
               </Link>
