@@ -478,7 +478,13 @@ export default function ProductionCard({
                       )}
                     </div>
                     {file.annotations && file.annotations.length > 0 && (
-                      <Badge className="bg-emerald-600 text-xs">{file.annotations.length} notes</Badge>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); if (onAnnotate) onAnnotate(item, idx); }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-full px-2 py-0.5 transition-colors cursor-pointer"
+                        title="View notes"
+                      >
+                        {file.annotations.length} notes
+                      </button>
                     )}
                   </div>
                 </div>
