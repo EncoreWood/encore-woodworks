@@ -555,11 +555,13 @@ function ProjectPicker({ projects, user, onPick }) {
             return (
               <button key={p.id} onClick={() => onPick(p.id)}
                 className="text-left bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:border-amber-300 hover:shadow-md transition-all">
-                <div className="h-32 bg-gradient-to-br from-stone-200 to-amber-100/40 relative">
+                <div className="h-32 relative" style={{ background: "linear-gradient(to bottom, #fdfaf3, #ffffff)" }}>
                   {photo ? (
                     <img src={photo.url} alt={p.project_name} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center"><Image className="w-10 h-10 text-stone-300" /></div>
+                    <div className="w-full h-full flex items-center justify-center p-6">
+                      <img src="https://media.base44.com/images/public/6984bc8fae105e5a06a39d65/704324382_image.png" alt="" className="max-h-full max-w-full object-contain" style={{ maxHeight: "5rem" }} />
+                    </div>
                   )}
                 </div>
                 <div className="p-4">
