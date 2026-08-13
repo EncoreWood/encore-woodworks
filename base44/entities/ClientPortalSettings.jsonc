@@ -10,6 +10,10 @@
       "type": "string",
       "description": "Client user email"
     },
+    "client_name": {
+      "type": "string",
+      "description": "Client display name (copied from the attached contact)"
+    },
     "is_active": {
       "type": "boolean",
       "default": true
@@ -22,6 +26,10 @@
       "default": true
     },
     "show_milestones": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_timeline": {
       "type": "boolean",
       "default": true
     },
@@ -42,6 +50,14 @@
       "default": false
     },
     "show_messages": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_tasks": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_notes": {
       "type": "boolean",
       "default": true
     }

@@ -33,26 +33,34 @@ export default function ClientPortalTab({ project }) {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [selectedContactId, setSelectedContactId] = useState("");
+  const [attaching, setAttaching] = useState(false);
   const [newTask, setNewTask] = useState({ title: "", task_type: "General", due_date: "", admin_notes: "", requires_signature: false });
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [newNote, setNewNote] = useState({ note_text: "", is_visible_to_client: true });
   const [showNoteForm, setShowNoteForm] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
-  const { data: settings, isLoading } = useQuery({
+  const { data: clients = [], isLoading } = useQuery({
     queryKey: ["client_portal_settings", project.id],
-    queryFn: () => base44.entities.ClientPortalSettings.filter({ project_id: project.id }).then(r => r[0] || null),
+    queryFn: () => base44.entities.ClientPortalSettings.filter({ project_id: project.id }),
   });
 
-  const { data: clientUser } = useQuery({
-    queryKey: ["client_user", project.id],
-    queryFn: async () => {
-      if (!settings?.client_email) return null;
-      const users = await base44.entities.User.list();
-      return users.find(u => u.email === settings.client_email && u.role !== "admin") || null;
-    },
-    enabled: !!settings?.client_email,
+  const { data: users = [] } = useQuery({
+    queryKey: ["users_list"],
+    queryFn: () => base44.entities.User.list(),
   });
+
+  const { data: contacts = [] } = useQuery({
+    queryKey: ["contacts_list"],
+    queryFn: () => base44.entities.Contact.list(),
+  });
+
+  // Config fields are shared across every client record for this project.
+  const config = clients[0] || { is_active: true, show_status: true, show_milestones: true, show_timeline: true, show_presentations: true, show_documents: true, show_photos: true, show_financials: false, show_messages: true, show_tasks: true, show_notes: true };
+  const registeredEmails = new Set(users.map(u => (u.email || "").toLowerCase()));
+  // Real attached clients (ignore the empty-email config template, if any).
+  const attachedClients = clients.filter(c => (c.client_email || "").trim() !== "");
 
   const { data: tasks = [], isLoading: tasksLoading } = useQuery({
     queryKey: ["client_tasks", project.id],
@@ -64,13 +72,15 @@ export default function ClientPortalTab({ project }) {
     queryFn: () => base44.entities.PortalNote.filter({ project_id: project.id }),
   });
 
-  const saveMutation = useMutation({
-    mutationFn: async (data) => {
-      if (settings?.id) return base44.entities.ClientPortalSettings.update(settings.id, data);
-      return base44.entities.ClientPortalSettings.create({ project_id: project.id, ...data });
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["client_portal_settings", project.id] }),
-  });
+  // Apply a config change to every client record for this project (shared portal config).
+  const saveConfig = async (patch) => {
+    if (clients.length === 0) {
+      await base44.entities.ClientPortalSettings.create({ project_id: project.id, client_email: "", ...patch });
+    } else {
+      await base44.entities.ClientPortalSettings.bulkUpdate(clients.map(c => ({ id: c.id, ...patch })));
+    }
+    qc.invalidateQueries({ queryKey: ["client_portal_settings", project.id] });
+  };
 
   const createTaskMutation = useMutation({
     mutationFn: (data) => base44.entities.ClientTask.create({ ...data, project_id: project.id, project_name: project.project_name }),
@@ -110,44 +120,80 @@ export default function ClientPortalTab({ project }) {
       .then(() => qc.invalidateQueries({ queryKey: ["portal_notes", project.id] }));
   };
 
-  const handleToggle = (key, value) => saveMutation.mutate({ [key]: value });
+  const handleToggle = (key, value) => saveConfig({ [key]: value });
+
+  const configForNewClient = () => ({
+    is_active: config.is_active !== false,
+    welcome_message: config.welcome_message || "",
+    show_status: config.show_status !== false,
+    show_milestones: config.show_milestones !== false,
+    show_timeline: config.show_timeline !== false,
+    show_presentations: config.show_presentations !== false,
+    show_documents: config.show_documents !== false,
+    show_photos: config.show_photos !== false,
+    show_financials: config.show_financials === true,
+    show_messages: config.show_messages !== false,
+    show_tasks: config.show_tasks !== false,
+    show_notes: config.show_notes !== false,
+  });
+
+  const ensureClientRecord = async ({ email, name }) => {
+    const existing = clients.find(c => (c.client_email || "").toLowerCase() === email.toLowerCase());
+    if (existing) {
+      await base44.entities.ClientPortalSettings.update(existing.id, { client_email: email, client_name: name || existing.client_name || "" });
+      return existing;
+    }
+    return base44.entities.ClientPortalSettings.create({ project_id: project.id, client_email: email, client_name: name || "", ...configForNewClient() });
+  };
+
+  const addClientFromContact = async () => {
+    const contact = contacts.find(c => c.id === selectedContactId);
+    if (!contact) return;
+    if (!contact.email) { toast({ variant: "destructive", title: "Contact has no email address" }); return; }
+    setAttaching(true);
+    try {
+      const email = contact.email.trim();
+      if (!registeredEmails.has(email.toLowerCase())) {
+        await base44.users.inviteUser(email, "user");
+      }
+      await ensureClientRecord({ email, name: contact.name });
+      toast({ title: "Client attached", description: `${contact.name} can now access this project's portal.` });
+      setSelectedContactId("");
+    } catch (err) {
+      toast({ variant: "destructive", title: "Failed to attach client", description: err?.message || "Unknown error" });
+    } finally { setAttaching(false); }
+  };
 
   const handleInvite = async () => {
     const email = inviteEmail.trim();
     if (!email) return;
     setInviting(true);
     try {
-      // Base44's invite API only accepts "user" or "admin". Invite as "user" so the
-      // invitation email actually goes out, then save the client email on this project's
-      // portal settings — the portal links the account to this project on the client's
-      // first login by matching their email.
-      await base44.users.inviteUser(email, "user");
-      await saveMutation.mutateAsync({ client_email: email });
-
-      // If the email already belongs to an existing account, link it directly now.
-      try {
-        const users = await base44.entities.User.list();
-        const existing = users.find(u => u.email === email);
-        if (existing && existing.role !== "admin" && existing.role !== "user") {
-          // already a client (or other) — ensure project link is current
-          await base44.entities.User.update(existing.id, { client_project_id: project.id });
-        }
-      } catch {}
-
+      const alreadyRegistered = registeredEmails.has(email.toLowerCase());
+      if (!alreadyRegistered) {
+        await base44.users.inviteUser(email, "user");
+      }
+      await ensureClientRecord({ email, name: "" });
       toast({
-        title: "Invite sent",
-        description: `${email} will receive an invitation email. They'll see this project's portal when they log in.`,
+        title: "Client added",
+        description: alreadyRegistered
+          ? `${email} already has an account and can now view this project.`
+          : `${email} will receive an invitation email and see this project's portal when they log in.`,
       });
       setInviteEmail("");
-      qc.invalidateQueries({ queryKey: ["client_user", project.id] });
     } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Failed to invite client",
-        description: err?.message || "Unknown error",
-      });
+      toast({ variant: "destructive", title: "Failed to add client", description: err?.message || "Unknown error" });
+    } finally { setInviting(false); }
+  };
+
+  const removeClient = async (client) => {
+    if (!confirm(`Remove ${client.client_name || client.client_email} from this project's portal?`)) return;
+    try {
+      await base44.entities.ClientPortalSettings.delete(client.id);
+      qc.invalidateQueries({ queryKey: ["client_portal_settings", project.id] });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Failed to remove client", description: err?.message || "Unknown error" });
     }
-    setInviting(false);
   };
 
   const copyPortalLink = () => {
@@ -158,14 +204,14 @@ export default function ClientPortalTab({ project }) {
 
   if (isLoading) return <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-amber-600" /></div>;
 
-  const isActive = settings?.is_active !== false;
+  const isActive = config.is_active !== false;
 
   return (
     <div className="space-y-6">
       {showPreview && (
         <ClientPortalPreview
           project={project}
-          settings={settings}
+          settings={config}
           tasks={tasks}
           notes={notes}
           onClose={() => setShowPreview(false)}
@@ -191,53 +237,95 @@ export default function ClientPortalTab({ project }) {
         <Switch checked={isActive} onCheckedChange={v => handleToggle("is_active", v)} />
       </div>
 
-      {/* Invite Client */}
+      {/* Client Access (multiple clients) */}
       <div className="rounded-xl border border-slate-200 p-4">
         <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><UserPlus className="w-4 h-4 text-amber-500" />Client Access</h3>
-        {clientUser ? (
-          <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
-            <div>
-              <p className="text-sm font-semibold text-slate-800">{clientUser.full_name || clientUser.email}</p>
-              <p className="text-xs text-slate-500">{clientUser.email} · Portal client</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <a href="/ClientPortal" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-800 font-medium border border-slate-300 rounded-lg px-2.5 py-1.5 hover:bg-slate-100 transition-colors">
-                Preview Portal
-              </a>
-              <button onClick={copyPortalLink} className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 font-medium border border-amber-300 rounded-lg px-2.5 py-1.5 hover:bg-amber-100 transition-colors">
-                {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                {copied ? "Copied!" : "Copy Link"}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-500">Invite the client by email. They will receive an invitation and see their portal when they log in.</p>
-            <div className="flex gap-2">
-              <Input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="client@email.com" className="h-9 text-sm" onKeyDown={e => e.key === "Enter" && handleInvite()} />
-              <Button onClick={handleInvite} disabled={!inviteEmail.trim() || inviting} className="bg-amber-600 hover:bg-amber-700 h-9 px-4 gap-1.5" size="sm">
-                {inviting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
-                {inviting ? "Inviting..." : "Invite"}
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              <p className="text-xs text-slate-400">Portal URL:</p>
-              <button onClick={copyPortalLink} className="text-xs text-amber-600 hover:underline flex items-center gap-1">
-                {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                {window.location.origin}/ClientPortal
-              </button>
-              <a href="/ClientPortal" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:text-slate-700 underline ml-2">Preview</a>
-            </div>
+
+        {/* Attached clients list */}
+        {attachedClients.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {attachedClients.map(c => {
+              const registered = registeredEmails.has((c.client_email || "").toLowerCase());
+              return (
+                <div key={c.id} className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{c.client_name || c.client_email}</p>
+                    <p className="text-xs text-slate-500 truncate">
+                      {c.client_email}
+                      <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${registered ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-500"}`}>
+                        {registered ? "Registered" : "Invited"}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button onClick={copyPortalLink} title="Copy portal link" className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700 font-medium border border-amber-300 rounded-lg px-2 py-1.5 hover:bg-amber-100 transition-colors">
+                      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    </button>
+                    <button onClick={() => removeClient(c)} title="Remove client" className="text-red-400 hover:text-red-600 p-1.5">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
+
+        {/* Add from existing contact */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-slate-600">Attach an existing contact</p>
+          <div className="flex gap-2">
+            <Select value={selectedContactId} onValueChange={setSelectedContactId}>
+              <SelectTrigger className="h-9 text-sm flex-1">
+                <SelectValue placeholder="Select a contact…" />
+              </SelectTrigger>
+              <SelectContent>
+                {contacts.filter(c => c.email).map(c => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}{c.email ? ` · ${c.email}` : ""}{c.contact_type ? ` · ${c.contact_type}` : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button onClick={addClientFromContact} disabled={!selectedContactId || attaching} className="bg-amber-600 hover:bg-amber-700 h-9 px-4 gap-1.5" size="sm">
+              {attaching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
+              {attaching ? "Adding…" : "Attach"}
+            </Button>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 my-3">
+          <div className="flex-1 h-px bg-slate-200" />
+          <span className="text-xs text-slate-400">or invite a new client by email</span>
+          <div className="flex-1 h-px bg-slate-200" />
+        </div>
+
+        {/* Invite by email */}
+        <div className="flex gap-2">
+          <Input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="client@email.com" className="h-9 text-sm" onKeyDown={e => e.key === "Enter" && handleInvite()} />
+          <Button onClick={handleInvite} disabled={!inviteEmail.trim() || inviting} className="bg-amber-600 hover:bg-amber-700 h-9 px-4 gap-1.5" size="sm">
+            {inviting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
+            {inviting ? "Inviting…" : "Invite"}
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-2 mt-3">
+          <p className="text-xs text-slate-400">Portal URL:</p>
+          <button onClick={copyPortalLink} className="text-xs text-amber-600 hover:underline flex items-center gap-1">
+            {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+            {window.location.origin}/ClientPortal
+          </button>
+          <a href="/ClientPortal" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:text-slate-700 underline ml-2">Preview</a>
+        </div>
       </div>
 
       {/* Welcome Message */}
       <div className="rounded-xl border border-slate-200 p-4">
         <Label className="text-sm font-bold text-slate-700 mb-2 block">Welcome Message</Label>
         <input
-          defaultValue={settings?.welcome_message || ""}
-          onBlur={e => { if (e.target.value !== (settings?.welcome_message || "")) saveMutation.mutate({ welcome_message: e.target.value }); }}
+          defaultValue={config.welcome_message || ""}
+          onBlur={e => { if (e.target.value !== (config.welcome_message || "")) saveConfig({ welcome_message: e.target.value }); }}
           className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
           placeholder="e.g. Welcome to your project portal, we're excited to work with you!"
         />
@@ -254,7 +342,7 @@ export default function ClientPortalTab({ project }) {
                 <p className="text-xs text-slate-400">{s.desc}</p>
               </div>
               <Switch
-                checked={settings ? (settings[s.key] !== false) : s.key !== "show_financials"}
+                checked={clients.length > 0 ? (config[s.key] !== false) : s.key !== "show_financials"}
                 onCheckedChange={v => handleToggle(s.key, v)}
               />
             </div>
