@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -39,6 +40,8 @@ export default function ProjectEmailsTab({ project }) {
   const [selected, setSelected] = useState(null);
   const [loadingAtt, setLoadingAtt] = useState(null); // `${attachmentId}:view` | `${attachmentId}:download`
   const [viewer, setViewer] = useState(null); // { dataUrl, mimeType, filename }
+  const [keywords, setKeywords] = useState(project?.email_keywords || "");
+  const [savingKeywords, setSavingKeywords] = useState(false);
 
   const { data: emails = [], isLoading } = useQuery({
     queryKey: ["projectEmails", projectId],
@@ -51,12 +54,31 @@ export default function ProjectEmailsTab({ project }) {
     (a, b) => new Date(b.date_received || 0) - new Date(a.date_received || 0)
   );
 
+  const saveKeywords = async () => {
+    setSavingKeywords(true);
+    try {
+      await base44.entities.Project.update(projectId, { email_keywords: keywords.trim() });
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+      toast({ title: "Keywords saved" });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Save failed", description: err?.message || "Unknown error" });
+    } finally {
+      setSavingKeywords(false);
+    }
+  };
+
   const handleSync = async () => {
     setSyncing(true);
+    // Persist keywords first so the saved value backs future auto-syncs, then sync
+    try {
+      await base44.entities.Project.update(projectId, { email_keywords: keywords.trim() });
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    } catch {}
     try {
       const res = await base44.functions.invoke("syncProjectEmails", {
         project_id: projectId,
         project_name: projectName,
+        email_keywords: keywords.trim(),
       });
       toast({
         title: "Emails Synced",
@@ -140,19 +162,43 @@ export default function ProjectEmailsTab({ project }) {
 
   return (
     <Card className="p-6 bg-white border-0 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-          <Mail className="w-5 h-5 text-amber-500" /> Project Emails ({sorted.length})
-        </h2>
-        <Button
-          size="sm"
-          className="bg-amber-600 hover:bg-amber-700 gap-1.5"
-          onClick={handleSync}
-          disabled={syncing}
-        >
-          {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          {syncing ? "Syncing..." : "Sync Emails"}
-        </Button>
+      <div className="mb-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+            <Mail className="w-5 h-5 text-amber-500" /> Project Emails ({sorted.length})
+          </h2>
+          <Button
+            size="sm"
+            className="bg-amber-600 hover:bg-amber-700 gap-1.5"
+            onClick={handleSync}
+            disabled={syncing}
+          >
+            {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            {syncing ? "Syncing..." : "Sync Emails"}
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            value={keywords}
+            onChange={e => setKeywords(e.target.value)}
+            placeholder="e.g. client name, address, job name"
+            className="h-8 text-sm flex-1"
+            aria-label="Email Keywords"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5"
+            onClick={saveKeywords}
+            disabled={savingKeywords}
+          >
+            {savingKeywords ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+            Save
+          </Button>
+        </div>
+        <p className="text-xs text-slate-400">
+          Email Keywords · Comma-separated. Emails matching the project name OR these keywords will be synced.
+        </p>
       </div>
 
       {isLoading ? (

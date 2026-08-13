@@ -446,6 +446,10 @@
     "next_action_due": {
       "type": "string",
       "format": "date"
+    },
+    "email_keywords": {
+      "type": "string",
+      "description": "Comma-separated extra keywords used to match Gmail emails for this project (searched OR the project name)"
     }
   },
   "required": [

@@ -17,8 +17,24 @@ export default async function(req) {
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     const authHeader = { Authorization: `Bearer ${accessToken}` };
 
-    // Search Gmail for messages whose subject contains the project name
-    const query = `subject:"${projectName}"`;
+    // Resolve email keywords: prefer the body param, otherwise fall back to the saved project field
+    let emailKeywords = (body.email_keywords || '').trim();
+    if (!emailKeywords) {
+      try {
+        const proj = await base44.asServiceRole.entities.Project.get(projectId);
+        emailKeywords = (proj?.email_keywords || '').trim();
+      } catch {}
+    }
+
+    // Build a Gmail search query: subject matches the project name OR any keyword
+    const terms = [projectName];
+    if (emailKeywords) {
+      emailKeywords.split(',').forEach(k => {
+        const t = k.trim();
+        if (t) terms.push(t);
+      });
+    }
+    const query = terms.map(t => `subject:"${t}"`).join(' OR ');
     const listRes = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(query)}&maxResults=50`,
       { headers: authHeader }
