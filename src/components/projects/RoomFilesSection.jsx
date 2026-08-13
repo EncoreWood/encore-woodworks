@@ -4,7 +4,9 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { FileText, Plus, Trash2, Loader2, X, ZoomIn } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
+import { FileText, Plus, Trash2, Loader2, X, ZoomIn, Eye, EyeOff, Lock } from "lucide-react";
 
 function LightboxModal({ file, onClose }) {
   if (!file) return null;
@@ -42,6 +44,7 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
   const [uploading, setUploading] = useState(false);
   const [pendingFile, setPendingFile] = useState(null); // { file_url, file_name, file_type }
   const [label, setLabel] = useState("");
+  const [shopOnly, setShopOnly] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const [pdfViewer, setPdfViewer] = useState(null);
 
@@ -64,7 +67,13 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
       queryClient.invalidateQueries({ queryKey });
       setPendingFile(null);
       setLabel("");
+      setShopOnly(false);
     },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.RoomFile.update(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 
   const handleFileChange = async (e) => {
@@ -90,6 +99,7 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
       file_name: pendingFile.file_name,
       file_type: pendingFile.file_type,
       label: label.trim() || "",
+      is_shop_file: shopOnly,
     });
   };
 
@@ -115,7 +125,7 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
       {files.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {files.map((f) => (
-            <div key={f.id} className="relative group rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
+            <div key={f.id} className={cn("relative group rounded-lg overflow-hidden border bg-slate-50", f.is_shop_file ? "border-amber-400 ring-1 ring-amber-400" : "border-slate-200")}>
               {f.file_type === "image" ? (
                 <button className="w-full" onClick={() => setLightbox(f)}>
                   <img src={f.file_url} alt={f.label || f.file_name} className="w-full h-16 object-cover hover:opacity-90 transition-opacity" />
@@ -129,6 +139,22 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
               {f.label && f.file_type === "image" && (
                 <p className="text-xs text-slate-500 px-1 py-0.5 truncate text-center bg-white border-t border-slate-100">{f.label}</p>
               )}
+
+              {/* Shop-only indicator / toggle */}
+              {f.is_shop_file && (
+                <div className="absolute top-0 left-0 right-0 bg-amber-500 text-white text-[9px] font-semibold py-0.5 text-center flex items-center justify-center gap-1">
+                  <Lock className="w-2.5 h-2.5" /> SHOP ONLY
+                </div>
+              )}
+              <button
+                className={cn("absolute top-1 left-1 rounded p-0.5 transition-colors", f.is_shop_file ? "bg-amber-600 text-white" : "bg-white/80 text-slate-600 hover:bg-white")}
+                style={f.is_shop_file ? { top: "14px" } : undefined}
+                title={f.is_shop_file ? "Shop only — hidden from client. Click to show to client." : "Visible to client. Click to hide (shop only)."}
+                onClick={() => updateMutation.mutate({ id: f.id, data: { is_shop_file: !f.is_shop_file } })}
+              >
+                {f.is_shop_file ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+              </button>
+
               <button
                 className="absolute top-1 right-1 bg-red-600 text-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={() => { if (confirm("Delete this file?")) deleteMutation.mutate(f.id); }}
@@ -154,6 +180,13 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
             onKeyDown={e => e.key === "Enter" && handleConfirmUpload()}
             autoFocus
           />
+          <label className="flex items-center gap-2 cursor-pointer select-none py-1">
+            <Switch checked={shopOnly} onCheckedChange={setShopOnly} />
+            <span className="text-sm text-slate-600 flex items-center gap-1">
+              <Lock className="w-3.5 h-3.5 text-amber-500" />
+              Shop Only (hide from client)
+            </span>
+          </label>
           <div className="flex gap-2 justify-end">
             <Button variant="outline" onClick={() => { setPendingFile(null); setLabel(""); }}>Cancel</Button>
             <Button className="bg-amber-600 hover:bg-amber-700" onClick={handleConfirmUpload} disabled={createMutation.isPending}>
