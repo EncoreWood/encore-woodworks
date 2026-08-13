@@ -20,7 +20,8 @@ import {
 import {
 ArrowLeft, Edit, Trash2, User, Mail, Phone, MapPin, Calendar,
 DollarSign, Palette, Wrench, FileText, Loader2, DoorOpen,
-ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X, Calculator, Box, Upload, Archive, ArchiveRestore
+ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X, Calculator, Box, Upload, Archive, ArchiveRestore,
+ChevronDown, ChevronRight
 } from "lucide-react";
 import { format } from "date-fns";
 import ProjectForm from "../components/projects/ProjectForm";
@@ -122,6 +123,8 @@ export default function ProjectDetails() {
   const [viewingRoomGlb, setViewingRoomGlb] = useState(null); // { url, name }
   const [uploadingRoomGlbIdx, setUploadingRoomGlbIdx] = useState(null);
   const [roomGlbPickerIdx, setRoomGlbPickerIdx] = useState(null);
+  // Per-room expand/collapse state (session only — defaults to all collapsed)
+  const [expandedRooms, setExpandedRooms] = useState(() => new Set());
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
 
@@ -436,6 +439,22 @@ export default function ProjectDetails() {
                       <Progress value={(project.rooms.filter(r => r.completed).length / project.rooms.length) * 100} className="w-24 h-2 bg-slate-100" />
                     </>
                   )}
+                  {project.rooms?.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-xs h-7 text-slate-600 hover:text-amber-700"
+                      onClick={() => {
+                        setExpandedRooms(prev => {
+                          const allExpanded = prev.size === (project.rooms?.length || 0);
+                          if (allExpanded) return new Set();
+                          return new Set(project.rooms.map((_, i) => i));
+                        });
+                      }}
+                    >
+                      {expandedRooms.size === (project.rooms?.length || 0) ? "Collapse All" : "Expand All"}
+                    </Button>
+                  )}
                   <Button onClick={() => { setEditingRoom(null); setEditingRoomIndex(null); setShowRoomManager(true); }} size="sm" className="bg-amber-600 hover:bg-amber-700">
                     <Plus className="w-4 h-4 mr-2" />Add Room
                   </Button>
@@ -443,13 +462,19 @@ export default function ProjectDetails() {
               </div>
               {project.rooms?.length > 0 ? (
                 <div className="space-y-3">
-                  {project.rooms.map((room, idx) => (
+                  {project.rooms.map((room, idx) => {
+                    const isExpanded = expandedRooms.has(idx);
+                    const toggleRoom = () => setExpandedRooms(prev => {
+                      const next = new Set(prev);
+                      if (next.has(idx)) next.delete(idx); else next.add(idx);
+                      return next;
+                    });
+                    return (
                     <div
                       key={idx}
-                      className={cn("p-4 rounded-lg border transition-all cursor-pointer hover:border-amber-300",
+                      className={cn("p-4 rounded-lg border transition-all hover:border-amber-300",
                         room.completed ? "bg-emerald-50 border-emerald-200" : "bg-slate-50 border-slate-100"
                       )}
-                      onClick={() => { setEditingRoom(room); setEditingRoomIndex(idx); setShowRoomManager(true); }}
                     >
                       <div className="flex items-start gap-3">
                         <Checkbox
@@ -462,12 +487,26 @@ export default function ProjectDetails() {
                           onClick={(e) => e.stopPropagation()}
                           className="mt-0.5 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
                         />
+                        <button type="button" onClick={toggleRoom} className="mt-0.5 flex-shrink-0 text-slate-400 hover:text-amber-600" aria-label={isExpanded ? "Collapse room" : "Expand room"}>
+                          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                        </button>
                         <DoorOpen className={cn("w-5 h-5 mt-0.5", room.completed ? "text-emerald-600" : "text-amber-500")} />
                         <div className="flex-1">
                           <div className="mb-2">
                             <div className="flex items-center gap-2 flex-wrap mb-2">
-                              <h3 className={cn("font-medium", room.completed ? "text-emerald-700" : "text-slate-900")}>{room.room_name || `Room ${idx + 1}`}</h3>
+                              <button type="button" onClick={toggleRoom} className="text-left">
+                                <h3 className={cn("font-medium hover:text-amber-700", room.completed ? "text-emerald-700" : "text-slate-900")}>{room.room_name || `Room ${idx + 1}`}</h3>
+                              </button>
                               {room.cabinet_count && <Badge variant="outline" className="text-xs">{room.cabinet_count} cabinets</Badge>}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => { e.stopPropagation(); setEditingRoom(room); setEditingRoomIndex(idx); setShowRoomManager(true); }}
+                                className="h-6 px-2 text-xs text-slate-500 hover:text-amber-700"
+                                title="Edit room"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </Button>
                             </div>
                             <div className="flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                               <JobPacketsRoomModal
@@ -520,6 +559,8 @@ export default function ProjectDetails() {
                               </Button>
                             </div>
                           </div>
+                          {isExpanded && (
+                          <>
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             {room.style && <div><span className="text-slate-500">Style:</span> <span className="text-slate-700">{room.style}</span></div>}
                             {room.finish && <div><span className="text-slate-500">Finish:</span> <span className="text-slate-700">{room.finish}</span></div>}
@@ -556,10 +597,13 @@ export default function ProjectDetails() {
                           )}
                           <RoomClientNotes project={project} roomName={room.room_name || `Room ${idx + 1}`} />
                           <RoomModelFiles project={project} roomName={room.room_name || `Room ${idx + 1}`} roomId={String(idx)} />
+                          </>
+                          )}
                         </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-sm text-slate-500 text-center py-8">No rooms added yet. Click "Add Room" to get started.</p>
