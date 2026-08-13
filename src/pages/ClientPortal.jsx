@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import GanttChart from "@/components/projects/GanttChart";
 import SlideCard from "@/components/presentations/SlideCard";
 import JobPhotosSection from "@/components/projects/JobPhotosSection";
+import RoomNotes from "@/components/projects/RoomNotes";
 import { cn } from "@/lib/utils";
 
 // ── Milestone tracker ──────────────────────────────────────────────────────
@@ -282,7 +283,7 @@ function PortalNotes({ projectId }) {
 }
 
 // ── Rooms section ─────────────────────────────────────────────────────────
-function RoomsSection({ project }) {
+function RoomsSection({ project, user }) {
   const [roomFiles, setRoomFiles] = useState([]);
   const [lightbox, setLightbox] = useState(null);
   const [openRoom, setOpenRoom] = useState(null);
@@ -379,6 +380,9 @@ function RoomsSection({ project }) {
                     </div>
                   </div>
                 )}
+
+                {/* Client side notes */}
+                <RoomNotes project={project} roomName={room.room_name || `Room ${idx + 1}`} user={user} />
 
                 {!hasSelections && !room.notes && photos.length === 0 && (
                   <p className="text-sm text-slate-400 text-center py-3">No details added yet.</p>
@@ -710,7 +714,7 @@ export default function ClientPortal() {
 
         {portalTab === "rooms" && (project.rooms?.length || 0) > 0 && (
           <Section title="Your Rooms" icon={DoorOpen}>
-            <RoomsSection project={project} />
+            <RoomsSection project={project} user={user} />
           </Section>
         )}
 

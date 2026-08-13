@@ -1,0 +1,35 @@
+{
+  "name": "RoomNote",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for reference"
+    },
+    "room_name": {
+      "type": "string",
+      "description": "Room name this note belongs to"
+    },
+    "note_text": {
+      "type": "string",
+      "description": "Client's side note text"
+    },
+    "author_name": {
+      "type": "string",
+      "description": "Name of the client who wrote the note"
+    },
+    "author_email": {
+      "type": "string",
+      "description": "Email of the client who wrote the note"
+    }
+  },
+  "required": [
+    "project_id",
+    "room_name",
+    "note_text"
+  ]
+}
