@@ -349,41 +349,120 @@ function RoomsSection({ project }) {
   );
 }
 
+// ── Project picker (multi-project clients) ────────────────────────────────
+function ProjectPicker({ projects, user, onPick }) {
+  const statusLabels = {
+    inquiry: "Inquiry", quoted: "Quoted", likely_approved: "Likely Approved", approved: "Approved", in_design: "In Design",
+    in_production: "In Production", ready_for_install: "Ready for Install",
+    installing: "Installing", completed: "Completed", on_hold: "On Hold"
+  };
+  const statusColors = {
+    inquiry: "bg-slate-100 text-slate-600", quoted: "bg-blue-100 text-blue-700",
+    likely_approved: "bg-teal-100 text-teal-700", approved: "bg-emerald-100 text-emerald-700",
+    in_design: "bg-violet-100 text-violet-700", in_production: "bg-amber-100 text-amber-700",
+    ready_for_install: "bg-cyan-100 text-cyan-700", installing: "bg-orange-100 text-orange-700",
+    completed: "bg-emerald-100 text-emerald-700", on_hold: "bg-red-100 text-red-700"
+  };
+  const thumb = (p) => (p.files || []).find(f => f.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) || f.tag === "job_photo");
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-amber-50/20">
+      <div className="bg-white border-b border-slate-100 shadow-sm">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+          <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png" alt="Encore Woodworks" className="h-14" />
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center"><User className="w-4 h-4 text-amber-600" /></div>
+            <div className="hidden sm:block text-right">
+              <p className="text-sm font-semibold text-slate-800">{user?.full_name}</p>
+              <button onClick={() => base44.auth.logout()} className="text-xs text-slate-400 hover:text-slate-600">Sign out</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold text-slate-800 mb-1">Your Projects</h1>
+        <p className="text-sm text-slate-500 mb-6">Select a project to view its portal.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {projects.map(({ project: p }) => {
+            const photo = thumb(p);
+            return (
+              <button key={p.id} onClick={() => onPick(p.id)}
+                className="text-left bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hover:border-amber-300 hover:shadow-md transition-all">
+                <div className="h-32 bg-gradient-to-br from-stone-200 to-amber-100/40 relative">
+                  {photo ? (
+                    <img src={photo.url} alt={p.project_name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center"><Image className="w-10 h-10 text-stone-300" /></div>
+                  )}
+                </div>
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <h3 className="font-bold text-slate-800 truncate">{p.project_name}</h3>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${statusColors[p.status] || statusColors.inquiry}`}>{statusLabels[p.status] || p.status}</span>
+                  </div>
+                  {p.address && <p className="text-xs text-slate-400 flex items-center gap-1"><MapPin className="w-3 h-3" />{p.address}</p>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-center text-xs text-slate-300 pt-8">Powered by Encore Woodworks</p>
+      </div>
+    </div>
+  );
+}
+
 // ── Main portal ───────────────────────────────────────────────────────────
 export default function ClientPortal() {
   const [user, setUser] = useState(null);
-  const [project, setProject] = useState(null);
-  const [settings, setSettings] = useState(null);
+  const [accessible, setAccessible] = useState([]); // [{ project, settings }]
+  const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       const u = await base44.auth.me();
       setUser(u);
-      let projectId = u?.client_project_id;
+      if (!u?.email) { setLoading(false); return; }
 
-      // Self-link on first login: if the user isn't linked yet, find the project whose
-      // portal settings list this user's email as the client, and persist the link.
-      if (!projectId && u?.email) {
+      // Gather every project this client is associated with, from both sources.
+      const idSet = new Set();
+      try {
+        const settingsMatches = await base44.entities.ClientPortalSettings.filter({ client_email: u.email });
+        settingsMatches.forEach(s => { if (s.project_id) idSet.add(s.project_id); });
+      } catch {}
+      try {
+        const projectMatches = await base44.entities.Project.filter({ client_email: u.email });
+        projectMatches.forEach(p => { if (p.id) idSet.add(p.id); });
+      } catch {}
+
+      if (idSet.size === 0) { setLoading(false); return; }
+
+      const entries = await Promise.all([...idSet].map(async id => {
         try {
-          const matches = await base44.entities.ClientPortalSettings.filter({ client_email: u.email });
-          if (matches[0]?.project_id) {
-            projectId = matches[0].project_id;
-            try { await base44.auth.updateMe({ client_project_id: projectId }); } catch {}
-          }
-        } catch {}
-      }
+          const [projs, sets] = await Promise.all([
+            base44.entities.Project.filter({ id }),
+            base44.entities.ClientPortalSettings.filter({ project_id: id }),
+          ]);
+          const p = projs[0];
+          if (!p || p.archived) return null;
+          const s = sets[0] || { is_active: true, show_status: true, show_milestones: true, show_presentations: true, show_documents: true, show_photos: true, show_financials: false, show_messages: true };
+          // Only show projects whose portal is active
+          if (s.is_active === false) return null;
+          return { project: p, settings: s };
+        } catch { return null; }
+      }));
 
-      if (!projectId) { setLoading(false); return; }
-      const [projects, settingsList] = await Promise.all([
-        base44.entities.Project.filter({ id: projectId }),
-        base44.entities.ClientPortalSettings.filter({ project_id: projectId }),
-      ]);
-      setProject(projects[0] || null);
-      setSettings(settingsList[0] || { is_active: true, show_status: true, show_milestones: true, show_presentations: true, show_documents: true, show_photos: true, show_financials: false, show_messages: true });
+      const active = entries.filter(Boolean)
+        .sort((a, b) => new Date(b.project.updated_date || 0) - new Date(a.project.updated_date || 0));
+      setAccessible(active);
+      // Single project: skip the picker and go straight in.
+      if (active.length === 1) setSelectedId(active[0].project.id);
       setLoading(false);
     })();
   }, []);
+
+  const selected = accessible.find(a => a.project.id === selectedId) || null;
 
   if (loading) return (
     <div className="min-h-screen bg-gradient-to-br from-stone-50 to-amber-50/30 flex items-center justify-center">
@@ -391,7 +470,7 @@ export default function ClientPortal() {
     </div>
   );
 
-  if (!project) return (
+  if (accessible.length === 0) return (
     <div className="min-h-screen bg-gradient-to-br from-stone-50 to-amber-50/30 flex items-center justify-center p-6">
       <div className="text-center">
         <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png" alt="Encore Woodworks" className="h-20 mx-auto mb-6 opacity-80" />
@@ -401,15 +480,12 @@ export default function ClientPortal() {
     </div>
   );
 
-  if (settings && !settings.is_active) return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-50 to-amber-50/30 flex items-center justify-center p-6">
-      <div className="text-center">
-        <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png" alt="Encore Woodworks" className="h-20 mx-auto mb-6 opacity-80" />
-        <h2 className="text-xl font-bold text-slate-700 mb-2">Portal temporarily unavailable</h2>
-        <p className="text-slate-500 text-sm">Please contact your project team.</p>
-      </div>
-    </div>
-  );
+  if (!selected) {
+    return <ProjectPicker projects={accessible} user={user} onPick={setSelectedId} />;
+  }
+
+  const project = selected.project;
+  const settings = selected.settings;
 
   const statusLabels = {
     inquiry: "Inquiry", quoted: "Quoted", likely_approved: "Likely to Be Approved", approved: "Approved", in_design: "In Design",
@@ -429,12 +505,17 @@ export default function ClientPortal() {
   const photos = (project.files || []).filter(f => f.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) || f.tag === "job_photo");
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-amber-50/20">
+    <div key={selectedId} className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-amber-50/20">
       {/* Header */}
       <div className="bg-white border-b border-slate-100 shadow-sm sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png" alt="Encore Woodworks" className="h-14" />
           <div className="flex items-center gap-2">
+            {accessible.length > 1 && (
+              <button onClick={() => setSelectedId(null)} className="text-xs font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1">
+                <ChevronLeft className="w-3.5 h-3.5" /> Switch Project
+              </button>
+            )}
             <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
               <User className="w-4 h-4 text-amber-600" />
             </div>
