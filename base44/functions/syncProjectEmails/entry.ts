@@ -92,7 +92,15 @@ export default async function(req) {
       if (bodyFull.length > 100000) bodyFull = bodyFull.slice(0, 100000);
 
       const hasAttachments = parts.some(p => p.filename);
-      const attachmentNames = parts.filter(p => p.filename).map(p => p.filename);
+      const attachmentUrls = parts
+        .filter(p => p.filename)
+        .map(p => ({
+          filename: p.filename,
+          mimeType: p.mimeType || 'application/octet-stream',
+          size: p.body?.size || 0,
+          attachmentId: p.body?.attachmentId || '',
+          messageId: m.id
+        }));
 
       let dateReceived = '';
       try {
@@ -113,7 +121,7 @@ export default async function(req) {
         body_full: bodyFull,
         date_received: dateReceived,
         has_attachments: !!hasAttachments,
-        attachment_urls: attachmentNames,
+        attachment_urls: attachmentUrls,
         labels: msg.labelIds || []
       });
       newCount++;

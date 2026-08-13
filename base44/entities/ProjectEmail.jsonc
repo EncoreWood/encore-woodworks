@@ -49,9 +49,26 @@
     },
     "attachment_urls": {
       "type": "array",
-      "description": "Attachment file names",
+      "description": "Attachment metadata objects",
       "items": {
-        "type": "string"
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "attachmentId": {
+            "type": "string"
+          },
+          "messageId": {
+            "type": "string"
+          }
+        }
       },
       "default": []
     },
