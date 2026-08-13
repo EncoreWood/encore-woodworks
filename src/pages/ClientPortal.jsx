@@ -560,7 +560,7 @@ function ProjectPicker({ projects, user, onPick }) {
                     <img src={photo.url} alt={p.project_name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center p-6">
-                      <img src="https://media.base44.com/images/public/6984bc8fae105e5a06a39d65/704324382_image.png" alt="" className="max-h-full max-w-full object-contain" style={{ maxHeight: "5rem" }} />
+                      <img src="https://media.base44.com/images/public/6984bc8fae105e5a06a39d65/fa3f55b8e_image.png" alt="" className="max-h-full max-w-full object-contain" style={{ maxHeight: "5rem" }} />
                     </div>
                   )}
                 </div>
