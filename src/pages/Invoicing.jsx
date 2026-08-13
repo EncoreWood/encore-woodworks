@@ -602,7 +602,7 @@ export default function Invoicing() {
                                     variant="ghost"
                                     size="sm"
                                     className="h-8 w-8 p-0 text-emerald-600"
-                                    onClick={handleMoveToCompleted}
+                                    onClick={(e) => handleMoveToCompleted(project, e)}
                                     title="Move to Completed"
                                   >
                                     <CheckCircle className="w-4 h-4" />
