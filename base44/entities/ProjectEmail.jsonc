@@ -1,0 +1,71 @@
+{
+  "name": "ProjectEmail",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for reference"
+    },
+    "gmail_message_id": {
+      "type": "string",
+      "description": "Gmail message ID (used to dedupe)"
+    },
+    "thread_id": {
+      "type": "string",
+      "description": "Gmail thread ID"
+    },
+    "sender": {
+      "type": "string",
+      "description": "Sender display name"
+    },
+    "sender_email": {
+      "type": "string",
+      "description": "Sender email address"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Email subject"
+    },
+    "body_snippet": {
+      "type": "string",
+      "description": "Short snippet of the email body"
+    },
+    "body_full": {
+      "type": "string",
+      "description": "Full email body (plain text or HTML)"
+    },
+    "date_received": {
+      "type": "string",
+      "description": "ISO timestamp of when the email was received"
+    },
+    "has_attachments": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the email has attachments"
+    },
+    "attachment_urls": {
+      "type": "array",
+      "description": "Attachment file names",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "labels": {
+      "type": "array",
+      "description": "Gmail label IDs",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "project_id",
+    "project_name"
+  ]
+}
