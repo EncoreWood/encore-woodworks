@@ -1,0 +1,113 @@
+{
+  "name": "InvoiceTemplate",
+  "type": "object",
+  "properties": {
+    "logo_url": {
+      "type": "string",
+      "description": "Company logo image URL shown at the top of the invoice"
+    },
+    "company_name": {
+      "type": "string",
+      "default": "Encore Woodworks",
+      "description": "Company name in the invoice header"
+    },
+    "tagline": {
+      "type": "string",
+      "description": "Short tagline under the company name"
+    },
+    "address": {
+      "type": "string",
+      "description": "Company address shown in the header"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Company phone shown in the header"
+    },
+    "email": {
+      "type": "string",
+      "description": "Company email shown in the header"
+    },
+    "website": {
+      "type": "string",
+      "description": "Company website shown in the header"
+    },
+    "primary_color": {
+      "type": "string",
+      "default": "#8a7560",
+      "description": "Accent color used for the type badge, table headers, and amount-due box"
+    },
+    "header_bg_color": {
+      "type": "string",
+      "default": "#1e293b",
+      "description": "Background color of the invoice header bar"
+    },
+    "header_text_color": {
+      "type": "string",
+      "default": "#ffffff",
+      "description": "Text color used on top of the header bar"
+    },
+    "footer_text": {
+      "type": "string",
+      "description": "Payment terms / thank-you note / remittance instructions shown at the bottom"
+    },
+    "font_family": {
+      "type": "string",
+      "enum": [
+        "helvetica",
+        "times",
+        "courier"
+      ],
+      "default": "helvetica",
+      "description": "Font used for the invoice body text"
+    },
+    "default_deposit_percent": {
+      "type": "number",
+      "default": 30,
+      "description": "Default percentage for deposit invoices"
+    },
+    "default_progress_percent": {
+      "type": "number",
+      "default": 60,
+      "description": "Default percentage for progress-payment invoices"
+    },
+    "default_final_percent": {
+      "type": "number",
+      "default": 10,
+      "description": "Default percentage for final invoices"
+    },
+    "last_invoice_number": {
+      "type": "number",
+      "default": 0,
+      "description": "Counter used to generate sequential invoice numbers (INV-0001, INV-0002...)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "company_name"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

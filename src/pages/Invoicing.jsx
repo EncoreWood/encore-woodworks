@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail, Edit3, Download, PlusCircle, LayoutDashboard, Calendar, CalendarClock, Trash2 } from "lucide-react";
+import { DollarSign, Search, FileText, CheckCircle, AlertCircle, Clock, Edit, Eye, ExternalLink, Mail, Edit3, Download, PlusCircle, LayoutDashboard, Calendar, CalendarClock, Trash2, Settings, Receipt } from "lucide-react";
 import { format } from "date-fns";
 import { Textarea } from "@/components/ui/textarea";
 import ProposalViewer from "../components/proposals/ProposalViewer";
@@ -20,6 +20,8 @@ import { toast } from "sonner";
 import InvoicingCalendar from "../components/invoicing/InvoicingCalendar";
 import CompletedProjectsTab from "../components/invoicing/CompletedProjectsTab";
 import CustomInvoicesEditor, { getEffectiveInvoices, calcCollected } from "../components/invoicing/CustomInvoicesEditor";
+import InvoiceTemplateEditor from "../components/invoicing/InvoiceTemplateEditor";
+import SendInvoiceModal from "../components/invoicing/SendInvoiceModal";
 
 function FinEditTile({ label, value, onSave, colorClass = "text-slate-700", bgClass = "bg-slate-50" }) {
   const [editing, setEditing] = useState(false);
@@ -72,6 +74,8 @@ export default function Invoicing() {
   const [addingPayment, setAddingPayment] = useState(null);
   const [paymentForm, setPaymentForm] = useState({ amount: "", date: "", notes: "" });
   const [viewingPayments, setViewingPayments] = useState(null);
+  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
+  const [sendingInvoice, setSendingInvoice] = useState(null);
 
 
   const queryClient = useQueryClient();
@@ -377,6 +381,11 @@ export default function Invoicing() {
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Invoicing</h1>
             <p className="text-slate-500 mt-1">Track project invoicing and payments</p>
           </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button variant="outline" size="sm" onClick={() => setShowTemplateEditor(true)} title="Invoice Template Settings">
+              <Settings className="w-4 h-4 mr-2" />
+              Template Settings
+            </Button>
           {/* Tabs */}
           <div className="flex bg-white border border-slate-200 rounded-lg p-1 gap-1">
             <button
@@ -402,6 +411,7 @@ export default function Invoicing() {
                 </span>
               )}
             </button>
+          </div>
           </div>
         </div>
 
@@ -575,19 +585,32 @@ export default function Invoicing() {
                                   </Button>
                                 )}
                                 <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 text-green-600"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    setAddingPayment(project);
-                                    setPaymentForm({ amount: "", date: new Date().toISOString().split("T")[0], notes: "" });
-                                  }}
-                                  title="Add Payment"
-                                >
-                                  <PlusCircle className="w-4 h-4" />
-                                </Button>
+                                   variant="ghost"
+                                   size="sm"
+                                   className="h-8 w-8 p-0 text-green-600"
+                                   onClick={(e) => {
+                                     e.preventDefault();
+                                     e.stopPropagation();
+                                     setAddingPayment(project);
+                                     setPaymentForm({ amount: "", date: new Date().toISOString().split("T")[0], notes: "" });
+                                   }}
+                                   title="Add Payment"
+                                 >
+                                   <PlusCircle className="w-4 h-4" />
+                                 </Button>
+                                 <Button
+                                   variant="ghost"
+                                   size="sm"
+                                   className="h-8 w-8 p-0 text-indigo-600"
+                                   onClick={(e) => {
+                                     e.preventDefault();
+                                     e.stopPropagation();
+                                     setSendingInvoice(project);
+                                   }}
+                                   title="Send Invoice"
+                                 >
+                                   <Receipt className="w-4 h-4" />
+                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -1317,6 +1340,19 @@ export default function Invoicing() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Invoice Template Editor */}
+        <InvoiceTemplateEditor open={showTemplateEditor} onClose={() => setShowTemplateEditor(false)} />
+
+        {/* Send Invoice Modal */}
+        <SendInvoiceModal
+          open={!!sendingInvoice}
+          project={sendingInvoice}
+          onClose={() => setSendingInvoice(null)}
+          onSent={(proj, num) => {
+            queryClient.invalidateQueries({ queryKey: ["projects"] });
+          }}
+        />
       </div>
     </div>
   );

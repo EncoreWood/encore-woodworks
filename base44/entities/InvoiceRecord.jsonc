@@ -1,0 +1,109 @@
+{
+  "name": "InvoiceRecord",
+  "type": "object",
+  "properties": {
+    "invoice_number": {
+      "type": "string",
+      "description": "Human-readable invoice number, e.g. INV-0001"
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Reference to the Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for reference"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Client name billed"
+    },
+    "client_email": {
+      "type": "string",
+      "description": "Email address the invoice was sent to"
+    },
+    "invoice_type": {
+      "type": "string",
+      "enum": [
+        "deposit",
+        "progress",
+        "final"
+      ],
+      "description": "Which kind of invoice this is"
+    },
+    "percentage": {
+      "type": "number",
+      "description": "Percentage of the grand total used to compute the amount due"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Amount due on this invoice"
+    },
+    "subtotal": {
+      "type": "number",
+      "description": "Original contract subtotal"
+    },
+    "change_orders_total": {
+      "type": "number",
+      "description": "Sum of change orders included"
+    },
+    "grand_total": {
+      "type": "number",
+      "description": "Full project grand total (original + change orders)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "sent",
+        "paid"
+      ],
+      "default": "sent",
+      "description": "Invoice status"
+    },
+    "sent_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the invoice was emailed"
+    },
+    "pdf_url": {
+      "type": "string",
+      "description": "URL of the generated invoice PDF"
+    },
+    "email_subject": {
+      "type": "string",
+      "description": "Subject line of the email that was sent"
+    },
+    "created_by_name": {
+      "type": "string",
+      "description": "Name of the admin who sent the invoice"
+    }
+  },
+  "required": [
+    "invoice_number",
+    "project_id",
+    "invoice_type"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
