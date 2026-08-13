@@ -64,16 +64,21 @@ function TimelineSection({ projectId }) {
 }
 
 // ── Presentation slideshow ─────────────────────────────────────────────────
-function PresentationSlideshow({ projectId }) {
+function PresentationSlideshow({ projectId, presentationId }) {
   const [slides, setSlides] = useState([]);
   const [idx, setIdx] = useState(0);
   useEffect(() => {
-    base44.entities.Presentation.filter({ project_id: projectId }).then(async presentations => {
-      if (!presentations[0]) return;
-      const s = await base44.entities.PresentationSlide.filter({ presentation_id: presentations[0].id });
+    (async () => {
+      let presId = presentationId;
+      if (!presId) {
+        const presentations = await base44.entities.Presentation.filter({ project_id: projectId });
+        if (!presentations[0]) return;
+        presId = presentations[0].id;
+      }
+      const s = await base44.entities.PresentationSlide.filter({ presentation_id: presId });
       setSlides(s.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
-    });
-  }, [projectId]);
+    })();
+  }, [projectId, presentationId]);
   if (!slides.length) return <p className="text-sm text-slate-400 text-center py-6">No presentation available yet.</p>;
   const slide = slides[idx];
   return (
@@ -440,6 +445,76 @@ function HomeHighlights({ project, user, onGoTab }) {
   );
 }
 
+// ── Client-facing Proposal (estimates + presentations) ────────────────────
+function ClientProposalSection({ projectId }) {
+  const [bids, setBids] = useState([]);
+  const [presentations, setPresentations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    Promise.all([
+      base44.entities.Bid.filter({ project_id: projectId }),
+      base44.entities.Presentation.filter({ project_id: projectId }),
+    ]).then(([b, p]) => {
+      setBids((b || []).filter(x => x.client_visible));
+      setPresentations((p || []).filter(x => x.client_visible));
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [projectId]);
+
+  if (loading) return (
+    <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" /></div>
+  );
+
+  const hasEstimates = bids.length > 0;
+  const hasPresentations = presentations.length > 0;
+
+  if (!hasEstimates && !hasPresentations) {
+    return (
+      <Section title="Proposal" icon={FileText}>
+        <p className="text-sm text-slate-400 text-center py-6">Your proposal will appear here once your project team shares it.</p>
+      </Section>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {hasEstimates && (
+        <Section title="Estimates" icon={FileText}>
+          <div className="space-y-2">
+            {bids.map(bid => (
+              <div key={bid.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+                <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-4 h-4 text-amber-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-800 truncate">{bid.project_name}{bid.bid_type && ` · ${bid.bid_type}`}</p>
+                  <p className="text-xs text-slate-400">{bid.rooms?.length || 0} rooms{bid.total_lf ? ` · ${bid.total_lf} LF` : ""}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-bold text-slate-800">${(bid.total || 0).toLocaleString()}</p>
+                  <span className="text-xs text-slate-500 capitalize">{bid.status || "draft"}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {hasPresentations && (
+        <Section title="Presentations" icon={Image}>
+          <div className="space-y-6">
+            {presentations.map(p => (
+              <div key={p.id}>
+                <p className="text-sm font-semibold text-slate-700 mb-3">{p.project_name}</p>
+                <PresentationSlideshow presentationId={p.id} />
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
+    </div>
+  );
+}
+
 // ── Project picker (multi-project clients) ────────────────────────────────
 function ProjectPicker({ projects, user, onPick }) {
   const statusLabels = {
@@ -640,7 +715,7 @@ export default function ClientPortal() {
           { key: "rooms", label: "Rooms", show: (project.rooms?.length || 0) > 0 },
           { key: "photos", label: "Photos", show: settings?.show_photos !== false },
           { key: "documents", label: "Documents", show: settings?.show_documents !== false && documents.length > 0 },
-          { key: "presentations", label: "Presentations", show: settings?.show_presentations !== false },
+          { key: "presentations", label: "Proposal", show: settings?.show_presentations !== false },
           { key: "messages", label: "Messages", show: settings?.show_messages !== false },
           { key: "financials", label: "Financials", show: !!settings?.show_financials },
           { key: "notes", label: "Notes", show: settings?.show_notes !== false },
@@ -747,9 +822,7 @@ export default function ClientPortal() {
         )}
 
         {portalTab === "presentations" && settings?.show_presentations !== false && (
-          <Section title="3D Presentations" icon={Image}>
-            <PresentationSlideshow projectId={project.id} />
-          </Section>
+          <ClientProposalSection projectId={project.id} />
         )}
 
         {portalTab === "messages" && settings?.show_messages !== false && (

@@ -72,6 +72,16 @@ export default function ClientPortalTab({ project }) {
     queryFn: () => base44.entities.PortalNote.filter({ project_id: project.id }),
   });
 
+  const { data: bids = [] } = useQuery({
+    queryKey: ["bids_for_project", project.id],
+    queryFn: () => base44.entities.Bid.filter({ project_id: project.id }),
+  });
+
+  const { data: presentations = [] } = useQuery({
+    queryKey: ["presentations_for_project", project.id],
+    queryFn: () => base44.entities.Presentation.filter({ project_id: project.id }),
+  });
+
   // Apply a config change to every client record for this project (shared portal config).
   const saveConfig = async (patch) => {
     if (clients.length === 0) {
@@ -118,6 +128,18 @@ export default function ClientPortalTab({ project }) {
   const toggleNoteVisibility = (note) => {
     base44.entities.PortalNote.update(note.id, { is_visible_to_client: !note.is_visible_to_client })
       .then(() => qc.invalidateQueries({ queryKey: ["portal_notes", project.id] }));
+  };
+
+  const toggleBidVisible = (bid) => {
+    base44.entities.Bid.update(bid.id, { client_visible: !bid.client_visible })
+      .then(() => qc.invalidateQueries({ queryKey: ["bids_for_project", project.id] }))
+      .catch(err => toast({ variant: "destructive", title: "Failed to update", description: err?.message || "Unknown error" }));
+  };
+
+  const togglePresVisible = (pres) => {
+    base44.entities.Presentation.update(pres.id, { client_visible: !pres.client_visible })
+      .then(() => qc.invalidateQueries({ queryKey: ["presentations_for_project", project.id] }))
+      .catch(err => toast({ variant: "destructive", title: "Failed to update", description: err?.message || "Unknown error" }));
   };
 
   const handleToggle = (key, value) => saveConfig({ [key]: value });
@@ -348,6 +370,46 @@ export default function ClientPortalTab({ project }) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Client Proposal Visibility */}
+      <div className="rounded-xl border border-slate-200 p-4">
+        <h3 className="text-sm font-bold text-slate-700 mb-1 flex items-center gap-2"><Eye className="w-4 h-4 text-amber-500" />Client Proposal Visibility</h3>
+        <p className="text-xs text-slate-400 mb-4">Choose which estimates and presentations the client sees in their Proposal tab.</p>
+
+        <p className="text-xs font-semibold text-slate-600 mb-2">Estimates</p>
+        {bids.length === 0 ? (
+          <p className="text-xs text-slate-400 py-2 mb-4">No estimates yet for this project.</p>
+        ) : (
+          <div className="space-y-2 mb-4">
+            {bids.map(bid => (
+              <div key={bid.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-800 truncate">{bid.project_name}{bid.bid_type && ` · ${bid.bid_type}`}</p>
+                  <p className="text-xs text-slate-400">${(bid.total || 0).toLocaleString()} · {bid.status || "draft"}</p>
+                </div>
+                <Switch checked={!!bid.client_visible} onCheckedChange={() => toggleBidVisible(bid)} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        <p className="text-xs font-semibold text-slate-600 mb-2">Presentations</p>
+        {presentations.length === 0 ? (
+          <p className="text-xs text-slate-400 py-2">No presentations yet for this project.</p>
+        ) : (
+          <div className="space-y-2">
+            {presentations.map(p => (
+              <div key={p.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-800 truncate">{p.project_name}</p>
+                  <p className="text-xs text-slate-400">{p.status || "draft"}{p.sent_date && ` · sent ${format(new Date(p.sent_date), "MMM d")}`}</p>
+                </div>
+                <Switch checked={!!p.client_visible} onCheckedChange={() => togglePresVisible(p)} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Client Tasks */}

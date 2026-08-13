@@ -188,6 +188,11 @@
       "items": {
         "type": "object"
       }
+    },
+    "client_visible": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this estimate/bid is shared with the client in their portal Proposal tab"
     }
   },
   "required": [

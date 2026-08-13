@@ -56,6 +56,11 @@
     "bid_id": {
       "type": "string",
       "description": "Linked Bid ID"
+    },
+    "client_visible": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this presentation is shared with the client in their portal Proposal tab"
     }
   },
   "required": [
