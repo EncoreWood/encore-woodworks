@@ -499,6 +499,15 @@ export default function Layout({ children, currentPageName }) {
               if (event?.data?.employee_id !== emp.id) return;
               base44.entities.TimeEntry.filter({ employee_id: emp.id }).then(syncClockState).catch(() => {});
             });
+          } else {
+            // Not an employee — if this is a portal client, send them to their portal.
+            try {
+              const matches = await base44.entities.ClientPortalSettings.filter({ client_email: user.email });
+              if (matches.length > 0 && !window.location.pathname.startsWith("/ClientPortal")) {
+                window.location.replace(window.location.origin + "/ClientPortal");
+                return;
+              }
+            } catch {}
           }
         }
 
