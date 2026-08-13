@@ -1,0 +1,48 @@
+{
+  "name": "JobPhoto",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for reference"
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL of the uploaded photo"
+    },
+    "file_name": {
+      "type": "string",
+      "description": "Original file name"
+    },
+    "caption": {
+      "type": "string",
+      "description": "Optional caption"
+    },
+    "uploaded_by_name": {
+      "type": "string",
+      "description": "Name of the uploader"
+    },
+    "uploaded_by_email": {
+      "type": "string",
+      "description": "Email of the uploader"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "client",
+        "admin"
+      ],
+      "default": "admin",
+      "description": "Who uploaded the photo"
+    }
+  },
+  "required": [
+    "project_id",
+    "file_url",
+    "file_name"
+  ]
+}

@@ -5,6 +5,7 @@ import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Download, MessageSquar
 import { Button } from "@/components/ui/button";
 import GanttChart from "@/components/projects/GanttChart";
 import SlideCard from "@/components/presentations/SlideCard";
+import JobPhotosSection from "@/components/projects/JobPhotosSection";
 
 // ── Milestone tracker ──────────────────────────────────────────────────────
 function Milestones({ project }) {
@@ -674,16 +675,10 @@ export default function ClientPortal() {
           </Section>
         )}
 
-        {/* Photos */}
-        {settings?.show_photos !== false && photos.length > 0 && (
+        {/* Job Photos (shared with client uploads) */}
+        {settings?.show_photos !== false && (
           <Section title="Job Photos" icon={Image}>
-            <div className="grid grid-cols-3 gap-2">
-              {photos.map((f, i) => (
-                <a key={i} href={f.url} target="_blank" rel="noopener noreferrer">
-                  <img src={f.url} alt={f.name} className="w-full aspect-square object-cover rounded-xl hover:opacity-90 transition-opacity" />
-                </a>
-              ))}
-            </div>
+            <JobPhotosSection project={project} user={user} canDelete={false} extraPhotos={photos} />
           </Section>
         )}
 
