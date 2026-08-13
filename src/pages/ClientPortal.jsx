@@ -424,10 +424,10 @@ function HomeHighlights({ project, user, onGoTab }) {
     <Section title="Needs Your Attention" icon={ClipboardList}>
       <div className="space-y-2">
         {pending.length > 0 && (
-          <button onClick={() => onGoTab("tasks")} className="w-full flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-100 hover:bg-amber-100 transition-colors">
-            <span className="text-sm text-slate-700 flex items-center gap-2"><ClipboardList className="w-4 h-4 text-amber-600" />{pending.length} pending task{pending.length !== 1 ? "s" : ""}{sigTasks.length > 0 && ` · ${sigTasks.length} need${sigTasks.length === 1 ? "s" : ""} signature`}</span>
-            <ChevronRight className="w-4 h-4 text-amber-500" />
-          </button>
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-100">
+            <ClipboardList className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            <span className="text-sm text-slate-700">{pending.length} pending task{pending.length !== 1 ? "s" : ""}{sigTasks.length > 0 && ` · ${sigTasks.length} need${sigTasks.length === 1 ? "s" : ""} signature`} — see Your Tasks below</span>
+          </div>
         )}
         {hasMessages && (
           <button onClick={() => onGoTab("messages")} className="w-full flex items-center justify-between p-3 rounded-xl bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors">
@@ -641,10 +641,9 @@ export default function ClientPortal() {
           { key: "photos", label: "Photos", show: settings?.show_photos !== false },
           { key: "documents", label: "Documents", show: settings?.show_documents !== false && documents.length > 0 },
           { key: "presentations", label: "Presentations", show: settings?.show_presentations !== false },
-          { key: "financials", label: "Financials", show: !!settings?.show_financials },
-          { key: "tasks", label: "Tasks", show: settings?.show_tasks !== false },
-          { key: "notes", label: "Notes", show: settings?.show_notes !== false },
           { key: "messages", label: "Messages", show: settings?.show_messages !== false },
+          { key: "financials", label: "Financials", show: !!settings?.show_financials },
+          { key: "notes", label: "Notes", show: settings?.show_notes !== false },
         ].filter(t => t.show);
         return (
           <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
@@ -709,6 +708,12 @@ export default function ClientPortal() {
             )}
 
             <HomeHighlights project={project} user={user} onGoTab={setPortalTab} />
+
+            {settings?.show_tasks !== false && (
+              <Section title="Your Tasks" icon={ClipboardList}>
+                <ClientTasks projectId={project.id} />
+              </Section>
+            )}
           </>
         )}
 
@@ -747,6 +752,12 @@ export default function ClientPortal() {
           </Section>
         )}
 
+        {portalTab === "messages" && settings?.show_messages !== false && (
+          <Section title="Messages" icon={MessageSquare}>
+            <Messages projectId={project.id} user={user} />
+          </Section>
+        )}
+
         {portalTab === "financials" && settings?.show_financials && (
           <Section title="Financials" icon={DollarSign}>
             <div className="space-y-3">
@@ -772,21 +783,9 @@ export default function ClientPortal() {
           </Section>
         )}
 
-        {portalTab === "tasks" && settings?.show_tasks !== false && (
-          <Section title="Your Tasks" icon={ClipboardList}>
-            <ClientTasks projectId={project.id} />
-          </Section>
-        )}
-
         {portalTab === "notes" && settings?.show_notes !== false && (
           <Section title="Project Notes" icon={StickyNote}>
             <PortalNotes projectId={project.id} />
-          </Section>
-        )}
-
-        {portalTab === "messages" && settings?.show_messages !== false && (
-          <Section title="Messages" icon={MessageSquare}>
-            <Messages projectId={project.id} user={user} />
           </Section>
         )}
 
