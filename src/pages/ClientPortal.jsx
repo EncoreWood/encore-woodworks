@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
-import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Download, MessageSquare, Send, X, DollarSign, Image, FileText, Calendar, MapPin, User, ClipboardList, StickyNote, Clock, DoorOpen, Paperclip } from "lucide-react";
+import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Download, MessageSquare, Send, X, DollarSign, Image, FileText, Calendar, MapPin, User, ClipboardList, StickyNote, Clock, DoorOpen, Paperclip, Box } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GanttChart from "@/components/projects/GanttChart";
 import SlideCard from "@/components/presentations/SlideCard";
@@ -386,6 +386,54 @@ function RoomsSection({ project, user }) {
                     </div>
                   </div>
                 )}
+
+                {/* 3D files */}
+                {(() => {
+                  const files3d = photos.filter(f => f.category === "3d");
+                  if (!files3d.length) return null;
+                  return (
+                    <div>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1"><Box className="w-3.5 h-3.5 text-violet-500" />3D Files</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {files3d.map(f => f.file_type === "image" ? (
+                          <button key={f.id} onClick={() => setLightbox(f)} className="rounded-xl overflow-hidden border border-slate-100">
+                            <img src={f.file_url} alt={f.label || f.file_name} className="w-full aspect-square object-cover hover:opacity-90 transition-opacity" />
+                          </button>
+                        ) : (
+                          <a key={f.id} href={f.file_url} target="_blank" rel="noopener noreferrer" download
+                            className="flex flex-col items-center justify-center gap-1 aspect-square bg-violet-50 rounded-xl border border-violet-100 hover:bg-violet-100 transition-colors">
+                            <Box className="w-6 h-6 text-violet-500" />
+                            <span className="text-xs text-slate-500 truncate px-1 w-full text-center">{f.label || f.file_name}</span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* 2D drawings */}
+                {(() => {
+                  const files2d = photos.filter(f => f.category === "2d");
+                  if (!files2d.length) return null;
+                  return (
+                    <div>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1"><Image className="w-3.5 h-3.5 text-blue-500" />2D Drawings</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {files2d.map(f => f.file_type === "image" ? (
+                          <button key={f.id} onClick={() => setLightbox(f)} className="rounded-xl overflow-hidden border border-slate-100">
+                            <img src={f.file_url} alt={f.label || f.file_name} className="w-full aspect-square object-cover hover:opacity-90 transition-opacity" />
+                          </button>
+                        ) : (
+                          <a key={f.id} href={f.file_url} target="_blank" rel="noopener noreferrer"
+                            className="flex flex-col items-center justify-center gap-1 aspect-square bg-slate-50 rounded-xl border border-slate-100 hover:bg-blue-50 transition-colors">
+                            <FileText className="w-6 h-6 text-red-400" />
+                            <span className="text-xs text-slate-500 truncate px-1 w-full text-center">{f.label || f.file_name}</span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Client side notes */}
                 <RoomNotes project={project} roomName={room.room_name || `Room ${idx + 1}`} user={user} />

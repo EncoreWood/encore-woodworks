@@ -30,9 +30,21 @@
       "type": "string",
       "enum": [
         "image",
-        "pdf"
+        "pdf",
+        "3d",
+        "other"
       ],
       "description": "Type of file"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "3d",
+        "2d",
+        "general"
+      ],
+      "default": "general",
+      "description": "Per-room file grouping: 3d renders/models, 2d drawings/elevations, general misc files"
     },
     "label": {
       "type": "string",
