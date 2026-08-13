@@ -11,7 +11,6 @@ import { Loader2, UserPlus, Globe, GlobeLock, Copy, Check, Plus, Trash2, StickyN
 import ClientPortalPreview from "@/components/projects/ClientPortalPreview";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
-import { appParams } from "@/lib/app-params";
 
 const SECTIONS = [
   { key: "show_status",        label: "Project Status",      desc: "Status, dates, and address" },
@@ -230,7 +229,10 @@ export default function ClientPortalTab({ project }) {
   // if no published base URL is available.
   const getPortalUrl = () => {
     const stored = portalUrlSetting && portalUrlSetting[0] && portalUrlSetting[0].value ? portalUrlSetting[0].value.trim() : "";
-    const base = stored || appParams.appBaseUrl || window.location.origin.replace(/^https:\/\/preview-sandbox--/, "https://");
+    // Clients access the portal through the same origin the admin uses (the
+    // preview-sandbox URL works for them). Do NOT strip the preview-sandbox
+    // prefix — the stripped app-id subdomain returns "App not found".
+    const base = stored || window.location.origin;
     return base.replace(/\/$/, "") + "/ClientPortal";
   };
 
