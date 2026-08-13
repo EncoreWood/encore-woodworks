@@ -5,6 +5,7 @@ import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Download, MessageSquar
 import { Button } from "@/components/ui/button";
 import GanttChart from "@/components/projects/GanttChart";
 import SlideCard from "@/components/presentations/SlideCard";
+import ClientPresentationViewer from "@/components/presentations/ClientPresentationViewer";
 import JobPhotosSection from "@/components/projects/JobPhotosSection";
 import RoomNotes from "@/components/projects/RoomNotes";
 import { cn } from "@/lib/utils";
@@ -505,7 +506,7 @@ function ClientProposalSection({ projectId }) {
             {presentations.map(p => (
               <div key={p.id}>
                 <p className="text-sm font-semibold text-slate-700 mb-3">{p.project_name}</p>
-                <PresentationSlideshow presentationId={p.id} />
+                <ClientPresentationViewer presentationId={p.id} projectName={p.project_name} />
               </div>
             ))}
           </div>
