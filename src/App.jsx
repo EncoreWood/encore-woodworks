@@ -11,6 +11,7 @@ function RoleBasedHome() {
   const { user } = useAuth();
   if (!user) return null;
   if (user.role === 'admin') return <Navigate to="/Calendar" replace />;
+  if (user.role === 'client') return <Navigate to="/ClientPortal" replace />;
   return <Navigate to="/TimeSheet" replace />;
 }
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';

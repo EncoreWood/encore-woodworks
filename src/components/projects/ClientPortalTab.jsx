@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, UserPlus, Globe, GlobeLock, Copy, Check, Plus, Trash2, StickyNote, ClipboardList, Eye, EyeOff, Monitor } from "lucide-react";
 import ClientPortalPreview from "@/components/projects/ClientPortalPreview";
-import { toast } from "sonner";
+import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
 
 const SECTIONS = [
@@ -29,6 +29,7 @@ const TASK_STATUSES = ["Pending", "In Progress", "Completed"];
 
 export default function ClientPortalTab({ project }) {
   const qc = useQueryClient();
+  const { toast } = useToast();
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -112,20 +113,44 @@ export default function ClientPortalTab({ project }) {
   const handleToggle = (key, value) => saveMutation.mutate({ [key]: value });
 
   const handleInvite = async () => {
-    if (!inviteEmail.trim()) return;
+    const email = inviteEmail.trim();
+    if (!email) return;
     setInviting(true);
     try {
-      await base44.users.inviteUser(inviteEmail.trim(), "client");
-      await new Promise(r => setTimeout(r, 1500));
-      const users = await base44.entities.User.list();
-      const newUser = users.find(u => u.email === inviteEmail.trim());
-      if (newUser) await base44.entities.User.update(newUser.id, { client_project_id: project.id });
-      await saveMutation.mutateAsync({ client_email: inviteEmail.trim() });
-      toast.success(`Invite sent to ${inviteEmail.trim()}`);
-      setInviteEmail("");
-      qc.invalidateQueries({ queryKey: ["client_user", project.id] });
+      // Base44's invite API only accepts "user" or "admin" — invite as user,
+      // then patch the new account to the "client" role and link it to this project.
+      await base44.users.inviteUser(email, "user");
+
+      // The invited user record may take a moment to appear; retry briefly.
+      let newUser = null;
+      for (let attempt = 0; attempt < 10 && !newUser; attempt++) {
+        await new Promise(r => setTimeout(r, 500));
+        const users = await base44.entities.User.list();
+        newUser = users.find(u => u.email === email);
+      }
+
+      if (!newUser) {
+        toast({
+          variant: "destructive",
+          title: "Invite sent, but couldn't link project",
+          description: "The invitation email was sent, but the user record wasn't found yet. Try clicking Invite again in a moment to finish linking.",
+        });
+      } else {
+        await base44.entities.User.update(newUser.id, { role: "client", client_project_id: project.id });
+        await saveMutation.mutateAsync({ client_email: email });
+        toast({
+          title: "Invite sent",
+          description: `${email} has been invited and linked to this project's portal.`,
+        });
+        setInviteEmail("");
+        qc.invalidateQueries({ queryKey: ["client_user", project.id] });
+      }
     } catch (err) {
-      toast.error("Failed to invite client: " + err.message);
+      toast({
+        variant: "destructive",
+        title: "Failed to invite client",
+        description: err?.message || "Unknown error",
+      });
     }
     setInviting(false);
   };
