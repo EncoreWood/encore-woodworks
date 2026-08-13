@@ -8,6 +8,7 @@ import SlideCard from "@/components/presentations/SlideCard";
 import ClientPresentationViewer from "@/components/presentations/ClientPresentationViewer";
 import JobPhotosSection from "@/components/projects/JobPhotosSection";
 import RoomNotes from "@/components/projects/RoomNotes";
+import RoomFileGallery from "@/components/projects/RoomFileGallery";
 import { cn } from "@/lib/utils";
 
 // ── Milestone tracker ──────────────────────────────────────────────────────
@@ -291,7 +292,7 @@ function PortalNotes({ projectId }) {
 // ── Rooms section ─────────────────────────────────────────────────────────
 function RoomsSection({ project, user }) {
   const [roomFiles, setRoomFiles] = useState([]);
-  const [lightbox, setLightbox] = useState(null);
+  const [gallery, setGallery] = useState(null); // { title, files, index }
   const [openRoom, setOpenRoom] = useState(null);
 
   useEffect(() => {
@@ -365,26 +366,18 @@ function RoomsSection({ project, user }) {
                   <p className="text-sm text-slate-600 bg-amber-50/50 rounded-xl p-3">{room.notes}</p>
                 )}
 
-                {/* Photos */}
+                {/* Photos & Files */}
                 {photos.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Photos & Files</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {photos.map(f => (
-                        f.file_type === "image" ? (
-                          <button key={f.id} onClick={() => setLightbox(f)} className="rounded-xl overflow-hidden border border-slate-100">
-                            <img src={f.file_url} alt={f.label || f.file_name} className="w-full aspect-square object-cover hover:opacity-90 transition-opacity" />
-                          </button>
-                        ) : (
-                          <a key={f.id} href={f.file_url} target="_blank" rel="noopener noreferrer"
-                            className="flex flex-col items-center justify-center gap-1 aspect-square bg-slate-50 rounded-xl border border-slate-100 hover:bg-amber-50 transition-colors">
-                            <FileText className="w-6 h-6 text-red-400" />
-                            <span className="text-xs text-slate-500 truncate px-1 w-full text-center">{f.label || f.file_name}</span>
-                          </a>
-                        )
-                      ))}
-                    </div>
-                  </div>
+                  <button
+                    onClick={() => setGallery({ title: "Photos & Files", files: photos, index: 0 })}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-amber-50 transition-colors"
+                  >
+                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Photos & Files</span>
+                    <span className="text-sm text-amber-700 font-medium flex items-center gap-1.5">
+                      View {photos.length} {photos.length === 1 ? "file" : "files"}
+                      <ChevronRight className="w-4 h-4" />
+                    </span>
+                  </button>
                 )}
 
                 {/* 3D files */}
@@ -392,22 +385,16 @@ function RoomsSection({ project, user }) {
                   const files3d = photos.filter(f => f.category === "3d");
                   if (!files3d.length) return null;
                   return (
-                    <div>
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1"><Box className="w-3.5 h-3.5 text-violet-500" />3D Files</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {files3d.map(f => f.file_type === "image" ? (
-                          <button key={f.id} onClick={() => setLightbox(f)} className="rounded-xl overflow-hidden border border-slate-100">
-                            <img src={f.file_url} alt={f.label || f.file_name} className="w-full aspect-square object-cover hover:opacity-90 transition-opacity" />
-                          </button>
-                        ) : (
-                          <a key={f.id} href={f.file_url} target="_blank" rel="noopener noreferrer" download
-                            className="flex flex-col items-center justify-center gap-1 aspect-square bg-violet-50 rounded-xl border border-violet-100 hover:bg-violet-100 transition-colors">
-                            <Box className="w-6 h-6 text-violet-500" />
-                            <span className="text-xs text-slate-500 truncate px-1 w-full text-center">{f.label || f.file_name}</span>
-                          </a>
-                        ))}
-                      </div>
-                    </div>
+                    <button
+                      onClick={() => setGallery({ title: "3D Files", files: files3d, index: 0 })}
+                      className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-violet-50/50 border border-violet-100 hover:bg-violet-100/60 transition-colors"
+                    >
+                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-1"><Box className="w-3.5 h-3.5 text-violet-500" />3D Files</span>
+                      <span className="text-sm text-violet-700 font-medium flex items-center gap-1.5">
+                        View {files3d.length} {files3d.length === 1 ? "file" : "files"}
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </button>
                   );
                 })()}
 
@@ -416,22 +403,16 @@ function RoomsSection({ project, user }) {
                   const files2d = photos.filter(f => f.category === "2d");
                   if (!files2d.length) return null;
                   return (
-                    <div>
-                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1"><Image className="w-3.5 h-3.5 text-blue-500" />2D Drawings</p>
-                      <div className="grid grid-cols-3 gap-2">
-                        {files2d.map(f => f.file_type === "image" ? (
-                          <button key={f.id} onClick={() => setLightbox(f)} className="rounded-xl overflow-hidden border border-slate-100">
-                            <img src={f.file_url} alt={f.label || f.file_name} className="w-full aspect-square object-cover hover:opacity-90 transition-opacity" />
-                          </button>
-                        ) : (
-                          <a key={f.id} href={f.file_url} target="_blank" rel="noopener noreferrer"
-                            className="flex flex-col items-center justify-center gap-1 aspect-square bg-slate-50 rounded-xl border border-slate-100 hover:bg-blue-50 transition-colors">
-                            <FileText className="w-6 h-6 text-red-400" />
-                            <span className="text-xs text-slate-500 truncate px-1 w-full text-center">{f.label || f.file_name}</span>
-                          </a>
-                        ))}
-                      </div>
-                    </div>
+                    <button
+                      onClick={() => setGallery({ title: "2D Drawings", files: files2d, index: 0 })}
+                      className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-slate-50 border border-slate-100 hover:bg-blue-50 transition-colors"
+                    >
+                      <span className="text-xs font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-1"><Image className="w-3.5 h-3.5 text-blue-500" />2D Drawings</span>
+                      <span className="text-sm text-blue-700 font-medium flex items-center gap-1.5">
+                        View {files2d.length} {files2d.length === 1 ? "file" : "files"}
+                        <ChevronRight className="w-4 h-4" />
+                      </span>
+                    </button>
                   );
                 })()}
 
@@ -447,15 +428,14 @@ function RoomsSection({ project, user }) {
         );
       })}
 
-      {lightbox && (
-        <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
-          <div className="relative max-w-2xl max-h-full" onClick={e => e.stopPropagation()}>
-            <img src={lightbox.file_url} alt={lightbox.label || lightbox.file_name} className="max-h-[90vh] max-w-full rounded-xl object-contain" />
-            <button className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1.5" onClick={() => setLightbox(null)}>
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+      {gallery && (
+        <RoomFileGallery
+          title={gallery.title}
+          files={gallery.files}
+          index={gallery.index}
+          onClose={() => setGallery(null)}
+          onIndex={(i) => setGallery(g => ({ ...g, index: i }))}
+        />
       )}
     </div>
   );
