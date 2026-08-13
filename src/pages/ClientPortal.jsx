@@ -306,8 +306,8 @@ function RoomsSection({ project, user }) {
 
   const SELECTION_LABELS = {
     cabinet_style: "Cabinet Style", wood_species: "Wood Species", finish: "Finish",
-    door_style: "Door Style", handles: "Hardware", drawer_glides: "Drawer Glides",
-    hinges: "Hinges", molding: "Molding", cabs_to_height: "Cabs to Height", cabinet_count: "Cabinet Count"
+    door_style: "Door Style", handles: "Handles / Hardware", drawer_glides: "Drawer Glides",
+    hinges: "Hinges", molding: "Molding", cabs_to_height: "Cabs Finished to Height", cabinet_count: "Cabinet Count"
   };
 
   return (
@@ -340,30 +340,35 @@ function RoomsSection({ project, user }) {
 
             {isOpen && (
               <div className="px-5 pb-5 bg-white border-t border-slate-100 space-y-4">
-                {/* Selections */}
-                {hasSelections && (
-                  <div className="grid grid-cols-2 gap-2 pt-3">
-                    {Object.entries(SELECTION_LABELS).map(([key, label]) => {
-                      if (!room[key]) return null;
-                      return (
-                        <div key={key} className="bg-slate-50 rounded-xl p-3">
-                          <p className="text-xs text-slate-400 font-medium mb-0.5">{label}</p>
-                          <p className="text-sm font-semibold text-slate-800">{room[key]}</p>
+                {/* Selections (read-only — mirrors admin Selections modal) */}
+                {(hasSelections || (room.custom_selections || []).length > 0 || room.notes) && (
+                  <div className="pt-3 space-y-2">
+                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Selections</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {Object.entries(SELECTION_LABELS).map(([key, label]) => {
+                        if (!room[key]) return null;
+                        return (
+                          <div key={key} className="bg-slate-50 rounded-xl p-3">
+                            <p className="text-xs text-slate-400 font-medium mb-0.5">{label}</p>
+                            <p className="text-sm font-semibold text-slate-800">{room[key]}</p>
+                          </div>
+                        );
+                      })}
+                      {(room.custom_selections || []).map((cs, ci) => (
+                        <div key={ci} className="bg-amber-50 rounded-xl p-3">
+                          <p className="text-xs text-amber-500 font-medium mb-0.5">{cs.label}</p>
+                          <p className="text-sm font-semibold text-slate-800">{cs.value || "Not yet selected"}</p>
                         </div>
-                      );
-                    })}
-                    {(room.custom_selections || []).map((cs, ci) => (
-                      <div key={ci} className="bg-amber-50 rounded-xl p-3">
-                        <p className="text-xs text-amber-500 font-medium mb-0.5">{cs.label}</p>
-                        <p className="text-sm font-semibold text-slate-800">{cs.value || "—"}</p>
+                      ))}
+                    </div>
+                    {/* Room Notes (admin-set, read-only) */}
+                    {room.notes && (
+                      <div className="bg-slate-50 rounded-xl p-3">
+                        <p className="text-xs text-slate-400 font-medium mb-0.5">Room Notes</p>
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap">{room.notes}</p>
                       </div>
-                    ))}
+                    )}
                   </div>
-                )}
-
-                {/* Notes */}
-                {room.notes && (
-                  <p className="text-sm text-slate-600 bg-amber-50/50 rounded-xl p-3">{room.notes}</p>
                 )}
 
                 {/* Photos & Files */}
