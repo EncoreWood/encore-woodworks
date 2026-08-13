@@ -35,6 +35,7 @@ import CadDrawingsSection from "../components/cad/CadDrawingsSection";
 import ClientPortalTab from "../components/projects/ClientPortalTab";
 import GlbViewer from "../components/cad/GlbViewer";
 import RoomFilesSection from "../components/projects/RoomFilesSection";
+import RoomClientNotes from "../components/projects/RoomClientNotes";
 import JobMeasurementsTab from "../components/measurements/JobMeasurementsTab";
 import ProjectTimelineSection from "../components/projects/ProjectTimelineSection";
 import GoogleFolderButton from "../components/projects/GoogleFolderButton";
@@ -552,6 +553,7 @@ export default function ProjectDetails() {
                               <p className="text-xs text-slate-500">Click room to manage files</p>
                             </div>
                           )}
+                          <RoomClientNotes project={project} roomName={room.room_name || `Room ${idx + 1}`} />
                         </div>
                       </div>
                     </div>
