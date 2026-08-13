@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import InvoicingCalendar from "../components/invoicing/InvoicingCalendar";
 import CompletedProjectsTab from "../components/invoicing/CompletedProjectsTab";
 import CustomInvoicesEditor, { getEffectiveInvoices, calcCollected } from "../components/invoicing/CustomInvoicesEditor";
-import InvoiceTemplateEditor from "../components/invoicing/InvoiceTemplateEditor";
+import InvoiceTemplateDesigner from "../components/invoicing/InvoiceTemplateDesigner";
 import SendInvoiceModal from "../components/invoicing/SendInvoiceModal";
 
 function FinEditTile({ label, value, onSave, colorClass = "text-slate-700", bgClass = "bg-slate-50" }) {
@@ -74,7 +74,6 @@ export default function Invoicing() {
   const [addingPayment, setAddingPayment] = useState(null);
   const [paymentForm, setPaymentForm] = useState({ amount: "", date: "", notes: "" });
   const [viewingPayments, setViewingPayments] = useState(null);
-  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [sendingInvoice, setSendingInvoice] = useState(null);
 
 
@@ -382,10 +381,6 @@ export default function Invoicing() {
             <p className="text-slate-500 mt-1">Track project invoicing and payments</p>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            <Button variant="outline" size="sm" onClick={() => setShowTemplateEditor(true)} title="Invoice Template Settings">
-              <Settings className="w-4 h-4 mr-2" />
-              Template Settings
-            </Button>
           {/* Tabs */}
           <div className="flex bg-white border border-slate-200 rounded-lg p-1 gap-1">
             <button
@@ -411,6 +406,12 @@ export default function Invoicing() {
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setActiveTab("template")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "template" ? "bg-slate-900 text-white shadow" : "text-slate-600 hover:bg-slate-100"}`}
+            >
+              <Settings className="w-4 h-4" /> Template
+            </button>
           </div>
           </div>
         </div>
@@ -418,6 +419,11 @@ export default function Invoicing() {
         {/* Calendar Tab */}
         {activeTab === "calendar" && (
           <InvoicingCalendar projects={invoicingProjects} />
+        )}
+
+        {/* Template Designer Tab */}
+        {activeTab === "template" && (
+          <InvoiceTemplateDesigner />
         )}
 
         {/* Completed Tab */}
@@ -1340,9 +1346,6 @@ export default function Invoicing() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-
-        {/* Invoice Template Editor */}
-        <InvoiceTemplateEditor open={showTemplateEditor} onClose={() => setShowTemplateEditor(false)} />
 
         {/* Send Invoice Modal */}
         <SendInvoiceModal
