@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import GanttChart from "@/components/projects/GanttChart";
 import SlideCard from "@/components/presentations/SlideCard";
 import JobPhotosSection from "@/components/projects/JobPhotosSection";
+import { cn } from "@/lib/utils";
 
 // ── Milestone tracker ──────────────────────────────────────────────────────
 function Milestones({ project }) {
@@ -402,6 +403,39 @@ function RoomsSection({ project }) {
   );
 }
 
+// ── Home highlights (attention items) ──────────────────────────────────────
+function HomeHighlights({ project, user, onGoTab }) {
+  const [tasks, setTasks] = useState([]);
+  const [hasMessages, setHasMessages] = useState(false);
+  useEffect(() => {
+    base44.entities.ClientTask.filter({ project_id: project.id }).then(setTasks).catch(() => {});
+    base44.entities.ChatRoom.filter({ project_id: project.id }).then(r => setHasMessages(r.length > 0)).catch(() => {});
+  }, [project.id]);
+
+  const pending = tasks.filter(t => t.status !== "Completed");
+  const sigTasks = pending.filter(t => t.requires_signature);
+  if (pending.length === 0 && !hasMessages) return null;
+
+  return (
+    <Section title="Needs Your Attention" icon={ClipboardList}>
+      <div className="space-y-2">
+        {pending.length > 0 && (
+          <button onClick={() => onGoTab("tasks")} className="w-full flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-100 hover:bg-amber-100 transition-colors">
+            <span className="text-sm text-slate-700 flex items-center gap-2"><ClipboardList className="w-4 h-4 text-amber-600" />{pending.length} pending task{pending.length !== 1 ? "s" : ""}{sigTasks.length > 0 && ` · ${sigTasks.length} need${sigTasks.length === 1 ? "s" : ""} signature`}</span>
+            <ChevronRight className="w-4 h-4 text-amber-500" />
+          </button>
+        )}
+        {hasMessages && (
+          <button onClick={() => onGoTab("messages")} className="w-full flex items-center justify-between p-3 rounded-xl bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors">
+            <span className="text-sm text-slate-700 flex items-center gap-2"><MessageSquare className="w-4 h-4 text-blue-500" />Open your message thread</span>
+            <ChevronRight className="w-4 h-4 text-blue-400" />
+          </button>
+        )}
+      </div>
+    </Section>
+  );
+}
+
 // ── Project picker (multi-project clients) ────────────────────────────────
 function ProjectPicker({ projects, user, onPick }) {
   const statusLabels = {
@@ -471,6 +505,7 @@ export default function ClientPortal() {
   const [accessible, setAccessible] = useState([]); // [{ project, settings }]
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [portalTab, setPortalTab] = useState("home");
 
   useEffect(() => {
     (async () => {
@@ -594,71 +629,98 @@ export default function ClientPortal() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
-
-        {/* Status */}
-        {settings?.show_status !== false && (
-          <Section title="Project Status" icon={Calendar}>
-            <div className="grid grid-cols-2 gap-4">
-              {project.start_date && (
-                <div>
-                  <p className="text-xs text-slate-400 font-medium mb-0.5">Start Date</p>
-                  <p className="text-sm font-semibold text-slate-700">{format(new Date(project.start_date), "MMM d, yyyy")}</p>
-                </div>
-              )}
-              {project.estimated_completion && (
-                <div>
-                  <p className="text-xs text-slate-400 font-medium mb-0.5">Est. Completion</p>
-                  <p className="text-sm font-semibold text-slate-700">{format(new Date(project.estimated_completion), "MMM d, yyyy")}</p>
-                </div>
-              )}
-              {project.install_start_date && (
-                <div>
-                  <p className="text-xs text-slate-400 font-medium mb-0.5">Install Start</p>
-                  <p className="text-sm font-semibold text-amber-700">{format(new Date(project.install_start_date), "MMM d, yyyy")}</p>
-                </div>
-              )}
-              {project.install_end_date && (
-                <div>
-                  <p className="text-xs text-slate-400 font-medium mb-0.5">Install End</p>
-                  <p className="text-sm font-semibold text-amber-700">{format(new Date(project.install_end_date), "MMM d, yyyy")}</p>
-                </div>
-              )}
+      {/* Tab bar */}
+      {(() => {
+        const tabs = [
+          { key: "home", label: "Home", show: true },
+          { key: "rooms", label: "Rooms", show: (project.rooms?.length || 0) > 0 },
+          { key: "photos", label: "Photos", show: settings?.show_photos !== false },
+          { key: "documents", label: "Documents", show: settings?.show_documents !== false && documents.length > 0 },
+          { key: "presentations", label: "Presentations", show: settings?.show_presentations !== false },
+          { key: "financials", label: "Financials", show: !!settings?.show_financials },
+          { key: "tasks", label: "Tasks", show: settings?.show_tasks !== false },
+          { key: "notes", label: "Notes", show: settings?.show_notes !== false },
+          { key: "messages", label: "Messages", show: settings?.show_messages !== false },
+        ].filter(t => t.show);
+        return (
+          <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
+            <div className="max-w-2xl mx-auto px-2 flex gap-1 overflow-x-auto no-scrollbar">
+              {tabs.map(t => (
+                <button key={t.key} onClick={() => setPortalTab(t.key)}
+                  className={cn("px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors",
+                    portalTab === t.key ? "border-amber-500 text-amber-700" : "border-transparent text-slate-500 hover:text-slate-700")}>
+                  {t.label}
+                </button>
+              ))}
             </div>
-          </Section>
+          </div>
+        );
+      })()}
+
+      {/* Tab content */}
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+        {portalTab === "home" && (
+          <>
+            {settings?.show_status !== false && (
+              <Section title="Project Status" icon={Calendar}>
+                <div className="grid grid-cols-2 gap-4">
+                  {project.start_date && (
+                    <div>
+                      <p className="text-xs text-slate-400 font-medium mb-0.5">Start Date</p>
+                      <p className="text-sm font-semibold text-slate-700">{format(new Date(project.start_date), "MMM d, yyyy")}</p>
+                    </div>
+                  )}
+                  {project.estimated_completion && (
+                    <div>
+                      <p className="text-xs text-slate-400 font-medium mb-0.5">Est. Completion</p>
+                      <p className="text-sm font-semibold text-slate-700">{format(new Date(project.estimated_completion), "MMM d, yyyy")}</p>
+                    </div>
+                  )}
+                  {project.install_start_date && (
+                    <div>
+                      <p className="text-xs text-slate-400 font-medium mb-0.5">Install Start</p>
+                      <p className="text-sm font-semibold text-amber-700">{format(new Date(project.install_start_date), "MMM d, yyyy")}</p>
+                    </div>
+                  )}
+                  {project.install_end_date && (
+                    <div>
+                      <p className="text-xs text-slate-400 font-medium mb-0.5">Install End</p>
+                      <p className="text-sm font-semibold text-amber-700">{format(new Date(project.install_end_date), "MMM d, yyyy")}</p>
+                    </div>
+                  )}
+                </div>
+              </Section>
+            )}
+
+            {settings?.show_milestones !== false && (
+              <Section title="Progress" icon={CheckCircle2}>
+                <Milestones project={project} />
+              </Section>
+            )}
+
+            {settings?.show_timeline !== false && (
+              <Section title="Project Timeline" icon={Clock}>
+                <TimelineSection projectId={project.id} />
+              </Section>
+            )}
+
+            <HomeHighlights project={project} user={user} onGoTab={setPortalTab} />
+          </>
         )}
 
-        {/* Milestones */}
-        {settings?.show_milestones !== false && (
-          <Section title="Progress" icon={CheckCircle2}>
-            <Milestones project={project} />
-          </Section>
-        )}
-
-        {/* Timeline */}
-        {settings?.show_timeline !== false && (
-          <Section title="Project Timeline" icon={Clock}>
-            <TimelineSection projectId={project.id} />
-          </Section>
-        )}
-
-        {/* Rooms */}
-        {(project.rooms?.length > 0) && (
+        {portalTab === "rooms" && (project.rooms?.length || 0) > 0 && (
           <Section title="Your Rooms" icon={DoorOpen}>
             <RoomsSection project={project} />
           </Section>
         )}
 
-        {/* 3D Presentations */}
-        {settings?.show_presentations !== false && (
-          <Section title="3D Presentations" icon={Image}>
-            <PresentationSlideshow projectId={project.id} />
+        {portalTab === "photos" && settings?.show_photos !== false && (
+          <Section title="Job Photos" icon={Image}>
+            <JobPhotosSection project={project} user={user} canDelete={false} extraPhotos={photos} />
           </Section>
         )}
 
-        {/* Documents */}
-        {settings?.show_documents !== false && documents.length > 0 && (
+        {portalTab === "documents" && settings?.show_documents !== false && documents.length > 0 && (
           <Section title="Documents" icon={FileText}>
             <div className="space-y-2">
               {documents.map((f, i) => (
@@ -675,15 +737,13 @@ export default function ClientPortal() {
           </Section>
         )}
 
-        {/* Job Photos (shared with client uploads) */}
-        {settings?.show_photos !== false && (
-          <Section title="Job Photos" icon={Image}>
-            <JobPhotosSection project={project} user={user} canDelete={false} extraPhotos={photos} />
+        {portalTab === "presentations" && settings?.show_presentations !== false && (
+          <Section title="3D Presentations" icon={Image}>
+            <PresentationSlideshow projectId={project.id} />
           </Section>
         )}
 
-        {/* Financials */}
-        {settings?.show_financials && (
+        {portalTab === "financials" && settings?.show_financials && (
           <Section title="Financials" icon={DollarSign}>
             <div className="space-y-3">
               {project.estimated_budget && (
@@ -708,22 +768,19 @@ export default function ClientPortal() {
           </Section>
         )}
 
-        {/* Client Tasks */}
-        {settings?.show_tasks !== false && (
+        {portalTab === "tasks" && settings?.show_tasks !== false && (
           <Section title="Your Tasks" icon={ClipboardList}>
             <ClientTasks projectId={project.id} />
           </Section>
         )}
 
-        {/* Notes */}
-        {settings?.show_notes !== false && (
+        {portalTab === "notes" && settings?.show_notes !== false && (
           <Section title="Project Notes" icon={StickyNote}>
             <PortalNotes projectId={project.id} />
           </Section>
         )}
 
-        {/* Messages */}
-        {settings?.show_messages !== false && (
+        {portalTab === "messages" && settings?.show_messages !== false && (
           <Section title="Messages" icon={MessageSquare}>
             <Messages projectId={project.id} user={user} />
           </Section>
