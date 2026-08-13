@@ -198,6 +198,11 @@
       "format": "date",
       "description": "Expected date final invoice will be received"
     },
+    "paid_in_full_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the project entered the 'Paid in Full' invoice stage (used to auto-graduate to Completed after 1 month)"
+    },
     "priority": {
       "type": "string",
       "enum": [

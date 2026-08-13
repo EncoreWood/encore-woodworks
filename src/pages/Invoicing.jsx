@@ -18,6 +18,7 @@ import ProposalViewer from "../components/proposals/ProposalViewer";
 import ProposalForm from "../components/proposals/ProposalForm";
 import { toast } from "sonner";
 import InvoicingCalendar from "../components/invoicing/InvoicingCalendar";
+import CompletedProjectsTab from "../components/invoicing/CompletedProjectsTab";
 import CustomInvoicesEditor, { getEffectiveInvoices, calcCollected } from "../components/invoicing/CustomInvoicesEditor";
 
 function FinEditTile({ label, value, onSave, colorClass = "text-slate-700", bgClass = "bg-slate-50" }) {
@@ -198,7 +199,8 @@ export default function Invoicing() {
 
     const newInvoiceStatus = destination.droppableId;
     let newProjectStatus = project.status;
-    
+    const updateData = { invoice_status: newInvoiceStatus, status: newProjectStatus };
+
     if (newInvoiceStatus === "deposit_received" && (project.status === "inquiry" || project.status === "side_projects")) {
       newProjectStatus = "approved";
     } else if (newInvoiceStatus === "ninety_percent_received" && project.status === "approved") {
@@ -206,14 +208,17 @@ export default function Invoicing() {
     } else if (newInvoiceStatus === "paid_in_full" && !["completed"].includes(project.status)) {
       newProjectStatus = "completed";
     }
+    updateData.status = newProjectStatus;
 
-    updateProjectMutation.mutate({
-      id: project.id,
-      data: { 
-        invoice_status: newInvoiceStatus,
-        status: newProjectStatus
-      }
-    });
+    // Track when the project entered Paid in Full so it auto-graduates to Completed after 1 month
+    if (newInvoiceStatus === "paid_in_full") {
+      if (!project.paid_in_full_date) updateData.paid_in_full_date = new Date().toISOString().split("T")[0];
+    } else if (project.paid_in_full_date) {
+      // Moved back out of Paid in Full — clear the graduation clock
+      updateData.paid_in_full_date = null;
+    }
+
+    updateProjectMutation.mutate({ id: project.id, data: updateData });
   };
 
   const getInvoicingStatus = (project) => {
@@ -224,6 +229,21 @@ export default function Invoicing() {
   const invoicingStatuses = ["approved", "in_design", "in_production", "ready_for_install", "installing", "completed"];
   const invoicingProjects = projects.filter(p => invoicingStatuses.includes(p.status));
 
+  // A project auto-graduates to the Completed tab after being Paid in Full for over 1 month.
+  // Uses paid_in_full_date (set on drag) with final_invoice_received_date as a fallback.
+  const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+  const getPaidInFullAnchor = (p) => p.paid_in_full_date || p.final_invoice_received_date || null;
+  const isGraduatedToCompleted = (p) => {
+    if (getInvoicingStatus(p) !== "paid_in_full") return false;
+    const anchor = getPaidInFullAnchor(p);
+    if (!anchor) return false;
+    const d = new Date(anchor + "T00:00:00");
+    return (Date.now() - d.getTime()) >= ONE_MONTH_MS;
+  };
+
+  const paidInFullProjects = invoicingProjects.filter(p => getInvoicingStatus(p) === "paid_in_full");
+  const completedProjects = paidInFullProjects.filter(isGraduatedToCompleted);
+
   // Group projects by invoicing status
   const groupedProjects = {
     deposit_invoice_sent: invoicingProjects.filter(p => getInvoicingStatus(p) === "deposit_invoice_sent"),
@@ -231,7 +251,7 @@ export default function Invoicing() {
     ninety_percent_sent: invoicingProjects.filter(p => getInvoicingStatus(p) === "ninety_percent_sent"),
     ninety_percent_received: invoicingProjects.filter(p => getInvoicingStatus(p) === "ninety_percent_received"),
     final_sent: invoicingProjects.filter(p => getInvoicingStatus(p) === "final_sent"),
-    paid_in_full: invoicingProjects.filter(p => getInvoicingStatus(p) === "paid_in_full"),
+    paid_in_full: paidInFullProjects.filter(p => !isGraduatedToCompleted(p)),
   };
 
   // Filter projects by search term
@@ -354,12 +374,32 @@ export default function Invoicing() {
             >
               <Calendar className="w-4 h-4" /> Revenue Calendar
             </button>
+            <button
+              onClick={() => setActiveTab("completed")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === "completed" ? "bg-slate-900 text-white shadow" : "text-slate-600 hover:bg-slate-100"}`}
+            >
+              <CheckCircle className="w-4 h-4" /> Completed
+              {completedProjects.length > 0 && (
+                <span className={`ml-1 text-xs font-bold px-1.5 py-0.5 rounded-full ${activeTab === "completed" ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-700"}`}>
+                  {completedProjects.length}
+                </span>
+              )}
+            </button>
           </div>
         </div>
 
         {/* Calendar Tab */}
         {activeTab === "calendar" && (
           <InvoicingCalendar projects={invoicingProjects} />
+        )}
+
+        {/* Completed Tab */}
+        {activeTab === "completed" && (
+          <CompletedProjectsTab
+            projects={completedProjects}
+            proposals={proposals}
+            onCardClick={handleCardClick}
+          />
         )}
 
         {/* Board Tab */}
