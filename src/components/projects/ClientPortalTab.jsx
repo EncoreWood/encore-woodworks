@@ -11,6 +11,7 @@ import { Loader2, UserPlus, Globe, GlobeLock, Copy, Check, Plus, Trash2, StickyN
 import ClientPortalPreview from "@/components/projects/ClientPortalPreview";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
+import { appParams } from "@/lib/app-params";
 
 const SECTIONS = [
   { key: "show_status",        label: "Project Status",      desc: "Status, dates, and address" },
@@ -187,11 +188,13 @@ export default function ClientPortalTab({ project }) {
     } finally { setAttaching(false); }
   };
 
-  // Compute the published portal URL (strip the preview-sandbox prefix so the
-  // link points to the live app, then append /ClientPortal).
+  // Compute the published portal URL. Prefer the platform's published app base
+  // URL (appBaseUrl) — the preview-sandbox origin strips to a URL that resolves
+  // to "app not found" for external clients. Fall back to the current origin only
+  // if no published base URL is available.
   const getPortalUrl = () => {
-    const origin = window.location.origin.replace(/^https:\/\/preview-sandbox--/, "https://");
-    return origin + "/ClientPortal";
+    const base = appParams.appBaseUrl || window.location.origin.replace(/^https:\/\/preview-sandbox--/, "https://");
+    return base.replace(/\/$/, "") + "/ClientPortal";
   };
 
   const sendPortalInviteEmail = async (email, name) => {
