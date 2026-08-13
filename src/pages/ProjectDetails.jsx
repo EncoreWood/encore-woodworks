@@ -41,6 +41,7 @@ import GoogleFolderButton from "../components/projects/GoogleFolderButton";
 import JobPacketsRoomModal from "../components/production/JobPacketsRoomModal";
 import RoomPickupMissingModal from "../components/pickup/RoomPickupMissingModal";
 import ProjectEmailsTab from "../components/projects/ProjectEmailsTab";
+import ProjectChatTab from "../components/projects/ProjectChatTab";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -351,7 +352,7 @@ export default function ProjectDetails() {
         {/* Tabs */}
         {currentUser?.role === "admin" && (
           <div className="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-slate-100 p-1 w-fit flex-wrap">
-            {[{ key: "project", label: "Project" }, { key: "measurements", label: "Job Measurements" }, { key: "client_portal", label: "Client Portal" }, { key: "emails", label: "Emails" }].map(t => (
+            {[{ key: "project", label: "Project" }, { key: "measurements", label: "Job Measurements" }, { key: "client_portal", label: "Client Portal" }, { key: "emails", label: "Emails" }, { key: "chat", label: "Chat" }].map(t => (
               <button key={t.key} onClick={() => setActiveTab(t.key)}
                 className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === t.key ? "bg-amber-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-800"}`}>
                 {t.label}
@@ -369,7 +370,10 @@ export default function ProjectDetails() {
         {activeTab === "emails" && currentUser?.role === "admin" && (
           <ProjectEmailsTab project={project} />
         )}
-        {(activeTab !== "client_portal" && activeTab !== "measurements" && activeTab !== "emails" || currentUser?.role !== "admin") && (
+        {activeTab === "chat" && currentUser?.role === "admin" && (
+          <ProjectChatTab project={project} />
+        )}
+        {(activeTab !== "client_portal" && activeTab !== "measurements" && activeTab !== "emails" && activeTab !== "chat" || currentUser?.role !== "admin") && (
         <>
         {/* Full-width Project Timeline */}
         <ProjectTimelineSection project={project} />
