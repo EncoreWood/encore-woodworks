@@ -213,9 +213,10 @@ export default function Invoicing() {
     // Track when the project entered Paid in Full so it auto-graduates to Completed after 1 month
     if (newInvoiceStatus === "paid_in_full") {
       if (!project.paid_in_full_date) updateData.paid_in_full_date = new Date().toISOString().split("T")[0];
-    } else if (project.paid_in_full_date) {
-      // Moved back out of Paid in Full — clear the graduation clock
+    } else if (project.paid_in_full_date || project.manually_completed) {
+      // Moved back out of Paid in Full — clear the graduation clock and manual flag
       updateData.paid_in_full_date = null;
+      updateData.manually_completed = false;
     }
 
     updateProjectMutation.mutate({ id: project.id, data: updateData });
@@ -235,10 +236,26 @@ export default function Invoicing() {
   const getPaidInFullAnchor = (p) => p.paid_in_full_date || p.final_invoice_received_date || null;
   const isGraduatedToCompleted = (p) => {
     if (getInvoicingStatus(p) !== "paid_in_full") return false;
+    if (p.manually_completed) return true;
     const anchor = getPaidInFullAnchor(p);
     if (!anchor) return false;
     const d = new Date(anchor + "T00:00:00");
     return (Date.now() - d.getTime()) >= ONE_MONTH_MS;
+  };
+
+  const handleMoveToCompleted = (project, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    updateProjectMutation.mutate({
+      id: project.id,
+      data: {
+        invoice_status: "paid_in_full",
+        status: "completed",
+        manually_completed: true,
+        paid_in_full_date: project.paid_in_full_date || new Date().toISOString().split("T")[0],
+      },
+    });
+    toast.success(`${project.project_name} moved to Completed`);
   };
 
   const paidInFullProjects = invoicingProjects.filter(p => getInvoicingStatus(p) === "paid_in_full");
@@ -580,6 +597,17 @@ export default function Invoicing() {
                                 >
                                   <Edit className="w-4 h-4" />
                                 </Button>
+                                {status === "paid_in_full" && !project.manually_completed && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-emerald-600"
+                                    onClick={handleMoveToCompleted}
+                                    title="Move to Completed"
+                                  >
+                                    <CheckCircle className="w-4 h-4" />
+                                  </Button>
+                                )}
                                 </div>
                                 </div>
                                 </CardHeader>

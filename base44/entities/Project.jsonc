@@ -203,6 +203,11 @@
       "format": "date",
       "description": "Date the project entered the 'Paid in Full' invoice stage (used to auto-graduate to Completed after 1 month)"
     },
+    "manually_completed": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, the project is moved to the Completed tab immediately regardless of the auto-graduation timing"
+    },
     "priority": {
       "type": "string",
       "enum": [
