@@ -49,7 +49,7 @@ export default function ClientPortalTab({ project }) {
     queryFn: async () => {
       if (!settings?.client_email) return null;
       const users = await base44.entities.User.list();
-      return users.find(u => u.email === settings.client_email && u.role === "client") || null;
+      return users.find(u => u.email === settings.client_email && u.role !== "admin") || null;
     },
     enabled: !!settings?.client_email,
   });
@@ -117,34 +117,29 @@ export default function ClientPortalTab({ project }) {
     if (!email) return;
     setInviting(true);
     try {
-      // Base44's invite API only accepts "user" or "admin" — invite as user,
-      // then patch the new account to the "client" role and link it to this project.
+      // Base44's invite API only accepts "user" or "admin". Invite as "user" so the
+      // invitation email actually goes out, then save the client email on this project's
+      // portal settings — the portal links the account to this project on the client's
+      // first login by matching their email.
       await base44.users.inviteUser(email, "user");
+      await saveMutation.mutateAsync({ client_email: email });
 
-      // The invited user record may take a moment to appear; retry briefly.
-      let newUser = null;
-      for (let attempt = 0; attempt < 10 && !newUser; attempt++) {
-        await new Promise(r => setTimeout(r, 500));
+      // If the email already belongs to an existing account, link it directly now.
+      try {
         const users = await base44.entities.User.list();
-        newUser = users.find(u => u.email === email);
-      }
+        const existing = users.find(u => u.email === email);
+        if (existing && existing.role !== "admin" && existing.role !== "user") {
+          // already a client (or other) — ensure project link is current
+          await base44.entities.User.update(existing.id, { client_project_id: project.id });
+        }
+      } catch {}
 
-      if (!newUser) {
-        toast({
-          variant: "destructive",
-          title: "Invite sent, but couldn't link project",
-          description: "The invitation email was sent, but the user record wasn't found yet. Try clicking Invite again in a moment to finish linking.",
-        });
-      } else {
-        await base44.entities.User.update(newUser.id, { role: "client", client_project_id: project.id });
-        await saveMutation.mutateAsync({ client_email: email });
-        toast({
-          title: "Invite sent",
-          description: `${email} has been invited and linked to this project's portal.`,
-        });
-        setInviteEmail("");
-        qc.invalidateQueries({ queryKey: ["client_user", project.id] });
-      }
+      toast({
+        title: "Invite sent",
+        description: `${email} will receive an invitation email. They'll see this project's portal when they log in.`,
+      });
+      setInviteEmail("");
+      qc.invalidateQueries({ queryKey: ["client_user", project.id] });
     } catch (err) {
       toast({
         variant: "destructive",
@@ -203,7 +198,7 @@ export default function ClientPortalTab({ project }) {
           <div className="flex items-center justify-between p-3 bg-amber-50 rounded-lg border border-amber-200">
             <div>
               <p className="text-sm font-semibold text-slate-800">{clientUser.full_name || clientUser.email}</p>
-              <p className="text-xs text-slate-500">{clientUser.email} · Client role</p>
+              <p className="text-xs text-slate-500">{clientUser.email} · Portal client</p>
             </div>
             <div className="flex items-center gap-2">
               <a href="/ClientPortal" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-800 font-medium border border-slate-300 rounded-lg px-2.5 py-1.5 hover:bg-slate-100 transition-colors">
@@ -220,8 +215,9 @@ export default function ClientPortalTab({ project }) {
             <p className="text-xs text-slate-500">Invite the client by email. They will receive an invitation and see their portal when they log in.</p>
             <div className="flex gap-2">
               <Input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="client@email.com" className="h-9 text-sm" onKeyDown={e => e.key === "Enter" && handleInvite()} />
-              <Button onClick={handleInvite} disabled={!inviteEmail.trim() || inviting} className="bg-amber-600 hover:bg-amber-700 h-9 px-4" size="sm">
-                {inviting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Invite"}
+              <Button onClick={handleInvite} disabled={!inviteEmail.trim() || inviting} className="bg-amber-600 hover:bg-amber-700 h-9 px-4 gap-1.5" size="sm">
+                {inviting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserPlus className="w-3.5 h-3.5" />}
+                {inviting ? "Inviting..." : "Invite"}
               </Button>
             </div>
             <div className="flex items-center gap-2">

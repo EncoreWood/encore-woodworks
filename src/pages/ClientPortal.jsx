@@ -360,10 +360,24 @@ export default function ClientPortal() {
     (async () => {
       const u = await base44.auth.me();
       setUser(u);
-      if (!u?.client_project_id) { setLoading(false); return; }
+      let projectId = u?.client_project_id;
+
+      // Self-link on first login: if the user isn't linked yet, find the project whose
+      // portal settings list this user's email as the client, and persist the link.
+      if (!projectId && u?.email) {
+        try {
+          const matches = await base44.entities.ClientPortalSettings.filter({ client_email: u.email });
+          if (matches[0]?.project_id) {
+            projectId = matches[0].project_id;
+            try { await base44.auth.updateMe({ client_project_id: projectId }); } catch {}
+          }
+        } catch {}
+      }
+
+      if (!projectId) { setLoading(false); return; }
       const [projects, settingsList] = await Promise.all([
-        base44.entities.Project.filter({ id: u.client_project_id }),
-        base44.entities.ClientPortalSettings.filter({ project_id: u.client_project_id }),
+        base44.entities.Project.filter({ id: projectId }),
+        base44.entities.ClientPortalSettings.filter({ project_id: projectId }),
       ]);
       setProject(projects[0] || null);
       setSettings(settingsList[0] || { is_active: true, show_status: true, show_milestones: true, show_presentations: true, show_documents: true, show_photos: true, show_financials: false, show_messages: true });

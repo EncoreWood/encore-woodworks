@@ -6,13 +6,26 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
 
 function RoleBasedHome() {
   const { user } = useAuth();
-  if (!user) return null;
-  if (user.role === 'admin') return <Navigate to="/Calendar" replace />;
-  if (user.role === 'client') return <Navigate to="/ClientPortal" replace />;
-  return <Navigate to="/TimeSheet" replace />;
+  const [dest, setDest] = useState(null);
+
+  useEffect(() => {
+    if (!user) return;
+    if (user.role === 'admin') { setDest('/Calendar'); return; }
+    if (user.role === 'client') { setDest('/ClientPortal'); return; }
+    // Invited clients join with role "user" — send them to the portal if their email
+    // is listed as a client on any project's portal settings.
+    base44.entities.ClientPortalSettings.filter({ client_email: user.email })
+      .then(s => setDest(s && s.length > 0 ? '/ClientPortal' : '/TimeSheet'))
+      .catch(() => setDest('/TimeSheet'));
+  }, [user]);
+
+  if (!dest) return null;
+  return <Navigate to={dest} replace />;
 }
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Admin from './pages/Admin';
