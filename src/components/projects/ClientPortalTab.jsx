@@ -179,11 +179,32 @@ export default function ClientPortalTab({ project }) {
         await base44.users.inviteUser(email, "user");
       }
       await ensureClientRecord({ email, name: contact.name });
-      toast({ title: "Client attached", description: `${contact.name} can now access this project's portal.` });
+      await sendPortalInviteEmail(email, contact.name);
+      toast({ title: "Client attached", description: `${contact.name} has been sent a welcome email with a direct link to their portal.` });
       setSelectedContactId("");
     } catch (err) {
       toast({ variant: "destructive", title: "Failed to attach client", description: err?.message || "Unknown error" });
     } finally { setAttaching(false); }
+  };
+
+  // Compute the published portal URL (strip the preview-sandbox prefix so the
+  // link points to the live app, then append /ClientPortal).
+  const getPortalUrl = () => {
+    const origin = window.location.origin.replace(/^https:\/\/preview-sandbox--/, "https://");
+    return origin + "/ClientPortal";
+  };
+
+  const sendPortalInviteEmail = async (email, name) => {
+    try {
+      await base44.functions.invoke("sendClientPortalInvite", {
+        to_email: email,
+        client_name: name || "",
+        project_name: project.project_name,
+        portal_url: getPortalUrl(),
+      });
+    } catch (err) {
+      console.error("Portal invite email failed:", err);
+    }
   };
 
   const handleInvite = async () => {
@@ -196,11 +217,10 @@ export default function ClientPortalTab({ project }) {
         await base44.users.inviteUser(email, "user");
       }
       await ensureClientRecord({ email, name: "" });
+      await sendPortalInviteEmail(email, "");
       toast({
         title: "Client added",
-        description: alreadyRegistered
-          ? `${email} already has an account and can now view this project.`
-          : `${email} will receive an invitation email and see this project's portal when they log in.`,
+        description: `${email} has been sent a welcome email with a direct link to their portal.`,
       });
       setInviteEmail("");
     } catch (err) {
@@ -219,7 +239,7 @@ export default function ClientPortalTab({ project }) {
   };
 
   const copyPortalLink = () => {
-    navigator.clipboard.writeText(window.location.origin + "/ClientPortal");
+    navigator.clipboard.writeText(getPortalUrl());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -336,7 +356,7 @@ export default function ClientPortalTab({ project }) {
           <p className="text-xs text-slate-400">Portal URL:</p>
           <button onClick={copyPortalLink} className="text-xs text-amber-600 hover:underline flex items-center gap-1">
             {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-            {window.location.origin}/ClientPortal
+            {getPortalUrl().replace(/^https:\/\//, "")}
           </button>
           <a href="/ClientPortal" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:text-slate-700 underline ml-2">Preview</a>
         </div>
