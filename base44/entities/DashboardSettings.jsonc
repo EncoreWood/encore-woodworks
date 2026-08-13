@@ -8,7 +8,8 @@
         "stats",
         "projects",
         "google_sheet",
-        "book_of_month"
+        "book_of_month",
+        "portal_url"
       ],
       "description": "Dashboard section name"
     },
@@ -24,7 +25,7 @@
     },
     "value": {
       "type": "string",
-      "description": "Generic string value (e.g. book title)"
+      "description": "Generic string value (e.g. book title, or the published portal base URL for the portal_url section)"
     }
   },
   "required": [

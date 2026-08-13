@@ -57,6 +57,42 @@ export default function ClientPortalTab({ project }) {
     queryFn: () => base44.entities.Contact.list(),
   });
 
+  // App-wide published portal base URL (admin-configured once). Stored as the
+  // single DashboardSettings record with section "portal_url". When empty we
+  // fall back to the platform's appBaseUrl (or the stripped preview origin) —
+  // but the admin should set this to their real published app URL so client
+  // invite links resolve instead of returning "App not found".
+  const { data: portalUrlSetting } = useQuery({
+    queryKey: ["portal_url_setting"],
+    queryFn: () => base44.entities.DashboardSettings.filter({ section: "portal_url" }),
+  });
+  const [portalUrlInput, setPortalUrlInput] = useState("");
+  const [savingPortalUrl, setSavingPortalUrl] = useState(false);
+  useEffect(() => {
+    if (portalUrlSetting && portalUrlSetting.length > 0) {
+      setPortalUrlInput(portalUrlSetting[0].value || "");
+    }
+  }, [portalUrlSetting]);
+
+  const savePortalUrl = async () => {
+    setSavingPortalUrl(true);
+    try {
+      const trimmed = portalUrlInput.trim();
+      const existing = portalUrlSetting && portalUrlSetting[0];
+      if (existing) {
+        await base44.entities.DashboardSettings.update(existing.id, { value: trimmed });
+      } else {
+        await base44.entities.DashboardSettings.create({ section: "portal_url", value: trimmed, visible_to_users: true, visible_to_admins: true });
+      }
+      await qc.invalidateQueries({ queryKey: ["portal_url_setting"] });
+      toast({ title: "Portal URL saved", description: trimmed ? `Invite links will use ${trimmed}` : "Invite links will use the default app URL." });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Failed to save portal URL", description: err?.message || "Unknown error" });
+    } finally {
+      setSavingPortalUrl(false);
+    }
+  };
+
   // Config fields are shared across every client record for this project.
   const config = clients[0] || { is_active: true, show_status: true, show_milestones: true, show_timeline: true, show_presentations: true, show_documents: true, show_photos: true, show_financials: false, show_messages: true, show_tasks: true, show_notes: true };
   const registeredEmails = new Set(users.map(u => (u.email || "").toLowerCase()));
@@ -193,7 +229,8 @@ export default function ClientPortalTab({ project }) {
   // to "app not found" for external clients. Fall back to the current origin only
   // if no published base URL is available.
   const getPortalUrl = () => {
-    const base = appParams.appBaseUrl || window.location.origin.replace(/^https:\/\/preview-sandbox--/, "https://");
+    const stored = portalUrlSetting && portalUrlSetting[0] && portalUrlSetting[0].value ? portalUrlSetting[0].value.trim() : "";
+    const base = stored || appParams.appBaseUrl || window.location.origin.replace(/^https:\/\/preview-sandbox--/, "https://");
     return base.replace(/\/$/, "") + "/ClientPortal";
   };
 
@@ -355,13 +392,31 @@ export default function ClientPortalTab({ project }) {
           </Button>
         </div>
 
-        <div className="flex items-center gap-2 mt-3">
-          <p className="text-xs text-slate-400">Portal URL:</p>
-          <button onClick={copyPortalLink} className="text-xs text-amber-600 hover:underline flex items-center gap-1">
-            {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-            {getPortalUrl().replace(/^https:\/\//, "")}
-          </button>
-          <a href="/ClientPortal" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:text-slate-700 underline ml-2">Preview</a>
+        {/* Published portal URL — admin sets the base URL once so invite links resolve */}
+        <div className="mt-4 p-3 rounded-lg border border-amber-200 bg-amber-50/50 space-y-2">
+          <Label className="text-xs font-bold text-amber-800 flex items-center gap-1.5"><Globe className="w-3.5 h-3.5" /> Published App URL (for client invites)</Label>
+          <div className="flex gap-2">
+            <Input
+              value={portalUrlInput}
+              onChange={e => setPortalUrlInput(e.target.value)}
+              placeholder="https://encorewoodworks.base44.app"
+              className="h-8 text-xs"
+            />
+            <Button size="sm" className="h-8 px-3 text-xs bg-amber-600 hover:bg-amber-700" disabled={savingPortalUrl} onClick={savePortalUrl}>
+              {savingPortalUrl ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Save"}
+            </Button>
+          </div>
+          <p className="text-[11px] text-slate-500">
+            This is the public link clients open from their invite email. Set it to your app's published URL (the address clients use to log in) — leave blank to use the default.
+          </p>
+          <div className="flex items-center gap-2 pt-1">
+            <p className="text-xs text-slate-400">Full portal link:</p>
+            <button onClick={copyPortalLink} className="text-xs text-amber-600 hover:underline flex items-center gap-1">
+              {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+              {getPortalUrl().replace(/^https:\/\//, "")}
+            </button>
+            <a href="/ClientPortal" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-500 hover:text-slate-700 underline ml-2">Preview</a>
+          </div>
         </div>
       </div>
 
