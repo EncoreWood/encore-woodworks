@@ -586,12 +586,12 @@ export default function ShopProduction() {
               setEditingItem({ project_id: project.id, project_name: project.project_name, room_name: roomName, is_job_info: false, type: "cabinet", stage: null });
               setShowForm(true);
             }}
-            onSendToProduction={async (selectedItems) => {
+            onSendToProduction={async (selectedItems, stage = "cut") => {
               for (const item of selectedItems) {
                 await base44.entities.ProductionItem.update(item.id, {
                   ...item,
                   is_job_info: false,
-                  stage: item.stage || "cut"
+                  stage: stage
                 });
               }
               queryClient.invalidateQueries({ queryKey: ["productionItems"] });

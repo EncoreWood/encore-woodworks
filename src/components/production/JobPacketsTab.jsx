@@ -11,6 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import ProductionCard from "./ProductionCard";
 import RoomFilesModal from "./RoomFilesModal";
+import SendToProductionDialog from "./SendToProductionDialog";
 
 const STAGE_LABELS = { cut: "Cut", face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete", on_hold: "On Hold" };
 
@@ -26,6 +27,7 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
   }, [autoOpen]);
   const [selected, setSelected] = useState(new Set());
   const [showRoomFiles, setShowRoomFiles] = useState(false);
+  const [sendTarget, setSendTarget] = useState(null);
 
   const { data: roomFileCount = 0 } = useQuery({
     queryKey: ["roomFiles", project.id, roomName],
@@ -57,14 +59,22 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
 
   const handleBulkSend = () => {
     const toSend = stagedItems.filter(i => selected.has(i.id));
-    onSendToProduction(toSend);
-    setSelected(new Set());
+    if (toSend.length === 0) return;
+    setSendTarget(toSend);
   };
 
   const handleSendAll = () => {
     if (stagedItems.length === 0) return;
-    if (!window.confirm(`Send ${stagedItems.length} card${stagedItems.length !== 1 ? "s" : ""} to production?`)) return;
-    onSendToProduction(stagedItems);
+    setSendTarget(stagedItems);
+  };
+
+  const handleSendOne = (item) => {
+    setSendTarget([item]);
+  };
+
+  const confirmSend = (stage) => {
+    onSendToProduction(sendTarget, stage);
+    setSendTarget(null);
     setSelected(new Set());
   };
 
@@ -192,7 +202,7 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
                             size="sm"
                             variant="outline"
                             className="h-6 px-2 text-xs bg-white hover:bg-green-50 hover:border-green-400 hover:text-green-700"
-                            onClick={() => onSendToProduction([item])}
+                            onClick={() => handleSendOne(item)}
                             title="Send to Production"
                           >
                             <ArrowRight className="w-3 h-3" />
@@ -235,6 +245,13 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
           onClose={() => setShowRoomFiles(false)}
         />
         )}
+
+        <SendToProductionDialog
+          open={!!sendTarget}
+          items={sendTarget}
+          onConfirm={confirmSend}
+          onClose={() => setSendTarget(null)}
+        />
         </>
         );
         }
