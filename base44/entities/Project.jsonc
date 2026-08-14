@@ -234,6 +234,14 @@
     "shop_manager_name": {
       "type": "string"
     },
+    "drawings": {
+      "type": "string",
+      "description": "Employee ID assigned to drawings/design work"
+    },
+    "drawings_name": {
+      "type": "string",
+      "description": "Name of the employee assigned to drawings/design work"
+    },
     "address": {
       "type": "string"
     },

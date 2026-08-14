@@ -49,6 +49,8 @@ const initialFormState = {
   project_manager_name: "",
   shop_manager: "",
   shop_manager_name: "",
+  drawings: "",
+  drawings_name: "",
   address: "",
   estimated_budget: "",
   start_date: "",
@@ -118,6 +120,12 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
         ...prev,
         shop_manager: employeeId,
         shop_manager_name: employee?.full_name || ""
+      }));
+    } else if (field === "drawings") {
+      setFormData((prev) => ({
+        ...prev,
+        drawings: employeeId,
+        drawings_name: employee?.full_name || ""
       }));
     }
   };
@@ -240,20 +248,36 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
                </Select>
               </div>
               <div className="space-y-2">
-               <Label htmlFor="shop_manager">Shop Manager</Label>
-               <Select value={formData.shop_manager} onValueChange={(v) => handleManagerChange("shop_manager", v)}>
-                 <SelectTrigger>
-                   <SelectValue placeholder="Select manager" />
-                 </SelectTrigger>
-                 <SelectContent>
-                   <SelectItem value={null}>None</SelectItem>
-                   {employees.map((emp) => (
-                     <SelectItem key={emp.id} value={emp.id}>
-                       {emp.full_name}
-                     </SelectItem>
-                   ))}
-                 </SelectContent>
-               </Select>
+                <Label htmlFor="shop_manager">Shop Manager</Label>
+                <Select value={formData.shop_manager} onValueChange={(v) => handleManagerChange("shop_manager", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select manager" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>None</SelectItem>
+                    {employees.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="drawings">Drawings</Label>
+                <Select value={formData.drawings} onValueChange={(v) => handleManagerChange("drawings", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>None</SelectItem>
+                    {employees.map((emp) => (
+                      <SelectItem key={emp.id} value={emp.id}>
+                        {emp.full_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               </div>
 

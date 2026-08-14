@@ -21,7 +21,7 @@ import {
 ArrowLeft, Edit, Trash2, User, Mail, Phone, MapPin, Calendar,
 DollarSign, Palette, Wrench, FileText, Loader2, DoorOpen,
 ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X, Calculator, Box, Upload, Archive, ArchiveRestore,
-ChevronDown, ChevronRight
+ChevronDown, ChevronRight, Pencil
 } from "lucide-react";
 import { format } from "date-fns";
 import ProjectForm from "../components/projects/ProjectForm";
@@ -308,6 +308,19 @@ export default function ProjectDetails() {
                     </a>
                   )}
                   <span className="text-xs text-slate-400">{type}</span>
+                </div>
+                {/* Assignments: Project Manager & Drawings */}
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  {project.project_manager_name && (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200 rounded-full px-2.5 py-1">
+                      <User className="w-3 h-3" />PM: {project.project_manager_name}
+                    </span>
+                  )}
+                  {project.drawings_name && (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium bg-indigo-50 text-indigo-800 border border-indigo-200 rounded-full px-2.5 py-1">
+                      <Pencil className="w-3 h-3" />Drawings: {project.drawings_name}
+                    </span>
+                  )}
                 </div>
               </div>
               {/* Right: Status badge + address */}
