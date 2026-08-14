@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { base44 } from "@/api/base44Client";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Circle, ListTodo, Loader2 } from "lucide-react";
+import { CheckCircle2, Circle, ListTodo, Loader2, Pencil } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -24,16 +26,33 @@ export default function MyAssignments() {
     queryFn: () => base44.entities.Task.list("-created_date", 200),
   });
 
+  const { data: employees = [] } = useQuery({
+    queryKey: ["employees"],
+    queryFn: () => base44.entities.Employee.list(),
+  });
+
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => base44.entities.Project.filter({ archived: false }, "-updated_date", 200),
+  });
+
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Task.update(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["assignmentTasks"] }),
   });
+
+  const myEmployee = employees.find(e => e.user_email === currentUser?.email || e.email === currentUser?.email);
+  // Projects where this user is assigned to drawings (active, not completed)
+  const myDrawingsProjects = projects.filter(
+    p => myEmployee && p.drawings === myEmployee.id && p.status !== "completed"
+  );
 
   const myTasks = tasks.filter(
     t => t.assigned_to_email === currentUser?.email || t.assigned_to === currentUser?.full_name
   );
   const pendingTasks = myTasks.filter(t => t.status !== "completed");
   const completedTasks = myTasks.filter(t => t.status === "completed");
+  const pendingCount = pendingTasks.length + myDrawingsProjects.length;
 
   const handleToggle = (task) => {
     const next = task.status === "completed" ? "todo" : "completed";
@@ -54,15 +73,15 @@ export default function MyAssignments() {
         <div className="flex items-center gap-3 mb-6">
           <div className="relative">
             <ListTodo className="w-7 h-7 text-indigo-600" />
-            {pendingTasks.length > 0 && (
+            {pendingCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold border-2 border-white">
-                {pendingTasks.length}
+                {pendingCount}
               </span>
             )}
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-900">My Assignments</h1>
-            <p className="text-sm text-slate-500">{pendingTasks.length} pending task{pendingTasks.length !== 1 ? 's' : ''}</p>
+            <p className="text-sm text-slate-500">{pendingCount} pending task{pendingCount !== 1 ? 's' : ''}</p>
           </div>
         </div>
 
@@ -70,13 +89,36 @@ export default function MyAssignments() {
           <div className="text-center py-12 text-slate-400">
             <Loader2 className="w-6 h-6 mx-auto animate-spin" />
           </div>
-        ) : myTasks.length === 0 ? (
+        ) : (pendingCount === 0 && myTasks.length === 0) ? (
           <div className="text-center py-16 text-slate-400">
             <CheckCircle2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="font-medium">No assignments yet</p>
           </div>
         ) : (
           <div className="space-y-2">
+            {myDrawingsProjects.map(project => (
+              <Link
+                key={`dw-${project.id}`}
+                to={createPageUrl(`ProjectDetails?id=${project.id}`)}
+                className="flex items-start gap-3 p-4 rounded-xl border border-indigo-200 bg-indigo-50/40 transition-all shadow-sm hover:shadow-md hover:border-indigo-300"
+              >
+                <div className="mt-0.5 flex-shrink-0 text-indigo-500">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-slate-900">{project.project_name}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Assigned to drawings</p>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">Drawings</span>
+                    {project.client_name && (
+                      <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full truncate max-w-[120px]">
+                        {project.client_name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
             {pendingTasks.map(task => {
               const isOverdue = task.due_date && isPast(parseISO(task.due_date));
               return (
