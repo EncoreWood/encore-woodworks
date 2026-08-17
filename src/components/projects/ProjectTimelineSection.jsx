@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { format, differenceInDays, addDays } from "date-fns";
-import { Eye, Plus, ChevronDown, CheckCircle2, Trash2, X, Loader2, ExternalLink } from "lucide-react";
+import { Eye, Plus, ChevronDown, CheckCircle2, Trash2, X, Loader2, ExternalLink, CalendarDays } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import TimelineChecklist from "@/components/projects/TimelineChecklist";
@@ -98,6 +98,12 @@ export default function ProjectTimelineSection({ project }) {
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.TimelineEvent.delete(id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["timelineEvents", project.id] }); setShowForm(false); setEditingEvent(null); },
+  });
+
+  const showOnCalendar = project?.show_on_calendar !== false;
+  const toggleCalendarVisibility = useMutation({
+    mutationFn: (visible) => base44.entities.Project.update(project.id, { show_on_calendar: visible }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["projects"] }); queryClient.invalidateQueries({ queryKey: ["project", project.id] }); },
   });
 
   const sortedEvents = useMemo(() => [...events].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)), [events]);
@@ -218,6 +224,15 @@ export default function ProjectTimelineSection({ project }) {
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h2 className="text-lg font-semibold text-slate-900">Project Timeline</h2>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50">
+            <CalendarDays className={showOnCalendar ? "w-4 h-4 text-indigo-600" : "w-4 h-4 text-slate-400"} />
+            <span className="text-sm font-medium text-slate-700 hidden sm:inline">On Calendar</span>
+            <Switch
+              checked={showOnCalendar}
+              disabled={toggleCalendarVisibility.isPending}
+              onCheckedChange={(v) => toggleCalendarVisibility.mutate(v)}
+            />
+          </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50">
             <Eye className={clientView ? "w-4 h-4 text-amber-600" : "w-4 h-4 text-slate-400"} />
             <span className="text-sm font-medium text-slate-700 hidden sm:inline">Client View</span>

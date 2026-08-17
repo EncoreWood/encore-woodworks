@@ -337,14 +337,17 @@ export default function CalendarPage() {
   const getBathroomCleaningsForDate = (date) => bathroomCleanings.filter(c => c.date === format(date, "yyyy-MM-dd"));
   const getVacationsForDate = (date) => vacations.filter(v => isWithinInterval(date, { start: new Date(v.start_date), end: new Date(v.end_date) }));
 
-  const getProjectsSpanningDate = (date) => projects.filter((p) => {
+  // Projects hidden from the calendar via the timeline "On Calendar" toggle
+  const calendarVisibleProjects = projects.filter(p => p.show_on_calendar !== false);
+
+  const getProjectsSpanningDate = (date) => calendarVisibleProjects.filter((p) => {
     const s = p.start_date ? parseLocalDate(p.start_date) : null;
     const e = p.estimated_completion ? parseLocalDate(p.estimated_completion) : null;
     if (!s || !e) return false;
     return isWithinInterval(date, { start: s, end: e });
   });
 
-  const getInstallProjectsSpanningDate = (date) => projects.filter((p) => {
+  const getInstallProjectsSpanningDate = (date) => calendarVisibleProjects.filter((p) => {
     const s = p.install_start_date ? parseLocalDate(p.install_start_date) : null;
     const e = p.install_end_date ? parseLocalDate(p.install_end_date) : null;
     if (!s || !e) return false;
@@ -381,15 +384,15 @@ export default function CalendarPage() {
     const en = e.end_date ? parseLocalDate(e.end_date) : s;
     return isWithinInterval(date, { start: s, end: en });
   }).filter(e => {
-    // Only show for active (non-archived) projects
+    // Only show for active (non-archived) projects not hidden from the calendar
     const p = projects.find(pr => pr.id === e.project_id);
-    return !p || !p.archived;
+    return !p || (!p.archived && p.show_on_calendar !== false);
   });
 
   // --- Computed ---
   const todayActiveProjects = getActiveProjectsForDay(TODAY);
   const todayInstalls = getInstallProjectsSpanningDate(TODAY);
-  const overdueProjects = projects.filter(p => isProjectOverdue(p));
+  const overdueProjects = calendarVisibleProjects.filter(p => isProjectOverdue(p));
   const todayNextActions = projects.filter(p => p.next_action_due && isSameDay(parseLocalDate(p.next_action_due), TODAY) && !todayActiveProjects.find(a => a.id === p.id));
   const next7Days = Array.from({ length: 7 }, (_, i) => addDays(TODAY, i + 1));
 
@@ -915,7 +918,7 @@ export default function CalendarPage() {
               {next7Days.map((day) => {
                 const spanning = getProjectsSpanningDate(day);
                 const installs = getInstallProjectsSpanningDate(day);
-                const deadlines = projects.filter(p => p.estimated_completion && isSameDay(parseLocalDate(p.estimated_completion), day));
+                const deadlines = calendarVisibleProjects.filter(p => p.estimated_completion && isSameDay(parseLocalDate(p.estimated_completion), day));
                 const isSelected = selectedDate && isSameDay(selectedDate, day);
 
                 return (

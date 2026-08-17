@@ -342,6 +342,11 @@
       "default": false,
       "description": "If true, this project will be shown on weekends in the calendar"
     },
+    "show_on_calendar": {
+      "type": "boolean",
+      "default": true,
+      "description": "If false, this project (and its timeline phases) is hidden from the main calendar"
+    },
     "notes": {
       "type": "string"
     },
