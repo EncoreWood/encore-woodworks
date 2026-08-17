@@ -121,13 +121,25 @@ export default function GanttChart({ events, onBarClick, readOnly }) {
           )}
         </div>
 
-        {/* Month axis */}
+        {/* Date range axis — month label(s) + full spanned range */}
         <div className="flex items-stretch border-t border-slate-200 mt-1">
           <div style={{ width: labelColWidth }} className="flex-shrink-0" />
-          <div className="flex-1 relative h-7">
-            {monthLabels.map((m, i) => (
-              <span key={i} className="absolute text-xs font-medium text-slate-500 -translate-x-1/2" style={{ left: `${m.pct}%` }}>{m.label}</span>
-            ))}
+          <div className="flex-1 relative h-8 flex flex-col justify-center">
+            {(() => {
+              const sameMonth = minDate.getMonth() === maxDate.getMonth() && minDate.getFullYear() === maxDate.getFullYear();
+              const rangeText = sameMonth
+                ? `${format(minDate, "MMM d")} - ${format(maxDate, "d")}`
+                : `${format(minDate, "MMM d")} - ${format(maxDate, "MMM d")}`;
+              return (
+                <>
+                  <div className="flex items-center justify-center gap-1.5">
+                    <span className="text-xs font-semibold text-slate-600">{monthLabels.map(m => m.label).join(" / ")}</span>
+                    <span className="text-[10px] text-slate-400">·</span>
+                    <span className="text-[10px] font-medium text-slate-400">{rangeText}</span>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>
