@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import ProjectForm from "../components/projects/ProjectForm";
+import { CalendarTimelineBars, CalendarTimelineDetails } from "../components/calendar/CalendarTimelineBars";
 import AppointmentTab from "../components/calendar/AppointmentTab";
 import DesignMeetingTab from "../components/calendar/DesignMeetingTab";
 import CleaningScheduleEditor from "@/components/dashboard/CleaningScheduleEditor";
@@ -98,6 +99,7 @@ export default function CalendarPage() {
   const { data: deliveryAppointments = [] } = useQuery({ queryKey: ["DeliveryAppointment"], queryFn: () => base44.entities.DeliveryAppointment.list("date", 500) });
   const { data: assignedTasks = [] } = useQuery({ queryKey: ["assignmentTasks"], queryFn: () => base44.entities.Task.list("-created_date", 200) });
   const { data: generalMeetings = [] } = useQuery({ queryKey: ["generalMeetings"], queryFn: () => base44.entities.GeneralMeeting.list("date", 500) });
+  const { data: timelineEvents = [] } = useQuery({ queryKey: ["timelineEvents"], queryFn: () => base44.entities.TimelineEvent.list("sort_order", 500) });
 
   const [currentUser, setCurrentUser] = useState(null);
   useEffect(() => { base44.auth.me().then(setCurrentUser); }, []);
@@ -367,6 +369,18 @@ export default function CalendarPage() {
     return all;
   };
 
+  // Timeline phases/milestones that span this date (project timelines)
+  const getTimelineEventsForDate = (date) => timelineEvents.filter(e => {
+    if (!e.start_date) return false;
+    const s = parseLocalDate(e.start_date);
+    const en = e.end_date ? parseLocalDate(e.end_date) : s;
+    return isWithinInterval(date, { start: s, end: en });
+  }).filter(e => {
+    // Only show for active (non-archived) projects
+    const p = projects.find(pr => pr.id === e.project_id);
+    return !p || !p.archived;
+  });
+
   // --- Computed ---
   const todayActiveProjects = getActiveProjectsForDay(TODAY);
   const todayInstalls = getInstallProjectsSpanningDate(TODAY);
@@ -476,6 +490,7 @@ export default function CalendarPage() {
     const assignedTaskCount = getAssignedTasksForDate(date).filter(t => t.status !== "completed").length;
     const generalMeetingCount = getGeneralMeetingsForDate(date).length;
     const birthdays = getBirthdaysForDate(date);
+    const timelinePhases = getTimelineEventsForDate(date);
 
     return (
       <div className="w-full flex flex-col gap-0.5 p-1.5" style={{ minHeight: "140px" }}>
@@ -514,6 +529,9 @@ export default function CalendarPage() {
             </div>
           );
         })}
+        {(activeFilter === "all" || activeFilter === "projects") && (
+          <CalendarTimelineBars events={timelinePhases} projects={projects} filterActive />
+        )}
         <div className="flex gap-0.5 flex-wrap">
           {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
             <div className="text-[9px] px-1 py-0.5 bg-violet-500 text-white rounded font-medium">{meetingCount}M</div>
@@ -671,7 +689,8 @@ export default function CalendarPage() {
               const myAssignedTasks = getAssignedTasksForDate(date);
               const generalMeetingsDay = getGeneralMeetingsForDate(date);
               const birthdaysDay = getBirthdaysForDate(date);
-              const isEmpty = !presenter && activeProjects.length === 0 && meetings.length === 0 && cleanings.length === 0 && vacs.length === 0 && dayTasks.length === 0 && weeklyCleanings.length === 0 && installs.length === 0 && deliveries.length === 0 && myAssignedTasks.length === 0 && generalMeetingsDay.length === 0 && birthdaysDay.length === 0;
+              const dayTimelinePhases = getTimelineEventsForDate(date);
+              const isEmpty = !presenter && activeProjects.length === 0 && meetings.length === 0 && cleanings.length === 0 && vacs.length === 0 && dayTasks.length === 0 && weeklyCleanings.length === 0 && installs.length === 0 && deliveries.length === 0 && myAssignedTasks.length === 0 && generalMeetingsDay.length === 0 && birthdaysDay.length === 0 && dayTimelinePhases.length === 0;
               
 
               return (
@@ -864,6 +883,12 @@ export default function CalendarPage() {
                     </div>
                   ))}
 
+                  {(activeFilter === "all" || activeFilter === "projects") && dayTimelinePhases.length > 0 && (
+                    <div className="border-t border-slate-200 pt-2.5">
+                      <CalendarTimelineDetails events={dayTimelinePhases} projects={projects} />
+                    </div>
+                  )}
+
                   {(activeFilter === "all" || activeFilter === "birthdays") && birthdaysDay.map((emp) => (
                     <div key={emp.id} className="p-2.5 bg-pink-50 rounded-lg border border-pink-200 text-sm">
                       <div className="flex items-center gap-1.5 text-xs font-semibold text-pink-900 mb-0.5">🎂 Birthday!</div>
@@ -955,6 +980,7 @@ export default function CalendarPage() {
             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-red-600" /><span className="text-slate-600 text-[11px]">Overdue</span></div>
             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-amber-500" /><span className="text-slate-600 text-[11px]">Project</span></div>
             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-sm bg-orange-500" /><span className="text-slate-600 text-[11px]">Install</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm border-l-4" style={{ borderLeftColor: "#3b82f6", backgroundColor: "#3b82f626" }} /><span className="text-slate-600 text-[11px]">Timeline Phase</span></div>
             <div className="flex items-center gap-1.5"><div className="px-0.5 py-0 bg-violet-500 text-white rounded text-[8px]">M</div><span className="text-slate-600 text-[11px]">Meeting</span></div>
             <div className="flex items-center gap-1.5"><div className="px-0.5 py-0 bg-purple-500 text-white rounded text-[8px]">T</div><span className="text-slate-600 text-[11px]">Task</span></div>
             <div className="flex items-center gap-1.5"><div className="px-0.5 py-0 bg-orange-600 text-white rounded text-[8px]">I</div><span className="text-slate-600 text-[11px]">Install Appt</span></div>
