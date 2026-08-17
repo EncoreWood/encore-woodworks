@@ -472,9 +472,14 @@ export default function TimeSheet() {
     let totalHours = 0, regularHours = 0, overtimeHours = 0;
     const weeklyHours = {};
     entries.forEach(entry => {
-      const weekNum = Math.floor((new Date(entry.date) - periodStart) / (1000 * 60 * 60 * 24 * 7));
-      if (!weeklyHours[weekNum]) weeklyHours[weekNum] = 0;
-      weeklyHours[weekNum] += entry.hours_worked || 0;
+      // Bucket by calendar week starting Monday — matches OT calc everywhere else
+      const d = new Date(entry.date);
+      const dow = (d.getDay() + 6) % 7; // 0 = Monday
+      const weekMonday = new Date(d);
+      weekMonday.setDate(d.getDate() - dow);
+      const weekKey = format(weekMonday, "yyyy-MM-dd");
+      if (!weeklyHours[weekKey]) weeklyHours[weekKey] = 0;
+      weeklyHours[weekKey] += entry.hours_worked || 0;
       totalHours += entry.hours_worked || 0;
     });
     Object.values(weeklyHours).forEach(weekly => {
