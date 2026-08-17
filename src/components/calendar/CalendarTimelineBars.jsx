@@ -28,19 +28,24 @@ export function CalendarTimelineBars({ events, projects, filterActive, onSelect 
         const project = linkedProject(ev, projects);
         if (filterActive && project && project.archived) return null;
         const color = barColor(ev);
+        const projColor = project?.card_color || color;
         const isMilestone = ev.event_type === "milestone" || (ev.start_date === ev.end_date);
+        const label = project ? `${ev.event_name} — ${project.project_name}` : ev.event_name;
         const title = `${ev.event_name}${project ? " — " + project.project_name : ""}`;
         return (
           <div
             key={ev.id}
             className="h-3 rounded-sm flex items-center gap-0.5 px-1 overflow-hidden cursor-pointer hover:brightness-110 transition"
-            style={{ backgroundColor: color + "26", borderLeft: `3px solid ${color}` }}
+            style={{ backgroundColor: color + "26", borderLeft: `3px solid ${projColor}`, boxShadow: `inset 0 0 0 1px ${projColor}40` }}
             title={title}
             onClick={(e) => { e.stopPropagation(); onSelect && onSelect(ev); }}
           >
             {ev.is_completed && <CheckCircle2 className="w-2 h-2 flex-shrink-0" style={{ color }} />}
             {isMilestone && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />}
-            <span className="text-[8px] font-bold truncate leading-none" style={{ color }}>{ev.event_name}</span>
+            <span className="text-[8px] font-semibold truncate leading-none" style={{ color }}>
+              <span style={{ color }}>{ev.event_name}</span>
+              {project && <span className="opacity-70"> — {project.project_name}</span>}
+            </span>
           </div>
         );
       })}
