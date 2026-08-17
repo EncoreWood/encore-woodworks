@@ -137,8 +137,9 @@ export default function ProjectTimelineSection({ project }) {
     }
     let min = new Date(Math.min(...dates));
     let max = new Date(Math.max(...dates));
-    min = addDays(min, -3);
-    max = addDays(max, 3);
+    // Pad each end by a week so milestones aren't jammed against the chart edges
+    min = addDays(min, -7);
+    max = addDays(max, 7);
     if (min >= max) max = addDays(min, 30);
     return { minDate: min, maxDate: max, totalDays: Math.max(1, differenceInDays(max, min)) };
   }, [eventsWithCompletion]);
