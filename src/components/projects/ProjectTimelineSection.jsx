@@ -78,43 +78,12 @@ export default function ProjectTimelineSection({ project }) {
   const [showForm, setShowForm] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [newChecklistText, setNewChecklistText] = useState({});
-  const [seeded, setSeeded] = useState(false);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["timelineEvents", project?.id],
     queryFn: () => base44.entities.TimelineEvent.filter({ project_id: project.id }, "sort_order"),
     enabled: !!project?.id,
   });
-
-  // Auto-seed default milestones if none exist
-  const seedMutation = useMutation({
-    mutationFn: async () => {
-      const todayStr = new Date().toISOString().split("T")[0];
-      const startDate = project.start_date || todayStr;
-      const records = DEFAULT_MILESTONES.map((dm, i) => ({
-        project_id: project.id,
-        project_name: project.project_name || "",
-        event_name: dm.event_name,
-        event_type: dm.event_type,
-        start_date: addDaysStr(startDate, DEFAULT_DATE_RANGES[i][0]),
-        end_date: addDaysStr(startDate, DEFAULT_DATE_RANGES[i][1]),
-        color: dm.color,
-        is_client_visible: true,
-        is_completed: false,
-        sort_order: dm.sort_order,
-        checklist: JSON.stringify((DEFAULT_CHECKLISTS[dm.event_name] || []).map(label => ({ id: makeId(), label, done: false, done_at: null }))),
-      }));
-      return base44.entities.TimelineEvent.bulkCreate(records);
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["timelineEvents", project.id] }),
-  });
-
-  useEffect(() => {
-    if (!isLoading && events.length === 0 && project?.id && !seeded) {
-      setSeeded(true);
-      seedMutation.mutate();
-    }
-  }, [isLoading, events.length, project?.id, seeded]);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.TimelineEvent.update(id, data),
@@ -241,7 +210,7 @@ export default function ProjectTimelineSection({ project }) {
     }
   };
 
-  const showSpinner = isLoading || (seedMutation.isPending && events.length === 0);
+  const showSpinner = isLoading;
 
   return (
     <Card className="p-6 bg-white border-0 shadow-sm">
