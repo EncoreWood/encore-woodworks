@@ -68,7 +68,7 @@ export default function PayPeriodsView({ employeeEntries }) {
   // filter to period entries first, then group by calendar week.
   const weeklyTotals = {};
   periodEntries.forEach(entry => {
-    const d = new Date(entry.date);
+    const d = new Date(entry.date + "T00:00:00");
     const dow = (d.getDay() + 6) % 7;
     const weekMonday = new Date(d);
     weekMonday.setDate(d.getDate() - dow);
@@ -80,7 +80,7 @@ export default function PayPeriodsView({ employeeEntries }) {
   // Group by week within the period
   const weekGroups = {};
   allPeriodEntries.forEach(entry => {
-    const d = new Date(entry.date);
+    const d = new Date(entry.date + "T00:00:00");
     // Find week start (Monday) for this entry
     const dow = (d.getDay() + 6) % 7; // 0=Mon
     const weekMonday = new Date(d);

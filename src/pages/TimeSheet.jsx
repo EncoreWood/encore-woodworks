@@ -466,14 +466,14 @@ export default function TimeSheet() {
     const { periodStart, periodEnd } = getPayPeriodDates();
     const entries = timeEntries.filter(e =>
       e.employee_id === employeeId &&
-      isWithinInterval(new Date(e.date), { start: periodStart, end: periodEnd }) &&
+      isWithinInterval(new Date(e.date + "T00:00:00"), { start: periodStart, end: periodEnd }) &&
       e.entry_type === "work"
     );
     let totalHours = 0, regularHours = 0, overtimeHours = 0;
     const weeklyHours = {};
     entries.forEach(entry => {
       // Bucket by calendar week starting Monday — matches OT calc everywhere else
-      const d = new Date(entry.date);
+      const d = new Date(entry.date + "T00:00:00");
       const dow = (d.getDay() + 6) % 7; // 0 = Monday
       const weekMonday = new Date(d);
       weekMonday.setDate(d.getDate() - dow);

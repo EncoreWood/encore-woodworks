@@ -29,7 +29,7 @@ function calcWeeklyOT(entries, startStr, endStr) {
   // Group by week
   const weeklyTotals = {};
   periodEntries.forEach(entry => {
-    const d = new Date(entry.date);
+    const d = new Date(entry.date + "T00:00:00");
     const dow = (d.getDay() + 6) % 7;
     const mon = new Date(d);
     mon.setDate(d.getDate() - dow);
