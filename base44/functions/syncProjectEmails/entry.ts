@@ -13,6 +13,16 @@ export default async function(req) {
       return Response.json({ error: 'project_id and project_name are required' }, { status: 400 });
     }
 
+    // Skip archived projects — they're no longer active and shouldn't pull new emails.
+    // This mirrors the `!p.archived` exclusion used in active-project views (e.g. the Project Board).
+    let projectRecord = null;
+    try {
+      projectRecord = await base44.asServiceRole.entities.Project.get(projectId);
+    } catch {}
+    if (projectRecord?.archived) {
+      return Response.json({ skipped: true, message: `Project '${projectName}' is archived — email sync skipped` });
+    }
+
     // Get the Gmail access token (shared connector — builder's account)
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     const authHeader = { Authorization: `Bearer ${accessToken}` };
@@ -20,10 +30,7 @@ export default async function(req) {
     // Resolve email keywords: prefer the body param, otherwise fall back to the saved project field
     let emailKeywords = (body.email_keywords || '').trim();
     if (!emailKeywords) {
-      try {
-        const proj = await base44.asServiceRole.entities.Project.get(projectId);
-        emailKeywords = (proj?.email_keywords || '').trim();
-      } catch {}
+      emailKeywords = (projectRecord?.email_keywords || '').trim();
     }
 
     // Build a Gmail search query: subject matches the project name OR any keyword

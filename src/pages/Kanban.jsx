@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { User, MapPin, Calendar, DollarSign, MessageCircle, Plus, CheckCircle2, Circle, Settings, Pencil, Trash2, ArrowRight, GripVertical, Palette, ClipboardList, Archive, ChevronUp, ChevronDown } from "lucide-react";
+import { User, MapPin, Calendar, DollarSign, MessageCircle, Plus, CheckCircle2, Circle, Settings, Pencil, Trash2, ArrowRight, GripVertical, Palette, ClipboardList, Archive, ArchiveRestore, ChevronUp, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
@@ -87,6 +87,9 @@ export default function Kanban() {
       { id: "in_design", label: "In Design", color: "bg-violet-50" },
       { id: "in_production", label: "In Production", color: "bg-amber-50" },
       { id: "completed", label: "Completed", color: "bg-emerald-50" }
+    ],
+    archived: [
+      { id: "archived", label: "Archived", color: "bg-slate-100" }
     ]
   };
 
@@ -106,6 +109,9 @@ export default function Kanban() {
           else pp.push(newCol);
           parsed["pre-production"] = pp;
           localStorage.setItem("kanban_custom_columns", JSON.stringify(parsed));
+        }
+        if (!parsed["archived"]) {
+          parsed["archived"] = defaultColumnsByTab["archived"];
         }
         return parsed;
       }
@@ -135,16 +141,12 @@ export default function Kanban() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, status, project_type }) => base44.entities.Project.update(id, { status, ...(project_type ? { project_type } : {}) }),
-    onMutate: async ({ id, status, project_type }) => {
+    mutationFn: ({ id, ...updates }) => base44.entities.Project.update(id, updates),
+    onMutate: async ({ id, ...updates }) => {
       await queryClient.cancelQueries({ queryKey: ["projects"] });
       const previous = queryClient.getQueryData(["projects"]);
       queryClient.setQueryData(["projects"], (old) =>
-        (old || []).map((p) =>
-          p.id === id
-            ? { ...p, status, ...(project_type ? { project_type } : {}) }
-            : p
-        )
+        (old || []).map((p) => (p.id === id ? { ...p, ...updates } : p))
       );
       return { previous };
     },
@@ -259,12 +261,18 @@ export default function Kanban() {
     const projectId = draggableId;
     const newStatus = destination.droppableId;
 
+    // Dropping into the special "archived" column archives the project
+    if (newStatus === "archived") {
+      archiveMutation.mutate(projectId);
+      return;
+    }
     updateMutation.mutate({ id: projectId, status: newStatus });
   };
 
   const getProjectsByStatus = (status, tabKey) => {
     const tab = tabKey || activeTab;
     if (!Array.isArray(projects)) return [];
+    if (status === "archived") return projects.filter((p) => p.archived);
     const filtered = projects.filter((p) => p.status === status && !p.archived);
     if (tab === "side-projects") {
       return filtered.filter((p) => p.project_type === "custom");
@@ -280,6 +288,10 @@ export default function Kanban() {
     const updates = { status: moveTarget.status };
     if (moveTarget.tab === "side-projects") updates.project_type = "custom";
     else if (moveProjectDialog.project.project_type === "custom") updates.project_type = "kitchen"; // reset type if moving out of side projects
+    if (moveProjectDialog.restore) {
+      updates.archived = false;
+      updates.archived_date = null;
+    }
     updateMutation.mutate({ id: moveProjectDialog.project.id, ...updates });
     setMoveProjectDialog(null);
     setMoveTarget({ tab: "", status: "" });
@@ -339,10 +351,12 @@ export default function Kanban() {
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Project Board</h1>
             <p className="text-slate-500 mt-1">Drag projects to update their status</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => { setEditingTab({ tabKey: activeTab, columns: JSON.parse(JSON.stringify(customColumnsByTab[activeTab] || [])) }); setShowTabEditor(true); }}>
-            <Settings className="w-4 h-4 mr-2" />
-            Edit Stages
-          </Button>
+          {activeTab !== "archived" && (
+            <Button variant="outline" size="sm" onClick={() => { setEditingTab({ tabKey: activeTab, columns: JSON.parse(JSON.stringify(customColumnsByTab[activeTab] || [])) }); setShowTabEditor(true); }}>
+              <Settings className="w-4 h-4 mr-2" />
+              Edit Stages
+            </Button>
+          )}
         </div>
 
         <Tabs value={activeTab} onValueChange={(tab) => { setActiveTab(tab); localStorage.setItem("kanban_active_tab", tab); }} className="w-full">
@@ -351,6 +365,7 @@ export default function Kanban() {
             <TabsTrigger value="production">Production</TabsTrigger>
             <TabsTrigger value="completed">Completed</TabsTrigger>
             <TabsTrigger value="side-projects">Side Projects</TabsTrigger>
+            <TabsTrigger value="archived">Archived</TabsTrigger>
           </TabsList>
 
           {Object.keys(customColumnsByTab).map((tabKey) => (
@@ -380,17 +395,19 @@ export default function Kanban() {
                             <Badge variant="outline" className="text-xs">
                               {columnProjects.length}
                             </Badge>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setNewProjectStatus(column.id);
-                                setShowProjectForm(true);
-                              }}
-                              className="w-6 h-6 rounded-full bg-amber-600 hover:bg-amber-700 text-white flex items-center justify-center transition-colors"
-                              title={`Add project to ${column.label}`}
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
+                            {tabKey !== "archived" && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setNewProjectStatus(column.id);
+                                  setShowProjectForm(true);
+                                }}
+                                className="w-6 h-6 rounded-full bg-amber-600 hover:bg-amber-700 text-white flex items-center justify-center transition-colors"
+                                title={`Add project to ${column.label}`}
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </div>
 
@@ -567,15 +584,27 @@ export default function Kanban() {
                                              <MessageCircle className="w-3 h-3 mr-1" />
                                              Chat
                                            </Button>
-                                           <Button
-                                             variant="outline"
-                                             size="sm"
-                                             className="flex-1 text-slate-600"
-                                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMoveProjectDialog({ project }); setMoveTarget({ tab: "", status: "" }); }}
-                                           >
-                                             <ArrowRight className="w-3 h-3 mr-1" />
-                                             Move
-                                           </Button>
+                                           {project.archived ? (
+                                             <Button
+                                               variant="outline"
+                                               size="sm"
+                                               className="flex-1 text-amber-600 hover:text-amber-700 hover:border-amber-300"
+                                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMoveProjectDialog({ project, restore: true }); setMoveTarget({ tab: "", status: "" }); }}
+                                             >
+                                               <ArchiveRestore className="w-3 h-3 mr-1" />
+                                               Restore
+                                             </Button>
+                                           ) : (
+                                             <Button
+                                               variant="outline"
+                                               size="sm"
+                                               className="flex-1 text-slate-600"
+                                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setMoveProjectDialog({ project }); setMoveTarget({ tab: "", status: "" }); }}
+                                             >
+                                               <ArrowRight className="w-3 h-3 mr-1" />
+                                               Move
+                                             </Button>
+                                           )}
                                            <Button
                                              variant="outline"
                                              size="sm"
@@ -586,15 +615,17 @@ export default function Kanban() {
                                              <ClipboardList className="w-3 h-3 mr-1" />
                                              Pickup
                                            </Button>
-                                           <Button
-                                             variant="outline"
-                                             size="sm"
-                                             className="text-slate-500 hover:text-slate-700"
-                                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (confirm(`Archive "${project.project_name}"? It will be removed from active views.`)) archiveMutation.mutate(project.id); }}
-                                             title="Archive project"
-                                           >
-                                             <Archive className="w-3 h-3" />
-                                           </Button>
+                                           {!project.archived && (
+                                             <Button
+                                               variant="outline"
+                                               size="sm"
+                                               className="text-slate-500 hover:text-slate-700"
+                                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (confirm(`Archive "${project.project_name}"? It will be removed from active views.`)) archiveMutation.mutate(project.id); }}
+                                               title="Archive project"
+                                             >
+                                               <Archive className="w-3 h-3" />
+                                             </Button>
+                                           )}
                                            <div className="relative">
                                              <button
                                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setColorPickerProjectId(colorPickerProjectId === project.id ? null : project.id); }}
@@ -855,7 +886,7 @@ export default function Kanban() {
         <Dialog open={!!moveProjectDialog} onOpenChange={(open) => { if (!open) { setMoveProjectDialog(null); setMoveTarget({ tab: "", status: "" }); } }}>
           <DialogContent className="max-w-sm">
             <DialogHeader>
-              <DialogTitle>Move Project</DialogTitle>
+              <DialogTitle>{moveProjectDialog?.restore ? "Restore Project" : "Move Project"}</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-slate-600 mb-3 font-medium">{moveProjectDialog?.project.project_name}</p>
             <div className="space-y-3">
@@ -893,7 +924,7 @@ export default function Kanban() {
                 disabled={!moveTarget.status}
                 onClick={handleMoveProject}
               >
-                Move Project
+                {moveProjectDialog?.restore ? "Restore Project" : "Move Project"}
               </Button>
             </div>
           </DialogContent>
