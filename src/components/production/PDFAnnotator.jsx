@@ -37,6 +37,22 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const panStartRef = useRef(null);
   const lastTouchDistRef = useRef(null);
   const fingerCountRef = useRef(0);
+  const hasAutoFitRef = useRef(false);
+
+  // Fit the PDF page to the available container width so it uses the screen
+  // instead of opening at a tiny fixed zoom.
+  const fitToContainer = useCallback((page) => {
+    const container = scrollContainerRef.current;
+    if (!container || !page) return;
+    const availW = container.clientWidth - 24;
+    const availH = container.clientHeight - 24;
+    try {
+      const vp = page.getViewport({ scale: 1, rotation });
+      const fit = Math.min(availW / vp.width, availH / vp.height);
+      const clamped = Math.max(0.3, Math.min(2.5, fit));
+      setScale(clamped);
+    } catch {}
+  }, [rotation]);
 
   const [annList, setAnnList] = useState(annotations);
   const [currentPath, setCurrentPath] = useState([]);   // normalized points
@@ -68,6 +84,11 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     updatePanOffset({ x: 0, y: 0 });
     setTimeout(syncCanvasSize, 100);
   }, [scale, rotation, pageNumber, syncCanvasSize]);
+
+  // Reset the one-time auto-fit flag whenever the modal (re)opens
+  useEffect(() => {
+    if (open) hasAutoFitRef.current = false;
+  }, [open]);
 
   // ── Get canvas-relative position (pixels) ──────────────────────────────────
   const getPos = (e) => {
@@ -443,7 +464,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[97vw] w-[97vw] h-[95vh] max-h-[95vh] overflow-hidden flex flex-col p-4">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>Annotate Plan</span>
@@ -567,7 +588,13 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                   rotate={rotation}
                   renderTextLayer={false}
                   renderAnnotationLayer={false}
-                  onLoadSuccess={() => setTimeout(syncCanvasSize, 50)}
+                  onLoadSuccess={(page) => {
+                    setTimeout(syncCanvasSize, 50);
+                    if (!hasAutoFitRef.current) {
+                      hasAutoFitRef.current = true;
+                      fitToContainer(page);
+                    }
+                  }}
                 />
               </Document>
 
