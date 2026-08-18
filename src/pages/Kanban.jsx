@@ -266,21 +266,50 @@ export default function Kanban() {
       archiveMutation.mutate(projectId);
       return;
     }
+    // "Uncategorized" is a recovery bucket, not a real stage — ignore drops into it
+    if (newStatus === "__uncategorized__") return;
     updateMutation.mutate({ id: projectId, status: newStatus });
+  };
+
+  const allBoardColumnIds = () =>
+    new Set(Object.values(customColumnsByTab).flat().map((c) => c.id));
+
+  // Projects whose status isn't mapped to any board column — e.g. a custom
+  // stage that was removed from this browser's saved "Edit Stages" config.
+  // Without recovery these projects silently disappear from the board.
+  const getOrphanProjects = (tabKey) => {
+    if (!Array.isArray(projects)) return [];
+    const ids = allBoardColumnIds();
+    const orphans = projects.filter(
+      (p) => !p.archived && p.status !== "archived" && !ids.has(p.status)
+    );
+    if (tabKey === "side-projects") return orphans.filter((p) => p.project_type === "custom");
+    return orphans.filter((p) => p.project_type !== "custom");
+  };
+
+  // Stored custom columns plus an auto "Uncategorized" column when orphan
+  // projects exist. Derived at render time — never persisted, so it never
+  // fights the user's "Edit Stages" config.
+  const getColumnsForTab = (tabKey) => {
+    const stored = customColumnsByTab[tabKey] || [];
+    if (tabKey === "archived") return stored;
+    if (getOrphanProjects(tabKey).length === 0) return stored;
+    return [
+      ...stored,
+      { id: "__uncategorized__", label: "Uncategorized", color: "bg-slate-100", _orphan: true },
+    ];
   };
 
   const getProjectsByStatus = (status, tabKey) => {
     const tab = tabKey || activeTab;
     if (!Array.isArray(projects)) return [];
     if (status === "archived") return projects.filter((p) => p.archived);
+    if (status === "__uncategorized__") return getOrphanProjects(tab);
     const filtered = projects.filter((p) => p.status === status && !p.archived);
     if (tab === "side-projects") {
       return filtered.filter((p) => p.project_type === "custom");
     }
-    if (tab !== "side-projects") {
-      return filtered.filter((p) => p.project_type !== "custom");
-    }
-    return filtered;
+    return filtered.filter((p) => p.project_type !== "custom");
   };
 
   const handleMoveProject = () => {
@@ -372,7 +401,7 @@ export default function Kanban() {
             <TabsContent key={tabKey} value={tabKey} className="mt-0">
               <DragDropContext onDragEnd={handleDragEnd}>
                 <div className="flex flex-col sm:flex-row gap-4 sm:overflow-x-auto pb-4">
-                  {(customColumnsByTab[tabKey] || []).map((column) => {
+                  {(getColumnsForTab(tabKey)).map((column) => {
                     const columnProjects = getProjectsByStatus(column.id, tabKey);
                     return (
                       <div key={column.id} className="flex-shrink-0 w-full sm:w-80">
@@ -395,7 +424,7 @@ export default function Kanban() {
                             <Badge variant="outline" className="text-xs">
                               {columnProjects.length}
                             </Badge>
-                            {tabKey !== "archived" && (
+                            {tabKey !== "archived" && !column._orphan && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
