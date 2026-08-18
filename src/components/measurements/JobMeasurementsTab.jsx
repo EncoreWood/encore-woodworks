@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Upload, FileText, Image, Pencil, Trash2, Save, CheckCircle2,
-  Loader2, RefreshCw, Plus, X, ZoomIn
+  Loader2, RefreshCw, Plus, X, ZoomIn, Camera
 } from "lucide-react";
 import ImageAnnotator from "./ImageAnnotator";
 import PDFAnnotator from "@/components/production/PDFAnnotator";
@@ -88,6 +88,7 @@ export default function JobMeasurementsTab({ project }) {
   const [labelMap, setLabelMap] = useState({});  // local label state
   const autoSaveTimers = useRef({});
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
 
   const { data: measurements = [], isLoading } = useQuery({
     queryKey: ["jobMeasurements", projectId],
@@ -149,11 +150,28 @@ export default function JobMeasurementsTab({ project }) {
     scheduleAutoSave(id, { label: value });
   };
 
-  const handleSaveAnnotations = async (annotations) => {
+  // Save from the annotator: flatten the original photo + annotations into a
+  // JPEG (so it displays everywhere with marks baked in), upload it as the
+  // file_url, and preserve the raw photo in original_file_url for re-editing.
+  const handleSaveAnnotations = async ({ flattenedBlob, annotations }) => {
     if (!annotatingItem) return;
     const { measurement } = annotatingItem;
     setSavingId(measurement.id);
-    await updateMutation.mutateAsync({ id: measurement.id, data: { annotations: JSON.stringify(annotations) } });
+    const original = measurement.original_file_url || measurement.file_url;
+    const update = { annotations: JSON.stringify(annotations) };
+    if (!measurement.original_file_url) update.original_file_url = original;
+    if (flattenedBlob) {
+      const baseName = (measurement.file_name || "measurement").replace(/\.[^.]+$/, "");
+      const flatFile = new File([flattenedBlob], baseName + ".jpg", { type: "image/jpeg" });
+      try {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file: flatFile });
+        update.file_url = file_url;
+        update.file_type = "image";
+      } catch (err) {
+        console.error("flatten upload failed", err);
+      }
+    }
+    await updateMutation.mutateAsync({ id: measurement.id, data: update });
     setSavingId(null);
     setAnnotatingItem(null);
   };
@@ -201,6 +219,35 @@ export default function JobMeasurementsTab({ project }) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // Direct camera capture (iPad camera via capture="environment") — snap a
+  // photo on the spot and flow straight into the annotation view.
+  const handleCameraCapture = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setUploading(true);
+    let createdRec = null;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const rec = await base44.entities.JobMeasurement.create({
+        project_id: projectId,
+        project_name: project.project_name,
+        file_url,
+        file_name: file.name,
+        file_type: "image",
+        label: file.name.replace(/\.[^.]+$/, ""),
+        annotations: "[]",
+        notes: "",
+        sort_order: measurements.length + i
+      });
+      if (i === 0) createdRec = rec;
+    }
+    queryClient.invalidateQueries({ queryKey: ["jobMeasurements", projectId] });
+    setUploading(false);
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+    if (createdRec) setAnnotatingItem({ measurement: createdRec, type: "image" });
+  };
+
   const handleDelete = async (id) => {
     if (!confirm("Delete this measurement file?")) return;
     if (autoSaveTimers.current[id]) { clearTimeout(autoSaveTimers.current[id]); delete autoSaveTimers.current[id]; }
@@ -242,6 +289,20 @@ export default function JobMeasurementsTab({ project }) {
             {manualSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save All
           </Button>
+          <label className="cursor-pointer">
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleCameraCapture}
+            />
+            <span className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold transition-colors min-h-[40px] ${uploading ? "bg-slate-100 text-slate-400 cursor-not-allowed" : "bg-slate-900 hover:bg-slate-800 text-white cursor-pointer"}`}>
+              {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+              {uploading ? "Capturing..." : "Take Photo"}
+            </span>
+          </label>
           <label className="cursor-pointer">
             <input
               ref={fileInputRef}
@@ -314,7 +375,7 @@ export default function JobMeasurementsTab({ project }) {
         <ImageAnnotator
           open={true}
           onOpenChange={(open) => { if (!open) setAnnotatingItem(null); }}
-          imageUrl={annotatingItem.measurement.file_url}
+          imageUrl={annotatingItem.measurement.original_file_url || annotatingItem.measurement.file_url}
           annotations={(() => { try { return JSON.parse(annotatingItem.measurement.annotations || "[]"); } catch { return []; } })()}
           onSave={handleSaveAnnotations}
           title={annotatingItem.measurement.label || annotatingItem.measurement.file_name}

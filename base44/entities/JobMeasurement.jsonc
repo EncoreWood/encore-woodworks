@@ -12,7 +12,11 @@
     },
     "file_url": {
       "type": "string",
-      "description": "URL of the uploaded file"
+      "description": "URL of the displayed file (flattened annotated image once annotations are saved)"
+    },
+    "original_file_url": {
+      "type": "string",
+      "description": "URL of the original un-annotated photo, preserved so the image can be re-edited later without doubling up annotations"
     },
     "file_name": {
       "type": "string",
