@@ -14,6 +14,7 @@ import BidClientView from "@/components/bidding/BidClientView";
 import ClientFinancials from "@/components/projects/ClientFinancials";
 import PortalTabBar from "@/components/portal/PortalTabBar";
 import { getProgressStatus } from "@/components/projects/timelineStatus";
+import { calcOrdersCompletion, ordersStatusFromPct } from "@/components/projects/ordersCompletion";
 import { cn } from "@/lib/utils";
 
 // ── Milestone tracker ──────────────────────────────────────────────────────
@@ -23,6 +24,7 @@ import { cn } from "@/lib/utils";
 // completed (green w/ check). Multiple milestones can be in progress at once.
 function Milestones({ project }) {
   const [events, setEvents] = useState([]);
+  const [orders, setOrders] = useState([]);
   useEffect(() => {
     if (!project?.id) return;
     let active = true;
@@ -32,8 +34,23 @@ function Milestones({ project }) {
     return () => { active = false; };
   }, [project?.id]);
 
+  // Live orders feed — the "Orders" stage reflects real ProjectOrder status.
+  useEffect(() => {
+    if (!project?.id) return;
+    let active = true;
+    const load = () => base44.entities.ProjectOrder.filter({ project_id: project.id }).then(o => { if (active) setOrders(o); }).catch(() => {});
+    load();
+    const unsub = base44.entities.ProjectOrder.subscribe((event) => {
+      if (event?.data?.project_id === project.id) load();
+    });
+    return () => { active = false; unsub?.(); };
+  }, [project?.id]);
+
   const stages = ["Design", "Orders", "Prep", "Production", "Install", "Complete"];
   const statusFor = (name) => {
+    if (name === "Orders") {
+      return ordersStatusFromPct(calcOrdersCompletion(orders));
+    }
     const ev = events.find(e => e.event_name === name);
     return ev ? getProgressStatus(ev) : "not_started";
   };

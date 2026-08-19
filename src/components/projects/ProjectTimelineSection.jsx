@@ -19,6 +19,7 @@ import { createPageUrl } from "@/utils";
 import TimelineChecklist from "@/components/projects/TimelineChecklist";
 import TimelineStatusSelector from "@/components/projects/TimelineStatusSelector";
 import { getProgressStatus, statusUpdateFields, STATUS_BADGE_CLASSES, STATUS_BAR_COLOR } from "@/components/projects/timelineStatus";
+import { calcOrdersCompletion, ordersStatusFromPct } from "@/components/projects/ordersCompletion";
 
 const DEFAULT_MILESTONES = [
   { event_name: "Design", event_type: "phase", color: "#3b82f6", sort_order: 0 },
@@ -87,6 +88,27 @@ export default function ProjectTimelineSection({ project }) {
     enabled: !!project?.id,
   });
 
+  // ProjectOrder records drive the auto-calculated "Orders" milestone %.
+  const { data: projectOrders = [] } = useQuery({
+    queryKey: ["projectOrders", project?.id],
+    queryFn: () => base44.entities.ProjectOrder.filter({ project_id: project.id }),
+    enabled: !!project?.id,
+  });
+
+  // Live-recalculate whenever order records change (status updates on the
+  // Orders board reflect here immediately, no stale cached value).
+  useEffect(() => {
+    if (!project?.id) return;
+    const unsub = base44.entities.ProjectOrder.subscribe((event) => {
+      if (event?.data?.project_id === project.id) {
+        queryClient.invalidateQueries({ queryKey: ["projectOrders", project.id] });
+      }
+    });
+    return unsub;
+  }, [project?.id, queryClient]);
+
+  const ordersPct = useMemo(() => calcOrdersCompletion(projectOrders), [projectOrders]);
+
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.TimelineEvent.update(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["timelineEvents", project.id] }),
@@ -124,8 +146,14 @@ export default function ProjectTimelineSection({ project }) {
 
   const eventsWithCompletion = visibleEvents.map(e => {
     const checklist = parseChecklist(e.checklist);
-    const completion = e.is_completed ? 100 : checklistCompletion(checklist);
-    return { ...e, _checklist: checklist, _completion: completion };
+    let completion = e.is_completed ? 100 : checklistCompletion(checklist);
+    let status = getProgressStatus(e);
+    // "Orders" milestone % is auto-calculated from real ProjectOrder records.
+    if (e.event_name === "Orders" && ordersPct !== null) {
+      completion = ordersPct;
+      status = ordersStatusFromPct(ordersPct);
+    }
+    return { ...e, _checklist: checklist, _completion: completion, _status: status };
   });
 
   // Overall progress = average across the 6 default milestones
@@ -179,7 +207,7 @@ export default function ProjectTimelineSection({ project }) {
     const duration = Math.max(1, differenceInDays(end, start) + 1);
     const leftPct = (daysFromStart / totalDays) * 100;
     const widthPct = (duration / totalDays) * 100;
-    const status = getProgressStatus(event);
+    const status = event._status || getProgressStatus(event);
     const statusColor = STATUS_BAR_COLOR[status];
     const color = statusColor || (event.color || TYPE_COLORS[event.event_type] || TYPE_COLORS.event);
     return { leftPct, widthPct: Math.max(widthPct, 1.5), color, isDiamond };
@@ -300,7 +328,7 @@ export default function ProjectTimelineSection({ project }) {
               <div className="space-y-0 relative z-10">
                 {eventsWithCompletion.map(event => {
                   const style = getBarStyle(event);
-                  const status = getProgressStatus(event);
+                  const status = event._status || getProgressStatus(event);
                   const isExpanded = expandedRows[event.id];
                   const navLink = event.event_name === "Orders"
                     ? `${createPageUrl("OrdersBoard")}?project_id=${project.id}`
