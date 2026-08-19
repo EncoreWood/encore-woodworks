@@ -44,8 +44,6 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const pinchCenterRef = useRef({ x: 0, y: 0 });  // pinch midpoint in element-local px (for transform-origin)
   const scaleRef = useRef(0.5);                    // mirror of `scale` for use in stale-closure-safe touch handlers
   const liveScaleRef = useRef(1);                 // mirror of `liveScale`
-  const pendingCommitRef = useRef(null);          // { newPanX, newPanY } — applied when the post-gesture re-render is ready
-  const commitTimerRef = useRef(null);            // fallback in case onRenderSuccess doesn't fire
 
   const setLive = useCallback((v) => { liveScaleRef.current = v; setLiveScale(v); }, []);
 
@@ -180,54 +178,36 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const handleTouchEnd = (e) => {
     if ([...e.changedTouches].some(t => t.touchType === "stylus")) return;
     fingerCountRef.current = e.touches.length;
-    // Commit the live zoom into the real render scale now that the gesture is over.
-    // This is the ONLY point the PDF re-renders during a pinch — no mid-gesture flashes.
+    // Commit the live CSS zoom into the real render scale now that the gesture is over.
+    // This is the ONLY point the PDF re-renders during a pinch (one brief blank flash).
     if (e.touches.length < 2 && liveScaleRef.current !== 1) {
-      const live = liveScaleRef.current;
       const s = scaleRef.current || 0.5;
-      const next = Math.max(0.3, Math.min(3, s * live));
+      const next = Math.max(0.3, Math.min(3, s * liveScaleRef.current));
+      // Effective zoom ratio actually applied (== live unless clamped at 0.3/3 bounds).
+      const eff = next / s;
       const { x: cx, y: cy } = pinchCenterRef.current;
       const px = panOffsetRef.current.x;
       const py = panOffsetRef.current.y;
       // Keep the pinch focal point on the exact same screen spot after the re-render.
-      // During the gesture the focal point sat at screen (px+cx, py+cy) regardless of
-      // liveScale (it's the transform origin). After commit the page re-renders at the
-      // new scale with transform-origin "center" and scale 1, so the focal point moves
-      // to element-local (cx*live, cy*live). Compensate the pan so it lands back on
-      // (px+cx, py+cy): newPan = oldPan + focalLocal*(1 - live).
-      const newPanX = px + cx * (1 - live);
-      const newPanY = py + cy * (1 - live);
-      // Defer the liveScale reset + pan adjustment until the crisp re-render is ready
-      // (onRenderSuccess). Until then the view stays frozen at the gesture-end
-      // position (live CSS scale still applied to the old canvas) — no jump mid-render.
-      pendingCommitRef.current = { newPanX, newPanY };
+      // During the gesture the focal point (pinch midpoint, element-local px) sits at
+      // screen (px+cx, py+cy) — it's the transform origin, so it's independent of the
+      // live scale. After commit the page re-renders at `next` with transform-origin
+      // "center" and CSS scale 1, so that same PDF point is now at element-local
+      // (cx*eff, cy*eff). Compensate the pan so it lands back on (px+cx, py+cy):
+      //   newPan = oldPan + focalLocal * (1 - eff)
+      // CRITICAL: reset liveScale to 1 IN THE SAME UPDATE as setScale. react-pdf clears
+      // the canvas to the new `next` size immediately when scale changes; if liveScale
+      // stayed >1 during that window the canvas would be shown at (next * live) — a
+      // double-scaled blow-up. Setting both together keeps the canvas at CSS scale 1.
+      const newPanX = px + cx * (1 - eff);
+      const newPanY = py + cy * (1 - eff);
+      setLive(1);
+      updatePanOffset({ x: newPanX, y: newPanY });
       setScale(next);
-      // Fallback: apply the commit even if onRenderSuccess never fires.
-      clearTimeout(commitTimerRef.current);
-      commitTimerRef.current = setTimeout(applyPendingCommit, 600);
     }
     lastTouchDistRef.current = null;
     panStartRef.current = null;
   };
-
-  // Apply the deferred post-gesture commit: reset the live CSS scale and move the pan
-  // so the focal point stays put. Called from onRenderSuccess (preferred) or a timer.
-  const applyPendingCommit = useCallback(() => {
-    const c = pendingCommitRef.current;
-    if (!c) return;
-    pendingCommitRef.current = null;
-    clearTimeout(commitTimerRef.current);
-    setLive(1);
-    updatePanOffset({ x: c.newPanX, y: c.newPanY });
-  }, [setLive]);
-
-  const handlePageRendered = useCallback(() => {
-    applyPendingCommit();
-    setTimeout(syncCanvasSize, 50);
-  }, [applyPendingCommit, syncCanvasSize]);
-
-  // Clean up the fallback timer on unmount.
-  useEffect(() => () => clearTimeout(commitTimerRef.current), []);
 
   useEffect(() => {
     if (!open) return;
@@ -707,7 +687,6 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                       fitToContainer(page);
                     }
                   }}
-                  onRenderSuccess={handlePageRendered}
                 />
               </Document>
 
