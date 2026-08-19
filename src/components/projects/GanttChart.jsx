@@ -17,7 +17,7 @@ export default function GanttChart({ events, onBarClick, readOnly }) {
       const today = new Date();
       return { minDate: today, maxDate: addDays(today, 30), totalDays: 30 };
     }
-    const dates = events.flatMap(e => [new Date(e.start_date), new Date(e.end_date)]).filter(d => !isNaN(d));
+    const dates = events.flatMap(e => [e.start_date, e.end_date]).filter(Boolean).map(d => new Date(d)).filter(d => !isNaN(d));
     let min = new Date(Math.min(...dates));
     let max = new Date(Math.max(...dates));
     min = addDays(min, -3);
@@ -32,6 +32,7 @@ export default function GanttChart({ events, onBarClick, readOnly }) {
   const sortedEvents = [...events].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
   const getBarStyle = (event) => {
+    if (!event.start_date || !event.end_date) return null;
     const start = new Date(event.start_date);
     const end = new Date(event.end_date);
     const isMilestone = event.start_date === event.end_date;
@@ -74,7 +75,7 @@ export default function GanttChart({ events, onBarClick, readOnly }) {
                     <span className="truncate" title={event.event_name}>{event.event_name}</span>
                   </div>
                   <div className="flex-1 relative bg-slate-50/50">
-                    {style.isMilestone ? (
+                    {!style ? null : style.isMilestone ? (
                       <button
                         type="button"
                         disabled={readOnly}
