@@ -11,6 +11,7 @@ import RoomNotes from "@/components/projects/RoomNotes";
 import RoomFileGallery from "@/components/projects/RoomFileGallery";
 import ClientTasksMeetingsCard from "@/components/projects/ClientTasksMeetingsCard";
 import BidClientView from "@/components/bidding/BidClientView";
+import ClientFinancials from "@/components/projects/ClientFinancials";
 import { cn } from "@/lib/utils";
 
 // ── Milestone tracker ──────────────────────────────────────────────────────
@@ -775,7 +776,7 @@ export default function ClientPortal() {
         ].filter(t => t.show);
         return (
           <div className="bg-white border-b border-slate-100 sticky top-0 z-10">
-            <div className="max-w-2xl mx-auto px-2 flex gap-1 overflow-x-auto no-scrollbar">
+            <div className="max-w-2xl mx-auto px-2 flex flex-wrap gap-1">
               {tabs.map(t => (
                 <button key={t.key} onClick={() => setPortalTab(t.key)}
                   className={cn("px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors",
@@ -855,26 +856,7 @@ export default function ClientPortal() {
 
         {portalTab === "financials" && settings?.show_financials && (
           <Section title="Financials" icon={DollarSign}>
-            <div className="space-y-3">
-              {project.estimated_budget && (
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                  <span className="text-sm text-slate-600">Project Total</span>
-                  <span className="font-bold text-slate-800">${project.estimated_budget.toLocaleString()}</span>
-                </div>
-              )}
-              {project.deposit_paid && (
-                <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl">
-                  <span className="text-sm text-emerald-700">Deposit Paid</span>
-                  <span className="font-bold text-emerald-700">${project.deposit_paid.toLocaleString()}</span>
-                </div>
-              )}
-              {project.estimated_budget && project.deposit_paid && (
-                <div className="flex items-center justify-between p-3 bg-amber-50 rounded-xl">
-                  <span className="text-sm text-amber-700">Balance Due</span>
-                  <span className="font-bold text-amber-700">${(project.estimated_budget - project.deposit_paid).toLocaleString()}</span>
-                </div>
-              )}
-            </div>
+            <ClientFinancials project={project} />
           </Section>
         )}
 
