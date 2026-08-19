@@ -21,13 +21,11 @@ const HIGHLIGHT_COLORS = [
   { label: "Upper",  color: "#3b82f6", hex: "rgba(59,130,246,0.28)" },
   { label: "Tall",   color: "#ef4444", hex: "rgba(239,68,68,0.28)" },
   { label: "Misc",   color: "#6b7280", hex: "rgba(107,114,128,0.35)" },
-  { label: "Green",  color: "#16a34a", hex: "rgba(22,163,74,0.28)" },
-  { label: "Purple", color: "#9333ea", hex: "rgba(147,51,234,0.28)" },
-  { label: "Pink",   color: "#db2777", hex: "rgba(219,39,119,0.28)" },
-  { label: "Teal",   color: "#0891b2", hex: "rgba(8,145,178,0.28)" },
   { label: "Custom", color: "#923a57", hex: "rgba(146,58,87,0.28)" },
   { label: "Base Paneling", color: "#667484", hex: "rgba(102,116,132,0.28)" },
 ];
+
+const CUSTOM_COLOR = "#923a57";
 
 function drawArrow(ctx, from, to, withHead) {
   ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
@@ -140,6 +138,8 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   // Active room for tagging newly drawn highlights — drives per-room "Price from
   // Plan Marks" measurement. "" = no room (marks won't be attributed to any room).
   const [activeRoomId, setActiveRoomId] = useState("");
+  // Custom label applied to highlights drawn with the "Custom" color
+  const [customLabel, setCustomLabel] = useState("");
 
   // Scale / calibration
   const [detectedScale, setDetectedScale]   = useState(null);
@@ -605,7 +605,8 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         x:Math.min(currentLine.start.x,pos.x), y:Math.min(currentLine.start.y,pos.y),
         w, h, color:highlightColor, page:pageNumber, _natural:true,
         room_id: activeRoomId || null,
-        room_name: rm?.room_name || null
+        room_name: rm?.room_name || null,
+        label: highlightColor === CUSTOM_COLOR ? (customLabel.trim() || "Custom") : null
       }]);
       setCurrentLine(null);
     }
@@ -669,7 +670,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
            [ann.x+ann.w/2,ann.y],[ann.x+ann.w/2,ann.y+ann.h],[ann.x,ann.y+ann.h/2],[ann.x+ann.w,ann.y+ann.h/2]
           ].forEach(([hx,hy])=>{ ctx.beginPath(); ctx.arc(hx,hy,hr,0,Math.PI*2); ctx.fill(); ctx.stroke(); });
         }
-        const lbl=HIGHLIGHT_COLORS.find(c=>c.color===ann.color)?.label;
+        const lbl=ann.label || HIGHLIGHT_COLORS.find(c=>c.color===ann.color)?.label;
         if (lbl) { ctx.font="bold 10px sans-serif"; ctx.fillStyle=`rgba(${r},${g},${b},1)`; ctx.fillText(lbl,ann.x+3,ann.y+12); }
         if (ann.room_name) { ctx.font="9px sans-serif"; ctx.fillStyle=`rgba(${r},${g},${b},0.95)`; ctx.fillText(ann.room_name, ann.x+3, ann.y+23); }
 
@@ -902,6 +903,15 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                 </button>
               ))}
               <input type="color" value={highlightColor} onChange={e=>setHighlightColor(e.target.value)} title="Custom" className="w-6 h-6 rounded border cursor-pointer"/>
+              {highlightColor === CUSTOM_COLOR && (
+                <input
+                  type="text"
+                  value={customLabel}
+                  onChange={e=>setCustomLabel(e.target.value)}
+                  placeholder="Custom name…"
+                  className="h-7 w-32 text-xs px-2 rounded-md border border-slate-300 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                />
+              )}
               <Select value={activeRoomId || "__none__"} onValueChange={v => setActiveRoomId(v === "__none__" ? "" : v)}>
                 <SelectTrigger className="h-7 w-[160px] text-xs ml-1"><SelectValue placeholder="All rooms" /></SelectTrigger>
                 <SelectContent>
