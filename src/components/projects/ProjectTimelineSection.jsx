@@ -100,6 +100,15 @@ export default function ProjectTimelineSection({ project }) {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["timelineEvents", project.id] }); setShowForm(false); setEditingEvent(null); },
   });
 
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const clearAllMutation = useMutation({
+    mutationFn: () => base44.entities.TimelineEvent.deleteMany({ project_id: project.id }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["timelineEvents", project.id] });
+      setShowClearConfirm(false);
+    },
+  });
+
   const showOnCalendar = project?.show_on_calendar !== false;
   const toggleCalendarVisibility = useMutation({
     mutationFn: (visible) => base44.entities.Project.update(project.id, { show_on_calendar: visible }),
@@ -240,9 +249,22 @@ export default function ProjectTimelineSection({ project }) {
             <Switch checked={clientView} onCheckedChange={setClientView} />
           </div>
           {!clientView && (
-            <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 gap-1" onClick={() => { setEditingEvent(null); setShowForm(true); }}>
-              <Plus className="w-4 h-4" /> Add Event
-            </Button>
+            <>
+              {events.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                  onClick={() => setShowClearConfirm(true)}
+                  title="Remove all timeline events for this project"
+                >
+                  <Trash2 className="w-4 h-4" /> Clear Timeline
+                </Button>
+              )}
+              <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 gap-1" onClick={() => { setEditingEvent(null); setShowForm(true); }}>
+                <Plus className="w-4 h-4" /> Add Event
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -413,6 +435,30 @@ export default function ProjectTimelineSection({ project }) {
           </div>
         </div>
       )}
+
+      {/* Clear All Events Confirmation */}
+      <Dialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Clear all timeline events?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-600">
+            This will remove all <span className="font-semibold text-slate-900">{events.length}</span> timeline {events.length === 1 ? "event" : "events"} for this project. This cannot be undone. Continue?
+          </p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setShowClearConfirm(false)} disabled={clearAllMutation.isPending}>Cancel</Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => clearAllMutation.mutate()}
+              disabled={clearAllMutation.isPending}
+            >
+              {clearAllMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              Clear All
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add/Edit Event Dialog */}
       {showForm && (

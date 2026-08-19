@@ -181,8 +181,6 @@ export default function Kanban() {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setShowProjectForm(false);
       setNewProjectStatus(null);
-      // Auto-seed default timeline events for the new project
-      base44.functions.invoke('seedTimelineEvents', { data: newProject }).catch(() => {});
     }
   });
 
