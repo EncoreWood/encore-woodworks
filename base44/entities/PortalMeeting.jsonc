@@ -66,6 +66,23 @@
       "default": "requested",
       "description": "Current meeting status"
     },
+    "summary": {
+      "type": "string",
+      "description": "Short summary of the meeting (from Plaud notes etc.)"
+    },
+    "audio_url": {
+      "type": "string",
+      "description": "URL to the meeting audio recording (e.g. Plaud)"
+    },
+    "transcript_url": {
+      "type": "string",
+      "description": "URL to the meeting transcript"
+    },
+    "client_visible": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this meeting is shared with the client in their portal"
+    },
     "notes": {
       "type": "string",
       "description": "Client's request notes / purpose"

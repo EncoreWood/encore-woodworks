@@ -9,7 +9,7 @@ import ClientPresentationViewer from "@/components/presentations/ClientPresentat
 import JobPhotosSection from "@/components/projects/JobPhotosSection";
 import RoomNotes from "@/components/projects/RoomNotes";
 import RoomFileGallery from "@/components/projects/RoomFileGallery";
-import PortalMeetingsSection from "@/components/projects/PortalMeetingsSection";
+import ClientTasksMeetingsCard from "@/components/projects/ClientTasksMeetingsCard";
 import { cn } from "@/lib/utils";
 
 // ── Milestone tracker ──────────────────────────────────────────────────────
@@ -753,7 +753,6 @@ export default function ClientPortal() {
           { key: "photos", label: "Photos", show: settings?.show_photos !== false },
           { key: "documents", label: "Documents", show: settings?.show_documents !== false && documents.length > 0 },
           { key: "presentations", label: "Proposal", show: settings?.show_presentations !== false },
-          { key: "meetings", label: "Meetings", show: true },
           { key: "messages", label: "Messages", show: settings?.show_messages !== false },
           { key: "financials", label: "Financials", show: !!settings?.show_financials },
           { key: "notes", label: "Notes", show: settings?.show_notes !== false },
@@ -778,33 +777,8 @@ export default function ClientPortal() {
         {portalTab === "home" && (
           <>
             {settings?.show_status !== false && (
-              <Section title="Project Status" icon={Calendar}>
-                <div className="grid grid-cols-2 gap-4">
-                  {project.start_date && (
-                    <div>
-                      <p className="text-xs text-slate-400 font-medium mb-0.5">Start Date</p>
-                      <p className="text-sm font-semibold text-slate-700">{format(new Date(project.start_date), "MMM d, yyyy")}</p>
-                    </div>
-                  )}
-                  {project.estimated_completion && (
-                    <div>
-                      <p className="text-xs text-slate-400 font-medium mb-0.5">Est. Completion</p>
-                      <p className="text-sm font-semibold text-slate-700">{format(new Date(project.estimated_completion), "MMM d, yyyy")}</p>
-                    </div>
-                  )}
-                  {project.install_start_date && (
-                    <div>
-                      <p className="text-xs text-slate-400 font-medium mb-0.5">Install Start</p>
-                      <p className="text-sm font-semibold text-amber-700">{format(new Date(project.install_start_date), "MMM d, yyyy")}</p>
-                    </div>
-                  )}
-                  {project.install_end_date && (
-                    <div>
-                      <p className="text-xs text-slate-400 font-medium mb-0.5">Install End</p>
-                      <p className="text-sm font-semibold text-amber-700">{format(new Date(project.install_end_date), "MMM d, yyyy")}</p>
-                    </div>
-                  )}
-                </div>
+              <Section title="Tasks & Meetings" icon={ClipboardList}>
+                <ClientTasksMeetingsCard project={project} user={user} />
               </Section>
             )}
 
@@ -821,12 +795,6 @@ export default function ClientPortal() {
             )}
 
             <HomeHighlights project={project} user={user} onGoTab={setPortalTab} />
-
-            {settings?.show_tasks !== false && (
-              <Section title="Your Tasks" icon={ClipboardList}>
-                <ClientTasks projectId={project.id} />
-              </Section>
-            )}
           </>
         )}
 
@@ -866,12 +834,6 @@ export default function ClientPortal() {
         {portalTab === "messages" && settings?.show_messages !== false && (
           <Section title="Messages" icon={MessageSquare}>
             <Messages projectId={project.id} user={user} />
-          </Section>
-        )}
-
-        {portalTab === "meetings" && (
-          <Section title="Meetings" icon={Calendar}>
-            <PortalMeetingsSection project={project} user={user} />
           </Section>
         )}
 

@@ -47,6 +47,7 @@ import ProjectEmailsTab from "../components/projects/ProjectEmailsTab";
 import ProjectChatTab from "../components/projects/ProjectChatTab";
 import JobPhotosTab from "../components/projects/JobPhotosTab";
 import EstimatesProposalTab from "../components/projects/EstimatesProposalTab";
+import ProjectMeetingsTab from "../components/projects/ProjectMeetingsTab";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -370,7 +371,7 @@ export default function ProjectDetails() {
         {/* Tabs */}
         {currentUser?.role === "admin" && (
           <div className="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-slate-100 p-1 w-fit flex-wrap">
-            {[{ key: "project", label: "Project" }, { key: "measurements", label: "Job Measurements" }, { key: "photos", label: "Job Photos" }, { key: "estimates", label: "Estimates/Proposal" }, { key: "client_portal", label: "Client Portal" }, { key: "emails", label: "Emails" }, { key: "chat", label: "Client Chat" }].map(t => (
+            {[{ key: "project", label: "Project" }, { key: "measurements", label: "Job Measurements" }, { key: "photos", label: "Job Photos" }, { key: "estimates", label: "Estimates/Proposal" }, { key: "client_portal", label: "Client Portal" }, { key: "meetings", label: "Meetings" }, { key: "emails", label: "Emails" }, { key: "chat", label: "Client Chat" }].map(t => (
               <button key={t.key} onClick={() => setActiveTab(t.key)}
                 className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === t.key ? "bg-amber-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-800"}`}>
                 {t.label}
@@ -397,7 +398,10 @@ export default function ProjectDetails() {
         {activeTab === "chat" && currentUser?.role === "admin" && (
           <ProjectChatTab project={project} />
         )}
-        {(activeTab !== "client_portal" && activeTab !== "measurements" && activeTab !== "photos" && activeTab !== "estimates" && activeTab !== "emails" && activeTab !== "chat" || currentUser?.role !== "admin") && (
+        {activeTab === "meetings" && currentUser?.role === "admin" && (
+          <ProjectMeetingsTab project={project} />
+        )}
+        {(activeTab !== "client_portal" && activeTab !== "measurements" && activeTab !== "photos" && activeTab !== "estimates" && activeTab !== "emails" && activeTab !== "chat" && activeTab !== "meetings" || currentUser?.role !== "admin") && (
         <>
         {/* Full-width Project Timeline */}
         <ProjectTimelineSection project={project} />
