@@ -11,7 +11,7 @@ import RoomNotes from "@/components/projects/RoomNotes";
 import RoomFileGallery from "@/components/projects/RoomFileGallery";
 import ClientTasksMeetingsCard from "@/components/projects/ClientTasksMeetingsCard";
 import BidClientView from "@/components/bidding/BidClientView";
-import ClientFinancials from "@/components/projects/ClientFinancials";
+import { getEffectiveInvoices, calcCollected } from "@/components/invoicing/CustomInvoicesEditor";
 import { cn } from "@/lib/utils";
 
 // ── Milestone tracker ──────────────────────────────────────────────────────
@@ -779,7 +779,7 @@ export default function ClientPortal() {
             <div className="max-w-2xl mx-auto px-2 flex flex-wrap gap-1">
               {tabs.map(t => (
                 <button key={t.key} onClick={() => setPortalTab(t.key)}
-                  className={cn("px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors",
+                  className={cn("px-3 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors",
                     portalTab === t.key ? "border-amber-500 text-amber-700" : "border-transparent text-slate-500 hover:text-slate-700")}>
                   {t.label}
                 </button>
@@ -854,11 +854,31 @@ export default function ClientPortal() {
           </Section>
         )}
 
-        {portalTab === "financials" && settings?.show_financials && (
-          <Section title="Financials" icon={DollarSign}>
-            <ClientFinancials project={project} />
-          </Section>
-        )}
+        {portalTab === "financials" && settings?.show_financials && (() => {
+          const invoices = getEffectiveInvoices(project);
+          const collected = calcCollected(invoices);
+          const coTotal = (project.change_orders || []).reduce((s, c) => s + (parseFloat(c.amount) || 0), 0);
+          const currentTotal = (project.base_amount || project.total_amount || project.estimated_budget || 0) + coTotal;
+          const remaining = currentTotal - collected;
+          return (
+            <Section title="Financials" icon={DollarSign}>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                  <span className="text-sm text-slate-600">Project Total</span>
+                  <span className="font-bold text-slate-800">${currentTotal.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-xl">
+                  <span className="text-sm text-emerald-700">Amount Paid</span>
+                  <span className="font-bold text-emerald-700">${collected.toLocaleString()}</span>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-amber-50 rounded-xl">
+                  <span className="text-sm text-amber-700">Balance Due</span>
+                  <span className="font-bold text-amber-700">${remaining.toLocaleString()}</span>
+                </div>
+              </div>
+            </Section>
+          );
+        })()}
 
         {portalTab === "notes" && settings?.show_notes !== false && (
           <Section title="Project Notes" icon={StickyNote}>
