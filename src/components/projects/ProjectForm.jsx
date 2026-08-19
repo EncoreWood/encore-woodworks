@@ -8,10 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2 } from "lucide-react";
+import { Loader2, UserPlus } from "lucide-react";
 import RoomsEditor from "./RoomsEditor";
 import FileUploader from "./FileUploader";
 import WoodTypeSelector from "./WoodTypeSelector";
+import ContactAddDialog from "./ContactAddDialog";
 
 const emptyContact = { name: "", email: "", phone: "" };
 
@@ -69,6 +70,7 @@ const initialFormState = {
 
 export default function ProjectForm({ open, onOpenChange, onSubmit, initialData, isLoading }) {
   const [formData, setFormData] = useState(initialData || initialFormState);
+  const [addContactFor, setAddContactFor] = useState(null); // { field, type }
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees"],
@@ -299,14 +301,24 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
             <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Client Information</h3>
 
             {[
-              { field: "contractor", label: "Contractor", types: ["GC"] },
-              { field: "home_owner", label: "Home Owner", types: ["Home Owner"] },
-              { field: "designer", label: "Designer", types: ["Designer"] },
-            ].map(({ field, label, types }) => {
-              const relevantContacts = contacts.filter(c => !c.contact_type || types.includes(c.contact_type) || true);
+              { field: "contractor", label: "Contractor", type: "GC" },
+              { field: "home_owner", label: "Home Owner", type: "Home Owner" },
+              { field: "designer", label: "Designer", type: "Designer" },
+            ].map(({ field, label, type }) => {
               return (
                 <div key={field} className="border rounded-lg p-4 space-y-3 bg-slate-50">
-                  <p className="text-sm font-semibold text-slate-600">{label}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-slate-600">{label}</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 gap-1"
+                      onClick={() => setAddContactFor({ field, type })}
+                    >
+                      <UserPlus className="w-3.5 h-3.5" /> Add New
+                    </Button>
+                  </div>
                   <Select
                     value=""
                     onValueChange={(contactId) => {
@@ -539,6 +551,18 @@ export default function ProjectForm({ open, onOpenChange, onSubmit, initialData,
             </Button>
           </div>
         </form>
+
+        {/* Add New Contact (creates a Contact and fills the section) */}
+        <ContactAddDialog
+          open={!!addContactFor}
+          onOpenChange={(o) => { if (!o) setAddContactFor(null); }}
+          defaultType={addContactFor?.type}
+          onCreated={(c) => {
+            if (addContactFor?.field) {
+              handleChange(addContactFor.field, { name: c.name, email: c.email || "", phone: c.phone || "" });
+            }
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
