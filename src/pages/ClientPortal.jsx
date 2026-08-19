@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
-import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Download, MessageSquare, Send, X, DollarSign, Image, FileText, Calendar, MapPin, User, ClipboardList, StickyNote, Clock, DoorOpen, Paperclip, Box } from "lucide-react";
+import { CheckCircle2, Circle, Check, ChevronLeft, ChevronRight, Download, MessageSquare, Send, X, DollarSign, Image, FileText, Calendar, MapPin, User, ClipboardList, StickyNote, Clock, DoorOpen, Paperclip, Box } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GanttChart from "@/components/projects/GanttChart";
 import SlideCard from "@/components/presentations/SlideCard";
@@ -13,42 +13,59 @@ import ClientTasksMeetingsCard from "@/components/projects/ClientTasksMeetingsCa
 import BidClientView from "@/components/bidding/BidClientView";
 import ClientFinancials from "@/components/projects/ClientFinancials";
 import PortalTabBar from "@/components/portal/PortalTabBar";
+import { getProgressStatus } from "@/components/projects/timelineStatus";
 import { cn } from "@/lib/utils";
 
 // ── Milestone tracker ──────────────────────────────────────────────────────
+// Driven by the project's TimelineEvent records (Design, Orders, Prep,
+// Production, Install, Complete). Each circle independently reflects its
+// milestone's progress_status: not_started (grey) / in_progress (orange) /
+// completed (green w/ check). Multiple milestones can be in progress at once.
 function Milestones({ project }) {
-  const steps = [
-    { key: "design_complete", label: "Design" },
-    { key: "materials_ordered", label: "Materials" },
-    { key: "production_complete", label: "Production" },
-    { key: "installation_complete", label: "Installation" },
-  ];
-  const done = steps.filter(s => project[s.key]).length;
+  const [events, setEvents] = useState([]);
+  useEffect(() => {
+    if (!project?.id) return;
+    let active = true;
+    base44.entities.TimelineEvent.filter({ project_id: project.id }, "sort_order")
+      .then(evts => { if (active) setEvents(evts.filter(e => e.is_client_visible !== false)); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [project?.id]);
+
+  const stages = ["Design", "Orders", "Prep", "Production", "Install", "Complete"];
+  const statusFor = (name) => {
+    const ev = events.find(e => e.event_name === name);
+    return ev ? getProgressStatus(ev) : "not_started";
+  };
+  const stagesStatus = stages.map(name => ({ name, status: statusFor(name) }));
+  const completedCount = stagesStatus.filter(s => s.status === "completed").length;
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        {steps.map((step, i) => {
-          const completed = !!project[step.key];
-          const active = !completed && i === done;
+        {stagesStatus.map((s, i) => {
+          const completed = s.status === "completed";
+          const inProgress = s.status === "in_progress";
+          const connectorColor = completed ? "bg-green-500" : inProgress ? "bg-orange-500" : "bg-slate-200";
           return (
-            <div key={step.key} className="flex flex-col items-center flex-1">
+            <div key={s.name} className="flex flex-col items-center flex-1">
               <div className="relative flex flex-col items-center">
                 {i > 0 && (
-                  <div className={`absolute right-1/2 top-4 h-0.5 w-full -translate-y-1/2 ${i <= done ? "bg-amber-500" : "bg-slate-200"}`} style={{ width: "calc(100% - 2rem)" }} />
+                  <div className={`absolute right-1/2 top-4 h-0.5 -translate-y-1/2 ${connectorColor}`} style={{ width: "calc(100% - 2rem)" }} />
                 )}
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center z-10 border-2 transition-all ${completed ? "bg-amber-500 border-amber-500" : active ? "bg-white border-amber-400 shadow-md" : "bg-white border-slate-200"}`}>
-                  {completed ? <CheckCircle2 className="w-5 h-5 text-white" /> : <Circle className={`w-5 h-5 ${active ? "text-amber-400" : "text-slate-300"}`} />}
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center z-10 border-2 transition-all ${completed ? "bg-green-500 border-green-500" : inProgress ? "bg-orange-500 border-orange-500" : "bg-white border-slate-200"}`}>
+                  {completed ? <Check className="w-5 h-5 text-white" /> : inProgress ? <span className="w-2 h-2 rounded-full bg-white" /> : <Circle className="w-5 h-5 text-slate-300" />}
                 </div>
               </div>
-              <span className={`text-xs mt-2 font-medium ${completed ? "text-amber-600" : active ? "text-slate-700" : "text-slate-400"}`}>{step.label}</span>
+              <span className={`text-xs mt-2 font-medium text-center ${completed ? "text-green-600" : inProgress ? "text-orange-600" : "text-slate-400"}`}>{s.name}</span>
             </div>
           );
         })}
       </div>
       <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1">
-        <div className="bg-amber-500 h-1.5 rounded-full transition-all" style={{ width: `${(done / steps.length) * 100}%` }} />
+        <div className="bg-green-500 h-1.5 rounded-full transition-all" style={{ width: `${(completedCount / stages.length) * 100}%` }} />
       </div>
-      <p className="text-xs text-slate-500 text-center mt-2">{done} of {steps.length} milestones complete</p>
+      <p className="text-xs text-slate-500 text-center mt-2">{completedCount} of {stages.length} milestones complete</p>
     </div>
   );
 }

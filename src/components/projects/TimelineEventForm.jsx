@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
+import TimelineStatusSelector from "@/components/projects/TimelineStatusSelector";
+import { getProgressStatus, statusUpdateFields } from "@/components/projects/timelineStatus";
 
 const TYPE_COLORS = {
   phase: "#3b82f6",
@@ -21,6 +23,7 @@ const emptyForm = {
   end_date: "",
   color: "",
   is_client_visible: true,
+  progress_status: "not_started",
   notes: "",
 };
 
@@ -36,6 +39,7 @@ export default function TimelineEventForm({ open, onOpenChange, onSubmit, editin
         end_date: editingEvent.end_date || "",
         color: editingEvent.color || "",
         is_client_visible: editingEvent.is_client_visible !== false,
+        progress_status: getProgressStatus(editingEvent),
         notes: editingEvent.notes || "",
       } : emptyForm);
     }
@@ -49,6 +53,7 @@ export default function TimelineEventForm({ open, onOpenChange, onSubmit, editin
       event_name: form.event_name.trim(),
       color: form.color || undefined,
       notes: form.notes || undefined,
+      ...statusUpdateFields(form.progress_status, editingEvent),
     };
     if (editingEvent) {
       onSubmit(editingEvent.id, data);
@@ -114,6 +119,11 @@ export default function TimelineEventForm({ open, onOpenChange, onSubmit, editin
                 <Button type="button" variant="outline" size="sm" onClick={() => setForm(f => ({ ...f, color: "" }))}>Reset</Button>
               )}
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Progress Status</Label>
+            <TimelineStatusSelector value={form.progress_status} onChange={v => setForm(f => ({ ...f, progress_status: v }))} />
           </div>
 
           <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5">

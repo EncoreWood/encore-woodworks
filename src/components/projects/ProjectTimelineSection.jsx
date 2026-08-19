@@ -17,6 +17,8 @@ import { Eye, Plus, ChevronDown, CheckCircle2, Trash2, X, Loader2, ExternalLink,
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import TimelineChecklist from "@/components/projects/TimelineChecklist";
+import TimelineStatusSelector from "@/components/projects/TimelineStatusSelector";
+import { getProgressStatus, statusUpdateFields, STATUS_BADGE_CLASSES, STATUS_BAR_COLOR } from "@/components/projects/timelineStatus";
 
 const DEFAULT_MILESTONES = [
   { event_name: "Design", event_type: "phase", color: "#3b82f6", sort_order: 0 },
@@ -177,7 +179,9 @@ export default function ProjectTimelineSection({ project }) {
     const duration = Math.max(1, differenceInDays(end, start) + 1);
     const leftPct = (daysFromStart / totalDays) * 100;
     const widthPct = (duration / totalDays) * 100;
-    const color = event.is_completed ? COMPLETED_COLOR : (event.color || TYPE_COLORS[event.event_type] || TYPE_COLORS.event);
+    const status = getProgressStatus(event);
+    const statusColor = STATUS_BAR_COLOR[status];
+    const color = statusColor || (event.color || TYPE_COLORS[event.event_type] || TYPE_COLORS.event);
     return { leftPct, widthPct: Math.max(widthPct, 1.5), color, isDiamond };
   };
 
@@ -185,12 +189,13 @@ export default function ProjectTimelineSection({ project }) {
 
   const saveChecklist = (event, newChecklist) => {
     const allDone = newChecklist.length > 0 && newChecklist.every(i => i.done);
-    const wasCompleted = event.is_completed;
+    const wasCompleted = getProgressStatus(event) === "completed";
     updateMutation.mutate({
       id: event.id,
       data: {
         checklist: JSON.stringify(newChecklist),
         is_completed: allDone,
+        progress_status: allDone ? "completed" : (wasCompleted ? "in_progress" : getProgressStatus(event)),
         completed_date: allDone && !wasCompleted ? format(new Date(), "yyyy-MM-dd") : (!allDone ? null : event.completed_date),
       },
     });
@@ -295,6 +300,7 @@ export default function ProjectTimelineSection({ project }) {
               <div className="space-y-0 relative z-10">
                 {eventsWithCompletion.map(event => {
                   const style = getBarStyle(event);
+                  const status = getProgressStatus(event);
                   const isExpanded = expandedRows[event.id];
                   const navLink = event.event_name === "Orders"
                     ? `${createPageUrl("OrdersBoard")}?project_id=${project.id}`
@@ -328,9 +334,10 @@ export default function ProjectTimelineSection({ project }) {
                           )}
                           <span className={cn(
                             "ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0",
-                            event._completion === 100 ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"
+                            STATUS_BADGE_CLASSES[status]
                           )}>{event._completion}%</span>
-                          {event.is_completed && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
+                          {status === "completed" && <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
+                          {status === "in_progress" && <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" title="In progress" />}
                         </div>
                         {/* Bar area */}
                         <div className="flex-1 relative bg-slate-50/50">
@@ -357,7 +364,7 @@ export default function ProjectTimelineSection({ project }) {
                             >
                               <div className="absolute inset-y-0 left-0 bg-white/30" style={{ width: `${event._completion}%` }} />
                               <span className="text-[10px] font-bold text-white truncate relative z-10 flex items-center gap-1">
-                                {event.is_completed && <CheckCircle2 className="w-3 h-3 flex-shrink-0" />}
+                                {status === "completed" && <CheckCircle2 className="w-3 h-3 flex-shrink-0" />}
                                 {formatRange(event.start_date, event.end_date)}
                               </span>
                             </button>
@@ -480,7 +487,7 @@ export default function ProjectTimelineSection({ project }) {
 }
 
 function EventEditDialog({ open, onOpenChange, onSubmit, onDelete, editingEvent, checklistItems, onSaveChecklist, isLoading }) {
-  const emptyForm = { event_name: "", event_type: "phase", start_date: "", end_date: "", color: "", is_client_visible: true, is_completed: false, notes: "" };
+  const emptyForm = { event_name: "", event_type: "phase", start_date: "", end_date: "", color: "", is_client_visible: true, progress_status: "not_started", notes: "" };
   const [form, setForm] = useState(emptyForm);
 
   useEffect(() => {
@@ -492,7 +499,7 @@ function EventEditDialog({ open, onOpenChange, onSubmit, onDelete, editingEvent,
         end_date: editingEvent.end_date || "",
         color: editingEvent.color || "",
         is_client_visible: editingEvent.is_client_visible !== false,
-        is_completed: editingEvent.is_completed || false,
+        progress_status: getProgressStatus(editingEvent),
         notes: editingEvent.notes || "",
       } : emptyForm);
     }
@@ -501,13 +508,12 @@ function EventEditDialog({ open, onOpenChange, onSubmit, onDelete, editingEvent,
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!form.event_name.trim()) return;
-    const wasCompleted = editingEvent?.is_completed || false;
     const data = {
       ...form,
       event_name: form.event_name.trim(),
       color: form.color || undefined,
       notes: form.notes || undefined,
-      completed_date: form.is_completed && !wasCompleted ? format(new Date(), "yyyy-MM-dd") : (!form.is_completed ? null : editingEvent?.completed_date),
+      ...statusUpdateFields(form.progress_status, editingEvent),
     };
     onSubmit(data);
   };
@@ -554,15 +560,10 @@ function EventEditDialog({ open, onOpenChange, onSubmit, onDelete, editingEvent,
               {form.color && <Button type="button" variant="outline" size="sm" onClick={() => setForm(f => ({ ...f, color: "" }))}>Reset</Button>}
             </div>
           </div>
-          {editingEvent && (
-            <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5">
-              <div>
-                <Label className="cursor-pointer">Completed</Label>
-                <p className="text-xs text-slate-400">Mark this event as done</p>
-              </div>
-              <Switch checked={form.is_completed} onCheckedChange={v => setForm(f => ({ ...f, is_completed: v }))} />
-            </div>
-          )}
+          <div className="space-y-1.5">
+            <Label>Progress Status</Label>
+            <TimelineStatusSelector value={form.progress_status} onChange={v => setForm(f => ({ ...f, progress_status: v }))} />
+          </div>
           <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5">
             <div>
               <Label className="cursor-pointer">Client Visible</Label>

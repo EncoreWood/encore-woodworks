@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Eye, Trash2, CheckCircle2, X } from "lucide-react";
+import { Plus, Eye, Trash2, CheckCircle2, X, Play } from "lucide-react";
+import { getProgressStatus, STATUS_BAR_COLOR } from "@/components/projects/timelineStatus";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
@@ -41,6 +42,11 @@ export default function TimelineModal({ open, onOpenChange, project }) {
 
   const completeMutation = useMutation({
     mutationFn: (event) => base44.entities.TimelineEvent.update(event.id, { is_completed: true, completed_date: format(new Date(), "yyyy-MM-dd") }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["timelineEvents", project.id] }),
+  });
+
+  const inProgressMutation = useMutation({
+    mutationFn: (event) => base44.entities.TimelineEvent.update(event.id, { progress_status: "in_progress", is_completed: false }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["timelineEvents", project.id] }),
   });
 
@@ -102,15 +108,32 @@ export default function TimelineModal({ open, onOpenChange, project }) {
             {!clientView && !isLoading && visibleEvents.length > 0 && (
               <div className="mt-4 space-y-1 border-t border-slate-200 pt-3">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Manage Events</p>
-                {visibleEvents.map(event => (
+                {visibleEvents.map(event => {
+                  const status = getProgressStatus(event);
+                  const dotColor = STATUS_BAR_COLOR[status] || event.color || TYPE_COLORS[event.event_type] || "#64748b";
+                  return (
                   <div key={event.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 text-sm">
-                    <div className="w-3 h-3 rounded flex-shrink-0" style={{ backgroundColor: event.is_completed ? "#22c55e" : (event.color || TYPE_COLORS[event.event_type] || "#64748b") }} />
-                    <span className={event.is_completed ? "text-slate-400 line-through flex-1 truncate" : "text-slate-700 flex-1 truncate"}>{event.event_name}</span>
-                    {!event.is_completed ? (
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => completeMutation.mutate(event)}>
-                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Complete
-                      </Button>
-                    ) : (
+                    <div className="w-3 h-3 rounded flex-shrink-0" style={{ backgroundColor: dotColor }} />
+                    <span className={status === "completed" ? "text-slate-400 line-through flex-1 truncate" : "text-slate-700 flex-1 truncate"}>{event.event_name}</span>
+                    {status === "not_started" && (
+                      <>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-50" onClick={() => inProgressMutation.mutate(event)}>
+                          <Play className="w-3.5 h-3.5 mr-1" /> Start
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => completeMutation.mutate(event)}>
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Complete
+                        </Button>
+                      </>
+                    )}
+                    {status === "in_progress" && (
+                      <>
+                        <span className="text-xs text-orange-600 font-medium">⏳ In Progress</span>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-green-600 hover:text-green-700 hover:bg-green-50" onClick={() => completeMutation.mutate(event)}>
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Complete
+                        </Button>
+                      </>
+                    )}
+                    {status === "completed" && (
                       <span className="text-xs text-green-600 font-medium">✅ Done</span>
                     )}
                     <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => handleBarClick(event)}>Edit</Button>
@@ -118,7 +141,8 @@ export default function TimelineModal({ open, onOpenChange, project }) {
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

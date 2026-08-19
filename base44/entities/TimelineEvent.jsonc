@@ -43,10 +43,20 @@
       "default": true,
       "description": "Whether this event is visible in client portal view"
     },
+    "progress_status": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "in_progress",
+        "completed"
+      ],
+      "default": "not_started",
+      "description": "3-state progress status (not_started / in_progress / completed). is_completed stays in sync: true only when completed."
+    },
     "is_completed": {
       "type": "boolean",
       "default": false,
-      "description": "Whether this event is completed"
+      "description": "Whether this event is completed (kept in sync with progress_status=completed for backward compatibility)"
     },
     "completed_date": {
       "type": "string",

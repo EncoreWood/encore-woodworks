@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { format, differenceInDays, addDays } from "date-fns";
 import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getProgressStatus, STATUS_BAR_COLOR } from "@/components/projects/timelineStatus";
 
 const TYPE_COLORS = {
   phase: "#3b82f6",
@@ -40,7 +41,9 @@ export default function GanttChart({ events, onBarClick, readOnly }) {
     const duration = Math.max(1, differenceInDays(end, start) + 1);
     const leftPct = (daysFromStart / totalDays) * 100;
     const widthPct = (duration / totalDays) * 100;
-    const color = event.is_completed ? COMPLETED_COLOR : (event.color || TYPE_COLORS[event.event_type] || TYPE_COLORS.event);
+    const status = getProgressStatus(event);
+    const statusColor = STATUS_BAR_COLOR[status];
+    const color = statusColor || (event.color || TYPE_COLORS[event.event_type] || TYPE_COLORS.event);
     return { leftPct, widthPct: Math.max(widthPct, 1.5), color, isMilestone };
   };
 
@@ -84,7 +87,7 @@ export default function GanttChart({ events, onBarClick, readOnly }) {
                         style={{ left: `${style.leftPct}%` }}
                       >
                         <div className="w-4 h-4 rotate-45 rounded-sm shadow-md transition-transform group-hover:scale-125" style={{ backgroundColor: style.color }} />
-                        {event.is_completed && <CheckCircle2 className="w-3 h-3 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white -rotate-45" />}
+                        {getProgressStatus(event) === "completed" && <CheckCircle2 className="w-3 h-3 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white -rotate-45" />}
                       </button>
                     ) : (
                       <button
@@ -98,7 +101,7 @@ export default function GanttChart({ events, onBarClick, readOnly }) {
                         style={{ left: `${style.leftPct}%`, width: `${style.widthPct}%`, backgroundColor: style.color, height: "28px" }}
                       >
                         <span className="text-[10px] font-bold text-white truncate flex items-center gap-1">
-                          {event.is_completed && <CheckCircle2 className="w-3 h-3 flex-shrink-0" />}
+                          {getProgressStatus(event) === "completed" && <CheckCircle2 className="w-3 h-3 flex-shrink-0" />}
                           {format(new Date(event.start_date), "M/d")} - {format(new Date(event.end_date), "M/d")}
                         </span>
                       </button>
