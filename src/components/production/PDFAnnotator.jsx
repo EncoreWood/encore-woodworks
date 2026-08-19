@@ -41,7 +41,6 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const lastTouchDistRef = useRef(null);   // distance at pinch start (gesture anchor)
   const fingerCountRef = useRef(0);
   const hasAutoFitRef = useRef(false);
-  const pinchCenterRef = useRef({ x: 0, y: 0 });  // pinch midpoint in element-local px (for transform-origin)
   const scaleRef = useRef(0.5);                    // mirror of `scale` for use in stale-closure-safe touch handlers
   const liveScaleRef = useRef(1);                 // mirror of `liveScale`
 
@@ -135,14 +134,6 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       e.preventDefault();
       const t0 = e.touches[0], t1 = e.touches[1];
       lastTouchDistRef.current = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
-      // Anchor the CSS scale at the pinch midpoint so the touched point stays put.
-      const rect = pageContainerRef.current?.getBoundingClientRect();
-      if (rect) {
-        pinchCenterRef.current = {
-          x: (t0.clientX + t1.clientX) / 2 - rect.left,
-          y: (t0.clientY + t1.clientY) / 2 - rect.top,
-        };
-      }
       panStartRef.current = null;
     } else if (e.touches.length === 1) {
       panStartRef.current = {
@@ -183,26 +174,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     if (e.touches.length < 2 && liveScaleRef.current !== 1) {
       const s = scaleRef.current || 0.5;
       const next = Math.max(0.3, Math.min(3, s * liveScaleRef.current));
-      // Effective zoom ratio actually applied (== live unless clamped at 0.3/3 bounds).
-      const eff = next / s;
-      const { x: cx, y: cy } = pinchCenterRef.current;
-      const px = panOffsetRef.current.x;
-      const py = panOffsetRef.current.y;
-      // Keep the pinch focal point on the exact same screen spot after the re-render.
-      // During the gesture the focal point (pinch midpoint, element-local px) sits at
-      // screen (px+cx, py+cy) — it's the transform origin, so it's independent of the
-      // live scale. After commit the page re-renders at `next` with transform-origin
-      // "center" and CSS scale 1, so that same PDF point is now at element-local
-      // (cx*eff, cy*eff). Compensate the pan so it lands back on (px+cx, py+cy):
-      //   newPan = oldPan + focalLocal * (1 - eff)
-      // CRITICAL: reset liveScale to 1 IN THE SAME UPDATE as setScale. react-pdf clears
-      // the canvas to the new `next` size immediately when scale changes; if liveScale
-      // stayed >1 during that window the canvas would be shown at (next * live) — a
-      // double-scaled blow-up. Setting both together keeps the canvas at CSS scale 1.
-      const newPanX = px + cx * (1 - eff);
-      const newPanY = py + cy * (1 - eff);
       setLive(1);
-      updatePanOffset({ x: newPanX, y: newPanY });
       setScale(next);
     }
     lastTouchDistRef.current = null;
@@ -662,9 +634,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
               ref={pageContainerRef}
               style={{
                 transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${liveScale})`,
-                transformOrigin: liveScale !== 1
-                  ? `${pinchCenterRef.current.x}px ${pinchCenterRef.current.y}px`
-                  : "center center",
+                transformOrigin: "center center",
                 transition: "none",
                 willChange: "transform",
               }}
