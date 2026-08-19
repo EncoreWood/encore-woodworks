@@ -25,6 +25,8 @@ const HIGHLIGHT_COLORS = [
   { label: "Purple", color: "#9333ea", hex: "rgba(147,51,234,0.28)" },
   { label: "Pink",   color: "#db2777", hex: "rgba(219,39,119,0.28)" },
   { label: "Teal",   color: "#0891b2", hex: "rgba(8,145,178,0.28)" },
+  { label: "Custom", color: "#923a57", hex: "rgba(146,58,87,0.28)" },
+  { label: "Base Paneling", color: "#667484", hex: "rgba(102,116,132,0.28)" },
 ];
 
 function drawArrow(ctx, from, to, withHead) {
