@@ -9,6 +9,7 @@ import ClientPresentationViewer from "@/components/presentations/ClientPresentat
 import JobPhotosSection from "@/components/projects/JobPhotosSection";
 import RoomNotes from "@/components/projects/RoomNotes";
 import RoomFileGallery from "@/components/projects/RoomFileGallery";
+import PortalMeetingsSection from "@/components/projects/PortalMeetingsSection";
 import { cn } from "@/lib/utils";
 
 // ── Milestone tracker ──────────────────────────────────────────────────────
@@ -752,6 +753,7 @@ export default function ClientPortal() {
           { key: "photos", label: "Photos", show: settings?.show_photos !== false },
           { key: "documents", label: "Documents", show: settings?.show_documents !== false && documents.length > 0 },
           { key: "presentations", label: "Proposal", show: settings?.show_presentations !== false },
+          { key: "meetings", label: "Meetings", show: true },
           { key: "messages", label: "Messages", show: settings?.show_messages !== false },
           { key: "financials", label: "Financials", show: !!settings?.show_financials },
           { key: "notes", label: "Notes", show: settings?.show_notes !== false },
@@ -864,6 +866,12 @@ export default function ClientPortal() {
         {portalTab === "messages" && settings?.show_messages !== false && (
           <Section title="Messages" icon={MessageSquare}>
             <Messages projectId={project.id} user={user} />
+          </Section>
+        )}
+
+        {portalTab === "meetings" && (
+          <Section title="Meetings" icon={Calendar}>
+            <PortalMeetingsSection project={project} user={user} />
           </Section>
         )}
 

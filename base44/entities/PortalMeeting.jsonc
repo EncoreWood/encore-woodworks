@@ -1,0 +1,110 @@
+{
+  "name": "PortalMeeting",
+  "type": "object",
+  "properties": {
+    "project_id": {
+      "type": "string",
+      "description": "Reference to Project ID"
+    },
+    "project_name": {
+      "type": "string",
+      "description": "Project name for reference"
+    },
+    "client_email": {
+      "type": "string",
+      "description": "Email of the client this meeting belongs to"
+    },
+    "client_name": {
+      "type": "string",
+      "description": "Client display name"
+    },
+    "title": {
+      "type": "string",
+      "description": "Meeting title / subject"
+    },
+    "meeting_type": {
+      "type": "string",
+      "enum": [
+        "in_person",
+        "virtual",
+        "phone",
+        "shop_visit"
+      ],
+      "default": "in_person",
+      "description": "Type of meeting"
+    },
+    "preferred_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Client's preferred date (when requesting)"
+    },
+    "preferred_time": {
+      "type": "string",
+      "description": "Client's preferred time (when requesting)"
+    },
+    "scheduled_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Admin-confirmed meeting date"
+    },
+    "scheduled_time": {
+      "type": "string",
+      "description": "Admin-confirmed meeting time"
+    },
+    "location": {
+      "type": "string",
+      "description": "Meeting location or link"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "requested",
+        "scheduled",
+        "completed",
+        "cancelled"
+      ],
+      "default": "requested",
+      "description": "Current meeting status"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Client's request notes / purpose"
+    },
+    "admin_notes": {
+      "type": "string",
+      "description": "Internal / admin notes"
+    }
+  },
+  "required": [
+    "project_id",
+    "client_email",
+    "title"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.client_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "data.client_email": "{{user.email}}"
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
