@@ -10,6 +10,7 @@ import JobPhotosSection from "@/components/projects/JobPhotosSection";
 import RoomNotes from "@/components/projects/RoomNotes";
 import RoomFileGallery from "@/components/projects/RoomFileGallery";
 import ClientTasksMeetingsCard from "@/components/projects/ClientTasksMeetingsCard";
+import BidClientView from "@/components/bidding/BidClientView";
 import { cn } from "@/lib/utils";
 
 // ── Milestone tracker ──────────────────────────────────────────────────────
@@ -485,6 +486,7 @@ function ClientProposalSection({ projectId }) {
   const [bids, setBids] = useState([]);
   const [presentations, setPresentations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [previewBid, setPreviewBid] = useState(null);
   useEffect(() => {
     Promise.all([
       base44.entities.Bid.filter({ project_id: projectId }),
@@ -516,7 +518,12 @@ function ClientProposalSection({ projectId }) {
         <Section title="Estimates" icon={FileText}>
           <div className="space-y-2">
             {bids.map(bid => (
-              <div key={bid.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50">
+              <button
+                key={bid.id}
+                type="button"
+                onClick={() => setPreviewBid(bid)}
+                className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:border-amber-300 hover:bg-amber-50 transition-all text-left"
+              >
                 <div className="w-9 h-9 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
                   <FileText className="w-4 h-4 text-amber-600" />
                 </div>
@@ -526,12 +533,21 @@ function ClientProposalSection({ projectId }) {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-sm font-bold text-slate-800">${(bid.total || 0).toLocaleString()}</p>
-                  <span className="text-xs text-slate-500 capitalize">{bid.status || "draft"}</span>
+                  <span className="text-xs text-amber-600 font-medium">View estimate →</span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </Section>
+      )}
+
+      {previewBid && (
+        <BidClientView
+          open
+          onClose={() => setPreviewBid(null)}
+          bid={previewBid}
+          bidType={previewBid.bid_type}
+        />
       )}
 
       {hasPresentations && (
