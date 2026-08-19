@@ -102,7 +102,9 @@ export default function ProjectTimelineSection({ project }) {
 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const clearAllMutation = useMutation({
-    mutationFn: () => base44.entities.TimelineEvent.deleteMany({ project_id: project.id }),
+    mutationFn: () => base44.entities.TimelineEvent.bulkUpdate(
+      events.map(e => ({ id: e.id, start_date: null, end_date: null }))
+    ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["timelineEvents", project.id] });
       setShowClearConfirm(false);
@@ -256,7 +258,7 @@ export default function ProjectTimelineSection({ project }) {
                   variant="outline"
                   className="gap-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
                   onClick={() => setShowClearConfirm(true)}
-                  title="Remove all timeline events for this project"
+                  title="Clear all dates from this project's timeline (keeps the milestone rows)"
                 >
                   <Trash2 className="w-4 h-4" /> Clear Timeline
                 </Button>
@@ -440,10 +442,10 @@ export default function ProjectTimelineSection({ project }) {
       <Dialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Clear all timeline events?</DialogTitle>
+            <DialogTitle>Clear all timeline dates?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-slate-600">
-            This will remove all <span className="font-semibold text-slate-900">{events.length}</span> timeline {events.length === 1 ? "event" : "events"} for this project. This cannot be undone. Continue?
+            This will clear the start and end dates from all <span className="font-semibold text-slate-900">{events.length}</span> timeline {events.length === 1 ? "event" : "events"} for this project. The milestone rows (Design, Orders, Prep, etc.) will stay — only their date ranges are removed so you can re-plan from scratch. Continue?
           </p>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setShowClearConfirm(false)} disabled={clearAllMutation.isPending}>Cancel</Button>
