@@ -25,6 +25,9 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(0.5);
+  // Live CSS-transform zoom applied during a pinch gesture (GPU-accelerated, no re-render).
+  // Committed into `scale` (which re-renders the PDF for crisp text) only after the gesture ends.
+  const [liveScale, setLiveScale] = useState(1);
   const [rotation, setRotation] = useState(90);
   const [tool, setTool] = useState("pen");
   const [isPointerDown, setIsPointerDown] = useState(false);
@@ -35,9 +38,16 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
 
   const scrollContainerRef = useRef(null);
   const panStartRef = useRef(null);
-  const lastTouchDistRef = useRef(null);
+  const lastTouchDistRef = useRef(null);   // distance at pinch start (gesture anchor)
   const fingerCountRef = useRef(0);
   const hasAutoFitRef = useRef(false);
+  const pinchCenterRef = useRef({ x: 0, y: 0 });  // pinch midpoint in element-local px (for transform-origin)
+  const scaleRef = useRef(0.5);                    // mirror of `scale` for use in stale-closure-safe touch handlers
+  const liveScaleRef = useRef(1);                 // mirror of `liveScale`
+
+  const setLive = useCallback((v) => { liveScaleRef.current = v; setLiveScale(v); }, []);
+
+  useEffect(() => { scaleRef.current = scale; }, [scale]);
 
   // Fit the PDF page to the available container width so it uses the screen
   // instead of opening at a tiny fixed zoom.
@@ -81,11 +91,18 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     }
   }, []);
 
+  // Re-sync the annotation canvas size when the rendered page size changes.
+  // NOTE: we intentionally do NOT reset pan here — pan should persist across zoom
+  // changes so the view doesn't jump when a pinch-zoom commits.
   useEffect(() => {
-    updatePanOffset({ x: 0, y: 0 });
     setTimeout(syncCanvasSize, 100);
     setLastHighlight(null);
   }, [scale, rotation, pageNumber, syncCanvasSize]);
+
+  // Pan resets only when the orientation/page changes (not on zoom).
+  useEffect(() => {
+    updatePanOffset({ x: 0, y: 0 });
+  }, [rotation, pageNumber]);
 
   // Reset the one-time auto-fit flag whenever the modal (re)opens
   useEffect(() => {
@@ -108,17 +125,24 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     updatePanOffset({ x: panOffsetRef.current.x - e.deltaX, y: panOffsetRef.current.y - e.deltaY });
   };
 
-  // ── Touch handlers: finger = pan/pinch; stylus = draw (let through to pointer) ──
+  // ── Touch handlers ────────────────────────────────────────────────────────────
+  // Fingers: 1 = pan (CSS translate3d), 2 = pinch-zoom (CSS scale, no PDF re-render mid-gesture).
+  // Stylus (Apple Pencil) falls through to the pointer handlers for drawing.
   const handleTouchStart = (e) => {
-    // If any touch is from Apple Pencil, don't pan — let pointer events handle it
     if ([...e.touches].some(t => t.touchType === "stylus")) return;
     fingerCountRef.current = e.touches.length;
     if (e.touches.length === 2) {
       e.preventDefault();
-      lastTouchDistRef.current = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
+      const t0 = e.touches[0], t1 = e.touches[1];
+      lastTouchDistRef.current = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
+      // Anchor the CSS scale at the pinch midpoint so the touched point stays put.
+      const rect = pageContainerRef.current?.getBoundingClientRect();
+      if (rect) {
+        pinchCenterRef.current = {
+          x: (t0.clientX + t1.clientX) / 2 - rect.left,
+          y: (t0.clientY + t1.clientY) / 2 - rect.top,
+        };
+      }
       panStartRef.current = null;
     } else if (e.touches.length === 1) {
       panStartRef.current = {
@@ -135,12 +159,15 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     fingerCountRef.current = e.touches.length;
     e.preventDefault();
     if (e.touches.length === 2) {
-      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const dist = Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY);
       if (lastTouchDistRef.current) {
+        const s = scaleRef.current || 0.5;
+        // Keep the committed render as-is; apply zoom purely as a CSS transform.
         const ratio = dist / lastTouchDistRef.current;
-        setScale(s => Math.max(0.3, Math.min(3, s * ratio)));
+        const minL = 0.3 / s, maxL = 3 / s;
+        setLive(Math.max(minL, Math.min(maxL, ratio)));
       }
-      lastTouchDistRef.current = dist;
     } else if (e.touches.length === 1 && panStartRef.current) {
       const dx = e.touches[0].clientX - panStartRef.current.x;
       const dy = e.touches[0].clientY - panStartRef.current.y;
@@ -151,6 +178,14 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const handleTouchEnd = (e) => {
     if ([...e.changedTouches].some(t => t.touchType === "stylus")) return;
     fingerCountRef.current = e.touches.length;
+    // Commit the live zoom into the real render scale now that the gesture is over.
+    // This is the ONLY point the PDF re-renders during a pinch — no mid-gesture flashes.
+    if (e.touches.length < 2 && liveScaleRef.current !== 1) {
+      const s = scaleRef.current || 0.5;
+      const next = Math.max(0.3, Math.min(3, s * liveScaleRef.current));
+      setLive(1);
+      setScale(next);
+    }
     lastTouchDistRef.current = null;
     panStartRef.current = null;
   };
@@ -557,7 +592,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
           <Button variant="outline" size="sm" onClick={() => setScale(s => Math.max(0.3, s - 0.15))}>
             <ZoomOut className="w-4 h-4" />
           </Button>
-          <span className="text-sm text-slate-600 w-10 text-center">{Math.round(scale * 100)}%</span>
+          <span className="text-sm text-slate-600 w-10 text-center">{Math.round(scale * liveScale * 100)}%</span>
           <Button variant="outline" size="sm" onClick={() => setScale(s => Math.min(3, s + 0.15))}>
             <ZoomIn className="w-4 h-4" />
           </Button>
@@ -606,12 +641,19 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
             <div
               className="relative inline-block"
               ref={pageContainerRef}
-              style={{ transform: `translate(${panOffset.x}px, ${panOffset.y}px)`, transition: "none" }}
+              style={{
+                transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${liveScale})`,
+                transformOrigin: liveScale !== 1
+                  ? `${pinchCenterRef.current.x}px ${pinchCenterRef.current.y}px`
+                  : "center center",
+                transition: "none",
+                willChange: "transform",
+              }}
             >
               <Document
                 file={pdfUrl}
                 onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                loading={<div className="flex items-center justify-center p-8 text-slate-500">Loading PDF...</div>}
+                loading={null}
               >
                 <Page
                   pageNumber={pageNumber}
