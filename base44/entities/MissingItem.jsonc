@@ -24,7 +24,7 @@
     },
     "cabinet_name": {
       "type": "string",
-      "description": "Cabinet identifier (e.g. Upper-Left, Base-1)"
+      "description": "Cabinet identifier (e.g. Upper-Left, Base-1, RSC6)"
     },
     "item_description": {
       "type": "string",
@@ -42,6 +42,46 @@
         "other"
       ],
       "description": "Type of missing item"
+    },
+    "pickup_type": {
+      "type": "string",
+      "enum": [
+        "Door",
+        "Drawer Front",
+        "Panel",
+        "Molding",
+        "Hardware",
+        "Other"
+      ],
+      "description": "Pick up part type extracted from the plan highlight"
+    },
+    "quantity": {
+      "type": "number",
+      "description": "Quantity needed"
+    },
+    "width": {
+      "type": "string",
+      "description": "Width (fraction string e.g. '15 5/8')"
+    },
+    "length": {
+      "type": "string",
+      "description": "Length (fraction string e.g. '24 13/16')"
+    },
+    "material": {
+      "type": "string",
+      "description": "Material spec (e.g. 'Maple FF')"
+    },
+    "finish": {
+      "type": "string",
+      "description": "Finish spec pulled from the plan header"
+    },
+    "source_page": {
+      "type": "number",
+      "description": "PDF page number the pick up was created from"
+    },
+    "highlight_image_url": {
+      "type": "string",
+      "description": "URL of the cropped highlight snapshot image"
     },
     "description": {
       "type": "string",
@@ -75,11 +115,11 @@
     "status": {
       "type": "string",
       "enum": [
-        "open",
-        "ordered",
-        "resolved"
+        "Open",
+        "Ordered",
+        "Resolved"
       ],
-      "default": "open",
+      "default": "Open",
       "description": "Current resolution status"
     },
     "ordered_by": {

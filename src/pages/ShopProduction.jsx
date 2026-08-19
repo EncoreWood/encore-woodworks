@@ -21,6 +21,7 @@ import ProductionCard from "../components/production/ProductionCard";
 import JobPacketsTab from "../components/production/JobPacketsTab";
 import ProductionMissingItemsTab from "../components/production/ProductionMissingItemsTab";
 import QuickReportMissingDialog from "../components/production/QuickReportMissingDialog";
+import PickupFromHighlightDialog from "../components/production/PickupFromHighlightDialog";
 
 const productionColumns = [
   { id: "cut", label: "1. Cut", color: "bg-orange-50" },
@@ -54,6 +55,7 @@ export default function ShopProduction() {
   const [quickReportItem, setQuickReportItem] = useState(null);
   const [showEndOfDay, setShowEndOfDay] = useState(false);
   const [scrollToProjectId, setScrollToProjectId] = useState(null);
+  const [pickupFromHighlight, setPickupFromHighlight] = useState(null);
 
   useEffect(() => {
     base44.auth.me().then(setCurrentUser).catch(() => {});
@@ -672,6 +674,21 @@ export default function ShopProduction() {
             pdfUrl={currentPdfUrl}
             annotations={currentAnnotations}
             onSave={handleSaveAnnotations}
+            onRequestPickup={({ cropDataUrl, pageDataUrl, pageNumber }) => {
+              setPickupFromHighlight({ cropDataUrl, pageDataUrl, pageNumber, productionItem: annotatingPdf.item, currentUser });
+            }}
+          />
+        )}
+
+        {pickupFromHighlight && (
+          <PickupFromHighlightDialog
+            open={!!pickupFromHighlight}
+            onOpenChange={(o) => { if (!o) setPickupFromHighlight(null); }}
+            cropDataUrl={pickupFromHighlight.cropDataUrl}
+            pageDataUrl={pickupFromHighlight.pageDataUrl}
+            pageNumber={pickupFromHighlight.pageNumber}
+            productionItem={pickupFromHighlight.productionItem}
+            currentUser={pickupFromHighlight.currentUser}
           />
         )}
       </div>

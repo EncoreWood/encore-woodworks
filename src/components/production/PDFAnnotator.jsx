@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Pencil, Eraser, Download, Trash2, ZoomIn, ZoomOut, RotateCw, Undo2, Type, ArrowRight, Minus, Highlighter, Hand } from "lucide-react";
+import { Pencil, Eraser, Download, Trash2, ZoomIn, ZoomOut, RotateCw, Undo2, Type, ArrowRight, Minus, Highlighter, Hand, ClipboardCheck } from "lucide-react";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 
@@ -21,7 +21,7 @@ const HIGHLIGHT_COLORS = [
   { label: "Misc",  color: "#6b7280", hex: "rgba(209,213,219,0.45)" },
 ];
 
-export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", hideDownload = false }) {
+export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", hideDownload = false, onRequestPickup }) {
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
   const [scale, setScale] = useState(0.5);
@@ -59,6 +59,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const [currentLine, setCurrentLine] = useState(null); // normalized {start,end}
   const [textInput, setTextInput] = useState(null);     // pixel pos for input placement
   const [textValue, setTextValue] = useState("");
+  const [lastHighlight, setLastHighlight] = useState(null); // most recent highlight ann on this page
 
   const canvasRef = useRef(null);
   const pageContainerRef = useRef(null);
@@ -83,6 +84,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   useEffect(() => {
     updatePanOffset({ x: 0, y: 0 });
     setTimeout(syncCanvasSize, 100);
+    setLastHighlight(null);
   }, [scale, rotation, pageNumber, syncCanvasSize]);
 
   // Reset the one-time auto-fit flag whenever the modal (re)opens
@@ -265,7 +267,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       const rw = Math.abs(de.x - ds.x);
       const rh = Math.abs(de.y - ds.y);
       if (rw > 5 && rh > 5) {
-        setAnnList(prev => [...prev, {
+        const hl = {
           type: "highlight",
           x: Math.min(currentLine.start.x, npos.x),
           y: Math.min(currentLine.start.y, npos.y),
@@ -273,7 +275,9 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
           h: Math.abs(npos.y - currentLine.start.y),
           color: highlightColor,
           page: pageNumber
-        }]);
+        };
+        setAnnList(prev => [...prev, hl]);
+        setLastHighlight(hl);
       }
       setCurrentLine(null);
     }
@@ -327,6 +331,33 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const clearPage = () => setAnnList(prev => prev.filter(a => a.page !== pageNumber));
   const clearAll = () => setAnnList([]);
   const handleSave = () => { onSave(annList, aiNotes); onOpenChange(false); };
+
+  // ── Capture highlighted region + full page as images for AI pick-up extraction ──
+  const handleCreatePickup = () => {
+    const hl = lastHighlight;
+    if (!hl || !onRequestPickup) return;
+    const pageCanvas = pageContainerRef.current?.querySelector(".react-pdf__Page__canvas");
+    if (!pageCanvas) return;
+    const PW = pageCanvas.width, PH = pageCanvas.height;
+    const sx = Math.max(0, Math.round(hl.x * PW));
+    const sy = Math.max(0, Math.round(hl.y * PH));
+    const sw = Math.max(1, Math.min(PW - sx, Math.round(hl.w * PW)));
+    const sh = Math.max(1, Math.min(PH - sy, Math.round(hl.h * PH)));
+
+    const off = document.createElement("canvas");
+    off.width = sw; off.height = sh;
+    const octx = off.getContext("2d");
+    // Fill white background so transparent areas aren't black in JPEG
+    octx.fillStyle = "#ffffff";
+    octx.fillRect(0, 0, sw, sh);
+    octx.drawImage(pageCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+    const cropDataUrl = off.toDataURL("image/jpeg", 0.92);
+    let pageDataUrl = null;
+    try { pageDataUrl = pageCanvas.toDataURL("image/jpeg", 0.7); } catch {}
+
+    onRequestPickup({ cropDataUrl, pageDataUrl, pageNumber, highlightRect: { x: hl.x, y: hl.y, w: hl.w, h: hl.h } });
+    setLastHighlight(null);
+  };
 
   // ── Draw arrow helper (pixel coords) ──────────────────────────────────────
   const drawArrow = (ctx, from, to, withHead) => {
@@ -646,6 +677,25 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                   }}
                   placeholder="Type note & Enter"
                 />
+              )}
+
+              {/* Floating "Create Pick Up" action near the latest highlight */}
+              {lastHighlight && onRequestPickup && (
+                <button
+                  type="button"
+                  onPointerDown={(e) => { e.stopPropagation(); }}
+                  onClick={(e) => { e.stopPropagation(); handleCreatePickup(); }}
+                  style={{
+                    position: "absolute",
+                    left: Math.min(canvasSize.width - 170, (lastHighlight.x + lastHighlight.w) * canvasSize.width),
+                    top: Math.max(2, lastHighlight.y * canvasSize.height - 34),
+                    zIndex: 25,
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-lg"
+                  title="Create a Pick Up (missing item) from this highlighted spec row"
+                >
+                  <ClipboardCheck className="w-3.5 h-3.5" /> Create Pick Up from this
+                </button>
               )}
             </div>
           </div>
