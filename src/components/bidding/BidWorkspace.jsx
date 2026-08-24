@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -138,6 +138,11 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const [pendingAnalysis, setPendingAnalysis] = useState(null);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const [showLinkProjectDialog, setShowLinkProjectDialog] = useState(false);
+  // Track the id of a newly-created bid so subsequent Saves UPDATE it instead
+  // of creating duplicate bid records (the parent only knows the id for bids
+  // opened from the list, not for bids created in this workspace).
+  const [createdBidId, setCreatedBidId] = useState(null);
+  const effBidId = bidId || createdBidId;
   const [projectSearch, setProjectSearch] = useState("");
   const [allProjects, setAllProjects] = useState([]);
 
@@ -145,6 +150,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   // so a 30s poll (or tab switch) never clobbers in-progress local edits (rooms,
   // annotations, notes) with the server snapshot. We hydrate from the server exactly
   // once per bidId (see hydratedBidIdRef below).
+  const queryClient = useQueryClient();
   const { data: bidData } = useQuery({
     queryKey: ["bid", bidId],
     queryFn: () => base44.entities.Bid.filter({ id: bidId }),
@@ -153,6 +159,16 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
     refetchOnWindowFocus: false,
   });
   const hydratedBidIdRef = useRef(null);
+
+  // Keep the cached bid snapshot in sync after any persistence so reopening the
+  // editor hydrates from the just-saved data instead of a stale pre-save copy.
+  const refreshBidCache = (id, patch) => {
+    if (!id) return;
+    queryClient.setQueryData(["bid", id], (old) => {
+      const prev = Array.isArray(old) ? old?.[0] : old;
+      return [{ ...(prev || {}), ...patch, id, updated_date: new Date().toISOString() }];
+    });
+  };
 
   useEffect(() => {
     loadPricing();
@@ -594,10 +610,12 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
       plan_annotations: planAnnotations,
       plan_scale_px_per_ft: planScalePxPerFt || null
     };
-    if (bidId) {
-      await base44.entities.Bid.update(bidId, bidData);
+    if (effBidId) {
+      await base44.entities.Bid.update(effBidId, bidData);
+      refreshBidCache(effBidId, { ...bidData, project_id: newProject.id });
     } else {
-      await base44.entities.Bid.create(bidData);
+      const created = await base44.entities.Bid.create(bidData);
+      setCreatedBidId(created.id);
     }
     setLinkedProjectId(newProject.id);
     setIsCreatingProject(false);
@@ -621,8 +639,9 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
     setLinkedProjectId(project.id);
     setShowLinkProjectDialog(false);
     // Also save the link immediately if bid already exists
-    if (bidId) {
-      await base44.entities.Bid.update(bidId, { project_id: project.id });
+    if (effBidId) {
+      await base44.entities.Bid.update(effBidId, { project_id: project.id });
+      refreshBidCache(effBidId, { project_id: project.id });
     }
   };
 
@@ -648,10 +667,13 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
       plan_annotations: planAnnotations,
       plan_scale_px_per_ft: planScalePxPerFt || null
     };
-    if (bidId) {
-      await base44.entities.Bid.update(bidId, data);
+    const id = effBidId;
+    if (id) {
+      await base44.entities.Bid.update(id, data);
+      refreshBidCache(id, data);
     } else {
-      await base44.entities.Bid.create(data);
+      const created = await base44.entities.Bid.create(data);
+      setCreatedBidId(created.id);
     }
     setIsSaving(false);
     setSaved(true);
@@ -1041,10 +1063,11 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
             ? recomputePlanMarkRoom(r, savedAnnotations, effScale, pricingConfigs, bidType)
             : r));
           // Persist immediately so annotations survive page reload
-          if (bidId) {
+          if (effBidId) {
             const patch = { plan_annotations: savedAnnotations, ai_notes: notes };
             if (scalePxPerFt && scalePxPerFt > 0) patch.plan_scale_px_per_ft = scalePxPerFt;
-            await base44.entities.Bid.update(bidId, patch);
+            await base44.entities.Bid.update(effBidId, patch);
+            refreshBidCache(effBidId, patch);
           }
         }}
         projectName={projectName}
