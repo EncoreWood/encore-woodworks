@@ -54,59 +54,44 @@ export default function BidClientView({ open, onClose, bid, bidType }) {
   };
 
   const handlePrint = () => {
+    // Reuse the EXACT on-screen preview markup (printRef) — no separate print
+    // template. To make the preview's Tailwind utility classes render identically
+    // in the print window, inject the app's own compiled stylesheet (read from
+    // the live document's styleSheets) instead of a hand-rolled substitute.
     const content = printRef.current.innerHTML;
+    const appCss = Array.from(document.styleSheets).map(sheet => {
+      try { return Array.from(sheet.cssRules).map(r => r.cssText).join("\n"); }
+      catch (e) { return ""; } // cross-origin sheets are unreadable; skip them
+    }).join("\n");
+
     const win = window.open("", "_blank");
-    win.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>${bid.project_name || "Bid"} - Cabinet Estimate</title>
-        <style>
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: Georgia, serif; color: #1e1e1e; background: white; padding: 40px; max-width: 800px; margin: 0 auto; }
-          .header { text-align: center; border-bottom: 3px solid #92400e; padding-bottom: 24px; margin-bottom: 28px; }
-          .company { font-size: 13px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: #92400e; margin-bottom: 6px; }
-          h1 { font-size: 26px; font-weight: 700; color: #1e1e1e; }
-          .meta { margin-top: 10px; font-size: 13px; color: #555; }
-          .meta span { margin: 0 12px; }
-          .badge { display: inline-block; background: #fef3c7; color: #92400e; padding: 2px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-top: 8px; }
-          .room { margin-bottom: 24px; page-break-inside: avoid; }
-          .room-header { background: #1e293b; color: white; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-radius: 6px 6px 0 0; }
-          .room-name { font-size: 15px; font-weight: 700; }
-          .room-total { font-size: 15px; font-weight: 700; color: #fcd34d; }
-          .items-table { width: 100%; border-collapse: collapse; border: 1px solid #e2e8f0; border-top: none; }
-          .items-table td, .items-table th { padding: 8px 14px; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
-          .items-table th { background: #f8fafc; font-weight: 600; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
-          .items-table td:last-child, .items-table th:last-child { text-align: right; }
-          .items-table tr:last-child td { border-bottom: none; }
-          .cat-badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
-          .cat-base { background: #fef3c7; color: #92400e; }
-          .cat-upper { background: #dbeafe; color: #1d4ed8; }
-          .cat-tall { background: #ede9fe; color: #6d28d9; }
-          .cat-misc { background: #f1f5f9; color: #475569; }
-          .totals-section { margin-top: 28px; border-top: 3px solid #92400e; padding-top: 20px; }
-          .total-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 14px; color: #475569; }
-          .grand-total { display: flex; justify-content: space-between; padding: 14px 0 0; font-size: 22px; font-weight: 700; color: #1e1e1e; border-top: 1px solid #e2e8f0; margin-top: 8px; }
-          .grand-total .amount { color: #92400e; }
-          .specs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 24px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; margin-bottom: 24px; }
-          .spec-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; }
-          .spec-value { font-size: 13px; font-weight: 600; color: #1e293b; margin-top: 2px; }
-          .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 18px; font-size: 11px; color: #94a3b8; text-align: center; }
-          .payment-terms { margin-top: 24px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 16px; }
-          .payment-terms h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 8px; }
-          .payment-terms p { font-size: 12px; color: #475569; line-height: 1.6; }
-          .disclaimer { margin-top: 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 14px 16px; }
-          .disclaimer h3 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #1d4ed8; margin-bottom: 6px; }
-          .disclaimer p { font-size: 11px; color: #1e3a5f; line-height: 1.6; }
-          @media print { body { padding: 20px; } }
-        </style>
-      </head>
-      <body>${content}</body>
-      </html>
-    `);
+    win.document.write(`<!DOCTYPE html><html><head>
+      <meta charset="utf-8" />
+      <title>${(bid.project_name || "Bid")} - Cabinet Estimate</title>
+      <style>
+        ${appCss}
+        /* Force background colors/graphics to render when printing */
+        html, body {
+          margin: 0;
+          padding: 0;
+          background: #ffffff;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        @page { margin: 0.5in; }
+        /* Keep room headers with their items, avoid splitting rows */
+        .room { page-break-inside: avoid; }
+        .room-header { page-break-after: avoid; }
+        thead { display: table-header-group; }
+        tr, img { page-break-inside: avoid; }
+        img { max-width: 100%; height: auto; }
+      </style>
+    </head><body>${content}</body></html>`);
     win.document.close();
     win.focus();
-    setTimeout(() => { win.print(); }, 400);
+    // Give the logo image a moment to load before opening the print dialog.
+    setTimeout(() => { win.print(); }, 500);
   };
 
   return (
