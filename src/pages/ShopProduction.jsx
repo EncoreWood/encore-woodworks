@@ -674,8 +674,8 @@ export default function ShopProduction() {
             pdfUrl={currentPdfUrl}
             annotations={currentAnnotations}
             onSave={handleSaveAnnotations}
-            onRequestPickup={({ cropDataUrl, pageDataUrl, pageNumber }) => {
-              setPickupFromHighlight({ cropDataUrl, pageDataUrl, pageNumber, productionItem: annotatingPdf.item, currentUser });
+            onRequestPickup={({ crops, pageDataUrl, pageNumber }) => {
+              setPickupFromHighlight({ crops, pageDataUrl, pageNumber, productionItem: annotatingPdf.item, currentUser });
             }}
           />
         )}
@@ -684,7 +684,7 @@ export default function ShopProduction() {
           <PickupFromHighlightDialog
             open={!!pickupFromHighlight}
             onOpenChange={(o) => { if (!o) setPickupFromHighlight(null); }}
-            cropDataUrl={pickupFromHighlight.cropDataUrl}
+            crops={pickupFromHighlight.crops}
             pageDataUrl={pickupFromHighlight.pageDataUrl}
             pageNumber={pickupFromHighlight.pageNumber}
             productionItem={pickupFromHighlight.productionItem}

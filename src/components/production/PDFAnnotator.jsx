@@ -68,7 +68,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const [currentLine, setCurrentLine] = useState(null); // normalized {start,end}
   const [textInput, setTextInput] = useState(null);     // pixel pos for input placement
   const [textValue, setTextValue] = useState("");
-  const [lastHighlight, setLastHighlight] = useState(null); // most recent highlight ann on this page
+  const [lastHighlight, setLastHighlight] = useState(null); // most recent highlight ann on this page (for button positioning)
+  const [pendingHighlights, setPendingHighlights] = useState([]); // highlight anns on this page not yet turned into pickups
 
   const canvasRef = useRef(null);
   const pageContainerRef = useRef(null);
@@ -96,6 +97,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   useEffect(() => {
     setTimeout(syncCanvasSize, 100);
     setLastHighlight(null);
+    setPendingHighlights([]);
   }, [scale, rotation, pageNumber, syncCanvasSize]);
 
   // Pan resets only when the orientation/page changes (not on zoom).
@@ -304,6 +306,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         };
         setAnnList(prev => [...prev, hl]);
         setLastHighlight(hl);
+        setPendingHighlights(prev => [...prev, hl]);
       }
       setCurrentLine(null);
     }
@@ -329,6 +332,12 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       }
       if (ann.type === "text") return Math.hypot(ann.x * w - x, ann.y * h - y) >= t * 2;
       return true;
+    }));
+    // Keep pending pickup highlights in sync with the eraser (pending only holds highlights)
+    setPendingHighlights(prev => prev.filter(ann => {
+      if (ann.page !== pageNumber) return true;
+      const ax = ann.x * w, ay = ann.y * h, aw = ann.w * w, ah = ann.h * h;
+      return !(x >= ax && x <= ax + aw && y >= ay && y <= ay + ah);
     }));
   };
 
@@ -360,28 +369,29 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
 
   // ── Capture highlighted region + full page as images for AI pick-up extraction ──
   const handleCreatePickup = () => {
-    const hl = lastHighlight;
-    if (!hl || !onRequestPickup) return;
+    if (!pendingHighlights.length || !onRequestPickup) return;
     const pageCanvas = pageContainerRef.current?.querySelector(".react-pdf__Page__canvas");
     if (!pageCanvas) return;
     const PW = pageCanvas.width, PH = pageCanvas.height;
-    const sx = Math.max(0, Math.round(hl.x * PW));
-    const sy = Math.max(0, Math.round(hl.y * PH));
-    const sw = Math.max(1, Math.min(PW - sx, Math.round(hl.w * PW)));
-    const sh = Math.max(1, Math.min(PH - sy, Math.round(hl.h * PH)));
-
-    const off = document.createElement("canvas");
-    off.width = sw; off.height = sh;
-    const octx = off.getContext("2d");
-    // Fill white background so transparent areas aren't black in JPEG
-    octx.fillStyle = "#ffffff";
-    octx.fillRect(0, 0, sw, sh);
-    octx.drawImage(pageCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
-    const cropDataUrl = off.toDataURL("image/jpeg", 0.92);
+    const crops = pendingHighlights.map(hl => {
+      const sx = Math.max(0, Math.round(hl.x * PW));
+      const sy = Math.max(0, Math.round(hl.y * PH));
+      const sw = Math.max(1, Math.min(PW - sx, Math.round(hl.w * PW)));
+      const sh = Math.max(1, Math.min(PH - sy, Math.round(hl.h * PH)));
+      const off = document.createElement("canvas");
+      off.width = sw; off.height = sh;
+      const octx = off.getContext("2d");
+      // Fill white background so transparent areas aren't black in JPEG
+      octx.fillStyle = "#ffffff";
+      octx.fillRect(0, 0, sw, sh);
+      octx.drawImage(pageCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+      return { cropDataUrl: off.toDataURL("image/jpeg", 0.92), highlightRect: { x: hl.x, y: hl.y, w: hl.w, h: hl.h } };
+    });
     let pageDataUrl = null;
     try { pageDataUrl = pageCanvas.toDataURL("image/jpeg", 0.7); } catch {}
 
-    onRequestPickup({ cropDataUrl, pageDataUrl, pageNumber, highlightRect: { x: hl.x, y: hl.y, w: hl.w, h: hl.h } });
+    onRequestPickup({ crops, pageDataUrl, pageNumber });
+    setPendingHighlights([]);
     setLastHighlight(null);
   };
 
@@ -711,21 +721,21 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
               )}
 
               {/* Floating "Create Pick Up" action near the latest highlight */}
-              {lastHighlight && onRequestPickup && (
+              {pendingHighlights.length > 0 && onRequestPickup && (
                 <button
                   type="button"
                   onPointerDown={(e) => { e.stopPropagation(); }}
                   onClick={(e) => { e.stopPropagation(); handleCreatePickup(); }}
                   style={{
                     position: "absolute",
-                    left: Math.min(canvasSize.width - 170, (lastHighlight.x + lastHighlight.w) * canvasSize.width),
+                    left: Math.min(canvasSize.width - 200, (lastHighlight.x + lastHighlight.w) * canvasSize.width),
                     top: Math.max(2, lastHighlight.y * canvasSize.height - 34),
                     zIndex: 25,
                   }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-lg"
-                  title="Create a Pick Up (missing item) from this highlighted spec row"
+                  title="Create Pick Up item(s) from the highlighted spec rows"
                 >
-                  <ClipboardCheck className="w-3.5 h-3.5" /> Create Pick Up from this
+                  <ClipboardCheck className="w-3.5 h-3.5" /> Create Pick Up{pendingHighlights.length > 1 ? ` (${pendingHighlights.length})` : ""}
                 </button>
               )}
             </div>
