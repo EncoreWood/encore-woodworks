@@ -9,6 +9,7 @@ import ClientPresentationViewer from "@/components/presentations/ClientPresentat
 import JobPhotosSection from "@/components/projects/JobPhotosSection";
 import RoomNotes from "@/components/projects/RoomNotes";
 import RoomFileGallery from "@/components/projects/RoomFileGallery";
+import GlbViewer from "@/components/cad/GlbViewer";
 import ClientTasksMeetingsCard from "@/components/projects/ClientTasksMeetingsCard";
 import BidClientView from "@/components/bidding/BidClientView";
 import ClientFinancials from "@/components/projects/ClientFinancials";
@@ -333,6 +334,7 @@ function RoomsSection({ project, user }) {
   const [roomFiles, setRoomFiles] = useState([]);
   const [gallery, setGallery] = useState(null); // { title, files, index }
   const [openRoom, setOpenRoom] = useState(null);
+  const [viewing3d, setViewing3d] = useState(null); // { url, name }
 
   useEffect(() => {
     base44.entities.RoomFile.filter({ project_id: project.id }).then(files => {
@@ -442,6 +444,26 @@ function RoomsSection({ project, user }) {
                   );
                 })()}
 
+                {/* 3D Model View — opens the interactive GLB viewer */}
+                {(() => {
+                  const glb = room.glb_url
+                    ? { url: room.glb_url, name: room.glb_name || room.room_name }
+                    : (() => {
+                        const f = photos.find(f => f.category === "3d" && /\.(glb|gltf)$/i.test(f.file_url || ""));
+                        return f ? { url: f.file_url, name: f.file_name || room.room_name } : null;
+                      })();
+                  if (!glb) return null;
+                  return (
+                    <button
+                      onClick={() => setViewing3d(glb)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-violet-200 text-violet-700 hover:bg-violet-50 transition-colors"
+                    >
+                      <Box className="w-4 h-4" />
+                      <span className="text-sm font-medium">3D Model View</span>
+                    </button>
+                  );
+                })()}
+
                 {/* 2D drawings */}
                 {(() => {
                   const files2d = photos.filter(f => f.category === "2d");
@@ -480,6 +502,10 @@ function RoomsSection({ project, user }) {
           onClose={() => setGallery(null)}
           onIndex={(i) => setGallery(g => ({ ...g, index: i }))}
         />
+      )}
+
+      {viewing3d && (
+        <GlbViewer file={viewing3d} onClose={() => setViewing3d(null)} />
       )}
     </div>
   );

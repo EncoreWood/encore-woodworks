@@ -2,10 +2,11 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
-import { Trash2, Loader2, MessageSquarePlus } from "lucide-react";
+import { Trash2, Loader2, MessageSquarePlus, Reply } from "lucide-react";
 
 // Client-side per-room notes. Clients add questions/requests/preferences for the
-// project team to see; each client can delete their own notes.
+// project team to see; each client can delete their own notes. Team replies
+// (stored on the note's `replies` array) are shown threaded under each note.
 export default function RoomNotes({ project, roomName, user }) {
   const qc = useQueryClient();
   const [text, setText] = useState("");
@@ -61,6 +62,20 @@ export default function RoomNotes({ project, roomName, user }) {
                 </button>
               )}
             </div>
+            {/* Team replies */}
+            {Array.isArray(n.replies) && n.replies.length > 0 && (
+              <div className="mt-2 space-y-1.5 pl-3 border-l-2 border-amber-200">
+                {n.replies.map(r => (
+                  <div key={r.id} className="p-2 rounded-lg bg-amber-50 border border-amber-100">
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{r.text}</p>
+                    <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                      <Reply className="w-3 h-3" />
+                      {r.author_name || "Encore Team"}{r.created_date && ` · ${format(new Date(r.created_date), "MMM d, yyyy")}`}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>

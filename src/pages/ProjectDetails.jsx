@@ -586,7 +586,7 @@ export default function ProjectDetails() {
                                     onClick={(e) => { e.stopPropagation(); setViewingRoomGlb({ url: room.glb_url, name: room.glb_name || room.room_name }); }}
                                     className="h-7 text-xs text-violet-600 border-violet-200 hover:bg-violet-50 gap-1"
                                   >
-                                    <Box className="w-3 h-3" /> 3D View
+                                    <Box className="w-3 h-3" /> 3D Model View
                                   </Button>
                                   <Button
                                     size="sm"

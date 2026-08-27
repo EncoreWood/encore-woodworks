@@ -25,6 +25,31 @@
     "author_email": {
       "type": "string",
       "description": "Email of the client who wrote the note"
+    },
+    "replies": {
+      "type": "array",
+      "description": "Threaded replies to this note (admin responses visible to the client)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "author_name": {
+            "type": "string"
+          },
+          "author_email": {
+            "type": "string"
+          },
+          "created_date": {
+            "type": "string"
+          }
+        }
+      },
+      "default": []
     }
   },
   "required": [
