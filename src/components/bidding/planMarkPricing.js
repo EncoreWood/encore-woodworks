@@ -123,3 +123,57 @@ export function syncCustomItems(rooms, planAnnotations, customCategoryKey) {
     return { ...room, items };
   });
 }
+
+// Live, in-place sync of plan-driven line items for ALL rooms — runs as the user
+// draws/moves/deletes highlights in Annotate Plan so the Room Pricing panel updates
+// immediately, without a Save. For each room:
+//   - base/upper/tall/misc LF runs are re-derived from the room's manual highlights
+//     (tagged notes "Priced from plan marks" so the save-time recompute stays consistent)
+//   - custom highlights (CUSTOM_COLOR) upsert a Custom-category qty item per mark
+//   - all other line items (catalog qty items, percentage upgrades, user misc LF) are kept
+// Unlike recomputePlanMarkRoom this does NOT flip pricing_source or snapshot AI items,
+// so it's safe to run on rooms still on the AI estimate. When no plan scale is set yet,
+// only custom (qty) items are synced — LF pricing waits for calibration.
+export function liveSyncRoomsFromMarks(rooms, planAnnotations, planScalePxPerFt, pricingConfigs, bidType, customCatKey) {
+  let result = rooms;
+  if (planScalePxPerFt && planScalePxPerFt > 0) {
+    result = rooms.map(room => {
+      const sums = measureRoomMarks(room, planAnnotations, planScalePxPerFt);
+      const isMarksDriven = (i) => i.measure_type === "lf" && i.notes === "Priced from plan marks";
+      const cfg = pricingConfigs.find(c => c.style_key === (room.cabinet_style || bidType));
+      // Keep everything except base/upper/tall LF (always re-derived) and marks-driven
+      // misc LF (regenerated below). User misc LF, qty items, percentage upgrades, etc. stay.
+      const kept = (room.items || []).filter(i => {
+        if (i.measure_type !== "lf") return true;
+        if (["base", "upper", "tall"].includes(i.cabinet_category)) return false;
+        if (i.cabinet_category === "misc") return !isMarksDriven(i);
+        return true;
+      });
+      const newLfItems = [];
+      ["base", "upper", "tall", "misc"].forEach(cat => {
+        const lf = sums[cat];
+        if (lf <= 0) return; // no marks for this category → drop the live item
+        let rate = 0;
+        if (cfg) {
+          if (cat === "base") rate = cfg.bases_lf || 0;
+          else if (cat === "upper") rate = cfg.uppers_lf || 0;
+          else if (cat === "tall") rate = cfg.tall_lf || 0;
+        }
+        const existing = (room.items || []).find(i =>
+          i.measure_type === "lf" && i.cabinet_category === cat && (cat !== "misc" || isMarksDriven(i))
+        );
+        newLfItems.push({
+          id: existing?.id || `item_${Date.now()}_${cat}_${Math.random().toString(36).slice(2, 5)}`,
+          name: existing?.name || `${cat.charAt(0).toUpperCase() + cat.slice(1)} Cabinets (from plan)`,
+          cabinet_category: cat,
+          measure_type: "lf",
+          quantity: Math.round(lf * 10) / 10,
+          unit_price: existing?.unit_price ?? rate,
+          notes: "Priced from plan marks"
+        });
+      });
+      return { ...room, items: [...kept, ...newLfItems] };
+    });
+  }
+  return syncCustomItems(result, planAnnotations, customCatKey);
+}

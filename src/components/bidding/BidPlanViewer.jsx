@@ -12,6 +12,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import MozaikRoomPanel from "./MozaikRoomPanel";
 import BidRoomPricingPanel from "./BidRoomPricingPanel";
+import { liveSyncRoomsFromMarks } from "@/components/bidding/planMarkPricing";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 
@@ -27,6 +28,18 @@ const HIGHLIGHT_COLORS = [
 ];
 
 const CUSTOM_COLOR = "#923a57";
+
+// Ray-casting point-in-polygon test — used to auto-detect which traced room a
+// drawn highlight falls inside so it can be tagged to that room live.
+function pointInPolygon(pt, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+    const intersect = ((yi > pt.y) !== (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / ((yj - yi) || 1e-9) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
 
 function drawArrow(ctx, from, to, withHead) {
   ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
@@ -181,12 +194,14 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const [tracedRooms, setTracedRooms]       = useState([]);
   const [editingRoom, setEditingRoom]       = useState(null); // room obj to open panel for
   const [pendingRoom, setPendingRoom]       = useState(null); // newly closed trace awaiting panel
+  const [pendingRoomAssign, setPendingRoomAssign] = useState(null); // highlight awaiting room pick {id, clientX, clientY}
 
   const canvasRef        = useRef(null);
   const pageContainerRef = useRef(null);
   const scrollRef        = useRef(null);
   const outerDivRef      = useRef(null);
   const scaleDetectedRef = useRef(false);
+  const sigStateRef      = useRef({ mounted: false, baselined: false, baseline: "", lastScale: null });
 
   // ── Reset on open ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -203,9 +218,52 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       setTool("pointer");
       setMeasureStart(null); setCalibStart(null);
       setSelectedAnn(null); setDeletePopup(null);
+      setPendingRoomAssign(null);
+      sigStateRef.current = { mounted: false, baselined: false, baseline: "", lastScale: null };
       dragRef.current = null;
     }
   }, [open]);
+
+  // ── Live plan-mark → room pricing sync ───────────────────────────────────
+  // Whenever the set of room-assigned highlights changes (draw / move / resize /
+  // delete / room-picker assignment), re-derive that room's plan-driven line items
+  // immediately so the Room Pricing panel updates without a Save. The initial sync
+  // on open is skipped so merely opening the annotator doesn't mark the bid dirty.
+  const detectRoomForHighlight = (hl) => {
+    const cx = hl.x + hl.w / 2, cy = hl.y + hl.h / 2;
+    const traced = tracedRooms.find(r => r.page === hl.page && r.points && r.points.length >= 3 && pointInPolygon({ x: cx, y: cy }, r.points));
+    if (!traced) return null;
+    return rooms.find(r => (r.room_name || "").trim().toLowerCase() === (traced.name || "").trim().toLowerCase()) || null;
+  };
+
+  const roomMarkSignature = annList
+    .filter(a => a.type === "highlight" && a.room_id)
+    .map(a => `${a.id}|${a.room_id}|${a.color}|${Math.round(a.x)}|${Math.round(a.y)}|${Math.round(a.w)}|${Math.round(a.h)}`)
+    .join("§");
+
+  useEffect(() => {
+    if (!onRoomsChange) return;
+    const s = sigStateRef.current;
+    // Skip the mount run (annList still empty before the open effect's setAnnList
+    // commits) and the first run after open (the loaded annotations) — treat that
+    // loaded signature as the baseline so merely opening the annotator doesn't
+    // mark the bid dirty. After that, sync live whenever a mark changes or the
+    // plan scale changes (e.g. after calibration).
+    if (!s.mounted) { s.mounted = true; return; }
+    if (!s.baselined) { s.baselined = true; s.baseline = roomMarkSignature; s.lastScale = pxPerFtNat; return; }
+    const sigChanged = roomMarkSignature !== s.baseline;
+    const scaleChanged = pxPerFtNat !== s.lastScale;
+    if (!sigChanged && !scaleChanged) return;
+    // Debounce so a drag/resize (many rapid signature changes) only syncs once it settles.
+    const t = setTimeout(() => {
+      s.baseline = roomMarkSignature;
+      s.lastScale = pxPerFtNat;
+      const customCatKey = categories.find(c => (c.label || "").toLowerCase() === "custom")?.key || "misc";
+      onRoomsChange(prev => liveSyncRoomsFromMarks(prev, annList, pxPerFtNat, pricingConfigs, bidType, customCatKey));
+    }, 200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomMarkSignature, pxPerFtNat]);
 
   // ── Debounce renderScale so react-pdf only re-renders after zoom settles ─────
   useEffect(() => {
@@ -619,16 +677,30 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       setCurrentLine(null);
     } else if (tool==="highlight" && currentLine) {
       const w=Math.abs(pos.x-currentLine.start.x), h=Math.abs(pos.y-currentLine.start.y);
-      const rm = rooms.find(r => r.id === activeRoomId);
-      if (w>3 && h>3) setAnnList(p => [...p, {
-        id: `h_${Date.now()}`,
-        type:"highlight",
-        x:Math.min(currentLine.start.x,pos.x), y:Math.min(currentLine.start.y,pos.y),
-        w, h, color:highlightColor, page:pageNumber, _natural:true,
-        room_id: activeRoomId || null,
-        room_name: rm?.room_name || null,
-        label: highlightColor === CUSTOM_COLOR ? (customLabel.trim() || "Custom") : null
-      }]);
+      if (w>3 && h>3) {
+        // Determine which room this highlight belongs to: the active room filter
+        // first, else auto-detect from traced room boundaries (point-in-polygon on
+        // the highlight center). If neither yields a room, prompt via quick-picker.
+        let roomId = activeRoomId || null;
+        let roomName = rooms.find(r => r.id === roomId)?.room_name || null;
+        const newHl = {
+          id: `h_${Date.now()}`,
+          type:"highlight",
+          x:Math.min(currentLine.start.x,pos.x), y:Math.min(currentLine.start.y,pos.y),
+          w, h, color:highlightColor, page:pageNumber, _natural:true,
+          room_id: roomId,
+          room_name: roomName,
+          label: highlightColor === CUSTOM_COLOR ? (customLabel.trim() || "Custom") : null
+        };
+        if (!roomId) {
+          const detected = detectRoomForHighlight(newHl);
+          if (detected) { newHl.room_id = detected.id; newHl.room_name = detected.room_name; }
+        }
+        setAnnList(p => [...p, newHl]);
+        if (!newHl.room_id) {
+          setPendingRoomAssign({ id: newHl.id, clientX: e.clientX, clientY: e.clientY });
+        }
+      }
       setCurrentLine(null);
     }
     setIsPointerDown(false);
@@ -1187,6 +1259,33 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
             </div>
           )}
         </div>
+
+        {/* Quick room picker for a freshly-drawn highlight that couldn't be auto-assigned */}
+        {pendingRoomAssign && (() => {
+          const hl = annList.find(a => a.id === pendingRoomAssign.id);
+          if (!hl) return null;
+          const left = Math.min(Math.max(8, pendingRoomAssign.clientX - 110), (typeof window !== "undefined" ? window.innerWidth : 9999) - 240);
+          const top = Math.max(80, pendingRoomAssign.clientY - 40);
+          return (
+            <div className="fixed z-[120] bg-white border-2 border-amber-400 shadow-2xl rounded-lg p-3 w-[220px]" style={{ left, top }}>
+              <p className="text-xs font-bold text-slate-800 mb-2">Assign highlight to room</p>
+              <Select value={hl.room_id || ""} onValueChange={(v) => {
+                const rm = rooms.find(r => r.id === v);
+                setAnnList(p => p.map(a => a.id === hl.id ? { ...a, room_id: v, room_name: rm?.room_name || null } : a));
+                setPendingRoomAssign(null);
+              }}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select room" /></SelectTrigger>
+                <SelectContent>
+                  {rooms.map(r => <SelectItem key={r.id} value={r.id}>{r.room_name || "Room"}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <div className="flex justify-end mt-2 gap-2">
+                <button onClick={() => { setAnnList(p => p.filter(a => a.id !== hl.id)); setPendingRoomAssign(null); }} className="text-xs text-slate-400 hover:text-red-500">Discard</button>
+                <button onClick={() => setPendingRoomAssign(null)} className="text-xs text-amber-600 hover:underline">Decide later</button>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Page nav */}
         {numPages && numPages>1 && (
