@@ -4,14 +4,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, ChevronDown, ChevronRight, Plus, Paperclip, FileText, Loader2 } from "lucide-react";
+import { Trash2, ChevronDown, ChevronRight, Plus, Paperclip, FileText, Loader2, MapPin } from "lucide-react";
 import PDFAnnotator from "../production/PDFAnnotator";
 
 import { getCategoryStyle } from "./BidCatalogEditor";
 import SketchPreviewGenerator from "./SketchPreviewGenerator";
 import { measureRoomMarks, recomputePlanMarkRoom } from "@/components/bidding/planMarkPricing";
 
-export default function BidRoomSection({ room, catalogItems, categories, pricingConfigs, bidType, onChange, onDelete, sketchPaths = [], specs = {}, linkedProjectId = null, planAnnotations = [], planScalePxPerFt = null }) {
+export default function BidRoomSection({ room, catalogItems, categories, pricingConfigs, bidType, onChange, onDelete, sketchPaths = [], specs = {}, linkedProjectId = null, planAnnotations = [], planScalePxPerFt = null, onViewOnPlan }) {
   const [collapsed, setCollapsed] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [annotating, setAnnotating] = useState(false);
@@ -166,6 +166,11 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
   const roomTotal = (room.items || []).reduce((s, i) => s + getItemSubtotal(i), 0);
   const roomLf = (room.items || []).filter(i => i.measure_type === "lf").reduce((s, i) => s + (parseFloat(i.quantity) || 0), 0);
 
+  // Whether this room has any room-assigned plan highlights → can show "View on Plan".
+  const hasPlanLocation = (planAnnotations || []).some(a => a && a.type === "highlight" &&
+    (a.room_id === room.id ||
+      (!a.room_id && (room.room_name || "").trim() !== "" && (a.room_name || "").trim().toLowerCase() === (room.room_name || "").trim().toLowerCase())));
+
   // Group catalog for dropdown by category
   const byCategory = {};
   (catalogItems || []).forEach(c => {
@@ -219,6 +224,16 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
         ) : (
           <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); handlePriceFromMarks(); }} className="h-7 px-2 text-[10px] text-amber-700 border-amber-300 flex-shrink-0 whitespace-nowrap" title="Price this room from your manual plan marks">
             Price from Plan
+          </Button>
+        )}
+        {/* View this room's location on the floor plan */}
+        {hasPlanLocation && onViewOnPlan && (
+          <Button variant="ghost" size="sm"
+            onClick={e => { e.stopPropagation(); onViewOnPlan(room); }}
+            className="h-7 px-2 text-xs text-emerald-300 hover:text-emerald-100 hover:bg-slate-700 gap-1 flex-shrink-0"
+            title="View this room on the plan">
+            <MapPin className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">Plan</span>
           </Button>
         )}
         {/* PDF Attach */}

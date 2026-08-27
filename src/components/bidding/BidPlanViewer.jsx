@@ -121,7 +121,7 @@ function measToNatural(m, nw, nh) {
   return { ...m, start: toNatPt(m.start, nw, nh), end: toNatPt(m.end, nw, nh), _natural: true };
 }
 
-export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", rooms = [], onAddToRoom, projectName = "", selectedPages = [], onRoomsChange, pricingConfigs = [], bidType, categories = [] }) {
+export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", rooms = [], onAddToRoom, projectName = "", selectedPages = [], onRoomsChange, pricingConfigs = [], bidType, categories = [], focusRoom = null }) {
   // PDF / view state
   const [numPages, setNumPages]         = useState(null);
   const [pageNumber, setPageNumber]     = useState(1);
@@ -202,6 +202,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const outerDivRef      = useRef(null);
   const scaleDetectedRef = useRef(false);
   const sigStateRef      = useRef({ mounted: false, baselined: false, baseline: "", lastScale: null });
+  const [focusFlash, setFocusFlash] = useState(null); // { page, bbox } outline to pulse
+  const [flashTick, setFlashTick]   = useState(0);
+  const focusAppliedRef             = useRef(false);
 
   // ── Reset on open ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -212,14 +215,19 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       setAnnList(withIds.filter(a => a.type !== "measurement"));
       setMeasurements(withIds.filter(a => a.type === "measurement"));
       setAiNotes(initialNotes);
-      setAutoFitted(false);
-      setPageNumber(selectedPages && selectedPages.length ? selectedPages[0] : 1);
+      // If opened to focus a specific room, jump to its page and skip the width
+      // auto-fit so the focus zoom/pan below isn't overridden.
+      const focusPage = focusRoom && focusRoom.page ? focusRoom.page : null;
+      setAutoFitted(!!focusPage);
+      setPageNumber(focusPage || (selectedPages && selectedPages.length ? selectedPages[0] : 1));
       setPageOrder([]);
       setTool("pointer");
       setMeasureStart(null); setCalibStart(null);
       setSelectedAnn(null); setDeletePopup(null);
       setPendingRoomAssign(null);
       sigStateRef.current = { mounted: false, baselined: false, baseline: "", lastScale: null };
+      focusAppliedRef.current = false;
+      setFocusFlash(null);
       dragRef.current = null;
     }
   }, [open]);
@@ -264,6 +272,51 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomMarkSignature, pxPerFtNat]);
+
+  // ── Focus a room's traced location (opened from a room's "View on Plan" button) ─
+  // Pans/zooms the plan to the room's highlight bounding box and briefly pulses its
+  // outline so the user can spot it. Only `scale` changes (the visualScale transform
+  // applies the zoom instantly); renderScale catches up debounced.
+  const focusOnBBox = (bbox) => {
+    const container = scrollRef.current;
+    const box = outerDivRef.current;
+    if (!container || !box || !bbox) return;
+    const nat = naturalRef.current;
+    const vw = container.clientWidth, vh = container.clientHeight;
+    const target = Math.min(3, Math.max(0.5, Math.min(vw * 0.5 / Math.max(bbox.w, 1), vh * 0.5 / Math.max(bbox.h, 1))));
+    setScale(target);
+    requestAnimationFrame(() => {
+      const r = box.getBoundingClientRect();
+      const cr = container.getBoundingClientRect();
+      const fx = (bbox.x + bbox.w / 2) / Math.max(nat.w, 1);
+      const fy = (bbox.y + bbox.h / 2) / Math.max(nat.h, 1);
+      container.scrollLeft = (r.left + fx * r.width) - cr.left - vw / 2;
+      container.scrollTop = (r.top + fy * r.height) - cr.top - vh / 2;
+    });
+  };
+
+  // Apply focus once the target page has rendered and its natural size is known.
+  useEffect(() => {
+    if (!focusRoom || focusAppliedRef.current) return;
+    if (focusRoom.page !== pageNumber) return;
+    if (!naturalSize.w || (naturalSize.w === 595 && naturalSize.h === 842)) return;
+    focusAppliedRef.current = true;
+    focusOnBBox(focusRoom.bbox);
+    setFocusFlash({ page: focusRoom.page, bbox: focusRoom.bbox });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRoom, pageNumber, naturalSize]);
+
+  // Pulse the focus outline for ~1.5s, then clear it.
+  useEffect(() => {
+    if (!focusFlash) return;
+    setFlashTick(0);
+    let n = 0;
+    const iv = setInterval(() => {
+      n++; setFlashTick(n);
+      if (n >= 14) { clearInterval(iv); setFocusFlash(null); }
+    }, 110);
+    return () => clearInterval(iv);
+  }, [focusFlash]);
 
   // ── Debounce renderScale so react-pdf only re-renders after zoom settles ─────
   useEffect(() => {
@@ -858,6 +911,20 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       ctx.fillStyle = "#065f46"; ctx.fillText(lbl, cx - tm.width/2, cy);
     });
 
+    // Focus flash — briefly outline the focused room's plan location.
+    if (focusFlash && focusFlash.page === pageNumber && focusFlash.bbox) {
+      const b = focusFlash.bbox;
+      const pulse = Math.sin(flashTick * 0.9) * 0.5 + 0.5;
+      ctx.strokeStyle = `rgba(16,185,129,${0.55 + 0.45 * pulse})`;
+      ctx.lineWidth = 4 + 2 * pulse;
+      ctx.setLineDash([10, 6]);
+      ctx.strokeRect(b.x - 4, b.y - 4, (b.w || 0) + 8, (b.h || 0) + 8);
+      ctx.setLineDash([]);
+      const cx = b.x + (b.w || 0) / 2, cy = b.y + (b.h || 0) / 2;
+      ctx.strokeStyle = "rgba(16,185,129,0.9)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(cx - 14, cy); ctx.lineTo(cx + 14, cy); ctx.moveTo(cx, cy - 14); ctx.lineTo(cx, cy + 14); ctx.stroke();
+    }
+
     // Active trace
     if (tool === "trace" && tracePoints.length > 0) {
       ctx.strokeStyle = "#10b981"; ctx.lineWidth = 2; ctx.setLineDash([6, 3]);
@@ -895,7 +962,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       ctx.fillStyle=`rgba(${r2},${g2},${b2},0.35)`; ctx.strokeStyle=`rgba(${r2},${g2},${b2},0.8)`; ctx.lineWidth=1.5;
       ctx.fillRect(x,y,w,h); ctx.strokeRect(x,y,w,h);
     }
-  }, [annList, measurements, currentPath, currentLine, pageNumber, color, highlightColor, naturalSize, tool, measureStart, measurePreview, calibStart, calibPreview, selectedAnn, tracePoints, tracePreview, tracedRooms, measureUnit, fmtMeasure]);
+  }, [annList, measurements, currentPath, currentLine, pageNumber, color, highlightColor, naturalSize, tool, measureStart, measurePreview, calibStart, calibPreview, selectedAnn, tracePoints, tracePreview, tracedRooms, measureUnit, fmtMeasure, focusFlash, flashTick]);
 
   // ── Toolbar config ─────────────────────────────────────────────────────────
   const toolConfig = [

@@ -130,6 +130,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const [showCatalogEditor, setShowCatalogEditor] = useState(false);
   const [showClientView, setShowClientView] = useState(false);
   const [showPlanViewer, setShowPlanViewer] = useState(false);
+  const [focusRoom, setFocusRoom] = useState(null); // { page, bbox } to focus Annotate Plan on a room's traced location
   const [pricingConfigs, setPricingConfigs] = useState([]);
   const [catalogItems, setCatalogItems] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -292,6 +293,35 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const totalLf = rooms.reduce((s, room) =>
     s + (room.items || []).filter(i => i.measure_type === "lf").reduce((rs, i) => rs + (parseFloat(i.quantity) || 0), 0), 0
   );
+
+  // Compute the page + bounding box (natural px) of a room's traced location from its
+  // room-assigned plan highlights, so the "View on Plan" button can focus Annotate Plan
+  // on that room. Returns null when the room has no linked plan location.
+  const computeRoomFocus = (room) => {
+    const name = (room.room_name || "").trim().toLowerCase();
+    const marks = (planAnnotations || []).filter(a =>
+      a && a.type === "highlight" &&
+      (a.room_id === room.id || (!a.room_id && name && (a.room_name || "").trim().toLowerCase() === name))
+    );
+    if (!marks.length) return null;
+    const counts = {};
+    marks.forEach(a => { counts[a.page] = (counts[a.page] || 0) + 1; });
+    let page = marks[0].page, best = -1;
+    Object.entries(counts).forEach(([p, n]) => { if (n > best) { best = n; page = Number(p); } });
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    marks.filter(a => a.page === page).forEach(a => {
+      minX = Math.min(minX, a.x); minY = Math.min(minY, a.y);
+      maxX = Math.max(maxX, a.x + (a.w || 0)); maxY = Math.max(maxY, a.y + (a.h || 0));
+    });
+    return { page, bbox: { x: minX, y: minY, w: Math.max(1, maxX - minX), h: Math.max(1, maxY - minY) } };
+  };
+
+  const handleViewOnPlan = (room) => {
+    const target = computeRoomFocus(room);
+    if (!target) return;
+    setFocusRoom(target);
+    setShowPlanViewer(true);
+  };
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
@@ -962,6 +992,7 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
               linkedProjectId={linkedProjectId}
               planAnnotations={planAnnotations}
               planScalePxPerFt={planScalePxPerFt}
+              onViewOnPlan={handleViewOnPlan}
             />
           ))}
 
@@ -1048,7 +1079,8 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
       <BidClientView open={showClientView} onClose={() => setShowClientView(false)} bid={{ project_name: projectName, client_name: clientName, address, rooms, notes, ...specs }} bidType={pricingConfigs.find(c => c.style_key === bidType)?.style_label || BID_STYLES.find(s => s.key === bidType)?.label} />
       <BidPlanViewer
         open={showPlanViewer}
-        onOpenChange={setShowPlanViewer}
+        onOpenChange={(o) => { setShowPlanViewer(o); if (!o) setFocusRoom(null); }}
+        focusRoom={focusRoom}
         pdfUrl={planFileUrl}
         annotations={planAnnotations}
         selectedPages={extractedData?.pageSelection?.selectedPages || []}
