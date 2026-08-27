@@ -473,6 +473,18 @@
     "email_keywords": {
       "type": "string",
       "description": "Comma-separated extra keywords used to match Gmail emails for this project (searched OR the project name)"
+    },
+    "meeting_read_at": {
+      "type": "string",
+      "description": "ISO timestamp of the last time an admin viewed the Meetings tab \u2014 used to compute unread requested-meeting notification bubbles"
+    },
+    "chat_read_at": {
+      "type": "string",
+      "description": "ISO timestamp of the last time an admin viewed the Client Chat tab \u2014 used to compute unread client-message notification bubbles"
+    },
+    "note_read_at": {
+      "type": "string",
+      "description": "ISO timestamp of the last time an admin viewed client room notes \u2014 used to compute unread room-note notification bubbles"
     }
   },
   "required": [

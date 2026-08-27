@@ -48,6 +48,8 @@ import ProjectChatTab from "../components/projects/ProjectChatTab";
 import JobPhotosTab from "../components/projects/JobPhotosTab";
 import EstimatesProposalTab from "../components/projects/EstimatesProposalTab";
 import ProjectMeetingsTab from "../components/projects/ProjectMeetingsTab";
+import { useProjectNotifications, countsFor } from "@/hooks/useProjectNotifications";
+import UnreadBadge from "@/components/projects/UnreadBadge";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -171,6 +173,8 @@ export default function ProjectDetails() {
     staleTime: 30000
   });
 
+  const { data: notifData } = useProjectNotifications();
+
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.Project.update(projectId, data),
     onMutate: async (data) => {
@@ -274,6 +278,22 @@ export default function ProjectDetails() {
   const clientEmail = project.home_owner?.email || project.client_email;
   const clientPhone = project.home_owner?.phone || project.client_phone;
 
+  const unread = countsFor(project, notifData);
+  const handleTabClick = (key) => {
+    setActiveTab(key);
+    const channelMap = { meetings: "meeting_read_at", chat: "chat_read_at" };
+    const field = channelMap[key];
+    if (field) {
+      base44.entities.Project.update(projectId, { [field]: new Date().toISOString() })
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+          queryClient.invalidateQueries({ queryKey: ["projects"] });
+          queryClient.invalidateQueries({ queryKey: ["project_notifications"] });
+        })
+        .catch(() => {});
+    }
+  };
+
   return (
     <PageSlideWrapper>
     <div className="min-h-screen bg-slate-50">
@@ -371,10 +391,20 @@ export default function ProjectDetails() {
         {/* Tabs */}
         {currentUser?.role === "admin" && (
           <div className="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-slate-100 p-1 w-fit flex-wrap">
-            {[{ key: "project", label: "Project" }, { key: "measurements", label: "Job Measurements" }, { key: "photos", label: "Job Photos" }, { key: "estimates", label: "Estimates/Proposal" }, { key: "client_portal", label: "Client Portal" }, { key: "meetings", label: "Meetings" }, { key: "emails", label: "Emails" }, { key: "chat", label: "Client Chat" }].map(t => (
-              <button key={t.key} onClick={() => setActiveTab(t.key)}
-                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === t.key ? "bg-amber-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-800"}`}>
+            {[
+              { key: "project", label: "Project", count: unread.notes, channel: "note_read_at" },
+              { key: "measurements", label: "Job Measurements" },
+              { key: "photos", label: "Job Photos" },
+              { key: "estimates", label: "Estimates/Proposal" },
+              { key: "client_portal", label: "Client Portal" },
+              { key: "meetings", label: "Meetings", count: unread.meetings, channel: "meeting_read_at" },
+              { key: "emails", label: "Emails" },
+              { key: "chat", label: "Client Chat", count: unread.messages, channel: "chat_read_at" },
+            ].map(t => (
+              <button key={t.key} onClick={() => handleTabClick(t.key)}
+                className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${activeTab === t.key ? "bg-amber-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-800"}`}>
                 {t.label}
+                {t.count > 0 && <UnreadBadge count={t.count} size="sm" />}
               </button>
             ))}
           </div>
@@ -481,11 +511,23 @@ export default function ProjectDetails() {
                 <div className="space-y-3">
                   {project.rooms.map((room, idx) => {
                     const isExpanded = expandedRooms.has(idx);
-                    const toggleRoom = () => setExpandedRooms(prev => {
-                      const next = new Set(prev);
-                      if (next.has(idx)) next.delete(idx); else next.add(idx);
-                      return next;
-                    });
+                    const toggleRoom = () => {
+                      setExpandedRooms(prev => {
+                        const next = new Set(prev);
+                        if (next.has(idx)) next.delete(idx); else next.add(idx);
+                        return next;
+                      });
+                      // Expanding a room reveals its client notes — mark project notes as read (clears the bubble).
+                      if (!expandedRooms.has(idx) && unread.notes > 0) {
+                        base44.entities.Project.update(projectId, { note_read_at: new Date().toISOString() })
+                          .then(() => {
+                            queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+                            queryClient.invalidateQueries({ queryKey: ["projects"] });
+                            queryClient.invalidateQueries({ queryKey: ["project_notifications"] });
+                          })
+                          .catch(() => {});
+                      }
+                    };
                     return (
                     <div
                       key={idx}

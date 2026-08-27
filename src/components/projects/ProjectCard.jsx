@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useState } from "react";
+import { useProjectNotifications, countsFor } from "@/hooks/useProjectNotifications";
+import UnreadBadge from "@/components/projects/UnreadBadge";
 import TaskForm from "./TaskForm";
 import PickupItemForm from "../pickup/PickupItemForm";
 import TimelineModal from "./TimelineModal";
@@ -52,7 +54,9 @@ export default function ProjectCard({ project }) {
   const status = statusConfig[project.status] || statusConfig.inquiry;
   const type = typeConfig[project.project_type] || project.project_type;
   const priority = priorityConfig[project.priority] || priorityConfig.medium;
-  
+  const { data: notifData } = useProjectNotifications();
+  const unread = countsFor(project, notifData);
+
   // Fetch tasks for this project
   const { data: tasks = [] } = useQuery({
     queryKey: ["tasks", project.id],
@@ -121,6 +125,7 @@ export default function ProjectCard({ project }) {
               <span className={cn("text-xs font-medium", priority.color)}>
                 • {priority.label}
               </span>
+              {unread.total > 0 && <UnreadBadge count={unread.total} className="ml-1" />}
             </div>
             <p className="text-sm text-slate-500">{type} Cabinets</p>
           </div>

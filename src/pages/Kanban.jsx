@@ -22,6 +22,8 @@ import TaskForm from "../components/projects/TaskForm";
 import PickupItemForm from "../components/pickup/PickupItemForm";
 import TimelineModal from "../components/projects/TimelineModal";
 import { BarChart3 } from "lucide-react";
+import { useProjectNotifications, countsFor } from "@/hooks/useProjectNotifications";
+import UnreadBadge from "@/components/projects/UnreadBadge";
 
 const allStatusOptions = [
   { id: "inquiry", label: "Inquiry" },
@@ -139,6 +141,8 @@ export default function Kanban() {
     queryKey: ["tasks"],
     queryFn: () => base44.entities.Task.list()
   });
+
+  const { data: notifData } = useProjectNotifications();
 
   const updateMutation = useMutation({
     mutationFn: ({ id, ...updates }) => base44.entities.Project.update(id, updates),
@@ -456,12 +460,14 @@ export default function Kanban() {
                               style={{ maxHeight: "calc(100vh - 260px)", minHeight: 200 }}
                             >
                               <div className="space-y-3">
-                                {columnProjects.map((project, index) => (
+                                {columnProjects.map((project, index) => {
+                                  const unread = countsFor(project, notifData);
+                                  return (
                                   <Draggable
                                      key={project.id}
                                      draggableId={project.id}
                                      index={index}
-                                   >
+                                    >
                                      {(provided, snapshot) => (
                                         <div
                                           ref={(el) => {
@@ -473,12 +479,13 @@ export default function Kanban() {
                                         >
                                           <Link to={createPageUrl("ProjectDetails") + "?id=" + project.id}>
                                            <Card
-                                             className={`p-4 cursor-pointer hover:shadow-md transition-all overflow-hidden ${
+                                             className={`relative p-4 cursor-pointer hover:shadow-md transition-all overflow-hidden ${
                                                snapshot.isDragging ? "shadow-lg rotate-2" : ""
                                              }`}
                                              style={project.card_color ? { borderLeft: `4px solid ${project.card_color}`, backgroundColor: project.card_color + "18" } : {}}
                                            >
-                                            <div className="space-y-3">
+                                           {unread.total > 0 && <UnreadBadge count={unread.total} className="absolute top-2 right-2 z-10" />}
+                                           <div className="space-y-3">
                                               <div>
                                                 <h3 className="font-semibold text-slate-900 mb-1 line-clamp-1">
                                                   {project.project_name}
@@ -694,7 +701,8 @@ export default function Kanban() {
                                        </div>
                                      )}
                                    </Draggable>
-                                ))}
+                                   );
+                                   })}
                               </div>
                               {provided.placeholder}
                             </div>
