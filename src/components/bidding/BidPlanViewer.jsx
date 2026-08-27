@@ -12,7 +12,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import MozaikRoomPanel from "./MozaikRoomPanel";
 import BidRoomPricingPanel from "./BidRoomPricingPanel";
-import { liveSyncRoomsFromMarks } from "@/components/bidding/planMarkPricing";
+import { liveSyncRoomsFromMarks, CATEGORY_BY_COLOR } from "@/components/bidding/planMarkPricing";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 
@@ -139,6 +139,10 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const [naturalSize, setNaturalSize]   = useState({ w: 595, h: 842 });
   const [displaySize, setDisplaySize]   = useState({ w: 595, h: 842 });
   const naturalRef                       = useRef({ w: 595, h: 842 });
+  // Which pageNumber naturalSize/naturalRef currently describe. When navigating
+  // pages, the old page's dimensions linger until the new page's canvas loads —
+  // this flag lets effects (esp. "View on Plan" focus) wait for the RIGHT page.
+  const [naturalForPage, setNaturalForPage] = useState(null);
 
   // Annotation state — all coords in natural-px space
   const [tool, setTool]                 = useState("pointer");
@@ -295,16 +299,21 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     });
   };
 
-  // Apply focus once the target page has rendered and its natural size is known.
+  // Apply focus once the target page has rendered and ITS natural size is known.
+  // The naturalForPage guard is the key fix for re-centering on subsequent "View on
+  // Plan" clicks: after navigating to a different page, naturalSize still holds the
+  // PREVIOUS page's dimensions until the new page's canvas loads. Without this guard
+  // the pan math used stale geometry and the view snapped to the top-left corner.
   useEffect(() => {
     if (!focusRoom || focusAppliedRef.current) return;
     if (focusRoom.page !== pageNumber) return;
+    if (naturalForPage !== pageNumber) return; // wait for the correct page's metrics
     if (!naturalSize.w || (naturalSize.w === 595 && naturalSize.h === 842)) return;
     focusAppliedRef.current = true;
     focusOnBBox(focusRoom.bbox);
     setFocusFlash({ page: focusRoom.page, bbox: focusRoom.bbox });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusRoom, pageNumber, naturalSize]);
+  }, [focusRoom, pageNumber, naturalSize, naturalForPage]);
 
   // Pulse the focus outline for ~1.5s, then clear it.
   useEffect(() => {
@@ -440,10 +449,11 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         if (!autoFitted) setNaturalPageWidth(nw);
       }
       syncSizes();
+      setNaturalForPage(pageNumber); // mark that naturalSize now reflects this page
     }, 80);
   };
 
-  useEffect(() => { setTimeout(syncSizes, 120); }, [renderScale, rotation, pageNumber]);
+  useEffect(() => { setTimeout(() => { syncSizes(); setNaturalForPage(pageNumber); }, 120); }, [renderScale, rotation, pageNumber]);
 
   // ── Convert loaded annotations to natural coords once naturalSize is known ─
   const convertedRef = useRef(false);
@@ -751,7 +761,19 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         }
         setAnnList(p => [...p, newHl]);
         if (!newHl.room_id) {
+          // No room auto-detected → fall back to the quick-picker (rendered below)
+          // so the user explicitly assigns it instead of the mark being silently lost.
           setPendingRoomAssign({ id: newHl.id, clientX: e.clientX, clientY: e.clientY });
+        } else {
+          // Surface (to the console) why a room-assigned highlight might NOT produce
+          // a bid line item, so sync failures are diagnosable rather than silent.
+          const c = (newHl.color || "").toLowerCase();
+          const isCustom = c === CUSTOM_COLOR;
+          if (!isCustom && !pxPerFtNat) {
+            console.warn("[Annotate Plan] Highlight assigned to a room but plan scale is not set yet — no LF line item will be created until the scale is detected/calibrated.", { color: newHl.color, room: newHl.room_name, page: newHl.page });
+          } else if (!isCustom && !CATEGORY_BY_COLOR[c]) {
+            console.warn("[Annotate Plan] Highlight color is not mapped to a cabinet category — no LF line item will be created.", { color: newHl.color, room: newHl.room_name, page: newHl.page });
+          }
         }
       }
       setCurrentLine(null);
@@ -1094,9 +1116,6 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
             <input type="color" value={color} onChange={e=>setColor(e.target.value)} className="w-7 h-7 rounded border cursor-pointer ml-1"/>
           ) : null}
           <div className="border-l h-5 mx-1"/>
-          <Button variant="outline" size="sm" className="h-8" onClick={()=>{ const r=scrollRef.current?.getBoundingClientRect(); zoomTo(scale-0.1, r?r.left+r.width/2:0, r?r.top+r.height/2:0); }}><ZoomOut className="w-4 h-4"/></Button>
-          <span className="text-xs text-slate-600 w-9 text-center">{Math.round(scale*100)}%</span>
-          <Button variant="outline" size="sm" className="h-8" onClick={()=>{ const r=scrollRef.current?.getBoundingClientRect(); zoomTo(scale+0.1, r?r.left+r.width/2:0, r?r.top+r.height/2:0); }}><ZoomIn className="w-4 h-4"/></Button>
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={fitToPage}><Maximize2 className="w-3.5 h-3.5 mr-1"/>Fit</Button>
         </div>
 
@@ -1110,6 +1129,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
 
         {/* Main */}
         <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
+          <div className="relative flex-1 min-h-0 min-w-0 flex flex-col">
           <div className="flex-1 min-h-0 min-w-0 overflow-auto bg-slate-200" ref={scrollRef} onWheel={e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();zoomTo(scale - e.deltaY*0.001, e.clientX, e.clientY);}}}>
 
             {showNotesField && (
@@ -1227,6 +1247,27 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
               </div>
               </div>{/* end outer size-reserving div */}
             </div>
+          </div>
+
+          {/* Bottom zoom slider — draggable, subtle, doesn't block the PDF view */}
+          <style>{`
+            .encore-zoom-slider{ -webkit-appearance:none; appearance:none; height:6px; border-radius:9999px; background:#d6d3d1; outline:none; }
+            .encore-zoom-slider::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:18px; height:18px; border-radius:9999px; background:#b45309; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.3); cursor:pointer; }
+            .encore-zoom-slider::-moz-range-thumb{ width:18px; height:18px; border-radius:9999px; background:#b45309; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,.3); cursor:pointer; }
+            .encore-zoom-slider::-moz-range-track{ height:6px; border-radius:9999px; background:#d6d3d1; }
+          `}</style>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-white/95 backdrop-blur border-t border-slate-200 flex-shrink-0 select-none">
+            <ZoomOut className="w-4 h-4 text-slate-500 flex-shrink-0" />
+            <input
+              type="range" min={0.3} max={3} step={0.01}
+              value={Math.min(3, Math.max(0.3, scale))}
+              onChange={e => { const r = scrollRef.current?.getBoundingClientRect(); zoomTo(parseFloat(e.target.value), r ? r.left + r.width/2 : 0, r ? r.top + r.height/2 : 0); }}
+              className="encore-zoom-slider flex-1 max-w-md cursor-pointer"
+              aria-label="Zoom level"
+            />
+            <ZoomIn className="w-4 h-4 text-slate-500 flex-shrink-0" />
+            <span className="text-xs font-semibold text-slate-600 w-10 text-center tabular-nums">{Math.round(scale*100)}%</span>
+          </div>
           </div>
 
           {/* Room pricing side panel */}

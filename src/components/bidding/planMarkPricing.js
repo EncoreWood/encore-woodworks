@@ -3,8 +3,9 @@
 // live re-pricing that runs whenever Annotate Plan is saved (BidWorkspace), so a
 // room in "Priced from Plan" mode stays current as its marks change.
 
-// Category → highlight color mapping (matches Annotate Plan legend)
-const CATEGORY_BY_COLOR = { "#d97706": "base", "#3b82f6": "upper", "#ef4444": "tall", "#6b7280": "misc" };
+// Category → highlight color mapping (matches Annotate Plan legend, including the
+// "Base Paneling" swatch which is priced as a base-cabinet LF run).
+export const CATEGORY_BY_COLOR = { "#d97706": "base", "#3b82f6": "upper", "#ef4444": "tall", "#6b7280": "misc", "#667484": "base" };
 
 // Highlight color used for "Custom" marks on the Annotate Plan overlay.
 export const CUSTOM_COLOR = "#923a57";
