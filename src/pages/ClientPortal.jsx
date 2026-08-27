@@ -13,6 +13,7 @@ import ClientTasksMeetingsCard from "@/components/projects/ClientTasksMeetingsCa
 import BidClientView from "@/components/bidding/BidClientView";
 import ClientFinancials from "@/components/projects/ClientFinancials";
 import PortalTabBar from "@/components/portal/PortalTabBar";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { getProgressStatus } from "@/components/projects/timelineStatus";
 import { calcOrdersCompletion, ordersStatusFromPct } from "@/components/projects/ordersCompletion";
 import { cn } from "@/lib/utils";
@@ -761,6 +762,23 @@ export default function ClientPortal() {
   const photos = (project.files || []).filter(f => f.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) || f.tag === "job_photo");
 
   return (
+    <ErrorBoundary
+      key={selectedId}
+      fallback={(msg, reset) => (
+        <div className="min-h-screen bg-gradient-to-br from-stone-50 to-amber-50/30 flex items-center justify-center p-6">
+          <div className="text-center max-w-sm">
+            <h2 className="text-lg font-bold text-slate-700 mb-2">This project couldn't load</h2>
+            <p className="text-sm text-slate-500 mb-4">{msg}</p>
+            <div className="flex gap-2 justify-center">
+              {accessible.length > 1 && (
+                <button onClick={() => { setSelectedId(null); reset(); }} className="text-sm font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 px-4 py-2 rounded-full">Switch Project</button>
+              )}
+              <button onClick={reset} className="text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-full">Try again</button>
+            </div>
+          </div>
+        </div>
+      )}
+    >
     <div key={selectedId} className="min-h-screen bg-gradient-to-br from-stone-50 via-white to-amber-50/20">
       {/* Header */}
       <div className="bg-white border-b border-slate-100 shadow-sm sticky top-0 z-10">
@@ -892,5 +910,6 @@ export default function ClientPortal() {
         <p className="text-center text-xs text-slate-300 pb-6">Powered by Encore Woodworks</p>
       </div>
     </div>
+    </ErrorBoundary>
   );
 }

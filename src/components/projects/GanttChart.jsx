@@ -13,18 +13,24 @@ const TYPE_COLORS = {
 const COMPLETED_COLOR = "#22c55e";
 
 export default function GanttChart({ events, onBarClick, readOnly }) {
-  const { minDate, maxDate, totalDays } = useMemo(() => {
+  const { minDate, maxDate, totalDays, hasDates } = useMemo(() => {
     if (events.length === 0) {
       const today = new Date();
-      return { minDate: today, maxDate: addDays(today, 30), totalDays: 30 };
+      return { minDate: today, maxDate: addDays(today, 30), totalDays: 30, hasDates: false };
     }
     const dates = events.flatMap(e => [e.start_date, e.end_date]).filter(Boolean).map(d => new Date(d)).filter(d => !isNaN(d));
+    // If no events have valid dates, fall back to a valid today-based window so
+    // date formatting below never throws on an Invalid Date.
+    if (dates.length === 0) {
+      const today = new Date();
+      return { minDate: today, maxDate: addDays(today, 30), totalDays: 30, hasDates: false };
+    }
     let min = new Date(Math.min(...dates));
     let max = new Date(Math.max(...dates));
     min = addDays(min, -3);
     max = addDays(max, 3);
     if (min >= max) max = addDays(min, 7);
-    return { minDate: min, maxDate: max, totalDays: Math.max(1, differenceInDays(max, min)) };
+    return { minDate: min, maxDate: max, totalDays: Math.max(1, differenceInDays(max, min)), hasDates: true };
   }, [events]);
 
   const today = new Date();
@@ -113,7 +119,7 @@ export default function GanttChart({ events, onBarClick, readOnly }) {
           </div>
 
           {/* Today line spanning all rows */}
-          {todayPct > 0 && todayPct < 100 && (
+          {hasDates && todayPct > 0 && todayPct < 100 && (
             <div className="absolute top-0 left-0 right-0 flex pointer-events-none z-0" style={{ height: `${sortedEvents.length * 48}px` }}>
               <div style={{ width: labelColWidth }} className="flex-shrink-0" />
               <div className="flex-1 relative h-full">
@@ -129,21 +135,23 @@ export default function GanttChart({ events, onBarClick, readOnly }) {
         <div className="flex items-stretch border-t border-slate-200 mt-1">
           <div style={{ width: labelColWidth }} className="flex-shrink-0" />
           <div className="flex-1 relative h-8 flex flex-col justify-center">
-            {(() => {
-              const sameMonth = minDate.getMonth() === maxDate.getMonth() && minDate.getFullYear() === maxDate.getFullYear();
-              const rangeText = sameMonth
-                ? `${format(minDate, "MMM d")} - ${format(maxDate, "d")}`
-                : `${format(minDate, "MMM d")} - ${format(maxDate, "MMM d")}`;
-              return (
-                <>
+            {hasDates ? (
+              (() => {
+                const sameMonth = minDate.getMonth() === maxDate.getMonth() && minDate.getFullYear() === maxDate.getFullYear();
+                const rangeText = sameMonth
+                  ? `${format(minDate, "MMM d")} - ${format(maxDate, "d")}`
+                  : `${format(minDate, "MMM d")} - ${format(maxDate, "MMM d")}`;
+                return (
                   <div className="flex items-center justify-center gap-1.5">
                     <span className="text-xs font-semibold text-slate-600">{monthLabels.map(m => m.label).join(" / ")}</span>
                     <span className="text-[10px] text-slate-400">·</span>
                     <span className="text-[10px] font-medium text-slate-400">{rangeText}</span>
                   </div>
-                </>
-              );
-            })()}
+                );
+              })()
+            ) : (
+              <span className="text-[10px] font-medium text-slate-400">Dates not set yet</span>
+            )}
           </div>
         </div>
       </div>
