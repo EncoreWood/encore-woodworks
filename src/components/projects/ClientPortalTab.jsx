@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, UserPlus, Globe, GlobeLock, Copy, Check, Plus, Trash2, StickyNote, ClipboardList, Eye, EyeOff, Monitor } from "lucide-react";
+import { Loader2, UserPlus, Globe, GlobeLock, Copy, Check, Plus, Trash2, StickyNote, ClipboardList, Eye, EyeOff, Monitor, Send } from "lucide-react";
 import ClientPortalPreview from "@/components/projects/ClientPortalPreview";
 import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
@@ -33,6 +33,7 @@ export default function ClientPortalTab({ project }) {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviting, setInviting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [resendingId, setResendingId] = useState(null);
   const [selectedContactId, setSelectedContactId] = useState("");
   const [attaching, setAttaching] = useState(false);
   const [newTask, setNewTask] = useState({ title: "", task_type: "General", due_date: "", admin_notes: "", requires_signature: false });
@@ -286,6 +287,20 @@ export default function ClientPortalTab({ project }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Re-send the client their portal invite email (with a fresh login link).
+  const resendLink = async (client) => {
+    if (!client?.client_email) return;
+    setResendingId(client.id);
+    try {
+      await sendPortalInviteEmail(client.client_email, client.client_name);
+      toast({ title: "Portal link resent", description: `A fresh login link was emailed to ${client.client_email}.` });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Failed to resend link", description: err?.message || "Could not send the invite email." });
+    } finally {
+      setResendingId(null);
+    }
+  };
+
   if (isLoading) return <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-amber-600" /></div>;
 
   const isActive = config.is_active !== false;
@@ -342,6 +357,10 @@ export default function ClientPortalTab({ project }) {
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button onClick={() => resendLink(c)} disabled={resendingId === c.id} title="Resend portal link email" className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700 font-medium border border-amber-300 rounded-lg px-2 py-1.5 hover:bg-amber-100 transition-colors disabled:opacity-50">
+                      {resendingId === c.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                      <span className="hidden sm:inline">Resend</span>
+                    </button>
                     <button onClick={copyPortalLink} title="Copy portal link" className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700 font-medium border border-amber-300 rounded-lg px-2 py-1.5 hover:bg-amber-100 transition-colors">
                       {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                     </button>
