@@ -6,6 +6,9 @@
 // Category → highlight color mapping (matches Annotate Plan legend)
 const CATEGORY_BY_COLOR = { "#d97706": "base", "#3b82f6": "upper", "#ef4444": "tall", "#6b7280": "misc" };
 
+// Highlight color used for "Custom" marks on the Annotate Plan overlay.
+export const CUSTOM_COLOR = "#923a57";
+
 // Sum manual highlight lengths per cabinet category for a given room, converted to
 // real linear feet using the plan's detected scale (natural px per foot).
 export function measureRoomMarks(room, planAnnotations, planScalePxPerFt) {
@@ -80,4 +83,43 @@ export function recomputePlanMarkRoom(room, planAnnotations, planScalePxPerFt, p
     pricing_source: "plan_marks",
     ai_items_snapshot: room.ai_items_snapshot || null
   };
+}
+
+// Upsert "Custom" line items for highlights drawn on the plan with the Custom
+// color and assigned to a room. Each custom highlight (matched by its annotation
+// id via the line item's `plan_ann_id`) creates one "Custom"-category qty line
+// item the user can then price. Idempotent — existing linked items are left
+// untouched so user edits persist across re-saves. Custom highlights with no
+// room assignment are ignored.
+export function syncCustomItems(rooms, planAnnotations, customCategoryKey) {
+  const cat = customCategoryKey || "misc";
+  const customs = (planAnnotations || []).filter(a =>
+    a && a.type === "highlight"
+    && (a.color || "").toLowerCase() === CUSTOM_COLOR
+    && a.room_id
+  );
+  if (!customs.length) return rooms;
+  const byRoom = {};
+  customs.forEach(a => { (byRoom[a.room_id] = byRoom[a.room_id] || []).push(a); });
+  return rooms.map(room => {
+    const marks = byRoom[room.id] || [];
+    if (!marks.length) return room;
+    const items = [...(room.items || [])];
+    marks.forEach(a => {
+      const has = items.some(i => i.plan_ann_id === a.id);
+      if (!has) {
+        items.push({
+          id: `item_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          name: a.label || "Custom",
+          cabinet_category: cat,
+          measure_type: "qty",
+          quantity: 1,
+          unit_price: 0,
+          notes: "From plan",
+          plan_ann_id: a.id,
+        });
+      }
+    });
+    return { ...room, items };
+  });
 }

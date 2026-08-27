@@ -14,7 +14,7 @@ import BidCatalogEditor from "./BidCatalogEditor";
 import BidRoomSection from "./BidRoomSection";
 import BidClientView from "./BidClientView";
 import BidPlanViewer from "./BidPlanViewer";
-import { recomputePlanMarkRoom } from "@/components/bidding/planMarkPricing";
+import { recomputePlanMarkRoom, syncCustomItems } from "@/components/bidding/planMarkPricing";
 
 const BID_STYLES = [
   { key: "basic_euro",          label: "Tier 1 Euro" },
@@ -1051,17 +1051,24 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
         onOpenChange={setShowPlanViewer}
         pdfUrl={planFileUrl}
         annotations={planAnnotations}
+        selectedPages={extractedData?.pageSelection?.selectedPages || []}
         onSave={async (savedAnnotations, notes, scalePxPerFt) => {
           setPlanAnnotations(savedAnnotations);
           setAiNotes(notes);
           const effScale = (scalePxPerFt && scalePxPerFt > 0) ? scalePxPerFt : planScalePxPerFt;
           if (scalePxPerFt && scalePxPerFt > 0) setPlanScalePxPerFt(scalePxPerFt);
+          // Resolve the "Custom" category key (user-created category) for syncing
+          // custom plan marks into room line items.
+          const customCatKey = categories.find(c => (c.label || "").toLowerCase() === "custom")?.key || "misc";
           // Live re-pricing: any room already in "Priced from Plan" mode re-sums its LF
           // from the freshly saved marks, so pricing stays current without re-toggling.
-          // Rooms still on the AI estimate are left untouched.
-          setRooms(prev => prev.map(r => r.pricing_source === "plan_marks"
-            ? recomputePlanMarkRoom(r, savedAnnotations, effScale, pricingConfigs, bidType)
-            : r));
+          // Then upsert "Custom" line items for custom highlights assigned to a room.
+          setRooms(prev => {
+            const repriced = prev.map(r => r.pricing_source === "plan_marks"
+              ? recomputePlanMarkRoom(r, savedAnnotations, effScale, pricingConfigs, bidType)
+              : r);
+            return syncCustomItems(repriced, savedAnnotations, customCatKey);
+          });
           // Persist immediately so annotations survive page reload
           if (effBidId) {
             const patch = { plan_annotations: savedAnnotations, ai_notes: notes };
@@ -1074,6 +1081,10 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
         showNotesField={true}
         initialNotes={aiNotes}
         rooms={rooms}
+        onRoomsChange={setRooms}
+        pricingConfigs={pricingConfigs}
+        bidType={bidType}
+        categories={categories}
         onAddToRoom={(roomId, category, lf, label) => {
           setRooms(prev => prev.map(room => {
             if (room.id !== roomId) return room;

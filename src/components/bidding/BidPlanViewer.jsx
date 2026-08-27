@@ -7,10 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   ZoomIn, ZoomOut, Maximize2, Ruler, Sparkles, X, Pencil, Eraser,
   ArrowRight, Minus, Type, Highlighter, Undo2, Trash2, Target, Send, MousePointer2,
-  Hexagon, Download
+  Hexagon, Download, DollarSign
 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
 import MozaikRoomPanel from "./MozaikRoomPanel";
+import BidRoomPricingPanel from "./BidRoomPricingPanel";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 
@@ -107,10 +108,12 @@ function measToNatural(m, nw, nh) {
   return { ...m, start: toNatPt(m.start, nw, nh), end: toNatPt(m.end, nw, nh), _natural: true };
 }
 
-export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", rooms = [], onAddToRoom, projectName = "" }) {
+export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", rooms = [], onAddToRoom, projectName = "", selectedPages = [], onRoomsChange, pricingConfigs = [], bidType, categories = [] }) {
   // PDF / view state
   const [numPages, setNumPages]         = useState(null);
   const [pageNumber, setPageNumber]     = useState(1);
+  const [pageOrder, setPageOrder]       = useState([]); // nav order: selected floor-plan pages first, then the rest
+  const [showPricingPanel, setShowPricingPanel] = useState(true);
   const [scale, setScale]               = useState(1.0);
   // renderScale is what react-pdf actually renders at (updates with debounce to avoid blank flash)
   const [renderScale, setRenderScale]   = useState(1.0);
@@ -188,11 +191,15 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   // ── Reset on open ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (open) {
-      setAnnList(annotations.filter(a => a.type !== "measurement"));
-      setMeasurements(annotations.filter(a => a.type === "measurement"));
+      // Ensure every annotation has a stable id so custom-plan-item sync can
+      // link line items to marks across saves.
+      const withIds = annotations.map((a, i) => a.id ? a : { ...a, id: `h_${Date.now()}_${i}` });
+      setAnnList(withIds.filter(a => a.type !== "measurement"));
+      setMeasurements(withIds.filter(a => a.type === "measurement"));
       setAiNotes(initialNotes);
       setAutoFitted(false);
-      setPageNumber(1);
+      setPageNumber(selectedPages && selectedPages.length ? selectedPages[0] : 1);
+      setPageOrder([]);
       setTool("pointer");
       setMeasureStart(null); setCalibStart(null);
       setSelectedAnn(null); setDeletePopup(null);
@@ -300,7 +307,20 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     setNaturalSize({ w: nw, h: nh });
   }, [renderScale]);
 
-  const onDocumentLoadSuccess = ({ numPages }) => setNumPages(numPages);
+  const onDocumentLoadSuccess = ({ numPages: np }) => {
+    setNumPages(np);
+    // Navigation order: identified floor-plan pages first (in original relative
+    // order), then the remaining non-selected pages — so Annotate Plan jumps
+    // straight to the relevant pages instead of paging through the whole doc.
+    if (np > 0) {
+      const sel = (selectedPages || []).filter(p => p >= 1 && p <= np);
+      const seen = new Set();
+      const ordered = [];
+      sel.forEach(p => { if (!seen.has(p)) { ordered.push(p); seen.add(p); } });
+      for (let p = 1; p <= np; p++) { if (!seen.has(p)) { ordered.push(p); seen.add(p); } }
+      setPageOrder(ordered);
+    }
+  };
   const onPageLoadSuccess = () => {
     setTimeout(() => {
       const el = pageContainerRef.current?.querySelector(".react-pdf__Page__canvas");
@@ -601,6 +621,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       const w=Math.abs(pos.x-currentLine.start.x), h=Math.abs(pos.y-currentLine.start.y);
       const rm = rooms.find(r => r.id === activeRoomId);
       if (w>3 && h>3) setAnnList(p => [...p, {
+        id: `h_${Date.now()}`,
         type:"highlight",
         x:Math.min(currentLine.start.x,pos.x), y:Math.min(currentLine.start.y,pos.y),
         w, h, color:highlightColor, page:pageNumber, _natural:true,
@@ -831,7 +852,17 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         <div className="flex items-center justify-between px-4 py-2.5 border-b bg-white flex-shrink-0">
           <h2 className="font-bold text-slate-900 text-base">Annotate Plan</h2>
           <div className="flex items-center gap-2">
-            {numPages && numPages>1 && <span className="text-sm text-slate-500">Page {pageNumber}/{numPages}</span>}
+            {numPages && numPages>1 && (
+              <span className="text-sm text-slate-500 flex items-center gap-1.5">
+                Page {pageNumber}/{numPages}
+                {selectedPages && selectedPages.includes(pageNumber) && <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">Floor plan</span>}
+              </span>
+            )}
+            {rooms.length > 0 && (
+              <Button variant={showPricingPanel ? "default" : "outline"} size="sm" onClick={()=>setShowPricingPanel(v=>!v)} className="h-8 text-xs gap-1">
+                <DollarSign className="w-3.5 h-3.5"/> Room Pricing
+              </Button>
+            )}
             <Button onClick={handleSave} className="bg-amber-600 hover:bg-amber-700 h-8 text-sm">Save</Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={()=>onOpenChange(false)}><X className="w-4 h-4"/></Button>
           </div>
@@ -1059,6 +1090,19 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
             </div>
           </div>
 
+          {/* Room pricing side panel */}
+          {showPricingPanel && rooms.length > 0 && onRoomsChange && (
+            <div className="w-80 border-l bg-white flex flex-col overflow-hidden flex-shrink-0">
+              <BidRoomPricingPanel
+                rooms={rooms}
+                pricingConfigs={pricingConfigs}
+                bidType={bidType}
+                categories={categories}
+                onRoomsChange={onRoomsChange}
+              />
+            </div>
+          )}
+
           {/* Sidebar */}
           {(measurements.length>0 || annList.some(a=>a.type==="text") || tracedRooms.length>0) && (
             <div className="w-56 border-l bg-white flex flex-col overflow-hidden flex-shrink-0">
@@ -1147,9 +1191,15 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         {/* Page nav */}
         {numPages && numPages>1 && (
           <div className="flex items-center justify-center gap-4 py-3 border-t bg-white flex-shrink-0">
-            <Button variant="outline" size="sm" onClick={()=>setPageNumber(p=>Math.max(1,p-1))} disabled={pageNumber<=1}>Previous</Button>
+            <Button variant="outline" size="sm" onClick={() => {
+              if (pageOrder.length) { const i = pageOrder.indexOf(pageNumber); if (i > 0) setPageNumber(pageOrder[i-1]); }
+              else setPageNumber(p => Math.max(1, p-1));
+            }} disabled={pageOrder.length ? pageOrder.indexOf(pageNumber) <= 0 : pageNumber <= 1}>Previous</Button>
             <span className="text-sm text-slate-600">Page {pageNumber} of {numPages}</span>
-            <Button variant="outline" size="sm" onClick={()=>setPageNumber(p=>Math.min(numPages,p+1))} disabled={pageNumber>=numPages}>Next</Button>
+            <Button variant="outline" size="sm" onClick={() => {
+              if (pageOrder.length) { const i = pageOrder.indexOf(pageNumber); if (i >= 0 && i < pageOrder.length - 1) setPageNumber(pageOrder[i+1]); }
+              else setPageNumber(p => Math.min(numPages, p+1));
+            }} disabled={pageOrder.length ? pageOrder.indexOf(pageNumber) >= pageOrder.length - 1 : pageNumber >= numPages}>Next</Button>
           </div>
         )}
       </DialogContent>
