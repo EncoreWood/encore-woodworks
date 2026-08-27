@@ -847,11 +847,11 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[96vw] w-[1400px] h-[95vh] max-h-[95vh] overflow-hidden flex flex-col p-0 gap-0">
+      <DialogContent className="w-[98vw] max-w-[98vw] h-[98vh] max-h-[98vh] overflow-hidden flex flex-col p-0 gap-0">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-2.5 border-b bg-white flex-shrink-0">
           <h2 className="font-bold text-slate-900 text-base">Annotate Plan</h2>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {numPages && numPages>1 && (
               <span className="text-sm text-slate-500 flex items-center gap-1.5">
                 Page {pageNumber}/{numPages}
@@ -970,8 +970,8 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         {tool==="trace"     && <div className="px-4 py-1.5 bg-emerald-50 border-b text-xs text-emerald-700 font-medium flex-shrink-0">{tracePoints.length===0?"Click corners of room perimeter":tracePoints.length<3?`${tracePoints.length} point(s) placed — keep clicking corners`:`${tracePoints.length} points — click near first point (red circle) to close`}</div>}
 
         {/* Main */}
-        <div className="flex flex-1 overflow-hidden">
-          <div className="flex-1 overflow-auto bg-slate-200" ref={scrollRef} onWheel={e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();zoomTo(scale - e.deltaY*0.001, e.clientX, e.clientY);}}}>
+        <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
+          <div className="flex-1 min-h-0 min-w-0 overflow-auto bg-slate-200" ref={scrollRef} onWheel={e=>{if(e.ctrlKey||e.metaKey){e.preventDefault();zoomTo(scale - e.deltaY*0.001, e.clientX, e.clientY);}}}>
 
             {showNotesField && (
               <div className="p-3 border-b bg-white">
@@ -1092,7 +1092,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
 
           {/* Room pricing side panel */}
           {showPricingPanel && rooms.length > 0 && onRoomsChange && (
-            <div className="w-80 border-l bg-white flex flex-col overflow-hidden flex-shrink-0">
+            <div className="w-full lg:w-80 max-h-[45vh] lg:max-h-none border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex flex-col overflow-hidden flex-shrink-0">
               <BidRoomPricingPanel
                 rooms={rooms}
                 pricingConfigs={pricingConfigs}
@@ -1105,7 +1105,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
 
           {/* Sidebar */}
           {(measurements.length>0 || annList.some(a=>a.type==="text") || tracedRooms.length>0) && (
-            <div className="w-56 border-l bg-white flex flex-col overflow-hidden flex-shrink-0">
+            <div className="w-full lg:w-56 max-h-[35vh] lg:max-h-none border-t lg:border-t-0 lg:border-l border-slate-200 bg-white flex flex-col overflow-hidden flex-shrink-0">
               {/* Traced Rooms */}
               {tracedRooms.length > 0 && (<>
                 <div className="px-3 py-2 border-b bg-emerald-50 flex-shrink-0">
