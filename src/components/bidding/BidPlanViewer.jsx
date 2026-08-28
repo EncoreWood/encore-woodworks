@@ -28,6 +28,7 @@ const HIGHLIGHT_COLORS = [
 ];
 
 const CUSTOM_COLOR = "#923a57";
+const MARK_CUSTOM_COLOR = "#923a57"; // marks that originated as a custom (catalog-linked) highlight
 
 // Ray-casting point-in-polygon test — used to auto-detect which traced room a
 // drawn highlight falls inside so it can be tagged to that room live.

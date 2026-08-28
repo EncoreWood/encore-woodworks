@@ -119,25 +119,63 @@
                 },
                 "cabinet_category": {
                   "type": "string",
-                  "enum": [
-                    "base",
-                    "upper",
-                    "tall",
-                    "misc"
-                  ]
+                  "description": "Category key (references a BidCategory.key). Free string since categories are user-managed."
                 },
                 "measure_type": {
                   "type": "string",
                   "enum": [
                     "lf",
-                    "qty"
+                    "qty",
+                    "sqft",
+                    "percentage"
                   ]
                 },
                 "quantity": {
                   "type": "number"
                 },
                 "unit_price": {
-                  "type": "number"
+                  "type": "number",
+                  "description": "Snapshotted unit price captured when the item was added to this bid (or last refreshed via 'Update to Current Pricing'). Independent of later catalog/tier edits."
+                },
+                "percentage": {
+                  "type": "number",
+                  "description": "Snapshotted percentage for percentage-type items"
+                },
+                "upgrade_applies_to": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Which cabinet categories this percentage upgrade applies to"
+                },
+                "catalog_item_id": {
+                  "type": "string",
+                  "description": "Reference to the BidItemCatalog item this line item was built from. Null/absent for custom/manual items."
+                },
+                "pricing_mode": {
+                  "type": "string",
+                  "enum": [
+                    "fixed",
+                    "tier_based"
+                  ],
+                  "description": "Snapshotted pricing mode of the source catalog item at the time the line item was added/refreshed"
+                },
+                "tier_rate_category": {
+                  "type": "string",
+                  "enum": [
+                    "base",
+                    "upper",
+                    "tall"
+                  ],
+                  "description": "Snapshotted tier rate category used for tier-based pricing"
+                },
+                "plan_ann_id": {
+                  "type": "string",
+                  "description": "Plan annotation (highlight) id this line item was generated from, for live upsert keyed by mark"
+                },
+                "sketch_insert_id": {
+                  "type": "string",
+                  "description": "Sketch symbol id this item was generated from (rollout inserts)"
                 },
                 "notes": {
                   "type": "string"

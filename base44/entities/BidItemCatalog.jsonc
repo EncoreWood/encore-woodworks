@@ -8,16 +8,7 @@
     },
     "cabinet_category": {
       "type": "string",
-      "enum": [
-        "base",
-        "upper",
-        "tall",
-        "misc",
-        "roll_out_inserts",
-        "upgrades",
-        "custom"
-      ],
-      "description": "Cabinet category"
+      "description": "Category key (references a BidCategory.key). Stored as a free string because categories are user-managed."
     },
     "measure_type": {
       "type": "string",
@@ -31,9 +22,27 @@
       "default": "lf",
       "description": "Linear feet, quantity, square feet, both, or percentage"
     },
+    "pricing_mode": {
+      "type": "string",
+      "enum": [
+        "fixed",
+        "tier_based"
+      ],
+      "default": "fixed",
+      "description": "Fixed = always use default_price/default_percentage. Tier-based = dynamically pull the $/LF rate from the bid's selected Cabinet Style/Tier matching tier_rate_category (only applied when building NEW line items or refreshing a bid to current pricing; existing bid line items keep their snapshotted price)."
+    },
+    "tier_rate_category": {
+      "type": "string",
+      "enum": [
+        "base",
+        "upper",
+        "tall"
+      ],
+      "description": "For tier-based items: which $/LF rate (Base/Upper/Tall) of the selected tier to use. If omitted, inferred from cabinet_category when it is base/upper/tall."
+    },
     "default_price": {
       "type": "number",
-      "description": "Default unit price"
+      "description": "Default unit price (used for fixed-price items)"
     },
     "default_percentage": {
       "type": "number",

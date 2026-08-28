@@ -3,6 +3,8 @@
 // live re-pricing that runs whenever Annotate Plan is saved (BidWorkspace), so a
 // room in "Priced from Plan" mode stays current as its marks change.
 
+import { buildLineItemFromCatalog, effectiveStyleKey } from "./catalogPricing";
+
 // Category → highlight color mapping (matches Annotate Plan legend, including the
 // "Base Paneling" swatch which is priced as a base-cabinet LF run).
 export const CATEGORY_BY_COLOR = { "#d97706": "base", "#3b82f6": "upper", "#ef4444": "tall", "#6b7280": "misc", "#667484": "base" };
@@ -22,6 +24,7 @@ export function measureRoomMarks(room, planAnnotations, planScalePxPerFt) {
       ? (a.room_id === room.id)
       : ((a.room_name || "").trim().toLowerCase() === (room.room_name || "").trim().toLowerCase() && (room.room_name || "").trim() !== "");
     if (!matchRoom) return;
+    if (a.catalog_item_id) return; // catalog-linked highlights are handled separately (syncCatalogHighlights)
     const cat = CATEGORY_BY_COLOR[(a.color || "").toLowerCase()];
     if (!cat) return;
     const lenPx = Math.max(a.w || 0, a.h || 0);
@@ -125,6 +128,50 @@ export function syncCustomItems(rooms, planAnnotations, customCategoryKey) {
   });
 }
 
+// Upsert catalog-linked line items for highlights that carry a catalog_item_id
+// (drawn via the searchable catalog dropdown in Annotate Plan). Each such
+// highlight creates/refreshes one line item linked back to its source catalog
+// item (catalog_item_id), so the bid records WHICH catalog item produced it —
+// not just a copied text string. The unit_price is SNAPSHOTTED at creation (via
+// buildLineItemFromCatalog) and never overwritten by later catalog/tier edits;
+// resizing the highlight only updates the quantity (for LF items), preserving
+// the snapshot. Qty-type catalog items get quantity 1 per mark. Idempotent —
+// keyed by the highlight's annotation id (plan_ann_id). Highlights with no room
+// assignment are ignored.
+export function syncCatalogHighlights(rooms, planAnnotations, planScalePxPerFt, catalogItems, pricingConfigs, bidType) {
+  const byRoom = {};
+  (planAnnotations || []).forEach(a => {
+    if (!a || a.type !== "highlight" || !a.room_id || !a.catalog_item_id) return;
+    (byRoom[a.room_id] = byRoom[a.room_id] || []).push(a);
+  });
+  if (Object.keys(byRoom).length === 0) return rooms;
+  return rooms.map(room => {
+    const marks = byRoom[room.id] || [];
+    if (!marks.length) return room;
+    const styleKey = effectiveStyleKey(room, bidType);
+    let items = [...(room.items || [])];
+    marks.forEach(a => {
+      const cat = (catalogItems || []).find(c => c.id === a.catalog_item_id);
+      if (!cat) return; // catalog item deleted → leave any existing linked item as-is (snapshot preserved)
+      const isLf = cat.measure_type === "lf" && ["base", "upper", "tall"].includes(cat.cabinet_category);
+      let qty = 1;
+      if (isLf && planScalePxPerFt && planScalePxPerFt > 0) {
+        qty = Math.round((Math.max(a.w || 0, a.h || 0) / planScalePxPerFt) * 10) / 10;
+      }
+      const idx = items.findIndex(i => i.plan_ann_id === a.id);
+      if (idx >= 0) {
+        // Existing linked item — only update the quantity from the mark, keep
+        // the snapshotted unit_price / name / pricing mode untouched.
+        items[idx] = { ...items[idx], quantity: qty };
+      } else {
+        const snap = buildLineItemFromCatalog(cat, pricingConfigs, styleKey, { quantity: qty, notes: "From plan" });
+        items.push({ ...snap, plan_ann_id: a.id });
+      }
+    });
+    return { ...room, items };
+  });
+}
+
 // Live, additive-only sync of plan-driven line items for ALL rooms — runs as the
 // user draws/moves/resizes/deletes highlights in Annotate Plan so the Room Pricing
 // panel updates immediately, without a Save. Importantly it NEVER removes, replaces,
@@ -144,7 +191,7 @@ export function syncCustomItems(rooms, planAnnotations, customCategoryKey) {
 // Unlike recomputePlanMarkRoom this does NOT flip pricing_source or snapshot AI items,
 // so it's safe to run on rooms still on the AI estimate. When no plan scale is set yet,
 // only custom (qty) items are synced — LF pricing waits for calibration.
-export function liveSyncRoomsFromMarks(rooms, planAnnotations, planScalePxPerFt, pricingConfigs, bidType, customCatKey) {
+export function liveSyncRoomsFromMarks(rooms, planAnnotations, planScalePxPerFt, pricingConfigs, bidType, customCatKey, catalogItems) {
   let result = rooms;
   if (planScalePxPerFt && planScalePxPerFt > 0) {
     result = rooms.map(room => {
@@ -187,5 +234,7 @@ export function liveSyncRoomsFromMarks(rooms, planAnnotations, planScalePxPerFt,
       return { ...room, items: [...updatedItems, ...newItems] };
     });
   }
+  // Catalog-linked highlights upsert their own line items (snapshot-priced).
+  result = syncCatalogHighlights(result, planAnnotations, planScalePxPerFt, catalogItems, pricingConfigs, bidType);
   return syncCustomItems(result, planAnnotations, customCatKey);
 }
