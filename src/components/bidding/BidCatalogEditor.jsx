@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, Plus, Save, Tag, List } from "lucide-react";
+import { resolveRateCategory } from "./catalogPricing";
 
 export const DEFAULT_CATALOG = [
   { name: "Base Cabinets",           cabinet_category: "base",  measure_type: "lf",  default_price: 0,   sort_order: 1 },
@@ -132,7 +133,17 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
   };
 
   const updateItem = (id, field, value) => {
-    setItems(prev => prev.map(item => item.id === id ? { ...item, [field]: value } : item));
+    setItems(prev => prev.map(item => {
+      if (item.id !== id) return item;
+      const u = { ...item, [field]: value };
+      // When category or pricing mode changes, keep tier_rate_category sensible:
+      // tier-based LF items in base/upper/tall default their rate category to the
+      // cabinet category; clearing it for non-tier modes.
+      if (field === "cabinet_category" || field === "pricing_mode") {
+        u.tier_rate_category = resolveRateCategory({ ...u });
+      }
+      return u;
+    }));
   };
 
   const deleteItem = async (item) => {
@@ -145,7 +156,7 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
     await Promise.all(items.map(({ _isNew, ...data }) =>
       _isNew
         ? base44.entities.BidItemCatalog.create(data)
-        : base44.entities.BidItemCatalog.update(data.id, { name: data.name, cabinet_category: data.cabinet_category, measure_type: data.measure_type, default_price: data.default_price, default_percentage: data.default_percentage, upgrade_applies_to: data.upgrade_applies_to })
+        : base44.entities.BidItemCatalog.update(data.id, { name: data.name, cabinet_category: data.cabinet_category, measure_type: data.measure_type, default_price: data.default_price, default_percentage: data.default_percentage, upgrade_applies_to: data.upgrade_applies_to, pricing_mode: data.pricing_mode || "fixed", tier_rate_category: data.tier_rate_category || null })
     ));
     setSaving(false);
     onSaved?.();
@@ -321,6 +332,35 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
                             <span className="text-xs font-semibold capitalize text-slate-600">{cat}</span>
                           </label>
                         ))}
+                      </div>
+                    )}
+                    {/* Pricing mode: Fixed vs Tier-Based (tier-based pulls $/LF from the
+                        bid's selected Cabinet Style tier at add/refresh time instead of a
+                        fixed default_price). Only meaningful for LF items in base/upper/tall. */}
+                    {!isPercent && (
+                      <div className="ml-1 flex items-center gap-2 flex-wrap pb-1">
+                        <span className="text-xs text-slate-500">Pricing:</span>
+                        <Select value={item.pricing_mode || "fixed"} onValueChange={v => updateItem(item.id, "pricing_mode", v)}>
+                          <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="fixed">Fixed ($)</SelectItem>
+                            <SelectItem value="tier_based">Tier-Based (⚡)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {item.pricing_mode === "tier_based" && (
+                          <Select value={item.tier_rate_category || resolveRateCategory(item) || "__auto__"} onValueChange={v => updateItem(item.id, "tier_rate_category", v === "__auto__" ? "" : v)}>
+                            <SelectTrigger className="h-7 w-[120px] text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__auto__">Auto (from cat)</SelectItem>
+                              <SelectItem value="base">Base rate</SelectItem>
+                              <SelectItem value="upper">Upper rate</SelectItem>
+                              <SelectItem value="tall">Tall rate</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {item.pricing_mode === "tier_based" && (
+                          <span className="text-[10px] text-blue-600">Uses the bid's selected tier $/LF rate</span>
+                        )}
                       </div>
                     )}
                   </div>
