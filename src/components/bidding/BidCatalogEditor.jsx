@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -58,6 +58,9 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("items"); // "items" | "categories"
   const [activeCatFilter, setActiveCatFilter] = useState("all");
+  // Tracks the original key of each persisted category (by id) so we can detect
+  // renames and cascade-update BidItemCatalog items that reference the old key.
+  const originalKeysRef = useRef({});
 
   useEffect(() => {
     if (open) { loadCategories(); loadItems(); }
@@ -68,6 +71,7 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
     if (existing.length === 0) {
       const created = await Promise.all(DEFAULT_CATEGORIES.map(c => base44.entities.BidCategory.create(c)));
       setCategories(created);
+      originalKeysRef.current = Object.fromEntries(created.map(c => [c.id, c.key]));
     } else {
       // Ensure all default categories exist (e.g. "upgrades" added after initial seed)
       let updated = [...existing];
@@ -77,7 +81,9 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
           updated = [...updated, created];
         }
       }
-      setCategories(updated.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0)));
+      const sorted = updated.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+      setCategories(sorted);
+      originalKeysRef.current = Object.fromEntries(sorted.map(c => [c.id, c.key]));
     }
   };
 
@@ -116,10 +122,26 @@ export default function BidCatalogEditor({ open, onClose, onSaved }) {
 
   const saveCategories = async () => {
     setSaving(true);
+    // Detect category key renames (only for persisted categories) and cascade
+    // the new key onto all BidItemCatalog items that still reference the old key,
+    // so associations don't break when a category is renamed.
+    const renames = [];
+    categories.forEach(c => {
+      if (c._isNew) return;
+      const oldKey = originalKeysRef.current[c.id];
+      if (oldKey && c.key && oldKey !== c.key) renames.push({ oldKey, newKey: c.key });
+    });
     await Promise.all(categories.map(({ _isNew, _keyManuallySet, ...data }) =>
       _isNew
         ? base44.entities.BidCategory.create(data)
         : base44.entities.BidCategory.update(data.id, { label: data.label, key: data.key, color: data.color, sort_order: data.sort_order })
+    ));
+    // Cascade key renames onto catalog items (batched per rename).
+    await Promise.all(renames.map(({ oldKey, newKey }) =>
+      base44.entities.BidItemCatalog.updateMany(
+        { cabinet_category: oldKey },
+        { $set: { cabinet_category: newKey } }
+      ).catch(err => console.error(`Failed to cascade rename ${oldKey}→${newKey}:`, err))
     ));
     setSaving(false);
     await loadCategories();
