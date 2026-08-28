@@ -14,7 +14,7 @@ import BidCatalogEditor from "./BidCatalogEditor";
 import BidRoomSection from "./BidRoomSection";
 import BidClientView from "./BidClientView";
 import BidPlanViewer from "./BidPlanViewer";
-import { recomputePlanMarkRoom, syncCustomItems } from "@/components/bidding/planMarkPricing";
+import { recomputePlanMarkRoom, syncCustomItems, syncCatalogHighlights } from "@/components/bidding/planMarkPricing";
 
 const BID_STYLES = [
   { key: "basic_euro",          label: "Tier 1 Euro" },
@@ -1099,7 +1099,9 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
             const repriced = prev.map(r => r.pricing_source === "plan_marks"
               ? recomputePlanMarkRoom(r, savedAnnotations, effScale, pricingConfigs, bidType)
               : r);
-            return syncCustomItems(repriced, savedAnnotations, customCatKey);
+            const withCustom = syncCustomItems(repriced, savedAnnotations, customCatKey);
+            // Upsert catalog-linked highlights into snapshot-priced bid line items.
+            return syncCatalogHighlights(withCustom, savedAnnotations, effScale, catalogItems, pricingConfigs, bidType);
           });
           // Persist immediately so annotations survive page reload
           if (effBidId) {
@@ -1117,6 +1119,7 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
         pricingConfigs={pricingConfigs}
         bidType={bidType}
         categories={categories}
+        catalogItems={catalogItems}
         onAddToRoom={(roomId, category, lf, label) => {
           setRooms(prev => prev.map(room => {
             if (room.id !== roomId) return room;

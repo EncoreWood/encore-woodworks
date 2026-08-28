@@ -12,9 +12,17 @@ import {
 import { base44 } from "@/api/base44Client";
 import MozaikRoomPanel from "./MozaikRoomPanel";
 import BidRoomPricingPanel from "./BidRoomPricingPanel";
+import CatalogItemPicker from "./CatalogItemPicker";
 import { liveSyncRoomsFromMarks, CATEGORY_BY_COLOR } from "@/components/bidding/planMarkPricing";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
+
+// Cabinet category key → highlight color (mirrors the Annotate Plan legend). Used to
+// tint a catalog-linked highlight to match its source category visually.
+const COLOR_BY_CATEGORY = { base: "#d97706", upper: "#3b82f6", tall: "#ef4444", misc: "#6b7280", base_paneling: "#667484" };
+function colorForCategory(catKey) {
+  return COLOR_BY_CATEGORY[catKey] || "#6b7280";
+}
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -122,7 +130,7 @@ function measToNatural(m, nw, nh) {
   return { ...m, start: toNatPt(m.start, nw, nh), end: toNatPt(m.end, nw, nh), _natural: true };
 }
 
-export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", rooms = [], onAddToRoom, projectName = "", selectedPages = [], onRoomsChange, pricingConfigs = [], bidType, categories = [], focusRoom = null }) {
+export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", rooms = [], onAddToRoom, projectName = "", selectedPages = [], onRoomsChange, pricingConfigs = [], bidType, categories = [], catalogItems = [], focusRoom = null }) {
   // PDF / view state
   const [numPages, setNumPages]         = useState(null);
   const [pageNumber, setPageNumber]     = useState(1);
@@ -161,6 +169,10 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const [activeRoomId, setActiveRoomId] = useState("");
   // Custom label applied to highlights drawn with the "Custom" color
   const [customLabel, setCustomLabel] = useState("");
+  // Catalog item selected for the next-drawn highlight — links the highlight to a
+  // catalog item (catalog_item_id) so it produces a snapshot-priced bid line item
+  // instead of a generic color-based LF run.
+  const [catalogItemId, setCatalogItemId] = useState(null);
 
   // Scale / calibration
   const [detectedScale, setDetectedScale]   = useState(null);
@@ -272,7 +284,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
       s.baseline = roomMarkSignature;
       s.lastScale = pxPerFtNat;
       const customCatKey = categories.find(c => (c.label || "").toLowerCase() === "custom")?.key || "misc";
-      onRoomsChange(prev => liveSyncRoomsFromMarks(prev, annList, pxPerFtNat, pricingConfigs, bidType, customCatKey));
+      onRoomsChange(prev => liveSyncRoomsFromMarks(prev, annList, pxPerFtNat, pricingConfigs, bidType, customCatKey, catalogItems));
     }, 200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -747,14 +759,20 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         // the highlight center). If neither yields a room, prompt via quick-picker.
         let roomId = activeRoomId || null;
         let roomName = rooms.find(r => r.id === roomId)?.room_name || null;
+        // Catalog-linked highlight: tint it to its category's color and record the
+        // source catalog_item_id so syncCatalogHighlights can build a snapshot-priced
+        // bid line item from it (independent of the generic color→LF measurement).
+        const linkedCat = catalogItemId ? (catalogItems.find(c => c.id === catalogItemId) || null) : null;
+        const hlColor = linkedCat ? colorForCategory(linkedCat.cabinet_category) : highlightColor;
         const newHl = {
           id: `h_${Date.now()}`,
           type:"highlight",
           x:Math.min(currentLine.start.x,pos.x), y:Math.min(currentLine.start.y,pos.y),
-          w, h, color:highlightColor, page:pageNumber, _natural:true,
+          w, h, color:hlColor, page:pageNumber, _natural:true,
           room_id: roomId,
           room_name: roomName,
-          label: highlightColor === CUSTOM_COLOR ? (customLabel.trim() || "Custom") : null
+          label: linkedCat ? linkedCat.name : (highlightColor === CUSTOM_COLOR ? (customLabel.trim() || "Custom") : null),
+          catalog_item_id: linkedCat ? linkedCat.id : null
         };
         if (!roomId) {
           const detected = detectRoomForHighlight(newHl);
@@ -765,7 +783,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
           // No room auto-detected → fall back to the quick-picker (rendered below)
           // so the user explicitly assigns it instead of the mark being silently lost.
           setPendingRoomAssign({ id: newHl.id, clientX: e.clientX, clientY: e.clientY });
-        } else {
+        } else if (!linkedCat) {
           // Surface (to the console) why a room-assigned highlight might NOT produce
           // a bid line item, so sync failures are diagnosable rather than silent.
           const c = (newHl.color || "").toLowerCase();
@@ -1105,6 +1123,15 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                   className="h-7 w-32 text-xs px-2 rounded-md border border-slate-300 focus:outline-none focus:ring-1 focus:ring-amber-400"
                 />
               )}
+              <span className="text-[10px] text-slate-400 mx-0.5">or</span>
+              <CatalogItemPicker
+                catalogItems={catalogItems}
+                categories={categories}
+                value={catalogItemId}
+                onChange={(id) => setCatalogItemId(id)}
+                placeholder="Link catalog item…"
+                compact
+              />
               <Select value={activeRoomId || "__none__"} onValueChange={v => setActiveRoomId(v === "__none__" ? "" : v)}>
                 <SelectTrigger className="h-7 w-[160px] text-xs ml-1"><SelectValue placeholder="All rooms" /></SelectTrigger>
                 <SelectContent>

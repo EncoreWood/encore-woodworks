@@ -4,12 +4,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, ChevronDown, ChevronRight, Plus, Paperclip, FileText, Loader2, MapPin } from "lucide-react";
+import { Trash2, ChevronDown, ChevronRight, Plus, Paperclip, FileText, Loader2, MapPin, RefreshCw } from "lucide-react";
 import PDFAnnotator from "../production/PDFAnnotator";
 
 import { getCategoryStyle } from "./BidCatalogEditor";
 import SketchPreviewGenerator from "./SketchPreviewGenerator";
 import { measureRoomMarks, recomputePlanMarkRoom } from "@/components/bidding/planMarkPricing";
+import { buildLineItemFromCatalog, refreshLineItemToCurrent } from "./catalogPricing";
 
 export default function BidRoomSection({ room, catalogItems, categories, pricingConfigs, bidType, onChange, onDelete, sketchPaths = [], specs = {}, linkedProjectId = null, planAnnotations = [], planScalePxPerFt = null, onViewOnPlan }) {
   const [collapsed, setCollapsed] = useState(false);
@@ -47,11 +48,15 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
   };
 
   // When a room's cabinet style changes, re-bake the LF rate on base/upper/tall line
-  // items so room & bid totals reflect the new style immediately. "" = inherit bid default.
+  // items so room & bid totals reflect the new style immediately. Catalog-linked
+  // items (catalog_item_id present) are SKIPPED — their unit_price is a snapshot and
+  // must not change retroactively; refresh them explicitly via "Update to Current Pricing".
+  // "" = inherit bid default.
   const applyRoomStyle = (styleKey) => {
     const effectiveKey = styleKey || bidType;
     const cfg = pricingConfigs.find(c => c.style_key === effectiveKey);
     const newItems = (room.items || []).map(item => {
+      if (item.catalog_item_id) return item; // snapshot preserved
       if (item.measure_type === "lf" && cfg && ["base", "upper", "tall"].includes(item.cabinet_category)) {
         let rate = item.unit_price;
         if (item.cabinet_category === "base") rate = cfg.bases_lf || 0;
@@ -62,6 +67,15 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
       return item;
     });
     onChange({ ...room, cabinet_style: styleKey || null, items: newItems });
+  };
+
+  // Explicit "Update to Current Pricing" for this room: re-snapshot every
+  // catalog-linked line item's unit_price/percentage to the catalog's current
+  // values (and the room's effective tier). Manual items are left untouched.
+  const handleUpdateToCurrentPricing = () => {
+    const styleKey = room.cabinet_style || bidType;
+    const items = (room.items || []).map(i => refreshLineItemToCurrent(i, catalogItems, pricingConfigs, styleKey));
+    onChange({ ...room, items });
   };
 
   // Switch this room's pricing to come from the user's manual plan marks.
@@ -97,19 +111,9 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
     }
     const cat = catalogItems.find(c => c.id === catalogId);
     if (!cat) return;
-    const isPercent = cat.measure_type === "percentage";
-    const price = isPercent ? 0 : getPrice(cat.cabinet_category, cat.measure_type, cat);
-    const newItem = {
-      id: `item_${Date.now()}`,
-      name: cat.name,
-      cabinet_category: cat.cabinet_category || "misc",
-      measure_type: cat.measure_type || "lf",
-      quantity: isPercent ? 0 : 0,
-      unit_price: price,
-      percentage: cat.default_percentage || 0,
-      upgrade_applies_to: cat.upgrade_applies_to || ["base", "upper", "tall"],
-      notes: ""
-    };
+    // Snapshot the price at add time so later catalog/tier edits never retroactively
+    // change this saved bid line item. catalog_item_id links it back to its source.
+    const newItem = buildLineItemFromCatalog(cat, pricingConfigs, roomStyleKey, { quantity: 0, notes: "" });
     onChange({ ...room, items: [...(room.items || []), newItem] });
   };
 
@@ -224,6 +228,16 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
         ) : (
           <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); handlePriceFromMarks(); }} className="h-7 px-2 text-[10px] text-amber-700 border-amber-300 flex-shrink-0 whitespace-nowrap" title="Price this room from your manual plan marks">
             Price from Plan
+          </Button>
+        )}
+        {/* Update catalog-linked items to current catalog/tier pricing */}
+        {(room.items || []).some(i => i.catalog_item_id) && (
+          <Button variant="ghost" size="sm"
+            onClick={e => { e.stopPropagation(); handleUpdateToCurrentPricing(); }}
+            className="h-7 px-2 text-[10px] text-sky-300 hover:text-sky-100 hover:bg-slate-700 gap-1 flex-shrink-0 whitespace-nowrap"
+            title="Re-snapshot catalog-linked items to current catalog/tier prices">
+            <RefreshCw className="w-3 h-3" />
+            <span className="hidden lg:inline">Update Pricing</span>
           </Button>
         )}
         {/* View this room's location on the floor plan */}
