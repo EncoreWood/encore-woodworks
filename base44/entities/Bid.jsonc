@@ -173,6 +173,17 @@
                   "type": "string",
                   "description": "Plan annotation (highlight) id this line item was generated from, for live upsert keyed by mark"
                 },
+                "plan_ann_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "All plan annotation (highlight) ids absorbed into this merged line item \u2014 multiple highlights of the same item in a room merge into one row"
+                },
+                "manual_base": {
+                  "type": "number",
+                  "description": "Manually-entered quantity portion preserved when plan highlights were merged into this row; total Qty = manual_base + sum of tracked plan marks"
+                },
                 "sketch_insert_id": {
                   "type": "string",
                   "description": "Sketch symbol id this item was generated from (rollout inserts)"
