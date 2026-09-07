@@ -98,3 +98,74 @@ export function refreshRoomsToCurrent(rooms, catalogItems, pricingConfigs, bidTy
     return { ...room, items };
   });
 }
+
+// ── Duplicate-merging helpers ──────────────────────────────────────────────
+
+// All plan-mark ids a line item has already absorbed (merged rows track every
+// source highlight in plan_ann_ids; older rows only carry the singular plan_ann_id).
+export function trackedMarkIds(item) {
+  const ids = new Set((item && item.plan_ann_ids) || []);
+  if (item && item.plan_ann_id) ids.add(item.plan_ann_id);
+  return ids;
+}
+
+// Combine two note strings without losing either (deduped, "; "-separated).
+export function combineNotes(existing, incoming) {
+  const a = (existing || "").trim();
+  const b = (incoming || "").trim();
+  if (!b) return a;
+  if (!a) return b;
+  if (a.toLowerCase().includes(b.toLowerCase())) return a;
+  return `${a}; ${b}`;
+}
+
+// The manually-entered quantity portion of an item: explicit manual_base, else
+// the full quantity for rows with no plan-mark tracking (plan-driven rows are
+// derived from their marks, so their manual portion is 0).
+export function manualQtyPortion(item) {
+  if (item.manual_base != null) return parseFloat(item.manual_base) || 0;
+  const tracked = (item.plan_ann_ids && item.plan_ann_ids.length) || item.plan_ann_id;
+  return tracked ? 0 : (parseFloat(item.quantity) || 0);
+}
+
+// Merge duplicate item `b` INTO item `a` (same Item Name + Category): quantities
+// are summed, notes combined, plan-mark ids / catalog links unioned, and the
+// manual (non-plan-derived) portion of each qty is preserved via manual_base so
+// future plan syncs keep both rows' numbers.
+export function mergeIntoItem(a, b) {
+  const planIds = new Set([...trackedMarkIds(a), ...trackedMarkIds(b)]);
+  const merged = {
+    ...a,
+    manual_base: Math.round((manualQtyPortion(a) + manualQtyPortion(b)) * 10) / 10,
+    notes: combineNotes(a.notes, b.notes),
+    plan_ann_ids: [...planIds],
+  };
+  if (a.measure_type === "percentage") {
+    merged.percentage = (parseFloat(a.percentage) || 0) + (parseFloat(b.percentage) || 0);
+  } else {
+    merged.quantity = Math.round(((parseFloat(a.quantity) || 0) + (parseFloat(b.quantity) || 0)) * 10) / 10;
+  }
+  if (!parseFloat(a.unit_price) && parseFloat(b.unit_price)) merged.unit_price = b.unit_price;
+  if (!a.catalog_item_id && b.catalog_item_id) merged.catalog_item_id = b.catalog_item_id;
+  if (!a.plan_ann_id && b.plan_ann_id) merged.plan_ann_id = b.plan_ann_id;
+  if (!a.sketch_insert_id && b.sketch_insert_id) merged.sketch_insert_id = b.sketch_insert_id;
+  return merged;
+}
+
+// Collapse a room's item list so every (Item Name, Category, measure type)
+// combination appears as ONE row: duplicates are merged with quantities summed,
+// notes combined, and plan-mark/catalog links preserved. Blank-named rows
+// (still being typed) are left untouched.
+export function mergeDuplicateItems(items) {
+  const out = [];
+  const indexByKey = new Map();
+  (items || []).forEach(it => {
+    const name = (it.name || "").trim();
+    if (!name) { out.push(it); return; }
+    const key = `${name.toLowerCase()}||${it.cabinet_category || ""}||${it.measure_type || ""}`;
+    const idx = indexByKey.get(key);
+    if (idx == null) { indexByKey.set(key, out.length); out.push(it); return; }
+    out[idx] = mergeIntoItem(out[idx], it);
+  });
+  return out;
+}

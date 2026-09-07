@@ -15,6 +15,7 @@ import BidRoomSection from "./BidRoomSection";
 import BidClientView from "./BidClientView";
 import BidPlanViewer from "./BidPlanViewer";
 import { recomputePlanMarkRoom, syncCustomItems, syncCatalogHighlights } from "@/components/bidding/planMarkPricing";
+import { mergeDuplicateItems, combineNotes } from "./catalogPricing";
 
 const BID_STYLES = [
   { key: "basic_euro",          label: "Tier 1 Euro" },
@@ -536,7 +537,8 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
       id: `room_${Date.now()}_${ri}`,
       room_name: room.room_name || `Room ${ri + 1}`,
       pricing_source: "ai",
-      items: (room.items || []).map((item, ii) => {
+      // Collapse duplicate items the AI returned for the same Name + Category.
+      items: mergeDuplicateItems((room.items || []).map((item, ii) => {
         const cat = ["base", "upper", "tall", "misc"].includes(item.cabinet_category) ? item.cabinet_category : "base";
         const mt = item.measure_type === "qty" ? "qty" : "lf";
         let price = 0;
@@ -552,7 +554,7 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
           unit_price: price,
           notes: item.notes || ""
         };
-      })
+      }))
     }));
     const newTotal = newRooms.reduce((s, r) => s + getRoomTotal(r), 0);
 
@@ -621,7 +623,9 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
       status: "inquiry",
       estimated_budget: grandTotal > 0 ? Math.round(grandTotal) : undefined,
     });
-    // Link bid to the new project
+    // Link bid to the new project (collapse duplicate line items first)
+    const mergedRooms = rooms.map(r => ({ ...r, items: mergeDuplicateItems(r.items || []) }));
+    setRooms(mergedRooms);
     const bidData = {
       project_name: name,
       client_name: clientName,
@@ -631,9 +635,10 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
       plan_file_name: planFileName,
       bid_type: bidType,
       ...specs,
-      rooms,
-      total: Math.round(grandTotal),
-      total_lf: Math.round(totalLf * 10) / 10,
+      rooms: mergedRooms,
+      total: Math.round(mergedRooms.reduce((s, room) => s + getRoomTotal(room), 0)),
+      total_lf: Math.round(mergedRooms.reduce((s, room) =>
+        s + (room.items || []).filter(i => i.measure_type === "lf").reduce((rs, i) => rs + (parseFloat(i.quantity) || 0), 0), 0) * 10) / 10,
       ai_notes: aiNotes,
       notes,
       status,
@@ -679,6 +684,15 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
     setIsSaving(true);
     const name = projectName || "Untitled Bid";
 
+    // Collapse duplicate same-Name+Category line items before persisting — the
+    // safety net covering every add entry point (dropdown, plan highlights, AI
+    // takeoff, manual edits). Totals are recomputed from the merged rooms.
+    const mergedRooms = rooms.map(r => ({ ...r, items: mergeDuplicateItems(r.items || []) }));
+    setRooms(mergedRooms);
+    const mergedTotal = mergedRooms.reduce((s, room) => s + getRoomTotal(room), 0);
+    const mergedLf = mergedRooms.reduce((s, room) =>
+      s + (room.items || []).filter(i => i.measure_type === "lf").reduce((rs, i) => rs + (parseFloat(i.quantity) || 0), 0), 0);
+
     const data = {
       project_name: name,
       client_name: clientName,
@@ -688,9 +702,9 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
       plan_file_name: planFileName,
       bid_type: bidType,
       ...specs,
-      rooms,
-      total: Math.round(grandTotal),
-      total_lf: Math.round(totalLf * 10) / 10,
+      rooms: mergedRooms,
+      total: Math.round(mergedTotal),
+      total_lf: Math.round(mergedLf * 10) / 10,
       ai_notes: aiNotes,
       notes,
       status,
@@ -1123,9 +1137,22 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
         onAddToRoom={(roomId, category, lf, label) => {
           setRooms(prev => prev.map(room => {
             if (room.id !== roomId) return room;
+            const name = label || `${category} run`;
+            // Merge into an existing same-name + same-category LF row instead of
+            // adding a duplicate (qty added on top, notes combined).
+            const existing = (room.items || []).find(i =>
+              (i.name || "").trim().toLowerCase() === name.trim().toLowerCase()
+              && i.cabinet_category === category
+              && i.measure_type === "lf"
+            );
+            if (existing) {
+              return { ...room, items: (room.items || []).map(i => i.id === existing.id
+                ? { ...i, quantity: Math.round(((parseFloat(i.quantity) || 0) + lf) * 10) / 10, notes: combineNotes(i.notes, "From plan measurement") }
+                : i) };
+            }
             const newItem = {
               id: `item_${Date.now()}`,
-              name: label || `${category} run`,
+              name,
               cabinet_category: category,
               measure_type: "lf",
               quantity: Math.round(lf * 10) / 10,

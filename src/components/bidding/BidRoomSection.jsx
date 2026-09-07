@@ -11,12 +11,14 @@ import { getCategoryStyle } from "./BidCatalogEditor";
 import SketchPreviewGenerator from "./SketchPreviewGenerator";
 import { measureRoomMarks, recomputePlanMarkRoom } from "@/components/bidding/planMarkPricing";
 import { buildLineItemFromCatalog, refreshLineItemToCurrent } from "./catalogPricing";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function BidRoomSection({ room, catalogItems, categories, pricingConfigs, bidType, onChange, onDelete, sketchPaths = [], specs = {}, linkedProjectId = null, planAnnotations = [], planScalePxPerFt = null, onViewOnPlan }) {
   const [collapsed, setCollapsed] = useState(false);
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [annotating, setAnnotating] = useState(false);
   const [catalogFilter, setCatalogFilter] = useState("all");
+  const { toast } = useToast();
 
   const handlePdfUpload = async (e) => {
     const file = e.target.files[0];
@@ -111,6 +113,14 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
     }
     const cat = catalogItems.find(c => c.id === catalogId);
     if (!cat) return;
+    // Don't create a duplicate row: a line item with the same Item Name AND
+    // Category already in this room is reused — the user edits its qty in place.
+    const norm = (s) => (s || "").trim().toLowerCase();
+    const existing = (room.items || []).find(i => norm(i.name) === norm(cat.name) && i.cabinet_category === cat.cabinet_category);
+    if (existing) {
+      toast({ title: `"${cat.name}" is already in this room`, description: "Edit the quantity on the existing row instead of adding a duplicate." });
+      return;
+    }
     // Snapshot the price at add time so later catalog/tier edits never retroactively
     // change this saved bid line item. catalog_item_id links it back to its source.
     const newItem = buildLineItemFromCatalog(cat, pricingConfigs, roomStyleKey, { quantity: 0, notes: "" });
