@@ -16,6 +16,7 @@ import BidClientView from "./BidClientView";
 import BidPlanViewer from "./BidPlanViewer";
 import { recomputePlanMarkRoom, syncCustomItems, syncCatalogHighlights } from "@/components/bidding/planMarkPricing";
 import { mergeDuplicateItems, combineNotes } from "./catalogPricing";
+import { demoteOtherEstimates } from "./estimateStatus";
 
 const BID_STYLES = [
   { key: "basic_euro",          label: "Tier 1 Euro" },
@@ -723,7 +724,14 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
       await base44.entities.Bid.update(id, data);
       refreshBidCache(id, data);
     } else {
-      const created = await base44.entities.Bid.create(data);
+      // New estimates start as the project's "current" version — any previous
+      // estimate on the same project is automatically demoted to "outdated".
+      const created = await base44.entities.Bid.create({ ...data, estimate_status: "current" });
+      try {
+        await demoteOtherEstimates(created.id, data.project_id);
+      } catch (err) {
+        console.error("Failed to demote previous estimates:", err);
+      }
       setCreatedBidId(created.id);
     }
     setIsSaving(false);

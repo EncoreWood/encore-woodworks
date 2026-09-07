@@ -49,6 +49,15 @@
       ],
       "default": "draft"
     },
+    "estimate_status": {
+      "type": "string",
+      "enum": [
+        "current",
+        "outdated"
+      ],
+      "default": "current",
+      "description": "Versioning status: exactly one estimate per project is 'current' \u2014 the active version shown in the project's Estimates list. Any previous estimate is flipped to 'outdated' (kept for reference, shown in the collapsed Outdated section)."
+    },
     "estimated_by": {
       "type": "string",
       "description": "Name of the team member who provided the estimate"
