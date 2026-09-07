@@ -188,6 +188,10 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
     }
   }, [linkedProject, bidId]);
 
+  // Whether the client estimate includes the "Plan Reference" section (flattened
+  // highlighted plan pages). Defaults ON; toggleable per bid.
+  const [includePlanPages, setIncludePlanPages] = useState(true);
+
   useEffect(() => {
     // Hydrate local state from the server exactly ONCE per bidId. After this, local
     // edits are the source of truth until the user clicks Save — background refetches
@@ -210,6 +214,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
       setStatus(b.status || "draft");
       setPlanAnnotations(b.plan_annotations || []);
       setPlanScalePxPerFt(b.plan_scale_px_per_ft || null);
+      setIncludePlanPages(b.include_plan_pages !== false);
     }
   }, [bidData]);
 
@@ -642,6 +647,7 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
       ai_notes: aiNotes,
       notes,
       status,
+      include_plan_pages: includePlanPages,
       plan_annotations: planAnnotations,
       plan_scale_px_per_ft: planScalePxPerFt || null
     };
@@ -708,6 +714,7 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
       ai_notes: aiNotes,
       notes,
       status,
+      include_plan_pages: includePlanPages,
       plan_annotations: planAnnotations,
       plan_scale_px_per_ft: planScalePxPerFt || null
     };
@@ -1019,6 +1026,18 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
         <Card className="p-4">
           <label className="text-sm font-semibold text-slate-700 mb-2 block">Additional Notes</label>
           <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Any additional notes..." className="min-h-[80px]" />
+          {planFileUrl && (
+            <label className="flex items-center gap-2 mt-3 text-sm text-slate-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={includePlanPages}
+                onChange={e => setIncludePlanPages(e.target.checked)}
+                className="w-4 h-4 accent-amber-600"
+              />
+              Include highlighted plan pages in the client estimate
+              <span className="text-xs text-slate-400">(shows a "Plan Reference" section with the highlighted floor plans)</span>
+            </label>
+          )}
         </Card>
 
         {/* Grand Total Footer */}
@@ -1090,7 +1109,7 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
 
       <BidPricingSettings open={showPricingSettings} onClose={() => setShowPricingSettings(false)} onPricingUpdated={loadPricing} />
       <BidCatalogEditor open={showCatalogEditor} onClose={() => setShowCatalogEditor(false)} onSaved={() => { loadCatalog(); loadCategories(); }} />
-      <BidClientView open={showClientView} onClose={() => setShowClientView(false)} bid={{ project_name: projectName, client_name: clientName, address, rooms, notes, ...specs }} bidType={pricingConfigs.find(c => c.style_key === bidType)?.style_label || BID_STYLES.find(s => s.key === bidType)?.label} />
+      <BidClientView open={showClientView} onClose={() => setShowClientView(false)} bid={{ project_name: projectName, client_name: clientName, address, rooms, notes, plan_file_url: planFileUrl, plan_annotations: planAnnotations, include_plan_pages: includePlanPages, ...specs }} bidType={pricingConfigs.find(c => c.style_key === bidType)?.style_label || BID_STYLES.find(s => s.key === bidType)?.label} />
       <BidPlanViewer
         open={showPlanViewer}
         onOpenChange={(o) => { setShowPlanViewer(o); if (!o) setFocusRoom(null); }}

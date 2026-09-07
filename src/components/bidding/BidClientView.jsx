@@ -3,6 +3,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Printer, X, Mail, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
+import BidPlanPagesSection from "./BidPlanPagesSection";
 
 export default function BidClientView({ open, onClose, bid, bidType }) {
   const printRef = useRef();
@@ -14,6 +15,11 @@ export default function BidClientView({ open, onClose, bid, bidType }) {
   if (!bid) return null;
 
   const rooms = bid.rooms || [];
+  // Show the "Where Your Cabinets Are Located" section only when enabled for this
+  // bid (include_plan_pages defaults ON) and the bid actually has plan highlights.
+  const showPlanPages = bid.include_plan_pages !== false
+    && !!bid.plan_file_url
+    && (bid.plan_annotations || []).some(a => a?.type === "highlight");
 
   const getItemSubtotal = (item, roomItems) => {
     if (item.measure_type === "percentage") {
@@ -86,6 +92,9 @@ export default function BidClientView({ open, onClose, bid, bidType }) {
         thead { display: table-header-group; }
         tr, img { page-break-inside: avoid; }
         img { max-width: 100%; height: auto; }
+        /* Plan Reference: start on a fresh page, never split an image across pages */
+        .plan-section { page-break-before: always; }
+        .plan-page { page-break-inside: avoid; }
       </style>
     </head><body>${content}</body></html>`);
     win.document.close();
@@ -273,6 +282,12 @@ export default function BidClientView({ open, onClose, bid, bidType }) {
               </div>
             </div>
           </div>
+
+          {/* Plan Reference — flattened highlighted plan pages (baked as <img>s so
+              they survive the print/PDF window's innerHTML copy) */}
+          {showPlanPages && (
+            <BidPlanPagesSection pdfUrl={bid.plan_file_url} annotations={bid.plan_annotations} />
+          )}
 
           {/* Payment Terms */}
           <div className="mt-6 bg-slate-50 border border-slate-200 rounded-lg p-4">

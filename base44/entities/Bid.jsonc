@@ -71,6 +71,11 @@
     "hinges": {
       "type": "string"
     },
+    "include_plan_pages": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the client estimate includes the 'Plan Reference' section \u2014 flattened images of every plan page that carries highlights, so the client can see where their cabinets are located"
+    },
     "rooms": {
       "type": "array",
       "items": {

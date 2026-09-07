@@ -14,6 +14,7 @@ import MozaikRoomPanel from "./MozaikRoomPanel";
 import BidRoomPricingPanel from "./BidRoomPricingPanel";
 import CatalogItemPicker from "./CatalogItemPicker";
 import { liveSyncRoomsFromMarks, CATEGORY_BY_COLOR } from "@/components/bidding/planMarkPricing";
+import { HIGHLIGHT_COLORS } from "./highlightLegend";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 
@@ -25,15 +26,6 @@ function colorForCategory(catKey) {
 }
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-
-const HIGHLIGHT_COLORS = [
-  { label: "Base",   color: "#d97706", hex: "rgba(217,119,6,0.28)" },
-  { label: "Upper",  color: "#3b82f6", hex: "rgba(59,130,246,0.28)" },
-  { label: "Tall",   color: "#ef4444", hex: "rgba(239,68,68,0.28)" },
-  { label: "Misc",   color: "#6b7280", hex: "rgba(107,114,128,0.35)" },
-  { label: "Custom", color: "#923a57", hex: "rgba(146,58,87,0.28)" },
-  { label: "Base Paneling", color: "#667484", hex: "rgba(102,116,132,0.28)" },
-];
 
 const CUSTOM_COLOR = "#923a57";
 const MARK_CUSTOM_COLOR = "#923a57"; // marks that originated as a custom (catalog-linked) highlight
