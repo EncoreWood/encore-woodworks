@@ -12,7 +12,7 @@ import {
 import { base44 } from "@/api/base44Client";
 import MozaikRoomPanel from "./MozaikRoomPanel";
 import BidRoomPricingPanel from "./BidRoomPricingPanel";
-import CatalogItemPicker from "./CatalogItemPicker";
+import CategoryCatalogChips from "./CategoryCatalogChips";
 import { liveSyncRoomsFromMarks, CATEGORY_BY_COLOR } from "@/components/bidding/planMarkPricing";
 import { HIGHLIGHT_COLORS } from "./highlightLegend";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
@@ -1128,9 +1128,10 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
             <Button key={key}
               size="sm"
               variant={tool===key ? "default" : "outline"}
+              title={label}
               onClick={()=>{ setTool(key); setTextInput(null); setMeasureStart(null); setCalibStart(null); setDeletePopup(null); dragRef.current=null; if(key!=="trace"){setTracePoints([]);setTracePreview(null);} }}
-              className={`h-8 text-xs gap-1 ${tool===key ? cls : "text-slate-700"}`}>
-              <Icon className="w-3.5 h-3.5"/>{label}
+              className={`h-8 w-8 px-0 ${tool===key ? cls : "text-slate-700"}`}>
+              <Icon className="w-4 h-4"/>
             </Button>
           ))}
           {/* Unit toggle — only visible when measure tool is active */}
@@ -1147,22 +1148,19 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
             </div>
           )}
           <div className="border-l h-5 mx-1"/>
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={()=>{const pa=annList.filter(a=>a.page===pageNumber);if(!pa.length)return;const last=pa[pa.length-1];setAnnList(p=>p.filter(a=>a!==last));}}><Undo2 className="w-3.5 h-3.5 mr-1"/>Undo</Button>
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={()=>setAnnList(p=>p.filter(a=>a.page!==pageNumber))}>Clear Page</Button>
+          <Button variant="outline" size="sm" className="h-8 w-8 px-0" title="Undo" onClick={()=>{const pa=annList.filter(a=>a.page===pageNumber);if(!pa.length)return;const last=pa[pa.length-1];setAnnList(p=>p.filter(a=>a!==last));}}><Undo2 className="w-4 h-4"/></Button>
+          <Button variant="outline" size="sm" className="h-8 w-8 px-0" title="Clear page" onClick={()=>setAnnList(p=>p.filter(a=>a.page!==pageNumber))}><Trash2 className="w-4 h-4"/></Button>
           {tool==="highlight" ? (
-            <div className="flex items-center gap-1.5 ml-1 flex-wrap">
-              {/* Unified picker: search + category filter chips live in ONE dropdown —
-                  picking what a highlight represents is a single step, not
-                  color-chip-then-link-catalog-item. Selecting an item links the next
-                  drawn highlight to it (snapshot-priced line item); drawing without
-                  one falls back to the generic color-based run. */}
-              <CatalogItemPicker
+            <div className="flex items-center gap-1.5 ml-1 flex-1 min-w-0 flex-wrap">
+              {/* One chip per catalog category — clicking a chip opens that category's
+                  items directly (no combined-picker + filter step). Selecting an item
+                  links the next drawn highlight to it; drawing without one falls back
+                  to the generic color-based run. */}
+              <CategoryCatalogChips
                 catalogItems={catalogItems}
                 categories={categories}
                 value={catalogItemId}
                 onChange={(id) => setCatalogItemId(id)}
-                placeholder="Pick catalog item…"
-                compact
               />
               <Select value={activeRoomId || "__none__"} onValueChange={v => setActiveRoomId(v === "__none__" ? "" : v)}>
                 <SelectTrigger className="h-7 w-[160px] text-xs ml-1"><SelectValue placeholder="All rooms" /></SelectTrigger>
