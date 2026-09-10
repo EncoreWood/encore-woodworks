@@ -14,7 +14,8 @@ import BidCatalogEditor from "./BidCatalogEditor";
 import BidRoomSection from "./BidRoomSection";
 import BidClientView from "./BidClientView";
 import BidPlanViewer from "./BidPlanViewer";
-import { recomputePlanMarkRoom, syncCustomItems, syncCatalogHighlights } from "@/components/bidding/planMarkPricing";
+import { recomputePlanMarkRoom, syncCustomItems, syncCatalogHighlights, liveSyncRoomsFromMarks } from "@/components/bidding/planMarkPricing";
+import { useToast } from "@/components/ui/use-toast";
 import { mergeDuplicateItems, combineNotes } from "./catalogPricing";
 import { demoteOtherEstimates } from "./estimateStatus";
 
@@ -148,6 +149,7 @@ export default function BidWorkspace({ bidId, project: linkedProject, onClose, o
   const effBidId = bidId || createdBidId;
   const [projectSearch, setProjectSearch] = useState("");
   const [allProjects, setAllProjects] = useState([]);
+  const { toast } = useToast();
 
   // The bid editor is a long-lived form — disable background polling / focus refetch
   // so a 30s poll (or tab switch) never clobbers in-progress local edits (rooms,
@@ -1133,23 +1135,37 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
           // Resolve the "Custom" category key (user-created category) for syncing
           // custom plan marks into room line items.
           const customCatKey = categories.find(c => (c.label || "").toLowerCase() === "custom")?.key || "misc";
-          // Live re-pricing: any room already in "Priced from Plan" mode re-sums its LF
-          // from the freshly saved marks, so pricing stays current without re-toggling.
-          // Then upsert "Custom" line items for custom highlights assigned to a room.
-          setRooms(prev => {
-            const repriced = prev.map(r => r.pricing_source === "plan_marks"
-              ? recomputePlanMarkRoom(r, savedAnnotations, effScale, pricingConfigs, bidType)
-              : r);
-            const withCustom = syncCustomItems(repriced, savedAnnotations, customCatKey);
-            // Upsert catalog-linked highlights into snapshot-priced bid line items.
-            return syncCatalogHighlights(withCustom, savedAnnotations, effScale, catalogItems, pricingConfigs, bidType);
-          });
-          // Persist immediately so annotations survive page reload
+          // Re-derive the bid's rooms from the freshly saved marks — the same pipeline
+          // the live Room Pricing panel uses: "Priced from Plan" rooms re-sum their LF,
+          // then marks-driven LF items, catalog-linked highlights, and custom highlights
+          // are upserted into their rooms.
+          const repriced = rooms.map(r => r.pricing_source === "plan_marks"
+            ? recomputePlanMarkRoom(r, savedAnnotations, effScale, pricingConfigs, bidType)
+            : r);
+          const syncedRooms = liveSyncRoomsFromMarks(repriced, savedAnnotations, effScale, pricingConfigs, bidType, customCatKey, catalogItems);
+          // Collapse duplicate same-Name+Category line items (same safety net as Save).
+          const mergedRooms = syncedRooms.map(r => ({ ...r, items: mergeDuplicateItems(r.items || []) }));
+          setRooms(mergedRooms);
+          // Persist immediately: annotations AND the re-derived room items / pricing /
+          // totals land on the bid in one write — no second Save needed, and reloads,
+          // the client view, and the project's Estimates tab all see the same numbers.
           if (effBidId) {
-            const patch = { plan_annotations: savedAnnotations, ai_notes: notes };
+            const patch = {
+              plan_annotations: savedAnnotations,
+              ai_notes: notes,
+              rooms: mergedRooms,
+              total: Math.round(mergedRooms.reduce((s, room) => s + getRoomTotal(room), 0)),
+              total_lf: Math.round(mergedRooms.reduce((s, room) =>
+                s + (room.items || []).filter(i => i.measure_type === "lf").reduce((rs, i) => rs + (parseFloat(i.quantity) || 0), 0), 0) * 10) / 10
+            };
             if (scalePxPerFt && scalePxPerFt > 0) patch.plan_scale_px_per_ft = scalePxPerFt;
-            await base44.entities.Bid.update(effBidId, patch);
-            refreshBidCache(effBidId, patch);
+            try {
+              await base44.entities.Bid.update(effBidId, patch);
+              refreshBidCache(effBidId, patch);
+            } catch (err) {
+              console.error("Failed to save plan changes to bid:", err);
+              toast({ title: "Failed to save plan changes to the estimate", variant: "destructive" });
+            }
           }
         }}
         projectName={projectName}
