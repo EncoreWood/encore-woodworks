@@ -560,11 +560,60 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
     end:   { x: m.end.x+dx,   y: m.end.y+dy },
   });
 
+  // ── Quick delete (right-click / long-press) ────────────────────────────────
+  // Lets the user delete any annotation or measurement while a DRAWING tool is
+  // active, without switching back to the pointer tool first. The pointer tool
+  // keeps its existing select-then-delete flow.
+  const longPressRef = useRef(null); // { timer, sx, sy }
+  const clearLongPress = () => {
+    if (longPressRef.current) { clearTimeout(longPressRef.current.timer); longPressRef.current = null; }
+  };
+  const deleteHit = (hit) => {
+    if (!hit) return;
+    if (hit.kind === "measurement") setMeasurements(p => p.filter((_, i) => i !== hit.idx));
+    else setAnnList(p => p.filter((_, i) => i !== hit.idx));
+    setSelectedAnn(null);
+    setDeletePopup(null);
+  };
+  const handleContextMenu = (e) => {
+    if (tool === "pointer") return; // pointer tool already supports select-then-delete
+    const hit = hitTest(getPos(e));
+    if (hit) {
+      e.preventDefault();
+      deleteHit(hit);
+    }
+  };
+
   // ── Pointer events ────────────────────────────────────────────────────────
   const handlePointerDown = (e) => {
     e.preventDefault();
     canvasRef.current?.setPointerCapture(e.pointerId);
     const pos = getPos(e);
+
+    // Right mouse button is reserved for the quick-delete context menu —
+    // never let it start a draw or drag.
+    if (e.button !== 0) return;
+
+    // Touch/iPad: long-press on an existing annotation = same quick delete.
+    clearLongPress();
+    if (e.pointerType === "touch" && tool !== "pointer") {
+      const ev = e;
+      const sx = pos.x, sy = pos.y;
+      longPressRef.current = {
+        sx, sy,
+        timer: setTimeout(() => {
+          longPressRef.current = null;
+          const hit = hitTest(getPos(ev));
+          if (!hit) return;
+          deleteHit(hit);
+          // Cancel any in-progress draw so lifting the finger doesn't leave a
+          // stray mark where the deleted one was.
+          setCurrentLine(null);
+          setCurrentPath([]);
+          setIsPointerDown(false);
+        }, 550),
+      };
+    }
 
     if (tool === "trace") {
       // Check if clicking near first point to close shape
@@ -665,6 +714,9 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
   const handlePointerMove = (e) => {
     const pos = getPos(e);
 
+    // Cancel the pending long-press delete as soon as the finger moves (draw intent).
+    if (longPressRef.current && Math.hypot(pos.x - longPressRef.current.sx, pos.y - longPressRef.current.sy) > 12) clearLongPress();
+
     if (tool === "pointer" && dragRef.current) {
       const { kind, idx, lastPos, mode } = dragRef.current;
       const dx = pos.x - lastPos.x, dy = pos.y - lastPos.y;
@@ -719,6 +771,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
 
   const handlePointerUp = (e) => {
     e.preventDefault();
+    clearLongPress();
     const pos = getPos(e);
 
     if (tool === "pointer") {
@@ -1097,31 +1150,18 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={()=>{const pa=annList.filter(a=>a.page===pageNumber);if(!pa.length)return;const last=pa[pa.length-1];setAnnList(p=>p.filter(a=>a!==last));}}><Undo2 className="w-3.5 h-3.5 mr-1"/>Undo</Button>
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={()=>setAnnList(p=>p.filter(a=>a.page!==pageNumber))}>Clear Page</Button>
           {tool==="highlight" ? (
-            <div className="flex items-center gap-1 ml-1 flex-wrap">
-              {HIGHLIGHT_COLORS.map(hc=>(
-                <button key={hc.label} onClick={()=>setHighlightColor(hc.color)} title={hc.label}
-                  className="px-2 py-0.5 rounded-full text-xs font-semibold border transition-all"
-                  style={{background:hc.hex, borderColor:highlightColor===hc.color?hc.color:"#e2e8f0", color:hc.color, boxShadow:highlightColor===hc.color?`0 0 0 2px ${hc.color}`:"none"}}>
-                  {hc.label}
-                </button>
-              ))}
-              <input type="color" value={highlightColor} onChange={e=>setHighlightColor(e.target.value)} title="Custom" className="w-6 h-6 rounded border cursor-pointer"/>
-              {highlightColor === CUSTOM_COLOR && (
-                <input
-                  type="text"
-                  value={customLabel}
-                  onChange={e=>setCustomLabel(e.target.value)}
-                  placeholder="Custom name…"
-                  className="h-7 w-32 text-xs px-2 rounded-md border border-slate-300 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                />
-              )}
-              <span className="text-[10px] text-slate-400 mx-0.5">or</span>
+            <div className="flex items-center gap-1.5 ml-1 flex-wrap">
+              {/* Unified picker: search + category filter chips live in ONE dropdown —
+                  picking what a highlight represents is a single step, not
+                  color-chip-then-link-catalog-item. Selecting an item links the next
+                  drawn highlight to it (snapshot-priced line item); drawing without
+                  one falls back to the generic color-based run. */}
               <CatalogItemPicker
                 catalogItems={catalogItems}
                 categories={categories}
                 value={catalogItemId}
                 onChange={(id) => setCatalogItemId(id)}
-                placeholder="Link catalog item…"
+                placeholder="Pick catalog item…"
                 compact
               />
               <Select value={activeRoomId || "__none__"} onValueChange={v => setActiveRoomId(v === "__none__" ? "" : v)}>
@@ -1140,8 +1180,8 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
         </div>
 
         {/* Tool hint */}
-        {tool==="pointer"   && <div className="px-4 py-1.5 bg-slate-50 border-b text-xs text-slate-600 font-medium flex-shrink-0">Click to select • Drag to move • Drag corners/edges to resize • Click selected to delete</div>}
-        {tool==="highlight" && <div className="px-4 py-1.5 bg-amber-50 border-b text-xs text-amber-700 font-medium flex-shrink-0">{activeRoomId ? `Drawing & viewing marks for: ${rooms.find(r=>r.id===activeRoomId)?.room_name||"room"}` : "All rooms — draw a mark, then click it to assign it to a room"}</div>}
+        {tool==="pointer"   && <div className="px-4 py-1.5 bg-slate-50 border-b text-xs text-slate-600 font-medium flex-shrink-0">Click to select • Drag to move • Drag corners/edges to resize • Click selected to delete • Right-click deletes instantly</div>}
+        {tool==="highlight" && <div className="px-4 py-1.5 bg-amber-50 border-b text-xs text-amber-700 font-medium flex-shrink-0">{activeRoomId ? `Drawing & viewing marks for: ${rooms.find(r=>r.id===activeRoomId)?.room_name||"room"}` : "All rooms — draw a mark, then click it to assign it to a room"} • Right-click / long-press a mark to delete it</div>}
 
         {tool==="measure"   && <div className="px-4 py-1.5 bg-orange-50 border-b text-xs text-orange-700 font-medium flex-shrink-0">{!measureStart?"Click first point":"Click second point"}</div>}
         {tool==="calibrate" && <div className="px-4 py-1.5 bg-violet-50 border-b text-xs text-violet-700 font-medium flex-shrink-0">{!calibStart?"Click first point on scale bar":"Click second point"}</div>}
@@ -1201,6 +1241,7 @@ export default function BidPlanViewer({ open, onOpenChange, pdfUrl, annotations 
                   onPointerDown={handlePointerDown}
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
+                  onContextMenu={handleContextMenu}
                   onPointerLeave={e=>{ if(!["measure","calibrate","pointer"].includes(tool)) handlePointerUp(e); }}
                 />
 
