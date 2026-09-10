@@ -179,7 +179,9 @@ export function syncCatalogHighlights(rooms, planAnnotations, planScalePxPerFt, 
     Object.entries(groups).forEach(([catalogId, groupMarks]) => {
       const cat = (catalogItems || []).find(c => c.id === catalogId);
       if (!cat) return; // catalog item deleted → leave any existing linked item as-is (snapshot preserved)
-      const isLf = cat.measure_type === "lf" && ["base", "upper", "tall"].includes(cat.cabinet_category);
+      // LF-priced marks are measured in linear feet for ANY lf catalog item — including
+      // user-created categories like "base_paneling" — not just base/upper/tall runs.
+      const isLf = cat.measure_type === "lf";
       const qtyOf = (a) => (isLf && planScalePxPerFt && planScalePxPerFt > 0)
         ? Math.round((Math.max(a.w || 0, a.h || 0) / planScalePxPerFt) * 10) / 10
         : 1;
