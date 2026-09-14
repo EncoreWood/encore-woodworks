@@ -22,9 +22,16 @@ const initialFormState = {
 };
 
 // jobInfoProjects: if provided, form is in "Job Info" mode — shows project dropdown instead of type, hides stage
-export default function ProductionItemForm({ open, onOpenChange, onSubmit, initialData, isLoading, jobInfoProjects }) {
+export default function ProductionItemForm({ open, onOpenChange, onSubmit, initialData, isLoading, jobInfoProjects, rooms }) {
   const [formData, setFormData] = useState(initialFormState);
   const [uploadingGlb, setUploadingGlb] = useState(false);
+
+  // Rooms this card's project could belong to — project rooms plus the card's
+  // current room (in case it no longer matches the project's room list).
+  const roomOptions = [...new Set([
+    ...(rooms || []).map(r => r?.room_name).filter(Boolean),
+    ...(initialData?.room_name ? [initialData.room_name] : []),
+  ])];
   const [showGlb, setShowGlb] = useState(false);
   const glbInputRef = useRef(null);
 
@@ -93,6 +100,25 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
                 className="h-9 text-sm"
               />
             </div>
+
+            {/* Room — lets you re-assign a card that ended up under the wrong room */}
+            {initialData?.project_id && (
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-slate-600">Room</Label>
+                <Select
+                  value={formData.room_name || "__none__"}
+                  onValueChange={(v) => handleChange("room_name", v === "__none__" ? "" : v)}
+                >
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select room..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">No room</SelectItem>
+                    {roomOptions.map(r => (
+                      <SelectItem key={r} value={r}>{r}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {jobInfoProjects ? (
               <div className="space-y-1">

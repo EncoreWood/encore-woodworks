@@ -619,6 +619,7 @@ export default function ShopProduction() {
             }
           }}
           initialData={editingItem ? { ...editingItem } : null}
+          rooms={editingItem?.project_id ? (projects.find(p => p.id === editingItem.project_id)?.rooms || []) : []}
           isLoading={createMutation.isPending || updateMutation.isPending}
         />
 
