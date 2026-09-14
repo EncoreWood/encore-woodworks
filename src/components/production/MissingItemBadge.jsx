@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
@@ -11,6 +11,22 @@ export default function MissingItemBadge({ itemId, currentUser }) {
   const [open, setOpen] = useState(false);
   const [updating, setUpdating] = useState(null); // id of item being updated
   const queryClient = useQueryClient();
+  const dotRef = useRef(null);
+  const [popupPos, setPopupPos] = useState(null);
+
+  const POPUP_W = 320; // w-80
+
+  const openPopup = () => {
+    // Position in the viewport (fixed) so scrollable containers can't clip it,
+    // clamped so it never runs off the left or right edge of the screen
+    const rect = dotRef.current?.getBoundingClientRect();
+    if (rect) {
+      const left = Math.max(8, Math.min(rect.left, window.innerWidth - POPUP_W - 8));
+      const top = Math.min(rect.bottom + 6, window.innerHeight - 100);
+      setPopupPos({ left, top });
+    }
+    setOpen(true);
+  };
 
   const { data: allMissing = [] } = useQuery({
     queryKey: ["missingItems"],
@@ -50,14 +66,18 @@ export default function MissingItemBadge({ itemId, currentUser }) {
   return (
     <div className="relative inline-block" onClick={e => e.stopPropagation()}>
       <button
-        onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
+        ref={dotRef}
+        onClick={(e) => { e.stopPropagation(); open ? setOpen(false) : openPopup(); }}
         className={`w-4 h-4 rounded-full border-2 ${dotColor} shadow-sm flex-shrink-0`}
         title={`${activeReports.length} missing item report${activeReports.length !== 1 ? "s" : ""}`}
       />
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-5 z-50 w-80 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden">
+          <div
+            className="fixed z-50 w-80 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden"
+            style={popupPos ? { left: popupPos.left, top: popupPos.top } : { left: 8, top: 60 }}
+          >
             <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
               <span className="text-sm font-bold text-slate-800">⚠️ Missing Items ({activeReports.length})</span>
               <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600 text-xs">✕</button>
