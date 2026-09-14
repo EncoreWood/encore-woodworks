@@ -337,7 +337,15 @@ export default function JobPacketsTab({ projects, items, openFolderContext, onFo
         )
       ) : (
       <div className="space-y-8">
-      {projects.map(project => {
+      {(() => {
+        // Projects with cards actively in production float to the top
+        const inProductionProjectIds = new Set(
+          items.filter(i => i.project_id && i.stage && !i.is_job_info).map(i => i.project_id)
+        );
+        return [...projects].sort((a, b) =>
+          (inProductionProjectIds.has(b.id) ? 1 : 0) - (inProductionProjectIds.has(a.id) ? 1 : 0)
+        );
+      })().map(project => {
         const rooms = project.rooms?.map(r => r.room_name).filter(Boolean) || [];
         const projectItems = items.filter(i => i.project_id === project.id && !i.is_job_info && !i.stage);
 
