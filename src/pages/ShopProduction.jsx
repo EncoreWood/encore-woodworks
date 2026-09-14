@@ -155,7 +155,7 @@ export default function ShopProduction() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["pickupItems"] }); setPickupItem(null); }
   });
 
-  const handleDragEnd = async (result) => {
+  const handleDragEnd = async (result, extraUpdates) => {
     if (!result.destination) return;
     if (result.destination.droppableId === result.source.droppableId && result.destination.index === result.source.index) return;
 
@@ -249,6 +249,10 @@ export default function ShopProduction() {
       pts_logged_date: ptsLoggedDate,
       completed_date: completedDate,
       stage_move_log: stageMoveLog,
+      // "Sent back for missing item" badge flag: set on send-back, cleared when the card completes
+      sent_back_for_missing: newStage === "complete"
+        ? false
+        : (extraUpdates?.sent_back_for_missing ?? item.sent_back_for_missing ?? false),
     };
 
     // Optimistic update immediately so UI feels instant
@@ -391,13 +395,13 @@ export default function ShopProduction() {
   };
 
   // Move a card to a different stage via dropdown (same logic as drag-end)
-  const handleMoveStage = async (item, newStage) => {
+  const handleMoveStage = async (item, newStage, extraUpdates) => {
     if (item.stage === newStage) return;
     await handleDragEnd({
       draggableId: item.id,
       source: { droppableId: item.stage, index: 0 },
       destination: { droppableId: newStage, index: 0 },
-    });
+    }, extraUpdates);
   };
 
   const sharedCardProps = {

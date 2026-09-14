@@ -172,6 +172,16 @@ export default function ProductionCard({
           </p>
         )}
 
+        {/* Sent back for a missing item */}
+        {item.sent_back_for_missing && (
+          <span
+            className="inline-flex items-center gap-1 mb-2 px-2 py-0.5 rounded-full bg-red-100 border border-red-300 text-red-700 text-[10px] font-bold"
+            title="This card was sent back into production because of a missing-item report"
+          >
+            ↩ Sent back — missing item
+          </span>
+        )}
+
         {/* Action button row — sits neatly below the project name */}
         {(onOpenRoomFolder || onReturnToFolder || showLinkButton || roomGlbUrl || onPickup || onReportStruggle || onQuickReportMissing || item.id) && (
           <div className="flex items-center gap-1.5 mb-2 flex-wrap">
@@ -180,7 +190,7 @@ export default function ProductionCard({
               <MissingItemBadge
                 itemId={item.id}
                 currentUser={currentUser}
-                onSendBackToProduction={item.stage && onMoveStage ? () => onMoveStage(item, "cut") : undefined}
+                onSendBackToProduction={onMoveStage ? (stage) => onMoveStage(item, stage, { sent_back_for_missing: true }) : undefined}
               />
             )}
 

@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -15,6 +16,14 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
   const [popupPos, setPopupPos] = useState(null);
 
   const POPUP_W = 320; // w-80
+
+  const [sendStage, setSendStage] = useState("cut");
+  const SEND_STAGES = [
+    { id: "cut", label: "1. Cut" },
+    { id: "face_frame", label: "2. Face Frame" },
+    { id: "spray", label: "3. Spray" },
+    { id: "build", label: "4. Build" },
+  ];
 
   const openPopup = () => {
     // Position in the viewport (fixed) so scrollable containers can't clip it,
@@ -83,12 +92,22 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
               <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600 text-xs">✕</button>
             </div>
             {onSendBackToProduction && (
-              <div className="px-4 py-2 border-b border-slate-100 bg-slate-50">
+              <div className="px-4 py-2 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+                <Select value={sendStage} onValueChange={setSendStage}>
+                  <SelectTrigger className="h-7 text-xs flex-1">
+                    <SelectValue placeholder="Stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SEND_STAGES.map(s => (
+                      <SelectItem key={s.id} value={s.id} className="text-xs">{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <button
-                  onClick={() => { onSendBackToProduction(); setOpen(false); }}
-                  className="w-full text-xs font-semibold px-2 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                  onClick={() => { onSendBackToProduction(sendStage); setOpen(false); }}
+                  className="text-xs font-semibold px-2 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors flex-shrink-0"
                 >
-                  ↩ Send card back to production (Cut stage)
+                  ↩ Send back
                 </button>
               </div>
             )}

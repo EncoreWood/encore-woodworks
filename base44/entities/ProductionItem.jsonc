@@ -128,6 +128,11 @@
         }
       }
     },
+    "sent_back_for_missing": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when this card was sent back into production stages because of a missing-item report. Shows a 'Sent back \u2014 missing item' badge on the card; cleared automatically when the card reaches Complete."
+    },
     "glb_url": {
       "type": "string"
     },
