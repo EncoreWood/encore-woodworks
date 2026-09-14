@@ -227,7 +227,9 @@ export default function JobPacketsRoomModal({ project, roomName, items, currentU
         open={showForm}
         onOpenChange={(o) => { setShowForm(o); if (!o) setEditingItem(null); }}
         onSubmit={(data) => {
-          const finalData = { ...data, is_job_info: false, project_id: project.id, project_name: project.project_name, room_name: roomName };
+          // Keep the chosen room if the user re-assigned the card in the form;
+          // otherwise default to the room this modal was opened for.
+          const finalData = { ...data, is_job_info: false, project_id: project.id, project_name: project.project_name, room_name: data.room_name || roomName };
           if (editingItem?.id) {
             updateMutation.mutate({ id: editingItem.id, data: finalData });
           } else {
@@ -235,6 +237,7 @@ export default function JobPacketsRoomModal({ project, roomName, items, currentU
           }
         }}
         initialData={editingItem ? { ...editingItem } : null}
+        rooms={project.rooms || []}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
     </>
