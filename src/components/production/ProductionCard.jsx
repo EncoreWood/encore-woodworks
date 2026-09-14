@@ -176,7 +176,13 @@ export default function ProductionCard({
         {(onOpenRoomFolder || onReturnToFolder || showLinkButton || roomGlbUrl || onPickup || onReportStruggle || onQuickReportMissing || item.id) && (
           <div className="flex items-center gap-1.5 mb-2 flex-wrap">
             {/* Missing item badge */}
-            {item.id && <MissingItemBadge itemId={item.id} currentUser={currentUser} />}
+            {item.id && (
+              <MissingItemBadge
+                itemId={item.id}
+                currentUser={currentUser}
+                onSendBackToProduction={item.stage && onMoveStage ? () => onMoveStage(item, "cut") : undefined}
+              />
+            )}
 
             {/* Return to Job Packets — icon only */}
             {onReturnToFolder && (

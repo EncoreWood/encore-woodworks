@@ -7,7 +7,7 @@ import { appParams } from "@/lib/app-params";
 
 const UPDATE_API = "https://vivica-d92c9f97.base44.app/functions/updateMissingItemStatus";
 
-export default function MissingItemBadge({ itemId, currentUser }) {
+export default function MissingItemBadge({ itemId, currentUser, onSendBackToProduction }) {
   const [open, setOpen] = useState(false);
   const [updating, setUpdating] = useState(null); // id of item being updated
   const queryClient = useQueryClient();
@@ -82,6 +82,16 @@ export default function MissingItemBadge({ itemId, currentUser }) {
               <span className="text-sm font-bold text-slate-800">⚠️ Missing Items ({activeReports.length})</span>
               <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600 text-xs">✕</button>
             </div>
+            {onSendBackToProduction && (
+              <div className="px-4 py-2 border-b border-slate-100 bg-slate-50">
+                <button
+                  onClick={() => { onSendBackToProduction(); setOpen(false); }}
+                  className="w-full text-xs font-semibold px-2 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  ↩ Send card back to production (Cut stage)
+                </button>
+              </div>
+            )}
             <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
               {activeReports.map(report => {
                 const confirmed = JSON.parse(report.confirmed_by || "[]");
