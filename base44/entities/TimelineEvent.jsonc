@@ -32,7 +32,20 @@
     "end_date": {
       "type": "string",
       "format": "date",
-      "description": "End date of the event"
+      "description": "End date of the event (same as start_date for single-day events)"
+    },
+    "start_time": {
+      "type": "string",
+      "description": "Optional start time (HH:mm, 24h). Empty/absent = all-day event."
+    },
+    "end_time": {
+      "type": "string",
+      "description": "Optional end time (HH:mm, 24h). Empty/absent = all-day event."
+    },
+    "show_on_calendar": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this event appears as a bar on the main Calendar page"
     },
     "color": {
       "type": "string",

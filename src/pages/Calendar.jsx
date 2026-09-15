@@ -373,13 +373,10 @@ export default function CalendarPage() {
   };
 
   // Only Production & Install timeline phases are shown on the calendar
-  const CALENDAR_TIMELINE_NAMES = new Set(["production", "install"]);
-
-  // Timeline phases/milestones that span this date (project timelines)
+  // Timeline events that span this date (project timelines)
   const getTimelineEventsForDate = (date) => timelineEvents.filter(e => {
     if (!e.start_date) return false;
-    const name = (e.event_name || "").trim().toLowerCase();
-    if (!CALENDAR_TIMELINE_NAMES.has(name)) return false;
+    if (e.show_on_calendar === false) return false;
     const s = parseLocalDate(e.start_date);
     const en = e.end_date ? parseLocalDate(e.end_date) : s;
     return isWithinInterval(date, { start: s, end: en });

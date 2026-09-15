@@ -515,7 +515,7 @@ export default function ProjectTimelineSection({ project }) {
 }
 
 function EventEditDialog({ open, onOpenChange, onSubmit, onDelete, editingEvent, checklistItems, onSaveChecklist, isLoading }) {
-  const emptyForm = { event_name: "", event_type: "phase", start_date: "", end_date: "", color: "", is_client_visible: true, progress_status: "not_started", notes: "" };
+  const emptyForm = { event_name: "", event_type: "phase", start_date: "", end_date: "", color: "", is_client_visible: true, progress_status: "not_started", notes: "", all_day: true, multi_day: false, start_time: "", end_time: "", show_on_calendar: true };
   const [form, setForm] = useState(emptyForm);
 
   useEffect(() => {
@@ -529,6 +529,11 @@ function EventEditDialog({ open, onOpenChange, onSubmit, onDelete, editingEvent,
         is_client_visible: editingEvent.is_client_visible !== false,
         progress_status: getProgressStatus(editingEvent),
         notes: editingEvent.notes || "",
+        all_day: !editingEvent.start_time,
+        multi_day: !!(editingEvent.end_date && editingEvent.end_date !== editingEvent.start_date),
+        start_time: editingEvent.start_time || "",
+        end_time: editingEvent.end_time || "",
+        show_on_calendar: editingEvent.show_on_calendar !== false,
       } : emptyForm);
     }
   }, [open, editingEvent]);
@@ -537,9 +542,16 @@ function EventEditDialog({ open, onOpenChange, onSubmit, onDelete, editingEvent,
     e.preventDefault();
     if (!form.event_name.trim()) return;
     const data = {
-      ...form,
       event_name: form.event_name.trim(),
+      event_type: form.event_type,
+      // Single-day events keep end_date = start_date (the form hides End Date unless "Multi-day" is checked)
+      start_date: form.start_date || "",
+      end_date: (form.multi_day ? (form.end_date || form.start_date) : form.start_date) || "",
+      start_time: form.all_day ? "" : form.start_time,
+      end_time: form.all_day ? "" : form.end_time,
       color: form.color || undefined,
+      is_client_visible: form.is_client_visible,
+      show_on_calendar: form.show_on_calendar,
       notes: form.notes || undefined,
       ...statusUpdateFields(form.progress_status, editingEvent),
     };
@@ -570,16 +582,48 @@ function EventEditDialog({ open, onOpenChange, onSubmit, onDelete, editingEvent,
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label>Start Date</Label>
-              <Input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label>{form.multi_day ? "Dates" : "Date"}</Label>
+              <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 cursor-pointer">
+                <Checkbox checked={form.multi_day} onCheckedChange={v => setForm(f => ({ ...f, multi_day: !!v }))} />
+                Multi-day
+              </label>
             </div>
-            <div className="space-y-1.5">
-              <Label>End Date</Label>
-              <Input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
+            <div className={form.multi_day ? "grid grid-cols-2 gap-3" : ""}>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-slate-400">{form.multi_day ? "Start" : "Event date"}</Label>
+                <Input type="date" value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+              </div>
+              {form.multi_day && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-slate-400">End</Label>
+                  <Input type="date" value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
+                </div>
+              )}
             </div>
           </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5">
+            <div>
+              <Label className="cursor-pointer">All Day</Label>
+              <p className="text-xs text-slate-400">Turn off to add a time</p>
+            </div>
+            <Switch checked={form.all_day} onCheckedChange={v => setForm(f => ({ ...f, all_day: v }))} />
+          </div>
+
+          {!form.all_day && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Start Time</Label>
+                <Input type="time" value={form.start_time} onChange={e => setForm(f => ({ ...f, start_time: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>End Time</Label>
+                <Input type="time" value={form.end_time} onChange={e => setForm(f => ({ ...f, end_time: e.target.value }))} />
+              </div>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label>Color</Label>
             <div className="flex items-center gap-2">
@@ -598,6 +642,13 @@ function EventEditDialog({ open, onOpenChange, onSubmit, onDelete, editingEvent,
               <p className="text-xs text-slate-400">Show in client view</p>
             </div>
             <Switch checked={form.is_client_visible} onCheckedChange={v => setForm(f => ({ ...f, is_client_visible: v }))} />
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5">
+            <div>
+              <Label className="cursor-pointer">Show on Calendar</Label>
+              <p className="text-xs text-slate-400">Display as a bar on the main Calendar page</p>
+            </div>
+            <Switch checked={form.show_on_calendar} onCheckedChange={v => setForm(f => ({ ...f, show_on_calendar: v }))} />
           </div>
           {editingEvent && onSaveChecklist && (
             <div className="space-y-1.5">

@@ -7,6 +7,20 @@ import { CheckCircle2 } from "lucide-react";
 const TYPE_COLORS = { phase: "#3b82f6", milestone: "#f59e0b", event: "#64748b" };
 const COMPLETED_COLOR = "#22c55e";
 
+// "09:00" -> "9a", "13:30" -> "1:30p"
+function fmtTime(t) {
+  const [h, m] = (t || "").split(":").map(Number);
+  if (isNaN(h)) return "";
+  const ampm = h >= 12 ? "p" : "a";
+  const hr = h % 12 || 12;
+  return m ? `${hr}:${String(m).padStart(2, "0")}${ampm}` : `${hr}${ampm}`;
+}
+
+function timeRange(ev) {
+  if (!ev.start_time) return "";
+  return ev.end_time ? `${fmtTime(ev.start_time)}–${fmtTime(ev.end_time)}` : fmtTime(ev.start_time);
+}
+
 // Given a timeline event + projects list, resolve the linked project (if any)
 function linkedProject(ev, projects) {
   return projects.find(p => p.id === ev.project_id) || null;
@@ -31,7 +45,8 @@ export function CalendarTimelineBars({ events, projects, filterActive, onSelect 
         const projColor = project?.card_color || color;
         const isMilestone = ev.event_type === "milestone" || (ev.start_date === ev.end_date);
         const label = project ? `${ev.event_name} — ${project.project_name}` : ev.event_name;
-        const title = `${ev.event_name}${project ? " — " + project.project_name : ""}`;
+        const tRange = timeRange(ev);
+        const title = `${ev.event_name}${tRange ? ` (${tRange})` : ""}${project ? " — " + project.project_name : ""}`;
         return (
           <div
             key={ev.id}
@@ -43,6 +58,7 @@ export function CalendarTimelineBars({ events, projects, filterActive, onSelect 
             {ev.is_completed && <CheckCircle2 className="w-2 h-2 flex-shrink-0" style={{ color }} />}
             {isMilestone && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />}
             <span className="text-[8px] font-semibold truncate leading-none" style={{ color }}>
+              {tRange && <span className="opacity-80">{tRange} </span>}
               <span style={{ color }}>{ev.event_name}</span>
               {project && <span className="opacity-70"> — {project.project_name}</span>}
             </span>
@@ -72,6 +88,7 @@ export function CalendarTimelineDetails({ events, projects }) {
                 ? `${format(new Date(ev.start_date + "T00:00:00"), "M/d")} – ${format(new Date(ev.end_date + "T00:00:00"), "M/d")}`
                 : format(new Date(ev.start_date + "T00:00:00"), "M/d"))
             : "";
+          const tRange = timeRange(ev);
           const link = project ? createPageUrl("ProjectDetails") + "?id=" + project.id : null;
           const content = (
             <>
@@ -81,7 +98,7 @@ export function CalendarTimelineDetails({ events, projects }) {
                 {ev.is_completed && <CheckCircle2 className="w-3 h-3 text-green-500 flex-shrink-0" />}
               </div>
               <p className="text-[10px] text-slate-500 truncate ml-3.5">
-                {project?.project_name || "—"}{range ? ` · ${range}` : ""}
+                {project?.project_name || "—"}{range ? ` · ${range}` : ""}{tRange ? ` · ${tRange}` : ""}
               </p>
             </>
           );
