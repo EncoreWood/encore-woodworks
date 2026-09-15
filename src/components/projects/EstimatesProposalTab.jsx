@@ -6,6 +6,7 @@ import { createPageUrl } from "@/utils";
 import { useState } from "react";
 import { Plus, FileText, Loader2, ExternalLink, Eye, EyeOff, Copy, RotateCcw, ChevronDown } from "lucide-react";
 import { duplicateBid, markBidCurrent } from "@/components/bidding/estimateStatus";
+import ProjectFilesCard from "@/components/projects/ProjectFilesCard";
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -254,6 +255,9 @@ export default function EstimatesProposalTab({ project }) {
           </div>
         )}
       </Card>
+
+      {/* Project file attachments */}
+      <ProjectFilesCard project={project} />
     </div>
   );
 }
