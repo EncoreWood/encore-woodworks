@@ -75,6 +75,7 @@ export default function CalendarPage() {
   const filterOptions = [
     { id: "all", label: "All Events", icon: "📅" },
     { id: "projects", label: "Projects", icon: "💼" },
+    { id: "installs", label: "Installs", icon: "🔨" },
     { id: "meetings", label: "Design Meetings", icon: "👥" },
     { id: "tasks", label: "Tasks", icon: "✓" },
     { id: "presenter", label: "Presenters", icon: "👤" },
@@ -523,7 +524,7 @@ export default function CalendarPage() {
             </div>
           );
         })}
-        {(activeFilter === "all" || activeFilter === "projects") && installProjects.map((project) => {
+        {(activeFilter === "all" || activeFilter === "projects" || activeFilter === "installs") && installProjects.map((project) => {
           const dow = date.getDay();
           if ((dow === 0 || dow === 6) && !project.allow_weekend_display) return null;
           const bgClass = project.status === "side_projects" ? "" : (!project.card_color ? (statusConfig[project.status]?.color || "bg-slate-400") : "");
@@ -548,7 +549,7 @@ export default function CalendarPage() {
           {cleaningCount > 0 && (activeFilter === "all" || activeFilter === "cleaning") && (
             <div className="text-[9px] px-1 py-0.5 bg-cyan-500 text-white rounded font-medium">{cleaningCount}C</div>
           )}
-          {installApptCount > 0 && (activeFilter === "all" || activeFilter === "projects") && (
+          {installApptCount > 0 && (activeFilter === "all" || activeFilter === "projects" || activeFilter === "installs") && (
             <div className="text-[9px] px-1 py-0.5 bg-orange-600 text-white rounded font-medium">{installApptCount}I</div>
           )}
           {deliveryCount > 0 && (activeFilter === "all" || activeFilter === "projects") && (
@@ -821,7 +822,7 @@ export default function CalendarPage() {
                   )}
 
                   {/* Install Appointments */}
-                  {(activeFilter === "all" || activeFilter === "projects") && installs.map((a) => (
+                  {(activeFilter === "all" || activeFilter === "projects" || activeFilter === "installs") && installs.map((a) => (
                     <div key={a.id} className="p-2.5 bg-orange-50 rounded-lg border border-orange-200 text-sm">
                       <div className="flex items-center gap-1.5 text-xs font-semibold text-orange-900 mb-0.5">
                         <Hammer className="w-3 h-3" />Install
