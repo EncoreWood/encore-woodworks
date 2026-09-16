@@ -32,7 +32,31 @@
       "items": {
         "type": "string"
       },
-      "description": "Crew members assigned"
+      "description": "Crew members assigned to the whole event"
+    },
+    "tasks": {
+      "type": "array",
+      "description": "Task items on this install event, each optionally assigned to a team member",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "assignee": {
+            "type": "string",
+            "description": "Team member assigned to this task"
+          },
+          "done": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "default": []
     },
     "notes": {
       "type": "string",

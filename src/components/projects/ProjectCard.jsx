@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, User, ChevronRight, DoorOpen, ExternalLink, CheckCircle2, Circle, Plus, ClipboardList, Image, X, BarChart3 } from "lucide-react";
+import { Calendar, MapPin, User, ChevronRight, DoorOpen, ExternalLink, CheckCircle2, Circle, Plus, ClipboardList, Image, X, BarChart3, Hammer } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -58,6 +58,11 @@ export default function ProjectCard({ project }) {
   const unread = countsFor(project, notifData);
 
   // Fetch tasks for this project
+  const { data: installAppts = [] } = useQuery({
+    queryKey: ["InstallAppointment"],
+    queryFn: () => base44.entities.InstallAppointment.list("date", 500),
+  });
+  const installEvents = installAppts.filter(a => a.project_id === project.id && a.status !== "cancelled");
   const { data: tasks = [] } = useQuery({
     queryKey: ["tasks", project.id],
     queryFn: () => base44.entities.Task.filter({ project_id: project.id })
@@ -174,6 +179,27 @@ export default function ProjectCard({ project }) {
                 Install: {project.install_start_date ? format(new Date(project.install_start_date), "MMM d") : "?"}
                 {project.install_end_date ? ` – ${format(new Date(project.install_end_date), "MMM d, yyyy")}` : ""}
               </span>
+            </div>
+          )}
+          {installEvents.length > 0 && (
+            <div className="space-y-0.5">
+              {installEvents.slice(0, 2).map(ev => (
+                <div key={ev.id} className="flex items-center gap-2 text-xs">
+                  <Hammer className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
+                  <span className="text-orange-700 font-medium">Install Event</span>
+                  <span className="text-slate-500">
+                    {ev.date ? format(new Date(ev.date), "MMM d") : ""}
+                    {ev.time ? ` · ${ev.time}` : ""}
+                    {(ev.tasks || []).filter(t => t.text).length > 0 ? ` · ${(ev.tasks || []).filter(t => t.text).length} task${(ev.tasks || []).filter(t => t.text).length > 1 ? "s" : ""}` : ""}
+                  </span>
+                  {ev.crew?.length > 0 && (
+                    <span className="text-slate-400 truncate">{ev.crew.join(", ")}</span>
+                  )}
+                </div>
+              ))}
+              {installEvents.length > 2 && (
+                <p className="text-[10px] text-slate-400 pl-5">+{installEvents.length - 2} more install {installEvents.length - 2 === 1 ? "event" : "events"}</p>
+              )}
             </div>
           )}
         </div>

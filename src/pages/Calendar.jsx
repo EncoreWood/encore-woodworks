@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import ProjectForm from "../components/projects/ProjectForm";
 import { CalendarTimelineBars, CalendarTimelineDetails } from "../components/calendar/CalendarTimelineBars";
 import AppointmentTab from "../components/calendar/AppointmentTab";
+import InstallsTab from "../components/calendar/InstallsTab";
 import DesignMeetingTab from "../components/calendar/DesignMeetingTab";
 import CleaningScheduleEditor from "@/components/dashboard/CleaningScheduleEditor";
 import { getWeekMonday, getRotationPool, computeRotatingPair } from "@/components/dashboard/cleaningRotation";
@@ -606,7 +607,7 @@ export default function CalendarPage() {
           <DesignMeetingTab />
         </TabsContent>
         <TabsContent value="install" className="flex-1 overflow-hidden mt-0">
-          <AppointmentTab type="install" />
+          <InstallsTab />
         </TabsContent>
         <TabsContent value="delivery" className="flex-1 overflow-hidden mt-0">
           <AppointmentTab type="delivery" />
