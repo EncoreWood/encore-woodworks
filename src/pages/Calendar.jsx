@@ -1165,7 +1165,7 @@ export default function CalendarPage() {
                   <div>
                     <Label>Crew</Label>
                     <div className="flex flex-wrap gap-1.5 mt-2 border rounded-lg p-2 bg-slate-50 max-h-40 overflow-y-auto">
-                      {employees.map(emp => {
+                      {employees.filter(emp => !emp.archived).map(emp => {
                         const selected = (formData.crew || []).includes(emp.full_name);
                         return (
                           <button key={emp.id} type="button"
