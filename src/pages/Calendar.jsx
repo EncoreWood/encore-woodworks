@@ -289,6 +289,15 @@ export default function CalendarPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks"] })
   });
 
+  const createInstallMutation = useMutation({
+    mutationFn: (data) => base44.entities.InstallAppointment.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["InstallAppointment"] });
+      setShowAddDialog(false);
+      setFormData({});
+    }
+  });
+
   const handleOpenAdd = (type) => {
     const defaultDate = selectedDate ? format(selectedDate, "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd");
     setAddType(type);
@@ -309,6 +318,19 @@ export default function CalendarPage() {
     } else if (addType === "task" && formData.task) {
       createTaskMutation.mutate({ task: formData.task, date: formData.date, assignee: formData.assignee || undefined, completed: false });
       setShowAddDialog(false); setFormData({});
+    } else if (addType === "install" && formData.project_id) {
+      const p = projects.find(x => x.id === formData.project_id);
+      createInstallMutation.mutate({
+        date: formData.date,
+        time: formData.time || undefined,
+        project_id: p.id,
+        project_name: p.project_name,
+        client_name: p.client_name || undefined,
+        address: p.address || undefined,
+        crew: formData.crew || [],
+        notes: formData.notes || undefined,
+        status: "scheduled"
+      });
     }
   };
 
@@ -578,6 +600,7 @@ export default function CalendarPage() {
         <DropdownMenuItem onClick={() => handleOpenAdd("presenter")}><User className="w-4 h-4 mr-2" />Meeting Presenter</DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleOpenAdd("task")}><CheckCircle2 className="w-4 h-4 mr-2" />Task</DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleOpenAdd("project")}><Briefcase className="w-4 h-4 mr-2" />New Project</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleOpenAdd("install")}><Hammer className="w-4 h-4 mr-2" />Install</DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleOpenAdd("designMeeting")}><Users className="w-4 h-4 mr-2" />Design Meeting</DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleOpenAdd("bathroomCleaning")}><Sparkles className="w-4 h-4 mr-2" />Bathroom Cleaning</DropdownMenuItem>
         <DropdownMenuItem onClick={() => handleOpenAdd("vacation")}><CalendarIcon className="w-4 h-4 mr-2" />Vacation</DropdownMenuItem>
@@ -970,6 +993,7 @@ export default function CalendarPage() {
                   <DropdownMenuItem onClick={() => handleOpenAdd("presenter")}><User className="w-4 h-4 mr-2" />Meeting Presenter</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleOpenAdd("task")}><CheckCircle2 className="w-4 h-4 mr-2" />Task</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleOpenAdd("project")}><Briefcase className="w-4 h-4 mr-2" />New Project</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleOpenAdd("install")}><Hammer className="w-4 h-4 mr-2" />Install</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleOpenAdd("designMeeting")}><Users className="w-4 h-4 mr-2" />Design Meeting</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleOpenAdd("bathroomCleaning")}><Sparkles className="w-4 h-4 mr-2" />Bathroom Cleaning</DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleOpenAdd("vacation")}><CalendarIcon className="w-4 h-4 mr-2" />Vacation</DropdownMenuItem>
@@ -1009,6 +1033,7 @@ export default function CalendarPage() {
                 {addType === "bathroomCleaning" && "Add Bathroom Cleaning"}
                 {addType === "vacation" && "Add Vacation"}
                 {addType === "generalMeeting" && "Add General Meeting"}
+                {addType === "install" && "Schedule Install"}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -1119,6 +1144,37 @@ export default function CalendarPage() {
                 </>
               )}
 
+              {addType === "install" && (
+                <>
+                  <div>
+                    <Label>Project *</Label>
+                    <Select value={formData.project_id || ""} onValueChange={(v) => setFormData({ ...formData, project_id: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger>
+                      <SelectContent>{projects.filter(p => !p.archived).map(p => <SelectItem key={p.id} value={p.id}>{p.project_name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div><Label>Time</Label><Input type="time" value={formData.time || ""} onChange={(e) => setFormData({ ...formData, time: e.target.value })} /></div>
+                  <div>
+                    <Label>Crew</Label>
+                    <div className="flex flex-wrap gap-1.5 mt-2 border rounded-lg p-2 bg-slate-50 max-h-40 overflow-y-auto">
+                      {employees.map(emp => {
+                        const selected = (formData.crew || []).includes(emp.full_name);
+                        return (
+                          <button key={emp.id} type="button"
+                            onClick={() => {
+                              const cur = formData.crew || [];
+                              setFormData({ ...formData, crew: selected ? cur.filter(n => n !== emp.full_name) : [...cur, emp.full_name] });
+                            }}
+                            className={`px-2.5 py-1 rounded-full text-xs border transition-all ${selected ? "bg-orange-500 text-white border-orange-500" : "bg-white text-slate-600 border-slate-300 hover:border-orange-400"}`}
+                          >{emp.full_name}</button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div><Label>Notes</Label><Textarea value={formData.notes || ""} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder="Install notes..." /></div>
+                </>
+              )}
+
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setShowAddDialog(false)}>Cancel</Button>
                 <Button onClick={handleSubmitAdd} disabled={
@@ -1127,8 +1183,9 @@ export default function CalendarPage() {
                   (addType === "task" && !formData.task) ||
                   (addType === "bathroomCleaning" && (!formData.assigned_to || formData.assigned_to.length === 0)) ||
                   (addType === "vacation" && (!formData.employee_id || !formData.start_date || !formData.end_date)) ||
-                  (addType === "generalMeeting" && !formData.title)
-                }>Add</Button>
+                  (addType === "generalMeeting" && !formData.title) ||
+                  (addType === "install" && !formData.project_id)
+                  }>Add</Button>
               </div>
             </div>
           </DialogContent>
