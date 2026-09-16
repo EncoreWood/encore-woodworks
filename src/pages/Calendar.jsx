@@ -561,6 +561,9 @@ export default function CalendarPage() {
         {(activeFilter === "all" || activeFilter === "projects") && (
           <CalendarTimelineBars events={timelinePhases} projects={projects} filterActive />
         )}
+        {activeFilter === "installs" && (
+          <CalendarTimelineBars events={timelinePhases.filter(e => (e.event_name || "").toLowerCase().includes("install"))} projects={projects} filterActive />
+        )}
         <div className="flex gap-0.5 flex-wrap">
           {meetingCount > 0 && (activeFilter === "all" || activeFilter === "meetings") && (
             <div className="text-[9px] px-1 py-0.5 bg-violet-500 text-white rounded font-medium">{meetingCount}M</div>
@@ -916,6 +919,11 @@ export default function CalendarPage() {
                   {(activeFilter === "all" || activeFilter === "projects") && dayTimelinePhases.length > 0 && (
                     <div className="border-t border-slate-200 pt-2.5">
                       <CalendarTimelineDetails events={dayTimelinePhases} projects={projects} />
+                    </div>
+                  )}
+                  {activeFilter === "installs" && dayTimelinePhases.filter(e => (e.event_name || "").toLowerCase().includes("install")).length > 0 && (
+                    <div className="border-t border-slate-200 pt-2.5">
+                      <CalendarTimelineDetails events={dayTimelinePhases.filter(e => (e.event_name || "").toLowerCase().includes("install"))} projects={projects} />
                     </div>
                   )}
 
