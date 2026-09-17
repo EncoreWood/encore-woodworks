@@ -5,7 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { appParams } from "@/lib/app-params";
-import { STATUS_CONFIG, DONE_STATUSES } from "./missingItemStatusConfig";
+import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
 
 const UPDATE_API = "https://vivica-d92c9f97.base44.app/functions/updateMissingItemStatus";
 
@@ -151,16 +151,17 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
                       <p className="text-xs text-yellow-700 mt-0.5">Ordered by {report.ordered_by} on {report.ordered_date}</p>
                     )}
                     {isAdmin && (
-                      <div className="flex gap-1 mt-2 flex-wrap">
-                        {report.status === "Open" && (
-                          <button
-                            disabled={updating === report.id}
-                            onClick={() => callUpdateStatus(report.id, "Ordered")}
-                            className="text-xs px-2 py-1 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors disabled:opacity-50"
-                          >
-                            📦 Mark Ordered
-                          </button>
-                        )}
+                      <div className="flex gap-1 mt-2 flex-wrap items-center">
+                        <Select value={report.status} onValueChange={(v) => callUpdateStatus(report.id, v)}>
+                          <SelectTrigger className="h-7 text-xs w-32" disabled={updating === report.id}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {STATUS_FLOW.map(s => (
+                              <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <button
                           disabled={updating === report.id}
                           onClick={() => callUpdateStatus(report.id, "Completed")}

@@ -1,10 +1,19 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Clock } from "lucide-react";
 import { format } from "date-fns";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
 
+const PRODUCTION_STAGES = [
+  { id: "cut", label: "Cut" },
+  { id: "face_frame", label: "Face Frame" },
+  { id: "spray", label: "Spray" },
+  { id: "build", label: "Build" },
+];
+
 export default function MissingItemRow({ item, isAdmin, updating, onStatus, onSendToProduction, sending }) {
+  const [sendStage, setSendStage] = useState("cut");
   const confirmed = JSON.parse(item.confirmed_by || "[]");
   const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.Open;
   const isDone = DONE_STATUSES.includes(item.status);
@@ -44,7 +53,7 @@ export default function MissingItemRow({ item, isAdmin, updating, onStatus, onSe
       </div>
 
       {isAdmin && !isDone && (
-        <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+        <div className="flex items-center gap-1.5 flex-wrap flex-shrink-0 mt-0.5">
           <Select value={item.status} onValueChange={(v) => onStatus(item.id, v)}>
             <SelectTrigger className="h-7 w-[136px] text-xs" disabled={updating === item.id}>
               <SelectValue placeholder="Set status" />
@@ -56,14 +65,26 @@ export default function MissingItemRow({ item, isAdmin, updating, onStatus, onSe
             </SelectContent>
           </Select>
           {item.production_item_id && (
-            <button
-              disabled={sending === item.id}
-              onClick={() => onSendToProduction(item)}
-              className="text-xs px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
-              title="Send this item's production card back into the production flow (Cut stage)"
-            >
-              🏭 To Production
-            </button>
+            <>
+              <Select value={sendStage} onValueChange={setSendStage}>
+                <SelectTrigger className="h-7 w-[110px] text-xs" disabled={sending === item.id}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRODUCTION_STAGES.map(s => (
+                    <SelectItem key={s.id} value={s.id} className="text-xs">{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <button
+                disabled={sending === item.id}
+                onClick={() => onSendToProduction(item, sendStage)}
+                className="text-xs px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
+                title="Send this item's production card back into the selected production stage"
+              >
+                🏭 To Production
+              </button>
+            </>
           )}
         </div>
       )}

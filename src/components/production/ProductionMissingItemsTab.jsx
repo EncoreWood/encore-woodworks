@@ -71,18 +71,19 @@ export default function ProductionMissingItemsTab({ currentUser }) {
   };
 
   // Send this item's linked production card back into the production flow (Cut stage)
-  const sendCardToProduction = async (item) => {
+  const sendCardToProduction = async (item, stage) => {
     if (!item.production_item_id) {
       toast.error("This item has no linked production card");
       return;
     }
+    const targetStage = stage || "cut";
     setSending(item.id);
     try {
       await base44.entities.ProductionItem.update(item.production_item_id, {
-        stage: "cut",
+        stage: targetStage,
         sent_back_for_missing: true,
       });
-      toast.success("Card sent to production (Cut stage) ✓");
+      toast.success(`Card sent to production (${targetStage.replace(/_/g, " ")}) ✓`);
       queryClient.invalidateQueries({ queryKey: ["productionItems"] });
     } catch (err) {
       console.error("Failed to send card to production:", err);
