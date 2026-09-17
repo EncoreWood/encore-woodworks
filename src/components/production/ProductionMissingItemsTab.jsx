@@ -1,21 +1,14 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, CheckCircle2, Clock } from "lucide-react";
-import { format } from "date-fns";
+import { Search, CheckCircle2, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { appParams } from "@/lib/app-params";
+import MissingItemsGroupedList from "./MissingItemsGroupedList";
 
 const UPDATE_API = "https://vivica-d92c9f97.base44.app/functions/updateMissingItemStatus";
-
-const STATUS_CONFIG = {
-  Open:     { label: "Open",     color: "bg-red-100 text-red-700",       dot: "bg-red-500" },
-  Ordered:  { label: "Ordered",  color: "bg-yellow-100 text-yellow-800", dot: "bg-yellow-400" },
-  Resolved: { label: "Resolved", color: "bg-green-100 text-green-700",   dot: "bg-green-500" },
-};
 
 export default function ProductionMissingItemsTab({ currentUser }) {
   const queryClient = useQueryClient();
@@ -24,6 +17,25 @@ export default function ProductionMissingItemsTab({ currentUser }) {
   const [filterProject, setFilterProject] = useState("all");
   const [showResolved, setShowResolved] = useState(false);
   const [updating, setUpdating] = useState(null);
+  const [collapsedJobs, setCollapsedJobs] = useState(() => new Set());
+  const [collapsedRooms, setCollapsedRooms] = useState(() => new Set());
+
+  const toggleJob = (job) => setCollapsedJobs(prev => {
+    const next = new Set(prev);
+    next.has(job) ? next.delete(job) : next.add(job);
+    return next;
+  });
+  const toggleRoom = (job, room) => setCollapsedRooms(prev => {
+    const key = `${job}||${room}`;
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
+  const collapseAll = () => {
+    setCollapsedJobs(new Set([...new Set(filtered.map(i => i.project_name || "No Job"))]));
+    setCollapsedRooms(new Set());
+  };
+  const expandAll = () => { setCollapsedJobs(new Set()); setCollapsedRooms(new Set()); };
 
   const { data: missingItems = [] } = useQuery({
     queryKey: ["missingItems"],
@@ -126,80 +138,31 @@ export default function ProductionMissingItemsTab({ currentUser }) {
         </button>
       </div>
 
-      {/* List */}
+      {/* Grouped list */}
       {filtered.length === 0 ? (
         <div className="text-center py-20 text-slate-400">
           <CheckCircle2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-lg font-medium">No missing items</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="divide-y divide-slate-50">
-            {filtered.map(item => {
-              const confirmed = JSON.parse(item.confirmed_by || "[]");
-              const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.Open;
-              return (
-                <div key={item.id} className={`px-5 py-3.5 flex items-start gap-4 ${item.status === "Resolved" ? "opacity-50" : ""}`}>
-                  <div className={`mt-1.5 w-3 h-3 rounded-full flex-shrink-0 ${cfg.dot}`} />
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                      <span className="text-sm font-semibold text-slate-800">{item.item_description}</span>
-                      <Badge className={`text-xs border-0 ${cfg.color}`}>{cfg.label}</Badge>
-                    </div>
-                    <div className="text-xs text-slate-500 flex flex-wrap gap-x-2 mb-1">
-                      {item.production_item_name && <span className="font-medium text-slate-700">{item.production_item_name}</span>}
-                      {item.room_name && <span>· {item.room_name}</span>}
-                      {item.cabinet_name && <span>· {item.cabinet_name}</span>}
-                      {(item.width || item.length) && <span className="text-slate-600">· {[item.width, item.length].filter(Boolean).join(" × ")}</span>}
-                      {item.project_name && <span className="text-slate-400">· {item.project_name}</span>}
-                    </div>
-                    {item.description && (
-                      <p className="text-xs text-slate-400 mb-1">{item.description}</p>
-                    )}
-                    <div className="flex flex-wrap gap-3 text-xs text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {item.reported_at ? format(new Date(item.reported_at), "MMM d, h:mm a") : "—"}
-                        {" "}by <span className="font-medium text-slate-600 ml-0.5">{item.reported_by}</span>
-                      </span>
-                      {confirmed.length > 0 && (
-                        <span className="text-blue-600">👁 {confirmed.length} confirmed</span>
-                      )}
-                      {item.ordered_by && (
-                        <span className="text-yellow-700">📦 Ordered by {item.ordered_by} on {item.ordered_date}</span>
-                      )}
-                      {item.resolved_date && (
-                        <span className="text-green-700">✅ Resolved {item.resolved_date}</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {isAdmin && item.status !== "Resolved" && (
-                    <div className="flex gap-1.5 flex-shrink-0 mt-0.5">
-                      {item.status === "Open" && (
-                        <button
-                          disabled={updating === item.id}
-                          onClick={() => callUpdateStatus(item.id, "Ordered")}
-                          className="text-xs px-2.5 py-1 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors disabled:opacity-50"
-                        >
-                          📦 Ordered
-                        </button>
-                      )}
-                      <button
-                        disabled={updating === item.id}
-                        onClick={() => callUpdateStatus(item.id, "Resolved")}
-                        className="text-xs px-2.5 py-1 bg-green-50 border border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50"
-                      >
-                        ✅ Resolve
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+        <>
+          <div className="flex justify-end gap-2">
+            <button onClick={expandAll} className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors">Expand All</button>
+            <button onClick={collapseAll} className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1">
+              <ChevronsUpDown className="w-3 h-3" /> Collapse All
+            </button>
           </div>
-        </div>
+          <MissingItemsGroupedList
+            items={filtered}
+            isAdmin={isAdmin}
+            updating={updating}
+            onStatus={callUpdateStatus}
+            collapsedJobs={collapsedJobs}
+            collapsedRooms={collapsedRooms}
+            onToggleJob={toggleJob}
+            onToggleRoom={toggleRoom}
+          />
+        </>
       )}
     </div>
   );
