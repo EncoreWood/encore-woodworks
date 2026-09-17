@@ -5,11 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, CheckCircle2, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
-import { appParams } from "@/lib/app-params";
 import MissingItemsGroupedList from "./MissingItemsGroupedList";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
-
-const UPDATE_API = "https://vivica-d92c9f97.base44.app/functions/updateMissingItemStatus";
 
 export default function ProductionMissingItemsTab({ currentUser }) {
   const queryClient = useQueryClient();
@@ -54,19 +51,22 @@ export default function ProductionMissingItemsTab({ currentUser }) {
 
   const callUpdateStatus = async (itemId, status) => {
     setUpdating(itemId);
-    const token = appParams.token;
-    const res = await fetch(UPDATE_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-      body: JSON.stringify({ missing_item_id: itemId, status }),
-    });
-    const data = await res.json();
-    setUpdating(null);
-    if (data.result === "updated") {
-      toast.success(`Marked as ${status} ✓`);
-      queryClient.invalidateQueries({ queryKey: ["missingItems"] });
-    } else {
-      toast.error(data.error || "Update failed");
+    try {
+      const { data } = await base44.functions.invoke("updateMissingItemStatus", {
+        missing_item_id: itemId,
+        status,
+      });
+      if (data?.result === "updated") {
+        toast.success(`Marked as ${status} ✓`);
+        queryClient.invalidateQueries({ queryKey: ["missingItems"] });
+      } else {
+        toast.error(data?.error || "Update failed");
+      }
+    } catch (err) {
+      console.error("Failed to update missing item status:", err);
+      toast.error("Failed to update status");
+    } finally {
+      setUpdating(null);
     }
   };
 

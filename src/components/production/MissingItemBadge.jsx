@@ -4,10 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { appParams } from "@/lib/app-params";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
-
-const UPDATE_API = "https://vivica-d92c9f97.base44.app/functions/updateMissingItemStatus";
 
 export default function MissingItemBadge({ itemId, currentUser, onSendBackToProduction }) {
   const [open, setOpen] = useState(false);
@@ -55,19 +52,22 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
 
   const callUpdateStatus = async (reportId, status) => {
     setUpdating(reportId);
-    const token = appParams.token;
-    const res = await fetch(UPDATE_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-      body: JSON.stringify({ missing_item_id: reportId, status }),
-    });
-    const data = await res.json();
-    setUpdating(null);
-    if (data.result === "updated") {
-      toast.success(`Marked as ${status} ✓`);
-      queryClient.invalidateQueries({ queryKey: ["missingItems"] });
-    } else {
-      toast.error(data.error || "Update failed");
+    try {
+      const { data } = await base44.functions.invoke("updateMissingItemStatus", {
+        missing_item_id: reportId,
+        status,
+      });
+      if (data?.result === "updated") {
+        toast.success(`Marked as ${status} ✓`);
+        queryClient.invalidateQueries({ queryKey: ["missingItems"] });
+      } else {
+        toast.error(data?.error || "Update failed");
+      }
+    } catch (err) {
+      console.error("Failed to update missing item status:", err);
+      toast.error("Failed to update status");
+    } finally {
+      setUpdating(null);
     }
   };
 
