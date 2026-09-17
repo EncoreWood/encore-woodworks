@@ -19,8 +19,9 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'missing_item_id and status are required' }, { status: 400 });
   }
 
-  if (!['Ordered', 'Resolved'].includes(status)) {
-    return Response.json({ error: 'status must be "Ordered" or "Resolved"' }, { status: 400 });
+  const ALLOWED_STATUSES = ['Ordered', 'Received', 'In Production', 'Ready', 'Completed', 'Resolved'];
+  if (!ALLOWED_STATUSES.includes(status)) {
+    return Response.json({ error: `status must be one of: ${ALLOWED_STATUSES.join(', ')}` }, { status: 400 });
   }
 
   const adminName = user.full_name || user.email || 'Admin';
@@ -33,7 +34,7 @@ Deno.serve(async (req) => {
     updateData.ordered_date = today;
   }
 
-  if (status === 'Resolved') {
+  if (status === 'Completed' || status === 'Resolved') {
     updateData.resolved_date = today;
   }
 

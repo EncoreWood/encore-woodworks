@@ -7,6 +7,7 @@ import { Search, CheckCircle2, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { appParams } from "@/lib/app-params";
 import MissingItemsGroupedList from "./MissingItemsGroupedList";
+import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
 
 const UPDATE_API = "https://vivica-d92c9f97.base44.app/functions/updateMissingItemStatus";
 
@@ -17,6 +18,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
   const [filterProject, setFilterProject] = useState("all");
   const [showResolved, setShowResolved] = useState(false);
   const [updating, setUpdating] = useState(null);
+  const [sending, setSending] = useState(null);
   const [expandedJobs, setExpandedJobs] = useState(() => new Set());
   const [expandedRooms, setExpandedRooms] = useState(() => new Set());
 
@@ -68,9 +70,31 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     }
   };
 
+  // Send this item's linked production card back into the production flow (Cut stage)
+  const sendCardToProduction = async (item) => {
+    if (!item.production_item_id) {
+      toast.error("This item has no linked production card");
+      return;
+    }
+    setSending(item.id);
+    try {
+      await base44.entities.ProductionItem.update(item.production_item_id, {
+        stage: "cut",
+        sent_back_for_missing: true,
+      });
+      toast.success("Card sent to production (Cut stage) ✓");
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+    } catch (err) {
+      console.error("Failed to send card to production:", err);
+      toast.error("Failed to send card to production");
+    } finally {
+      setSending(null);
+    }
+  };
+
   const visible = missingItems.filter(i => {
     if (i.archived) return false;
-    if (!showResolved && i.status === "Resolved") return false;
+    if (!showResolved && DONE_STATUSES.includes(i.status)) return false;
     return true;
   });
 
@@ -91,21 +115,22 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     return true;
   });
 
-  const openCount = missingItems.filter(i => !i.archived && i.status === "Open").length;
-  const orderedCount = missingItems.filter(i => !i.archived && i.status === "Ordered").length;
+  const statusCounts = STATUS_FLOW.map(s => ({
+    status: s,
+    count: missingItems.filter(i => !i.archived && i.status === s).length,
+    cfg: STATUS_CONFIG[s],
+  }));
 
   return (
     <div className="space-y-4">
       {/* Summary badges */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2 flex items-center gap-2">
-          <span className="text-sm font-bold text-red-700">{openCount}</span>
-          <span className="text-xs text-red-600">Open</span>
-        </div>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-2 flex items-center gap-2">
-          <span className="text-sm font-bold text-yellow-800">{orderedCount}</span>
-          <span className="text-xs text-yellow-700">Ordered</span>
-        </div>
+      <div className="flex gap-2 flex-wrap">
+        {statusCounts.map(({ status, count, cfg }) => (
+          <div key={status} className={`border border-black/5 rounded-lg px-3 py-2 flex items-center gap-2 ${cfg.color}`}>
+            <span className="text-sm font-bold">{count}</span>
+            <span className="text-xs">{cfg.label}</span>
+          </div>
+        ))}
       </div>
 
       {/* Filters */}
@@ -118,8 +143,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
           <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="Open">Open</SelectItem>
-            <SelectItem value="Ordered">Ordered</SelectItem>
+            {STATUS_FLOW.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             <SelectItem value="Resolved">Resolved</SelectItem>
           </SelectContent>
         </Select>
@@ -134,7 +158,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
           onClick={() => setShowResolved(v => !v)}
           className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${showResolved ? "bg-green-100 border-green-300 text-green-800" : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"}`}
         >
-          {showResolved ? "Hide Resolved" : "Show Resolved"}
+          {showResolved ? "Hide Completed" : "Show Completed"}
         </button>
       </div>
 
@@ -157,6 +181,8 @@ export default function ProductionMissingItemsTab({ currentUser }) {
             isAdmin={isAdmin}
             updating={updating}
             onStatus={callUpdateStatus}
+            onSendToProduction={sendCardToProduction}
+            sending={sending}
             expandedJobs={expandedJobs}
             expandedRooms={expandedRooms}
             onToggleJob={toggleJob}

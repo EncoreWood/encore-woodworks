@@ -1,13 +1,15 @@
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Clock } from "lucide-react";
 import { format } from "date-fns";
-import { STATUS_CONFIG } from "./missingItemStatusConfig";
+import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
 
-export default function MissingItemRow({ item, isAdmin, updating, onStatus }) {
+export default function MissingItemRow({ item, isAdmin, updating, onStatus, onSendToProduction, sending }) {
   const confirmed = JSON.parse(item.confirmed_by || "[]");
   const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.Open;
+  const isDone = DONE_STATUSES.includes(item.status);
   return (
-    <div className={`px-5 py-3 flex items-start gap-4 ${item.status === "Resolved" ? "opacity-50" : ""}`}>
+    <div className={`px-5 py-3 flex items-start gap-4 ${isDone ? "opacity-50" : ""}`}>
       <div className={`mt-1.5 w-3 h-3 rounded-full flex-shrink-0 ${cfg.dot}`} />
 
       <div className="flex-1 min-w-0">
@@ -36,29 +38,33 @@ export default function MissingItemRow({ item, isAdmin, updating, onStatus }) {
             <span className="text-yellow-700">📦 Ordered by {item.ordered_by} on {item.ordered_date}</span>
           )}
           {item.resolved_date && (
-            <span className="text-green-700">✅ Resolved {item.resolved_date}</span>
+            <span className="text-green-700">✅ Completed {item.resolved_date}</span>
           )}
         </div>
       </div>
 
-      {isAdmin && item.status !== "Resolved" && (
-        <div className="flex gap-1.5 flex-shrink-0 mt-0.5">
-          {item.status === "Open" && (
+      {isAdmin && !isDone && (
+        <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
+          <Select value={item.status} onValueChange={(v) => onStatus(item.id, v)}>
+            <SelectTrigger className="h-7 w-[136px] text-xs" disabled={updating === item.id}>
+              <SelectValue placeholder="Set status" />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_FLOW.map(s => (
+                <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {item.production_item_id && (
             <button
-              disabled={updating === item.id}
-              onClick={() => onStatus(item.id, "Ordered")}
-              className="text-xs px-2.5 py-1 bg-yellow-50 border border-yellow-200 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors disabled:opacity-50"
+              disabled={sending === item.id}
+              onClick={() => onSendToProduction(item)}
+              className="text-xs px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
+              title="Send this item's production card back into the production flow (Cut stage)"
             >
-              📦 Ordered
+              🏭 To Production
             </button>
           )}
-          <button
-            disabled={updating === item.id}
-            onClick={() => onStatus(item.id, "Resolved")}
-            className="text-xs px-2.5 py-1 bg-green-50 border border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50"
-          >
-            ✅ Resolve
-          </button>
         </div>
       )}
     </div>

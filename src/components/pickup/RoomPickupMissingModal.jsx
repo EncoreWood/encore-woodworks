@@ -29,8 +29,14 @@ const STAGE_COLORS = {
 const STAGE_ORDER = ["open", "in_progress", "ready_at_shop", "installers", "resolved"];
 
 // Bridge MissingItem.status <-> unified stage
-const missingStatusToStage = { open: "open", ordered: "in_progress", resolved: "resolved" };
-const stageToMissingStatus = { open: "open", in_progress: "ordered", ready_at_shop: "ordered", installers: "ordered", resolved: "resolved" };
+// Missing statuses: Open → Ordered → Received → In Production → Ready → Completed.
+// (lowercase keys kept for legacy records; "Resolved" is a legacy value = Completed)
+const missingStatusToStage = {
+  Open: "open", Ordered: "in_progress", Received: "ready_at_shop", "In Production": "ready_at_shop",
+  Ready: "installers", Completed: "resolved", Resolved: "resolved",
+  open: "open", ordered: "in_progress", resolved: "resolved",
+};
+const stageToMissingStatus = { open: "Open", in_progress: "Ordered", ready_at_shop: "Received", installers: "Ready", resolved: "Completed" };
 
 function adaptMissing(m) {
   return {

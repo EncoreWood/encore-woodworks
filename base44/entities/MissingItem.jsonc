@@ -117,10 +117,14 @@
       "enum": [
         "Open",
         "Ordered",
+        "Received",
+        "In Production",
+        "Ready",
+        "Completed",
         "Resolved"
       ],
       "default": "Open",
-      "description": "Current resolution status"
+      "description": "Resolution status flow: Open \u2192 Ordered \u2192 Received \u2192 In Production \u2192 Ready \u2192 Completed. 'Resolved' is a legacy value treated the same as Completed."
     },
     "ordered_by": {
       "type": "string",
@@ -134,7 +138,7 @@
     "resolved_date": {
       "type": "string",
       "format": "date",
-      "description": "Date it was resolved"
+      "description": "Date it was completed"
     },
     "archived": {
       "type": "boolean",

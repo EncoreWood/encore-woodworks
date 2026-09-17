@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { appParams } from "@/lib/app-params";
+import { STATUS_CONFIG, DONE_STATUSES } from "./missingItemStatusConfig";
 
 const UPDATE_API = "https://vivica-d92c9f97.base44.app/functions/updateMissingItemStatus";
 
@@ -44,14 +45,12 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
   });
 
   const cardReports = allMissing.filter(m => m.production_item_id === itemId && !m.archived);
-  const openReports = cardReports.filter(m => m.status === "Open");
-  const orderedReports = cardReports.filter(m => m.status === "Ordered");
-  const activeReports = [...openReports, ...orderedReports];
+  const activeReports = cardReports.filter(m => !DONE_STATUSES.includes(m.status));
 
   if (activeReports.length === 0) return null;
 
-  const isAllOrdered = openReports.length === 0 && orderedReports.length > 0;
-  const dotColor = isAllOrdered ? "bg-yellow-400 border-yellow-500" : "bg-red-500 border-red-600";
+  const hasOpen = activeReports.some(m => m.status === "Open");
+  const dotColor = hasOpen ? "bg-red-500 border-red-600" : "bg-yellow-400 border-yellow-500";
   const isAdmin = currentUser?.role === "admin";
 
   const callUpdateStatus = async (reportId, status) => {
@@ -117,8 +116,8 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
                 return (
                   <div key={report.id} className="px-4 py-3">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${report.status === "Ordered" ? "bg-yellow-100 text-yellow-800" : "bg-red-100 text-red-800"}`}>
-                        {report.status === "Ordered" ? "🟡 Ordered" : "🔴 Open"}
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${(STATUS_CONFIG[report.status] || STATUS_CONFIG.Open).color}`}>
+                        {(STATUS_CONFIG[report.status] || STATUS_CONFIG.Open).label}
                       </span>
                       {report.room_name && <span className="text-xs text-slate-500">{report.room_name}</span>}
                       {report.cabinet_name && <span className="text-xs text-slate-400">· {report.cabinet_name}</span>}
@@ -164,10 +163,10 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
                         )}
                         <button
                           disabled={updating === report.id}
-                          onClick={() => callUpdateStatus(report.id, "Resolved")}
+                          onClick={() => callUpdateStatus(report.id, "Completed")}
                           className="text-xs px-2 py-1 bg-green-50 border border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50"
                         >
-                          ✅ Resolve
+                          ✅ Complete
                         </button>
                       </div>
                     )}
