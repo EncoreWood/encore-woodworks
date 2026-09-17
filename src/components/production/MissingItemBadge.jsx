@@ -122,6 +122,9 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
                       </span>
                       {report.room_name && <span className="text-xs text-slate-500">{report.room_name}</span>}
                       {report.cabinet_name && <span className="text-xs text-slate-400">· {report.cabinet_name}</span>}
+                      {(report.width || report.length) && (
+                        <span className="text-xs text-slate-500">· {[report.width, report.length].filter(Boolean).join(" × ")}</span>
+                      )}
                     </div>
                     <p className="text-sm font-medium text-slate-800">{report.item_description}</p>
                     {report.description && (

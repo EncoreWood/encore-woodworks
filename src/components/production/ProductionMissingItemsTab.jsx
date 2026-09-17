@@ -151,6 +151,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
                       {item.production_item_name && <span className="font-medium text-slate-700">{item.production_item_name}</span>}
                       {item.room_name && <span>· {item.room_name}</span>}
                       {item.cabinet_name && <span>· {item.cabinet_name}</span>}
+                      {(item.width || item.length) && <span className="text-slate-600">· {[item.width, item.length].filter(Boolean).join(" × ")}</span>}
                       {item.project_name && <span className="text-slate-400">· {item.project_name}</span>}
                     </div>
                     {item.description && (
