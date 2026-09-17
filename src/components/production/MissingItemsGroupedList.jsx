@@ -7,7 +7,7 @@ import MissingItemRow from "./MissingItemRow";
  * Groups missing items by job (project) then room, with collapsible sections.
  * expandedJobs: Set of job keys, expandedRooms: Set of "job||room" keys. Sections start collapsed.
  */
-export default function MissingItemsGroupedList({ items, isAdmin, updating, onStatus, onSendToProduction, sending, expandedJobs, expandedRooms, onToggleJob, onToggleRoom }) {
+export default function MissingItemsGroupedList({ items, isAdmin, updating, onStatus, onSendToProduction, sending, onViewCard, expandedJobs, expandedRooms, onToggleJob, onToggleRoom }) {
   const grouped = useMemo(() => {
     const jobs = new Map();
     for (const item of items) {
@@ -17,6 +17,23 @@ export default function MissingItemsGroupedList({ items, isAdmin, updating, onSt
       const rooms = jobs.get(jobKey);
       if (!rooms.has(roomKey)) rooms.set(roomKey, []);
       rooms.get(roomKey).push(item);
+    }
+    // Cluster items that belong to the same production card next to each other
+    for (const rooms of jobs.values()) {
+      for (const [roomKey, list] of rooms) {
+        const byCard = new Map();
+        const unlinked = [];
+        for (const item of list) {
+          const key = item.production_item_id || item.production_item_name;
+          if (key) {
+            if (!byCard.has(key)) byCard.set(key, []);
+            byCard.get(key).push(item);
+          } else {
+            unlinked.push(item);
+          }
+        }
+        rooms.set(roomKey, [...byCard.values()].flat().concat(unlinked));
+      }
     }
     return jobs;
   }, [items]);
@@ -59,7 +76,7 @@ export default function MissingItemsGroupedList({ items, isAdmin, updating, onSt
                       {!roomCollapsed && (
                         <div className="divide-y divide-slate-50">
                           {roomItems.map(item => (
-                            <MissingItemRow key={item.id} item={item} isAdmin={isAdmin} updating={updating} onStatus={onStatus} onSendToProduction={onSendToProduction} sending={sending} />
+                            <MissingItemRow key={item.id} item={item} isAdmin={isAdmin} updating={updating} onStatus={onStatus} onSendToProduction={onSendToProduction} sending={sending} onViewCard={onViewCard} />
                           ))}
                         </div>
                       )}

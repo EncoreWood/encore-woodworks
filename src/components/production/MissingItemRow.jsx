@@ -12,7 +12,7 @@ const PRODUCTION_STAGES = [
   { id: "build", label: "Build" },
 ];
 
-export default function MissingItemRow({ item, isAdmin, updating, onStatus, onSendToProduction, sending }) {
+export default function MissingItemRow({ item, isAdmin, updating, onStatus, onSendToProduction, sending, onViewCard }) {
   const [sendStage, setSendStage] = useState("cut");
   const confirmed = JSON.parse(item.confirmed_by || "[]");
   const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.Open;
@@ -28,6 +28,15 @@ export default function MissingItemRow({ item, isAdmin, updating, onStatus, onSe
         </div>
         <div className="text-xs text-slate-500 flex flex-wrap gap-x-2 mb-1">
           {item.production_item_name && <span className="font-medium text-slate-700">{item.production_item_name}</span>}
+          {item.production_item_id && (
+            <button
+              type="button"
+              onClick={() => onViewCard?.(item.production_item_id)}
+              className="text-blue-600 hover:text-blue-800 underline underline-offset-2 font-medium"
+            >
+              View Card
+            </button>
+          )}
           {item.cabinet_name && <span>· {item.cabinet_name}</span>}
           {(item.width || item.length) && <span className="text-slate-600">· {[item.width, item.length].filter(Boolean).join(" × ")}</span>}
         </div>

@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, CheckCircle2, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import MissingItemsGroupedList from "./MissingItemsGroupedList";
+import MissingItemCardViewerDialog from "./MissingItemCardViewerDialog";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
 
 export default function ProductionMissingItemsTab({ currentUser }) {
@@ -18,6 +19,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
   const [sending, setSending] = useState(null);
   const [expandedJobs, setExpandedJobs] = useState(() => new Set());
   const [expandedRooms, setExpandedRooms] = useState(() => new Set());
+  const [viewCardId, setViewCardId] = useState(null);
 
   const toggleJob = (job) => setExpandedJobs(prev => {
     const next = new Set(prev);
@@ -184,6 +186,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
             onStatus={callUpdateStatus}
             onSendToProduction={sendCardToProduction}
             sending={sending}
+            onViewCard={setViewCardId}
             expandedJobs={expandedJobs}
             expandedRooms={expandedRooms}
             onToggleJob={toggleJob}
@@ -191,6 +194,8 @@ export default function ProductionMissingItemsTab({ currentUser }) {
           />
         </>
       )}
+
+      <MissingItemCardViewerDialog cardId={viewCardId} onClose={() => setViewCardId(null)} />
     </div>
   );
 }
