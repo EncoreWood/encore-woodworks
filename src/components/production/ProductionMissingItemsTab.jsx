@@ -11,7 +11,7 @@ import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusCo
 export default function ProductionMissingItemsTab({ currentUser }) {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("Open");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [filterProject, setFilterProject] = useState("all");
   const [showResolved, setShowResolved] = useState(false);
   const [updating, setUpdating] = useState(null);
