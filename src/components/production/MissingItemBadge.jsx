@@ -126,7 +126,18 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
                         <span className="text-xs text-slate-500">· {[report.width, report.length].filter(Boolean).join(" × ")}</span>
                       )}
                     </div>
-                    <p className="text-sm font-medium text-slate-800">{report.item_description}</p>
+                    <p className="text-sm font-medium text-slate-800">
+                      {report.item_description}
+                      {report.quantity != null && (
+                        <span className="font-semibold text-slate-600"> ×{report.quantity}</span>
+                      )}
+                      {(report.width || report.length) && (
+                        <span className="text-slate-500">
+                          {" - "}
+                          {[report.width, report.length].filter(Boolean).map(d => `${d}"`).join(" x ")}
+                        </span>
+                      )}
+                    </p>
                     {report.description && (
                       <p className="text-xs text-slate-500 mt-0.5">{report.description}</p>
                     )}
