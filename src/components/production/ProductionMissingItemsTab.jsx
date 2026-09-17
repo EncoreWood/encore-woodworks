@@ -17,25 +17,25 @@ export default function ProductionMissingItemsTab({ currentUser }) {
   const [filterProject, setFilterProject] = useState("all");
   const [showResolved, setShowResolved] = useState(false);
   const [updating, setUpdating] = useState(null);
-  const [collapsedJobs, setCollapsedJobs] = useState(() => new Set());
-  const [collapsedRooms, setCollapsedRooms] = useState(() => new Set());
+  const [expandedJobs, setExpandedJobs] = useState(() => new Set());
+  const [expandedRooms, setExpandedRooms] = useState(() => new Set());
 
-  const toggleJob = (job) => setCollapsedJobs(prev => {
+  const toggleJob = (job) => setExpandedJobs(prev => {
     const next = new Set(prev);
     next.has(job) ? next.delete(job) : next.add(job);
     return next;
   });
-  const toggleRoom = (job, room) => setCollapsedRooms(prev => {
+  const toggleRoom = (job, room) => setExpandedRooms(prev => {
     const key = `${job}||${room}`;
     const next = new Set(prev);
     next.has(key) ? next.delete(key) : next.add(key);
     return next;
   });
-  const collapseAll = () => {
-    setCollapsedJobs(new Set([...new Set(filtered.map(i => i.project_name || "No Job"))]));
-    setCollapsedRooms(new Set());
+  const collapseAll = () => { setExpandedJobs(new Set()); setExpandedRooms(new Set()); };
+  const expandAll = () => {
+    setExpandedJobs(new Set([...new Set(filtered.map(i => i.project_name || "No Job"))]));
+    setExpandedRooms(new Set());
   };
-  const expandAll = () => { setCollapsedJobs(new Set()); setCollapsedRooms(new Set()); };
 
   const { data: missingItems = [] } = useQuery({
     queryKey: ["missingItems"],
@@ -157,8 +157,8 @@ export default function ProductionMissingItemsTab({ currentUser }) {
             isAdmin={isAdmin}
             updating={updating}
             onStatus={callUpdateStatus}
-            collapsedJobs={collapsedJobs}
-            collapsedRooms={collapsedRooms}
+            expandedJobs={expandedJobs}
+            expandedRooms={expandedRooms}
             onToggleJob={toggleJob}
             onToggleRoom={toggleRoom}
           />

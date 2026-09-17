@@ -5,9 +5,9 @@ import MissingItemRow from "./MissingItemRow";
 
 /**
  * Groups missing items by job (project) then room, with collapsible sections.
- * collapsedJobs: Set of job keys, collapsedRooms: Set of "job||room" keys.
+ * expandedJobs: Set of job keys, expandedRooms: Set of "job||room" keys. Sections start collapsed.
  */
-export default function MissingItemsGroupedList({ items, isAdmin, updating, onStatus, collapsedJobs, collapsedRooms, onToggleJob, onToggleRoom }) {
+export default function MissingItemsGroupedList({ items, isAdmin, updating, onStatus, expandedJobs, expandedRooms, onToggleJob, onToggleRoom }) {
   const grouped = useMemo(() => {
     const jobs = new Map();
     for (const item of items) {
@@ -24,7 +24,7 @@ export default function MissingItemsGroupedList({ items, isAdmin, updating, onSt
   return (
     <div className="space-y-4">
       {[...grouped.entries()].map(([jobName, rooms]) => {
-        const jobCollapsed = collapsedJobs.has(jobName);
+        const jobCollapsed = !expandedJobs.has(jobName);
         const jobCount = [...rooms.values()].reduce((s, list) => s + list.length, 0);
         return (
           <div key={jobName} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -42,7 +42,7 @@ export default function MissingItemsGroupedList({ items, isAdmin, updating, onSt
             {!jobCollapsed && (
               <div>
                 {[...rooms.entries()].map(([roomName, roomItems]) => {
-                  const roomCollapsed = collapsedRooms.has(`${jobName}||${roomName}`);
+                  const roomCollapsed = !expandedRooms.has(`${jobName}||${roomName}`);
                   return (
                     <div key={roomName} className={cn(roomItems.length > 0 && "border-t border-slate-100")}>
                       {/* Room header */}
