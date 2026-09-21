@@ -5,13 +5,14 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, Upload, Loader2, PenLine, FileCode2, ChevronDown, PackageX, Flag, Boxes } from "lucide-react";
+import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, Upload, Loader2, PenLine, FileCode2, ChevronDown, PackageX, Flag, Boxes, StickyNote } from "lucide-react";
 import MissingItemBadge from "@/components/production/MissingItemBadge";
 import GlbViewer from "@/components/cad/GlbViewer";
 import DxfViewer from "@/components/cad/DxfViewer";
 import { base44 } from "@/api/base44Client";
 import SketchPad from "@/components/production/SketchPad";
 import RoomFilesModal from "@/components/production/RoomFilesModal";
+import RoomNotesModal from "@/components/production/RoomNotesModal";
 import { useQuery } from "@tanstack/react-query";
 
 function PdfPreviewTooltip({ url, anchorEl }) {
@@ -87,6 +88,7 @@ export default function ProductionCard({
   const [uploadingGlb, setUploadingGlb] = useState(false);
   const [viewingCad, setViewingCad] = useState(null);
   const [showRoomFiles, setShowRoomFiles] = useState(false);
+  const [showRoomNotes, setShowRoomNotes] = useState(false);
   const glbInputRef = useRef(null);
   const isAdmin = currentUser?.role === "admin";
 
@@ -235,6 +237,17 @@ export default function ProductionCard({
                 title="View room 3D model"
               >
                 <Box className="w-3 h-3" />
+              </button>
+            )}
+
+            {/* Room notes */}
+            {item.project_id && item.room_name && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowRoomNotes(true); }}
+                className="flex items-center justify-center w-6 h-6 rounded bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-600 hover:text-violet-800 flex-shrink-0 transition-colors"
+                title="View room notes"
+              >
+                <StickyNote className="w-3 h-3" />
               </button>
             )}
 
@@ -535,6 +548,13 @@ export default function ProductionCard({
           </div>
         )}
       </Card>
+      {showRoomNotes && (
+        <RoomNotesModal
+          projectId={item.project_id}
+          roomName={item.room_name}
+          onClose={() => setShowRoomNotes(false)}
+        />
+      )}
       {showRoomFiles && (
         <RoomFilesModal
           projectId={item.project_id}
