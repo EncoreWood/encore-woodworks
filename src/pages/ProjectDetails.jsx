@@ -37,6 +37,7 @@ import ClientPortalTab from "../components/projects/ClientPortalTab";
 import GlbViewer from "../components/cad/GlbViewer";
 import RoomFilesSection from "../components/projects/RoomFilesSection";
 import RoomClientNotes from "../components/projects/RoomClientNotes";
+import RoomNotesSection from "../components/projects/RoomNotesSection";
 import RoomModelFiles from "../components/projects/RoomModelFiles";
 import JobMeasurementsTab from "../components/measurements/JobMeasurementsTab";
 import ProjectTimelineSection from "../components/projects/ProjectTimelineSection";
@@ -624,7 +625,6 @@ export default function ProjectDetails() {
                             {room.style && <div><span className="text-slate-500">Style:</span> <span className="text-slate-700">{room.style}</span></div>}
                             {room.finish && <div><span className="text-slate-500">Finish:</span> <span className="text-slate-700">{room.finish}</span></div>}
                           </div>
-                          {room.notes && <p className="text-sm text-slate-600 mt-2">{room.notes}</p>}
                           <RoomFilesSection project={project} roomName={room.room_name || `Room ${idx + 1}`} roomId={`${projectId}_${idx}`} />
                           {room.files?.length > 0 && (
                             <div className="mt-3 space-y-2">
@@ -654,6 +654,7 @@ export default function ProjectDetails() {
                               <p className="text-xs text-slate-500">Click room to manage files</p>
                             </div>
                           )}
+                          <RoomNotesSection project={project} roomIndex={idx} />
                           <RoomClientNotes project={project} roomName={room.room_name || `Room ${idx + 1}`} />
                           <RoomModelFiles project={project} roomName={room.room_name || `Room ${idx + 1}`} roomId={String(idx)} />
                           </>
