@@ -6,7 +6,7 @@ import {
   MousePointer2, PenLine, Type, Square, Circle, Minus,
   ImageIcon, Undo2, Trash2, X, Check, Save, FolderOpen, Loader2
 } from "lucide-react";
-import { Canvas, IText, Rect, Ellipse, Line, Image as FabricImage } from "fabric";
+import { Canvas, IText, Rect, Ellipse, Line, Image as FabricImage, PencilBrush } from "fabric";
 import { base44 } from "@/api/base44Client";
 
 // Simple modal that doesn't conflict with Radix parent dialogs
@@ -111,6 +111,8 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
 
     if (tool === "pen") {
       fc.isDrawingMode = true;
+      // fabric 6 doesn't auto-create the drawing brush — create it on demand
+      if (!fc.freeDrawingBrush) fc.freeDrawingBrush = new PencilBrush(fc);
       fc.freeDrawingBrush.color = color;
       fc.freeDrawingBrush.width = strokeWidth;
       fc.selection = false;
