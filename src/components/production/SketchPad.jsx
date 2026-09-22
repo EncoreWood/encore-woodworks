@@ -38,6 +38,7 @@ const SIZES = [2, 4, 8, 14, 22];
 export default function SketchPad({ onClose, onSave, existingImageUrl }) {
   const canvasElRef = useRef(null);
   const fabricCanvasRef = useRef(null);
+  const padRootRef = useRef(null);
   const [tool, setTool] = useState("select");
   const [color, setColor] = useState("#000000");
   const [strokeWidth, setStrokeWidth] = useState(4);
@@ -64,6 +65,20 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
     base44.auth.me().then(u => setCurrentUser(u)).catch(() => {});
   }, []);
 
+  // iPad: block iOS pinch-zoom while the pad is open, so a palm resting on
+  // the screen mid-sketch doesn't zoom the page out from under the canvas.
+  useEffect(() => {
+    const el = padRootRef.current;
+    if (!el) return;
+    const prevent = (e) => e.preventDefault();
+    el.addEventListener("gesturestart", prevent, { passive: false });
+    el.addEventListener("gesturechange", prevent, { passive: false });
+    return () => {
+      el.removeEventListener("gesturestart", prevent);
+      el.removeEventListener("gesturechange", prevent);
+    };
+  }, []);
+
   // Init canvas (fabric is imported directly — no async loading step)
   useEffect(() => {
     if (!canvasElRef.current) return;
@@ -76,6 +91,12 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
       selection: true,
     });
     fabricCanvasRef.current = fc;
+
+    // iPad/Safari: stop the browser from treating stylus and touch moves on
+    // the canvas as page pan/zoom gestures, which breaks strokes mid-draw.
+    canvasElRef.current.style.touchAction = "none";
+    if (fc.wrapperEl) fc.wrapperEl.style.touchAction = "none";
+    if (fc.upperCanvasEl) fc.upperCanvasEl.style.touchAction = "none";
 
     // Save state on object modifications for undo
     const saveState = () => {
@@ -332,7 +353,7 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
   ];
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex flex-col bg-gray-200" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+    <div ref={padRootRef} className="fixed inset-0 z-[9999] flex flex-col bg-gray-200" style={{ paddingTop: "env(safe-area-inset-top)" }}>
       {/* Toolbar */}
       <div className="flex items-center gap-1 px-3 py-2 bg-gray-300 border-b border-gray-400 flex-wrap shrink-0">
         {/* Tools */}
