@@ -98,6 +98,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     setTimeout(syncCanvasSize, 100);
     setLastHighlight(null);
     setPendingHighlights([]);
+    setEditingNote(null);
+    setEditText("");
   }, [scale, rotation, pageNumber, syncCanvasSize]);
 
   // Pan resets only when the orientation/page changes (not on zoom).
@@ -355,6 +357,52 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     setTextValue("");
   };
 
+  // ── Text notes: drag to move, click to edit ────────────────────────────────
+  const [editingNote, setEditingNote] = useState(null); // annList index being edited
+  const [editText, setEditText] = useState("");
+  const noteDragRef = useRef(null);
+
+  const startNoteDrag = (e, idx, ann) => {
+    e.stopPropagation();
+    e.preventDefault();
+    noteDragRef.current = { idx, moved: false, sx: e.clientX, sy: e.clientY, ox: ann.x, oy: ann.y };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const moveNoteDrag = (e) => {
+    const d = noteDragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
+    if (!d.moved && Math.hypot(dx, dy) < 4) return;
+    d.moved = true;
+    const live = liveScaleRef.current || 1;
+    const { width: w, height: h } = canvasSizeRef.current;
+    const nx = Math.max(0, Math.min(1, d.ox + (dx / live) / w));
+    const ny = Math.max(0, Math.min(1, d.oy + (dy / live) / h));
+    setAnnList(prev => prev.map((a, i) => i === d.idx ? { ...a, x: nx, y: ny } : a));
+  };
+
+  const endNoteDrag = (ann) => {
+    const d = noteDragRef.current;
+    noteDragRef.current = null;
+    if (d && !d.moved) {
+      setEditingNote(d.idx);
+      setEditText(ann.text);
+    }
+  };
+
+  const commitNoteEdit = () => {
+    if (editingNote === null) return;
+    const idx = editingNote;
+    const val = editText.trim();
+    setAnnList(prev => {
+      if (!val) return prev.filter((_, i) => i !== idx);
+      return prev.map((a, i) => i === idx ? { ...a, text: val } : a);
+    });
+    setEditingNote(null);
+    setEditText("");
+  };
+
   const handleUndo = () => {
     const pageAnns = annList.filter(a => a.page === pageNumber);
     if (!pageAnns.length) return;
@@ -458,19 +506,10 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
           { x: ann.end.x * W,   y: ann.end.y * H },
           ann.type === "arrow"
         );
-      } else if (ann.type === "text") {
-        const tx = ann.x * W, ty = ann.y * H;
-        ctx.font = "bold 13px sans-serif";
-        const metrics = ctx.measureText(ann.text);
-        ctx.fillStyle = "rgba(255,255,255,0.85)";
-        ctx.fillRect(tx - 3, ty - 15, metrics.width + 6, 19);
-        ctx.strokeStyle = ann.color;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(tx - 3, ty - 15, metrics.width + 6, 19);
-        ctx.fillStyle = ann.color;
-        ctx.fillText(ann.text, tx, ty);
       }
     });
+    // NOTE: text annotations are NOT drawn here - they render as interactive
+    // DOM boxes (drag to move, click to edit) inside the page container below.
 
     // Live pen stroke preview (normalized → pixels)
     if (currentPath.length > 1) {
@@ -687,6 +726,71 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                 onPointerUp={handlePointerUp}
                 onPointerLeave={handlePointerUp}
               />
+
+              {/* Text notes — click to edit, drag to move */}
+              {annList.map((ann, idx) => {
+                if (ann.type !== "text" || ann.page !== pageNumber) return null;
+                const tx = ann.x * canvasSize.width - 3;
+                const ty = ann.y * canvasSize.height - 15;
+                if (editingNote === idx) {
+                  return (
+                    <input
+                      key={idx}
+                      autoFocus
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      onBlur={commitNoteEdit}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitNoteEdit();
+                        if (e.key === "Escape") { setEditingNote(null); setEditText(""); }
+                      }}
+                      style={{
+                        position: "absolute",
+                        left: tx,
+                        top: ty,
+                        zIndex: 30,
+                        background: "rgba(255,255,255,0.98)",
+                        border: "2px solid #2563eb",
+                        borderRadius: 4,
+                        padding: "1px 6px",
+                        fontSize: 13,
+                        fontWeight: "bold",
+                        minWidth: 120,
+                        outline: "none",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+                      }}
+                    />
+                  );
+                }
+                return (
+                  <div
+                    key={idx}
+                    onPointerDown={(e) => startNoteDrag(e, idx, ann)}
+                    onPointerMove={moveNoteDrag}
+                    onPointerUp={() => endNoteDrag(ann)}
+                    onPointerCancel={() => { noteDragRef.current = null; }}
+                    title="Click to edit · Drag to move"
+                    style={{
+                      position: "absolute",
+                      left: tx,
+                      top: ty,
+                      zIndex: 15,
+                      cursor: "move",
+                      background: "rgba(255,255,255,0.95)",
+                      border: `2px solid ${ann.color}`,
+                      borderRadius: 4,
+                      padding: "1px 6px",
+                      fontSize: 13,
+                      fontWeight: "bold",
+                      color: "#111827",
+                      whiteSpace: "nowrap",
+                      boxShadow: "0 1px 4px rgba(0,0,0,0.25)",
+                    }}
+                  >
+                    {ann.text}
+                  </div>
+                );
+              })}
 
               {/* Floating text input */}
               {textInput && (
