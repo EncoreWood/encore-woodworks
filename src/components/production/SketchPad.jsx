@@ -6,6 +6,7 @@ import {
   MousePointer2, PenLine, Type, Square, Circle, Minus,
   ImageIcon, Undo2, Trash2, X, Check, Save, FolderOpen, Loader2
 } from "lucide-react";
+import { Canvas, IText, Rect, Ellipse, Line, Image as FabricImage } from "fabric";
 import { base44 } from "@/api/base44Client";
 
 // Simple modal that doesn't conflict with Radix parent dialogs
@@ -26,27 +27,17 @@ function SimpleModal({ open, onClose, title, children }) {
   );
 }
 
-const FABRIC_CDN = "https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js";
+// Fabric.js v6 is bundled locally (npm) — no CDN script to load or block, so
+// the sketch pad opens reliably on the shop iPad as well.
 
 const COLORS = ["#000000", "#ffffff", "#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#8b5cf6", "#ec4899", "#64748b"];
 const SIZES = [2, 4, 8, 14, 22];
 
-function useFabric(canvasEl) {
-  const [fabric, setFabric] = useState(null);
-  useEffect(() => {
-    if (window.fabric) { setFabric(window.fabric); return; }
-    const script = document.createElement("script");
-    script.src = FABRIC_CDN;
-    script.onload = () => setFabric(window.fabric);
-    document.head.appendChild(script);
-  }, []);
-  return fabric;
-}
+// (v5 CDN loader removed — fabric v6 is imported directly at the top.)
 
 export default function SketchPad({ onClose, onSave, existingImageUrl }) {
   const canvasElRef = useRef(null);
   const fabricCanvasRef = useRef(null);
-  const [fabricLib, setFabricLib] = useState(null);
   const [tool, setTool] = useState("select");
   const [color, setColor] = useState("#000000");
   const [strokeWidth, setStrokeWidth] = useState(4);
@@ -69,22 +60,16 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Load Fabric.js
   useEffect(() => {
-    if (window.fabric) { setFabricLib(window.fabric); return; }
-    const script = document.createElement("script");
-    script.src = FABRIC_CDN;
-    script.onload = () => setFabricLib(window.fabric);
-    document.head.appendChild(script);
     base44.auth.me().then(u => setCurrentUser(u)).catch(() => {});
   }, []);
 
-  // Init canvas once fabric is loaded
+  // Init canvas (fabric is imported directly — no async loading step)
   useEffect(() => {
-    if (!fabricLib || !canvasElRef.current) return;
+    if (!canvasElRef.current) return;
     if (fabricCanvasRef.current) return; // already init'd
 
-    const fc = new fabricLib.Canvas(canvasElRef.current, {
+    const fc = new Canvas(canvasElRef.current, {
       width: 900,
       height: 560,
       backgroundColor: "#ffffff",
@@ -102,22 +87,22 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
 
     // Load existing image if provided
     if (existingImageUrl) {
-      fabricLib.Image.fromURL(existingImageUrl, (img) => {
+      FabricImage.fromURL(existingImageUrl, { crossOrigin: "anonymous" }).then((img) => {
+        if (!fabricCanvasRef.current) return;
         img.scaleToWidth(fc.width);
         fc.add(img);
-        fc.sendToBack(img);
+        fc.sendObjectToBack(img);
         fc.renderAll();
-      }, { crossOrigin: "anonymous" });
+      }).catch(() => {});
     }
 
     return () => { fc.dispose(); fabricCanvasRef.current = null; };
-  }, [fabricLib]);
+  }, [existingImageUrl]);
 
   // Update drawing mode and tool behavior
   useEffect(() => {
     const fc = fabricCanvasRef.current;
-    const fab = fabricLib;
-    if (!fc || !fab) return;
+    if (!fc) return;
 
     // Remove shape-drawing listeners
     fc.off("mouse:down");
@@ -141,7 +126,7 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
       fc.renderAll();
       fc.on("mouse:down", (opt) => {
         const pointer = fc.getPointer(opt.e);
-        const text = new fab.IText("Text", {
+        const text = new IText("Text", {
           left: pointer.x,
           top: pointer.y,
           fontSize: strokeWidth * 4 + 8,
@@ -168,21 +153,21 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
         shapeOrigin.current = { x: pointer.x, y: pointer.y };
 
         if (tool === "rect") {
-          activeShape.current = new fab.Rect({
+          activeShape.current = new Rect({
             left: pointer.x, top: pointer.y,
             width: 1, height: 1,
             stroke: color, strokeWidth, fill: "transparent",
             selectable: false, evented: false,
           });
         } else if (tool === "circle") {
-          activeShape.current = new fab.Ellipse({
+          activeShape.current = new Ellipse({
             left: pointer.x, top: pointer.y,
             rx: 1, ry: 1,
             stroke: color, strokeWidth, fill: "transparent",
             selectable: false, evented: false,
           });
         } else if (tool === "line") {
-          activeShape.current = new fab.Line(
+          activeShape.current = new Line(
             [pointer.x, pointer.y, pointer.x, pointer.y],
             { stroke: color, strokeWidth, selectable: false, evented: false }
           );
@@ -230,7 +215,7 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
         setTool("select");
       });
     }
-  }, [tool, color, strokeWidth, fabricLib]);
+  }, [tool, color, strokeWidth]);
 
   // Keep pen color/width in sync
   useEffect(() => {
@@ -242,12 +227,11 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
 
   const undo = useCallback(() => {
     const fc = fabricCanvasRef.current;
-    const fab = fabricLib;
-    if (!fc || !fab || historyStack.length < 2) return;
+    if (!fc || historyStack.length < 2) return;
     const prev = historyStack[historyStack.length - 2];
     setHistoryStack(s => s.slice(0, -1));
-    fc.loadFromJSON(prev, () => fc.renderAll());
-  }, [historyStack, fabricLib]);
+    fc.loadFromJSON(prev).then(() => fc.renderAll());
+  }, [historyStack]);
 
   const clearCanvas = useCallback(() => {
     const fc = fabricCanvasRef.current;
@@ -259,10 +243,10 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
 
   const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
-    if (!file || !fabricLib) return;
+    if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      fabricLib.Image.fromURL(ev.target.result, (img) => {
+      FabricImage.fromURL(ev.target.result).then((img) => {
         const fc = fabricCanvasRef.current;
         if (!fc) return;
         img.scaleToWidth(Math.min(300, fc.width / 2));
@@ -326,11 +310,10 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
 
   const loadTemplate = (sketch) => {
     const fc = fabricCanvasRef.current;
-    const fab = fabricLib;
-    if (!fc || !fab) return;
+    if (!fc) return;
     // canvas_json may be a string or already parsed object
     const json = typeof sketch.canvas_json === "string" ? sketch.canvas_json : JSON.stringify(sketch.canvas_json);
-    fc.loadFromJSON(json, () => {
+    fc.loadFromJSON(json).then(() => {
       fc.getObjects().forEach(o => o.set({ selectable: true, evented: true }));
       fc.renderAll();
     });
@@ -345,18 +328,6 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
     { key: "circle", icon: Circle, label: "Circle" },
     { key: "line", icon: Minus, label: "Line" },
   ];
-
-  if (!fabricLib) {
-    return createPortal(
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-gray-200">
-        <div className="flex flex-col items-center gap-3 text-slate-600">
-          <Loader2 className="w-8 h-8 animate-spin" />
-          <span>Loading canvas editor...</span>
-        </div>
-      </div>,
-      document.body
-    );
-  }
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex flex-col bg-gray-200" style={{ paddingTop: "env(safe-area-inset-top)" }}>

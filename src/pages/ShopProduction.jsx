@@ -376,7 +376,10 @@ export default function ShopProduction() {
     ]);
   }, [queryClient]);
 
-  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh);
+  // The pull indicator is hidden on >= sm viewports (iPad), so disable the
+  // gesture there — otherwise it invisibly swallows taps and stylus strokes.
+  const isPhoneViewport = typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
+  const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh, { disabled: !isPhoneViewport });
 
   const handleGlbUpdate = (id, fields) => {
     queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === id ? { ...i, ...fields } : i));

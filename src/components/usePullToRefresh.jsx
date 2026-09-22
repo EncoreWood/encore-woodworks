@@ -18,6 +18,13 @@ export default function usePullToRefresh(onRefresh, { threshold = 80, disabled =
     const el = containerRef.current || document.documentElement;
 
     const onTouchStart = (e) => {
+      // Ignore touches that start inside fixed overlays (dialogs, popovers,
+      // fullscreen sketch/PDF/3D viewers): preventDefault on their touchmoves
+      // swallows taps and stylus strokes on iPad.
+      if (e.target.closest?.(".fixed, [data-radix-popper-content-wrapper]")) {
+        startYRef.current = null;
+        return;
+      }
       // Only activate when scrolled to top
       const scrollTop = el === document.documentElement
         ? window.scrollY
