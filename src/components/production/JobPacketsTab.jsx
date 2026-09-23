@@ -213,7 +213,11 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
                     {/* Stage badge */}
                     <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
                       {isStaged ? (
-                        <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 text-[10px] px-2 py-0.5">Staged</Badge>
+                        item.completed_date ? (
+                          <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 text-[10px] px-2 py-0.5">Complete</Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 text-[10px] px-2 py-0.5">Staged</Badge>
+                        )
                       ) : (
                         <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0.5">In Production: {STAGE_LABELS[item.stage] || item.stage}</Badge>
                       )}
