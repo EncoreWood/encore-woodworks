@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,13 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     queryKey: ["missingItems"],
     queryFn: () => base44.entities.MissingItem.list("-reported_at"),
   });
+
+  const { data: productionItems = [] } = useQuery({
+    queryKey: ["productionItems"],
+    queryFn: () => base44.entities.ProductionItem.list(),
+  });
+
+  const cardById = useMemo(() => new Map(productionItems.map(p => [p.id, p])), [productionItems]);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -181,6 +188,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
           </div>
           <MissingItemsGroupedList
             items={filtered}
+            cardById={cardById}
             isAdmin={isAdmin}
             updating={updating}
             onStatus={callUpdateStatus}

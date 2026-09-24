@@ -5,6 +5,8 @@ import { Clock } from "lucide-react";
 import { format } from "date-fns";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
 
+const STAGE_LABELS = { cut: "Cut", face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete", on_hold: "On Hold" };
+
 const PRODUCTION_STAGES = [
   { id: "cut", label: "Cut" },
   { id: "face_frame", label: "Face Frame" },
@@ -12,7 +14,7 @@ const PRODUCTION_STAGES = [
   { id: "build", label: "Build" },
 ];
 
-export default function MissingItemRow({ item, isAdmin, updating, onStatus, onSendToProduction, sending, onViewCard }) {
+export default function MissingItemRow({ item, card, isAdmin, updating, onStatus, onSendToProduction, sending, onViewCard }) {
   const [sendStage, setSendStage] = useState("cut");
   const confirmed = JSON.parse(item.confirmed_by || "[]");
   const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.Open;
@@ -36,6 +38,13 @@ export default function MissingItemRow({ item, isAdmin, updating, onStatus, onSe
             >
               View Card
             </button>
+          )}
+          {item.production_item_id && card && (
+            card.stage ? (
+              <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0">🏭 In Production: {STAGE_LABELS[card.stage] || card.stage.replace(/_/g, " ")}</Badge>
+            ) : (
+              <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 text-[10px] px-2 py-0">In Job Packet</Badge>
+            )
           )}
           {item.cabinet_name && <span>· {item.cabinet_name}</span>}
           {(item.width || item.length) && <span className="text-slate-600">· {[item.width, item.length].filter(Boolean).join(" × ")}</span>}
