@@ -5,11 +5,13 @@ import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
-import { getSizeBreakdown } from "./missingItemSizes";
+import { getSizeBreakdown, sizeSummary } from "./missingItemSizes";
+import MissingItemSizeEditor from "./MissingItemSizeEditor";
 
 export default function MissingItemBadge({ itemId, currentUser, onSendBackToProduction }) {
   const [open, setOpen] = useState(false);
   const [updating, setUpdating] = useState(null); // id of item being updated
+  const [editingSizesId, setEditingSizesId] = useState(null);
   const queryClient = useQueryClient();
   const dotRef = useRef(null);
   const [popupPos, setPopupPos] = useState(null);
@@ -128,8 +130,9 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
                     </div>
                     <p className="text-sm font-medium text-slate-800">
                       {report.item_description}
-                      {/* Per-size records already carry sizes inside item_description (e.g. "1@ 20 x 5 13/16 & 2@ 20 x 8 13/16") */}
-                      {!getSizeBreakdown(report) && (
+                      {getSizeBreakdown(report) ? (
+                        <span className="text-slate-500">{" - "}{sizeSummary(report)}</span>
+                      ) : (
                         <>
                           {report.quantity != null && (
                             <span className="font-semibold text-slate-600"> ×{report.quantity}</span>
@@ -175,7 +178,23 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
                         >
                           ✅ Complete
                         </button>
+                        <button
+                          onClick={() => setEditingSizesId(editingSizesId === report.id ? null : report.id)}
+                          className="text-xs px-2 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg hover:bg-amber-100 transition-colors"
+                          title="Edit quantity per size"
+                        >
+                          ✏️ Sizes
+                        </button>
                       </div>
+                    )}
+                    {editingSizesId === report.id && (
+                      <MissingItemSizeEditor
+                        item={report}
+                        onDone={(saved) => {
+                          setEditingSizesId(null);
+                          if (saved) queryClient.invalidateQueries({ queryKey: ["missingItems"] });
+                        }}
+                      />
                     )}
                   </div>
                 );

@@ -76,14 +76,17 @@ async function extractOne(cropDataUrl, pageUrl, pageNumber, index) {
   };
 }
 
-function buildDescription(form) {
-  const sizes = (form.sizes || [])
-    .filter(s => String(s.qty).trim() || s.width || s.length)
-    .map(s => {
-      const dims = [s.width, s.length].filter(Boolean).join(" x ");
-      return `${s.qty ? `${s.qty}@ ` : ""}${dims}`.trim();
-    })
-    .join(" & ");
+function buildDescription(form, { withSizes = true } = {}) {
+  let sizes = "";
+  if (withSizes) {
+    sizes = (form.sizes || [])
+      .filter(s => String(s.qty).trim() || s.width || s.length)
+      .map(s => {
+        const dims = [s.width, s.length].filter(Boolean).join(" x ");
+        return `${s.qty ? `${s.qty}@ ` : ""}${dims}`.trim();
+      })
+      .join(" & ");
+  }
   return `${form.pickup_type || "Item"}${sizes ? ` - ${sizes}` : ""}${form.material ? ` - ${form.material}` : ""}`;
 }
 
@@ -193,7 +196,7 @@ export default function PickupFromHighlightDialog({
           length: [...new Set(sizes.map(s => s.length).filter(Boolean))].join(" & "),
           material: it.form.material,
           finish: it.form.finish,
-          item_description: buildDescription(it.form),
+          item_description: buildDescription(it.form, { withSizes: false }),
           description: note || null,
           status: "Open",
           reported_by: currentUser?.full_name || currentUser?.email || "Unknown",
