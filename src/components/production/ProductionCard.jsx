@@ -122,6 +122,11 @@ export default function ProductionCard({
       ? { borderLeft: `4px solid ${color}`, backgroundColor: color + "18" }
       : {};
 
+  // Sent back for a missing item — override the card's look so it stands out from normal cards on the board
+  const sentBackStyle = item.sent_back_for_missing
+    ? { borderLeft: "4px solid #dc2626", backgroundColor: "#fef2f2" }
+    : {};
+
 
   const typeBadgeClass =
     item.type === "cabinet" ? "bg-blue-50 text-blue-700 border-blue-200"
@@ -151,7 +156,7 @@ export default function ProductionCard({
       )}
       <Card
         className={`relative p-4 border-0 shadow-sm transition-shadow overflow-hidden ${isDragging ? "shadow-lg" : ""}`}
-        style={{ backgroundColor: "#ffffff", ...cardStyle }}
+        style={{ backgroundColor: "#ffffff", ...cardStyle, ...sentBackStyle }}
       >
         {/* Room files button — top-right corner */}
         {item.project_id && item.room_name && (
