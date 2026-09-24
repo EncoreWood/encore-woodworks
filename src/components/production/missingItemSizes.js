@@ -29,18 +29,20 @@ export function splitDimList(str) {
   return String(str).split(/\s*(?:&|,)\s*/).filter(Boolean);
 }
 
-// Pre-fill rows for the size editor: existing breakdown, or zipped legacy width/length strings
-export function editableSizes(item) {
-  const rows = getSizeBreakdown(item);
-  if (rows) return rows.map(r => ({ qty: r.qty ?? "", width: r.width || "", length: r.length || "" }));
+// Legacy records: pair the width/length strings index-wise so each size shows separated
+// (width "40 1/32 & 19 1/16" + length "8 & 4" → "40 1/32 x 8 & 19 1/16 x 4").
+// Per-size quantities were never saved on legacy records, so the aggregate qty stays.
+export function legacySizePairs(item) {
   const widths = splitDimList(item?.width);
   const lengths = splitDimList(item?.length);
-  if (widths.length === 0 && lengths.length === 0) {
-    return [{ qty: item?.quantity ?? "", width: "", length: "" }];
-  }
+  if (widths.length === 0 && lengths.length === 0) return null;
+  const w = (i) => widths[i] ?? (widths.length ? widths[widths.length - 1] : "");
+  const l = (i) => lengths[i] ?? (lengths.length ? lengths[lengths.length - 1] : "");
   const n = Math.max(widths.length, lengths.length);
-  const out = Array.from({ length: n }, (_, i) => ({ qty: "", width: widths[i] || "", length: lengths[i] || "" }));
-  // Unambiguous case: a single size pair — the aggregate qty belongs to it
-  if (out.length === 1) out[0].qty = item?.quantity ?? "";
-  return out;
+  const pairs = [];
+  for (let i = 0; i < n; i++) {
+    const pair = [w(i), l(i)].filter(Boolean).join(" x ");
+    if (pair) pairs.push(pair);
+  }
+  return pairs.join(" & ") || null;
 }

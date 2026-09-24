@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Clock } from "lucide-react";
 import { format } from "date-fns";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
-import { getSizeBreakdown, sizeSummary } from "./missingItemSizes";
+import { getSizeBreakdown, legacySizePairs, sizeSummary } from "./missingItemSizes";
 
 const STAGE_LABELS = { cut: "Cut", face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete", on_hold: "On Hold" };
 
@@ -50,7 +50,7 @@ export default function MissingItemRow({ item, card, isAdmin, updating, onStatus
           {item.cabinet_name && <span>· {item.cabinet_name}</span>}
           {getSizeBreakdown(item)
             ? <span className="text-slate-600">· {sizeSummary(item)}</span>
-            : (item.width || item.length) && <span className="text-slate-600">· {[item.width, item.length].filter(Boolean).join(" × ")}</span>}
+            : legacySizePairs(item) && <span className="text-slate-600">· {legacySizePairs(item)}</span>}
         </div>
         {item.description && (
           <p className="text-xs text-slate-400 mb-1">{item.description}</p>

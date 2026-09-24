@@ -5,13 +5,11 @@ import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
-import { getSizeBreakdown, sizeSummary } from "./missingItemSizes";
-import MissingItemSizeEditor from "./MissingItemSizeEditor";
+import { getSizeBreakdown, legacySizePairs, sizeSummary } from "./missingItemSizes";
 
 export default function MissingItemBadge({ itemId, currentUser, onSendBackToProduction }) {
   const [open, setOpen] = useState(false);
   const [updating, setUpdating] = useState(null); // id of item being updated
-  const [editingSizesId, setEditingSizesId] = useState(null);
   const queryClient = useQueryClient();
   const dotRef = useRef(null);
   const [popupPos, setPopupPos] = useState(null);
@@ -124,8 +122,8 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
                       </span>
                       {report.room_name && <span className="text-xs text-slate-500">{report.room_name}</span>}
                       {report.cabinet_name && <span className="text-xs text-slate-400">· {report.cabinet_name}</span>}
-                      {!getSizeBreakdown(report) && (report.width || report.length) && (
-                        <span className="text-xs text-slate-500">· {[report.width, report.length].filter(Boolean).join(" × ")}</span>
+                      {!getSizeBreakdown(report) && legacySizePairs(report) && (
+                        <span className="text-xs text-slate-500">· {legacySizePairs(report)}</span>
                       )}
                     </div>
                     <p className="text-sm font-medium text-slate-800">
@@ -137,11 +135,8 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
                           {report.quantity != null && (
                             <span className="font-semibold text-slate-600"> ×{report.quantity}</span>
                           )}
-                          {(report.width || report.length) && (
-                            <span className="text-slate-500">
-                              {" - "}
-                              {[report.width, report.length].filter(Boolean).map(d => `${d}"`).join(" x ")}
-                            </span>
+                          {legacySizePairs(report) && (
+                            <span className="text-slate-500">{" - "}{legacySizePairs(report)}</span>
                           )}
                         </>
                       )}
@@ -178,23 +173,7 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
                         >
                           ✅ Complete
                         </button>
-                        <button
-                          onClick={() => setEditingSizesId(editingSizesId === report.id ? null : report.id)}
-                          className="text-xs px-2 py-1 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg hover:bg-amber-100 transition-colors"
-                          title="Edit quantity per size"
-                        >
-                          ✏️ Sizes
-                        </button>
                       </div>
-                    )}
-                    {editingSizesId === report.id && (
-                      <MissingItemSizeEditor
-                        item={report}
-                        onDone={(saved) => {
-                          setEditingSizesId(null);
-                          if (saved) queryClient.invalidateQueries({ queryKey: ["missingItems"] });
-                        }}
-                      />
                     )}
                   </div>
                 );
