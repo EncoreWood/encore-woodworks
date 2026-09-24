@@ -5,6 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
+import { getSizeBreakdown } from "./missingItemSizes";
 
 export default function MissingItemBadge({ itemId, currentUser, onSendBackToProduction }) {
   const [open, setOpen] = useState(false);
@@ -121,20 +122,25 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
                       </span>
                       {report.room_name && <span className="text-xs text-slate-500">{report.room_name}</span>}
                       {report.cabinet_name && <span className="text-xs text-slate-400">· {report.cabinet_name}</span>}
-                      {(report.width || report.length) && (
+                      {!getSizeBreakdown(report) && (report.width || report.length) && (
                         <span className="text-xs text-slate-500">· {[report.width, report.length].filter(Boolean).join(" × ")}</span>
                       )}
                     </div>
                     <p className="text-sm font-medium text-slate-800">
                       {report.item_description}
-                      {report.quantity != null && (
-                        <span className="font-semibold text-slate-600"> ×{report.quantity}</span>
-                      )}
-                      {(report.width || report.length) && (
-                        <span className="text-slate-500">
-                          {" - "}
-                          {[report.width, report.length].filter(Boolean).map(d => `${d}"`).join(" x ")}
-                        </span>
+                      {/* Per-size records already carry sizes inside item_description (e.g. "1@ 20 x 5 13/16 & 2@ 20 x 8 13/16") */}
+                      {!getSizeBreakdown(report) && (
+                        <>
+                          {report.quantity != null && (
+                            <span className="font-semibold text-slate-600"> ×{report.quantity}</span>
+                          )}
+                          {(report.width || report.length) && (
+                            <span className="text-slate-500">
+                              {" - "}
+                              {[report.width, report.length].filter(Boolean).map(d => `${d}"`).join(" x ")}
+                            </span>
+                          )}
+                        </>
                       )}
                     </p>
                     {report.description && (

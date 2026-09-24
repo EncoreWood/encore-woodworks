@@ -57,15 +57,36 @@
     },
     "quantity": {
       "type": "number",
-      "description": "Quantity needed"
+      "description": "Total quantity needed (sum of size_breakdown qtys when per-size rows are used)"
+    },
+    "size_breakdown": {
+      "type": "array",
+      "description": "Per-size quantity rows, e.g. [{qty: 1, width: '20', length: '5 13/16'}, {qty: 2, width: '20', length: '8 13/16'}]. When present, displays show qty per size (1@ 20 x 5 13/16 & 2@ 20 x 8 13/16) instead of the aggregate quantity.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "qty": {
+            "type": "number",
+            "description": "Quantity needed at this size"
+          },
+          "width": {
+            "type": "string",
+            "description": "Width (fraction string e.g. '15 5/8')"
+          },
+          "length": {
+            "type": "string",
+            "description": "Length (fraction string e.g. '24 13/16')"
+          }
+        }
+      }
     },
     "width": {
       "type": "string",
-      "description": "Width (fraction string e.g. '15 5/8')"
+      "description": "Width (fraction string e.g. '15 5/8'). Legacy combined string; with size_breakdown this holds the distinct widths joined by ' & '."
     },
     "length": {
       "type": "string",
-      "description": "Length (fraction string e.g. '24 13/16')"
+      "description": "Length (fraction string e.g. '24 13/16'). Legacy combined string; with size_breakdown this holds the distinct lengths joined by ' & '."
     },
     "material": {
       "type": "string",

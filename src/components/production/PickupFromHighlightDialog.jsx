@@ -12,9 +12,10 @@ import { toast } from "sonner";
 
 const PICKUP_TYPES = ["Door", "Drawer Front", "Panel", "Molding", "Hardware", "Other"];
 
+const EMPTY_SIZE = { qty: "", width: "", length: "" };
 const EMPTY = {
   room: "", cabinet: "", pickup_type: "Door",
-  quantity: "", width: "", length: "", material: "", finish: ""
+  sizes: [{ ...EMPTY_SIZE }], material: "", finish: ""
 };
 
 async function dataUrlToFile(dataUrl, fileName) {
@@ -68,9 +69,7 @@ async function extractOne(cropDataUrl, pageUrl, pageNumber, index) {
       room: result?.room || "",
       cabinet: result?.cabinet || "",
       pickup_type: PICKUP_TYPES.includes(result?.pickup_type) ? result.pickup_type : "Other",
-      quantity: result?.quantity || "",
-      width: result?.width || "",
-      length: result?.length || "",
+      sizes: [{ qty: result?.quantity || "", width: result?.width || "", length: result?.length || "" }],
       material: result?.material || "",
       finish: result?.finish || ""
     }
@@ -78,8 +77,14 @@ async function extractOne(cropDataUrl, pageUrl, pageNumber, index) {
 }
 
 function buildDescription(form) {
-  const qty = form.quantity || "";
-  return `${form.pickup_type || "Item"}${qty ? ` - Qty ${qty}` : ""}${form.width ? ` - ${form.width}` : ""}${form.length ? ` x ${form.length}` : ""}${form.material ? ` - ${form.material}` : ""}`;
+  const sizes = (form.sizes || [])
+    .filter(s => String(s.qty).trim() || s.width || s.length)
+    .map(s => {
+      const dims = [s.width, s.length].filter(Boolean).join(" x ");
+      return `${s.qty ? `${s.qty}@ ` : ""}${dims}`.trim();
+    })
+    .join(" & ");
+  return `${form.pickup_type || "Item"}${sizes ? ` - ${sizes}` : ""}${form.material ? ` - ${form.material}` : ""}`;
 }
 
 export default function PickupFromHighlightDialog({
@@ -142,12 +147,34 @@ export default function PickupFromHighlightDialog({
     setItems(prev => prev.filter((_, i) => i !== idx));
   };
 
+  const setSizeField = (idx, sizeIdx, k, v) => {
+    setItems(prev => prev.map((it, i) => i === idx ? {
+      ...it,
+      form: { ...it.form, sizes: it.form.sizes.map((s, si) => si === sizeIdx ? { ...s, [k]: v } : s) }
+    } : it));
+  };
+
+  const addSize = (idx) => {
+    setItems(prev => prev.map((it, i) => i === idx ? {
+      ...it, form: { ...it.form, sizes: [...it.form.sizes, { ...EMPTY_SIZE }] }
+    } : it));
+  };
+
+  const removeSize = (idx, sizeIdx) => {
+    setItems(prev => prev.map((it, i) => {
+      if (i !== idx || it.form.sizes.length <= 1) return it;
+      return { ...it, form: { ...it.form, sizes: it.form.sizes.filter((_, si) => si !== sizeIdx) } };
+    }));
+  };
+
   const handleSave = async () => {
     const ready = items.filter(it => !it.loading);
     if (ready.length === 0) return;
     setSaving(true);
     try {
       for (const it of ready) {
+        const sizes = (it.form.sizes || []).filter(s => String(s.qty).trim() || s.width || s.length);
+        const sizesTotal = sizes.reduce((sum, s) => sum + (parseFloat(s.qty) || 0), 0);
         await base44.entities.MissingItem.create({
           production_item_id: productionItem?.id || null,
           production_item_name: productionItem?.name || "Unknown",
@@ -156,9 +183,14 @@ export default function PickupFromHighlightDialog({
           room_name: it.form.room,
           cabinet_name: it.form.cabinet,
           pickup_type: it.form.pickup_type,
-          quantity: it.form.quantity !== "" ? Number(it.form.quantity) : null,
-          width: it.form.width,
-          length: it.form.length,
+          quantity: sizesTotal > 0 ? sizesTotal : null,
+          size_breakdown: sizes.map(s => ({
+            qty: s.qty !== "" && s.qty != null ? Number(s.qty) : null,
+            width: s.width || "",
+            length: s.length || ""
+          })),
+          width: [...new Set(sizes.map(s => s.width).filter(Boolean))].join(" & "),
+          length: [...new Set(sizes.map(s => s.length).filter(Boolean))].join(" & "),
           material: it.form.material,
           finish: it.form.finish,
           item_description: buildDescription(it.form),
@@ -246,17 +278,25 @@ export default function PickupFromHighlightDialog({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Quantity</Label>
-                    <Input type="number" value={it.form.quantity} onChange={e => setField(idx, "quantity", e.target.value)} placeholder="2" className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Width</Label>
-                    <Input value={it.form.width} onChange={e => setField(idx, "width", e.target.value)} placeholder="15 5/8" className="h-8 text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Length</Label>
-                    <Input value={it.form.length} onChange={e => setField(idx, "length", e.target.value)} placeholder="24 13/16" className="h-8 text-sm" />
+                  <div className="col-span-2 space-y-1">
+                    <Label className="text-xs">Sizes (qty per size)</Label>
+                    <div className="space-y-1.5">
+                      {it.form.sizes.map((s, si) => (
+                        <div key={si} className="flex items-center gap-1.5">
+                          <Input type="number" value={s.qty} onChange={e => setSizeField(idx, si, "qty", e.target.value)} placeholder="Qty" className="h-8 text-sm w-16 flex-shrink-0" />
+                          <span className="text-xs text-slate-400 flex-shrink-0">@</span>
+                          <Input value={s.width} onChange={e => setSizeField(idx, si, "width", e.target.value)} placeholder="Width (e.g. 20)" className="h-8 text-sm" />
+                          <span className="text-xs text-slate-400 flex-shrink-0">×</span>
+                          <Input value={s.length} onChange={e => setSizeField(idx, si, "length", e.target.value)} placeholder="Length (e.g. 5 13/16)" className="h-8 text-sm" />
+                          {it.form.sizes.length > 1 && (
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-600 hover:bg-red-50 flex-shrink-0" onClick={() => removeSize(idx, si)} title="Remove size">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <button type="button" onClick={() => addSize(idx)} className="text-xs font-medium text-amber-700 hover:text-amber-800">+ Add size</button>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Material</Label>
