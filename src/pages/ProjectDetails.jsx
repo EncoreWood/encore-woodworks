@@ -44,6 +44,7 @@ import ProjectTimelineSection from "../components/projects/ProjectTimelineSectio
 import GoogleFolderButton from "../components/projects/GoogleFolderButton";
 import JobPacketsRoomModal from "../components/production/JobPacketsRoomModal";
 import RoomPickupMissingModal from "../components/pickup/RoomPickupMissingModal";
+import RoomSelectionsButton from "../components/projects/RoomSelectionsButton";
 import ProjectEmailsTab from "../components/projects/ProjectEmailsTab";
 import ProjectChatTab from "../components/projects/ProjectChatTab";
 import JobPhotosTab from "../components/projects/JobPhotosTab";
@@ -577,6 +578,10 @@ export default function ProjectDetails() {
                               />
                               <RoomPickupMissingModal
                                 project={project}
+                                roomName={room.room_name || `Room ${idx + 1}`}
+                              />
+                              <RoomSelectionsButton
+                                room={room}
                                 roomName={room.room_name || `Room ${idx + 1}`}
                               />
                               {room.glb_url ? (

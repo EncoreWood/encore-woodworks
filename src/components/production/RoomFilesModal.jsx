@@ -4,6 +4,7 @@ import { base44 } from "@/api/base44Client";
 import { X, FileText, ChevronLeft, ChevronRight, Paperclip, Pencil } from "lucide-react";
 import PdfViewer from "@/components/PdfViewer";
 import ImageAnnotator from "@/components/measurements/ImageAnnotator";
+import RoomSelectionsPanel from "@/components/projects/RoomSelectionsPanel";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -20,6 +21,14 @@ export default function RoomFilesModal({ projectId, projectName, roomName, onClo
     select: (all) => all.filter(f => f.room_name?.toLowerCase().trim() === roomName?.toLowerCase().trim()),
     enabled: !!projectId && !!roomName,
   });
+
+  // Room selections (from the project's room config) for the right-side bar
+  const { data: project } = useQuery({
+    queryKey: ["project", projectId],
+    queryFn: () => base44.entities.Project.get(projectId),
+    enabled: !!projectId,
+  });
+  const room = project?.rooms?.find(r => (r.room_name || "").toLowerCase().trim() === roomName?.toLowerCase().trim());
 
   const imageFiles = files.filter(f => f.file_type === "image");
   const currentImage = imageFiles[currentIdx];
@@ -90,22 +99,30 @@ export default function RoomFilesModal({ projectId, projectName, roomName, onClo
                 </p>
                 <div className="relative">
                   {currentImage && (
-                    <div className="relative">
-                      <div className="flex items-center justify-between gap-3 mb-3">
-                        <p className="text-white text-xl font-semibold truncate">{currentImage.label || "Image"}</p>
-                        <button
-                          onClick={() => setAnnotating(true)}
-                          className="flex items-center gap-1.5 flex-shrink-0 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold transition-colors"
-                        >
-                          <Pencil className="w-4 h-4" />
-                          Edit
-                        </button>
+                    <div className="relative flex items-start gap-4">
+                      <div className="relative flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                          <p className="text-white text-xl font-semibold truncate">{currentImage.label || "Image"}</p>
+                          <button
+                            onClick={() => setAnnotating(true)}
+                            className="flex items-center gap-1.5 flex-shrink-0 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold transition-colors"
+                          >
+                            <Pencil className="w-4 h-4" />
+                            Edit
+                          </button>
+                        </div>
+                        <img
+                          src={currentImage.file_url}
+                          alt={currentImage.label || currentImage.file_name}
+                          className="w-full rounded-2xl object-contain max-h-[60vh] bg-black/20"
+                        />
                       </div>
-                      <img
-                        src={currentImage.file_url}
-                        alt={currentImage.label || currentImage.file_name}
-                        className="w-full rounded-2xl object-contain max-h-[60vh] bg-black/20"
-                      />
+                      {/* Room selections bar on the right */}
+                      <aside className="w-64 flex-shrink-0 rounded-2xl bg-white/10 border border-white/20 p-4 max-h-[60vh] overflow-y-auto">
+                        <p className="text-white/60 text-xs uppercase tracking-widest font-semibold mb-2">Room Selections</p>
+                        <p className="text-white font-semibold text-sm mb-3">{roomName}</p>
+                        <RoomSelectionsPanel room={room} dark />
+                      </aside>
                     </div>
                   )}
                   {imageFiles.length > 1 && (

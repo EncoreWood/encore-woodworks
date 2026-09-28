@@ -7,17 +7,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { FileText, Plus, Trash2, Loader2, X, ZoomIn, Eye, EyeOff, Lock } from "lucide-react";
+import RoomSelectionsPanel from "@/components/projects/RoomSelectionsPanel";
 
-function LightboxModal({ file, onClose }) {
+function LightboxModal({ file, room, roomName, onClose }) {
   if (!file) return null;
   return (
     <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="relative max-w-5xl max-h-full" onClick={e => e.stopPropagation()}>
-        <img src={file.file_url} alt={file.label || file.file_name} className="max-h-[90vh] max-w-full rounded-xl object-contain" />
-        <button className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1.5" onClick={onClose}>
+      <div className="relative flex items-start justify-center gap-4 w-full max-w-full max-h-full" onClick={e => e.stopPropagation()}>
+        <img src={file.file_url} alt={file.label || file.file_name} className="max-h-[90vh] max-w-full rounded-xl object-contain flex-1 min-w-0" />
+        {/* Room selections bar on the right */}
+        <aside className="w-64 flex-shrink-0 max-h-[85vh] overflow-y-auto rounded-xl bg-white/10 border border-white/20 p-4">
+          <p className="text-white/60 text-xs uppercase tracking-widest font-semibold mb-2">Room Selections</p>
+          <p className="text-white font-semibold text-sm mb-3">{roomName}</p>
+          <RoomSelectionsPanel room={room} dark />
+        </aside>
+        <button className="absolute -top-2 right-0 bg-black/50 text-white rounded-full p-1.5" onClick={onClose}>
           <X className="w-5 h-5" />
         </button>
-        {file.label && <p className="absolute bottom-3 left-1/2 -translate-x-1/2 text-white bg-black/50 px-3 py-1 rounded-full text-sm">{file.label}</p>}
       </div>
     </div>
   );
@@ -196,7 +202,14 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
         </DialogContent>
       </Dialog>
 
-      {lightbox && <LightboxModal file={lightbox} onClose={() => setLightbox(null)} />}
+      {lightbox && (
+        <LightboxModal
+          file={lightbox}
+          room={project.rooms?.find(r => (r.room_name || "").toLowerCase() === roomName?.toLowerCase())}
+          roomName={roomName}
+          onClose={() => setLightbox(null)}
+        />
+      )}
       {pdfViewer && <PdfModal file={pdfViewer} onClose={() => setPdfViewer(null)} />}
     </div>
   );
