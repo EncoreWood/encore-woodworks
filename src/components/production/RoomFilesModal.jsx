@@ -1,12 +1,18 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { X, FileText, ChevronLeft, ChevronRight, Paperclip } from "lucide-react";
+import { X, FileText, ChevronLeft, ChevronRight, Paperclip, Pencil } from "lucide-react";
 import PdfViewer from "@/components/PdfViewer";
+import ImageAnnotator from "@/components/measurements/ImageAnnotator";
+import { useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function RoomFilesModal({ projectId, projectName, roomName, onClose }) {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [pdfFile, setPdfFile] = useState(null);
+  const [annotating, setAnnotating] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: files = [], isLoading } = useQuery({
     queryKey: ["roomFiles", projectId, roomName],
@@ -17,6 +23,38 @@ export default function RoomFilesModal({ projectId, projectName, roomName, onClo
 
   const imageFiles = files.filter(f => f.file_type === "image");
   const currentImage = imageFiles[currentIdx];
+
+  // Save from the annotator: flatten the original photo + annotations into a
+  // JPEG (so it displays everywhere with marks baked in), upload it as the
+  // file_url, and preserve the raw photo in original_file_url for re-editing.
+  // If all marks were removed, restore the clean original image instead.
+  const handleSaveAnnotations = async ({ flattenedBlob, annotations }) => {
+    if (!currentImage) return;
+    try {
+      const original = currentImage.original_file_url || currentImage.file_url;
+      const update = { annotations: JSON.stringify(annotations) };
+      if (!currentImage.original_file_url) update.original_file_url = original;
+      if (flattenedBlob) {
+        const baseName = (currentImage.file_name || "room image").replace(/\.[^.]+$/, "");
+        const flatFile = new File([flattenedBlob], baseName + ".jpg", { type: "image/jpeg" });
+        try {
+          const { file_url } = await base44.integrations.Core.UploadPublicFile({ file: flatFile });
+          update.file_url = file_url;
+        } catch (err) {
+          console.error("flatten upload failed", err);
+        }
+      } else if (currentImage.original_file_url) {
+        update.file_url = currentImage.original_file_url;
+      }
+      await base44.entities.RoomFile.update(currentImage.id, update);
+      await queryClient.invalidateQueries({ queryKey: ["roomFiles", projectId, roomName] });
+    } catch (err) {
+      console.error("Failed to save annotations:", err);
+      toast({ title: "Couldn't save annotations", variant: "destructive" });
+    } finally {
+      setAnnotating(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/95 flex flex-col" onClick={onClose}>
@@ -53,9 +91,16 @@ export default function RoomFilesModal({ projectId, projectName, roomName, onClo
                 <div className="relative">
                   {currentImage && (
                     <div className="relative">
-                      {currentImage.label && (
-                        <p className="text-white text-xl font-semibold mb-3">{currentImage.label}</p>
-                      )}
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <p className="text-white text-xl font-semibold truncate">{currentImage.label || "Image"}</p>
+                        <button
+                          onClick={() => setAnnotating(true)}
+                          className="flex items-center gap-1.5 flex-shrink-0 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                          Edit
+                        </button>
+                      </div>
                       <img
                         src={currentImage.file_url}
                         alt={currentImage.label || currentImage.file_name}
@@ -136,6 +181,18 @@ export default function RoomFilesModal({ projectId, projectName, roomName, onClo
           </div>
         )}
       </div>
+
+      {/* Annotation editor — opened via the Edit button (Apple Pencil + touch supported) */}
+      {currentImage && (
+        <ImageAnnotator
+          open={annotating}
+          onOpenChange={setAnnotating}
+          title={`${roomName} — ${currentImage.label || "Annotate"}`}
+          imageUrl={currentImage.original_file_url || currentImage.file_url}
+          annotations={(() => { try { return JSON.parse(currentImage.annotations || "[]"); } catch { return []; } })()}
+          onSave={handleSaveAnnotations}
+        />
+      )}
     </div>
   );
 }
