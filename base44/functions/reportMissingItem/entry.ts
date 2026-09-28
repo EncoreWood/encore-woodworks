@@ -17,6 +17,11 @@ Deno.serve(async (req) => {
     cabinet,
     item_description,
     notes,
+    pickup_type,
+    width,
+    length,
+    quantity,
+    size_breakdown,
   } = body;
 
   if (!item_description?.trim()) {
@@ -35,7 +40,9 @@ Deno.serve(async (req) => {
     (m.status === 'Open' || m.status === 'Ordered') &&
     (m.room_name || '').toLowerCase() === (room || '').toLowerCase() &&
     (m.cabinet_name || '').toLowerCase() === (cabinet || '').toLowerCase() &&
-    (m.item_description || '').toLowerCase() === item_description.trim().toLowerCase()
+    (m.item_description || '').toLowerCase() === item_description.trim().toLowerCase() &&
+    (m.width || '') === (width || '') &&
+    (m.length || '') === (length || '')
   );
 
   if (match) {
@@ -70,6 +77,11 @@ Deno.serve(async (req) => {
     cabinet_name: cabinet || null,
     item_description: item_description.trim(),
     description: notes || null,
+    pickup_type: pickup_type || null,
+    width: width || null,
+    length: length || null,
+    quantity: quantity ?? null,
+    size_breakdown: size_breakdown || null,
     reported_by: reporterName,
     reported_at: new Date().toISOString(),
     confirmed_by: '[]',
