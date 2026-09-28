@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,36 @@ export default function ProductionMissingItemsTab({ currentUser }) {
   });
 
   const cardById = useMemo(() => new Map(productionItems.map(p => [p.id, p])), [productionItems]);
+
+  // Auto-sync: when a missing item's production card is actively in the shop
+  // (cut / face frame / spray / build), its status should read "In Production"
+  // rather than "Ordered"/"Received". Synced once per record.
+  const autoSyncedIds = useRef(new Set());
+  useEffect(() => {
+    const ACTIVE_STAGES = ["cut", "face_frame", "spray", "build"];
+    const toSync = missingItems.filter(mi =>
+      !mi.archived &&
+      mi.production_item_id &&
+      !autoSyncedIds.current.has(mi.id) &&
+      ["Ordered", "Received"].includes(mi.status) &&
+      ACTIVE_STAGES.includes(cardById.get(mi.production_item_id)?.stage)
+    );
+    if (toSync.length === 0) return;
+    toSync.forEach(mi => autoSyncedIds.current.add(mi.id));
+    (async () => {
+      let updated = 0;
+      for (const mi of toSync) {
+        try {
+          await base44.entities.MissingItem.update(mi.id, { status: "In Production" });
+          updated++;
+        } catch (err) {
+          console.error("Auto-sync missing item status failed:", err);
+          autoSyncedIds.current.delete(mi.id);
+        }
+      }
+      if (updated > 0) queryClient.invalidateQueries({ queryKey: ["missingItems"] });
+    })();
+  }, [missingItems, cardById, queryClient]);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
