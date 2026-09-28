@@ -77,7 +77,6 @@ export default function MissingItemBadge({ itemId, currentUser }) {
       />
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
             className="fixed z-50 w-80 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden"
             style={popupPos ? { left: popupPos.left, top: popupPos.top } : { left: 8, top: 60 }}
@@ -155,7 +154,6 @@ export default function MissingItemBadge({ itemId, currentUser }) {
               onUpdated={() => {
                 queryClient.invalidateQueries({ queryKey: ["missingItems"] });
                 setFlaggedReport(null);
-                setOpen(false);
               }}
             />
           )}
