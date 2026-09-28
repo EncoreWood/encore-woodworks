@@ -1,12 +1,15 @@
-const SELECTION_FIELDS = [
-  { key: "cabinet_style", label: "Cabinet Style" },
-  { key: "wood_species", label: "Wood Species" },
-  { key: "finish", label: "Finish" },
+const MULTI_FIELDS = [
+  { key: "wood_species_selections", legacy: "wood_species", label: "Wood Species" },
+  { key: "finish_selections", legacy: "finish", label: "Finish" },
+];
+
+const SINGLE_FIELDS = [
   { key: "door_style", label: "Door Style" },
+  { key: "molding", label: "Molding" },
   { key: "handles", label: "Handles / Hardware" },
+  { key: "cabinet_style", label: "Cabinet Style" },
   { key: "drawer_glides", label: "Drawer Glides" },
   { key: "hinges", label: "Hinges" },
-  { key: "molding", label: "Molding" },
   { key: "cabs_to_height", label: "Cabs Finished to Height" },
   { key: "cabinet_count", label: "Cabinet Count" },
 ];
@@ -15,11 +18,18 @@ const SELECTION_FIELDS = [
  * Read-only summary of a room's selections (the fields managed in the
  * Room Manager "Selections" tab). Used on the room card dialog and as the
  * right-side bar in image viewers. Pass dark=true for dark overlays.
+ *
+ * Wood species and finish support multiple entries, each with a note for
+ * the area/cabinets it applies to (falls back to the legacy single value).
  */
 export default function RoomSelectionsPanel({ room = {}, dark = false }) {
-  const rows = SELECTION_FIELDS.filter(f => room[f.key] !== undefined && room[f.key] !== null && room[f.key] !== "");
   const customs = room.custom_selections || [];
-  const hasAnything = rows.length > 0 || customs.length > 0 || room.notes;
+  const singles = SINGLE_FIELDS.filter(f => room[f.key] !== undefined && room[f.key] !== null && room[f.key] !== "");
+  const multis = MULTI_FIELDS.filter(f => {
+    const entries = Array.isArray(room[f.key]) ? room[f.key] : [];
+    return entries.length > 0 || (room[f.legacy] !== undefined && room[f.legacy] !== null && room[f.legacy] !== "");
+  });
+  const hasAnything = singles.length > 0 || multis.length > 0 || customs.length > 0 || room.notes;
 
   const labelCls = dark ? "text-white/50" : "text-slate-500";
   const valueCls = dark ? "text-white font-semibold" : "text-slate-800 font-semibold";
@@ -35,9 +45,32 @@ export default function RoomSelectionsPanel({ room = {}, dark = false }) {
         </p>
       )}
 
-      {rows.length > 0 && (
-        <div>
-          {rows.map(f => (
+      {multis.map(f => {
+        const entries = Array.isArray(room[f.key]) ? room[f.key] : [];
+        const hasEntries = entries.length > 0;
+        return (
+          <div key={f.key} className={dark ? "pt-1" : "pt-1"}>
+            <p className={`text-xs font-semibold mb-1 ${labelCls}`}>{f.label}</p>
+            {hasEntries ? (
+              entries.map((e, i) => (
+                <div key={i} className={rowCls}>
+                  <span className={`text-xs ${labelCls} flex-shrink-0`}>{e.note ? "→ " + e.note : ""}</span>
+                  <span className={`text-xs text-right ${valueCls}`}>{e.value || "—"}</span>
+                </div>
+              ))
+            ) : (
+              <div className={rowCls}>
+                <span className={`text-xs ${labelCls}`}></span>
+                <span className={`text-xs text-right ${valueCls}`}>{String(room[f.legacy])}</span>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {singles.length > 0 && (
+        <div className={multis.length > 0 ? (dark ? "pt-2 border-t border-white/10" : "pt-2 border-t border-slate-100") : ""}>
+          {singles.map(f => (
             <div key={f.key} className={rowCls}>
               <span className={`text-xs flex-shrink-0 ${labelCls}`}>{f.label}</span>
               <span className={`text-xs text-right ${valueCls}`}>{String(room[f.key])}</span>

@@ -41,6 +41,8 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
     molding: "",
     cabs_to_height: "",
     custom_selections: [],
+    wood_species_selections: [],
+    finish_selections: [],
     ...room
   });
 
@@ -65,6 +67,8 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
       molding: "",
       cabs_to_height: "",
       custom_selections: [],
+      wood_species_selections: [],
+      finish_selections: [],
       ...room
     });
   }, [room, roomIndex]);

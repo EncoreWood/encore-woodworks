@@ -428,7 +428,89 @@
             "type": "string"
           },
           "finish": {
-            "type": "string"
+            "type": "string",
+            "description": "Legacy single finish value. Superseded by finish_selections (multi-entry with area notes) when present."
+          },
+          "wood_species": {
+            "type": "string",
+            "description": "Legacy single wood species value. Superseded by wood_species_selections (multi-entry with area notes) when present."
+          },
+          "cabinet_style": {
+            "type": "string",
+            "description": "Cabinet style selection from the Selections tab"
+          },
+          "door_style": {
+            "type": "string",
+            "description": "Door style selection from the Selections tab"
+          },
+          "molding": {
+            "type": "string",
+            "description": "Molding selection from the Selections tab"
+          },
+          "handles": {
+            "type": "string",
+            "description": "Handles / hardware selection from the Selections tab"
+          },
+          "drawer_glides": {
+            "type": "string",
+            "description": "Drawer glides selection from the Selections tab"
+          },
+          "hinges": {
+            "type": "string",
+            "description": "Hinges selection from the Selections tab"
+          },
+          "cabs_to_height": {
+            "type": "string",
+            "description": "Cabs finished to height selection from the Selections tab"
+          },
+          "custom_selections": {
+            "type": "array",
+            "description": "Custom labeled selections from the Selections tab",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "wood_species_selections": {
+            "type": "array",
+            "description": "Multiple wood species entries, each with a note for the area/cabinets it applies to",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "Wood species (preset or custom value)"
+                },
+                "note": {
+                  "type": "string",
+                  "description": "Area / cabinets this species applies to (e.g. Island only, perimeter uppers)"
+                }
+              }
+            }
+          },
+          "finish_selections": {
+            "type": "array",
+            "description": "Multiple finish entries, each with a note for the area/cabinets it applies to",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "Finish (preset or custom value)"
+                },
+                "note": {
+                  "type": "string",
+                  "description": "Area / cabinets this finish applies to (e.g. Island only, perimeter uppers)"
+                }
+              }
+            }
           },
           "notes": {
             "type": "string"
