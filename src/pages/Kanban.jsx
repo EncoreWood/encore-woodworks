@@ -1,4 +1,5 @@
 import { base44 } from "@/api/base44Client";
+import { useToast } from "@/components/ui/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import usePullToRefresh from "@/components/usePullToRefresh";
@@ -48,6 +49,7 @@ const priorityColors = {
 
 export default function Kanban() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [chatDialogOpen, setChatDialogOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [showProjectForm, setShowProjectForm] = useState(false);
@@ -185,6 +187,14 @@ export default function Kanban() {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setShowProjectForm(false);
       setNewProjectStatus(null);
+    },
+    onError: (err) => {
+      console.error("Failed to create project:", err);
+      toast({
+        title: "Project was not saved",
+        description: err?.message || "Something went wrong while creating this project. Please try again.",
+        variant: "destructive"
+      });
     }
   });
 
