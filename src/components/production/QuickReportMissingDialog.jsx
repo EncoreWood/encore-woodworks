@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { base44 } from "@/api/base44Client";
 import { appParams } from "@/lib/app-params";
-import { getSizeBreakdown, sizeSummary, legacySizeSummary, totalQty } from "./missingItemSizes";
+import { getSizeBreakdown, splitDimList } from "./missingItemSizes";
 
 const API_BASE = "https://vivica-d92c9f97.base44.app/functions/reportMissingItem";
 
@@ -19,6 +19,7 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
   const [room, setRoom] = useState(item?.room_name || "");
   const [cabinet, setCabinet] = useState("");
   const [selectedKey, setSelectedKey] = useState(null);
+  const [selectedQty, setSelectedQty] = useState(1);
   const [customMode, setCustomMode] = useState(false);
   const [customText, setCustomText] = useState("");
   const [customType, setCustomType] = useState("");
@@ -38,25 +39,63 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
     staleTime: 30_000,
   });
 
+  // One selectable row per size (so the user can report a single door at one size),
+  // instead of one row bundling every size of the part.
   const options = useMemo(() => {
     const seen = new Set();
     const out = [];
     (cardParts || []).forEach(p => {
       const label = p.item_description || p.pickup_type || "Part";
-      const key = `${label}|${p.width || ""}|${p.length || ""}|${JSON.stringify(p.size_breakdown || null)}`;
-      if (seen.has(key)) return;
-      seen.add(key);
-      out.push({
-        key,
-        label,
-        sizeText: getSizeBreakdown(p) ? sizeSummary(p) : legacySizeSummary(p),
-        pickup_type: p.pickup_type || null,
-        room_name: p.room_name || null,
-        cabinet_name: p.cabinet_name || null,
-        width: p.width || null,
-        length: p.length || null,
-        quantity: totalQty(p),
-        size_breakdown: p.size_breakdown || null,
+      const pickupType = p.pickup_type || null;
+      const roomName = p.room_name || null;
+      const cabinetName = p.cabinet_name || null;
+
+      const breakdown = getSizeBreakdown(p);
+      let sizes = null; // [{qty, width, length}]
+      if (breakdown) {
+        sizes = breakdown.map(s => ({
+          qty: parseFloat(s.qty) || 1,
+          width: s.width || null,
+          length: s.length || null,
+        }));
+      } else {
+        const widths = splitDimList(p.width);
+        const lengths = splitDimList(p.length);
+        if (widths.length || lengths.length) {
+          sizes = [];
+          const n = Math.max(widths.length, lengths.length);
+          for (let i = 0; i < n; i++) {
+            sizes.push({
+              qty: 1,
+              width: widths[i] ?? (widths.length ? widths[widths.length - 1] : null),
+              length: lengths[i] ?? (lengths.length ? lengths[lengths.length - 1] : null),
+            });
+          }
+        }
+      }
+
+      if (!sizes) {
+        const key = `${label}|${p.width || ""}|${p.length || ""}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        out.push({
+          key, label, sizeText: null,
+          pickup_type: pickupType, room_name: roomName, cabinet_name: cabinetName,
+          qty: p.quantity ?? 1, width: p.width || null, length: p.length || null,
+        });
+        return;
+      }
+
+      sizes.forEach(s => {
+        const key = `${label}|${s.width || ""}|${s.length || ""}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        out.push({
+          key, label,
+          sizeText: [s.width, s.length].filter(Boolean).join(" x ") || null,
+          pickup_type: pickupType, room_name: roomName, cabinet_name: cabinetName,
+          qty: s.qty || 1, width: s.width, length: s.length,
+        });
       });
     });
     return out;
@@ -69,6 +108,7 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
     setRoom(item?.room_name || "");
     setCabinet("");
     setSelectedKey(null);
+    setSelectedQty(1);
     setCustomMode(false);
     setCustomText("");
     setCustomType("");
@@ -80,6 +120,7 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
 
   const pick = (o) => {
     setSelectedKey(prev => (prev === o.key ? null : o.key));
+    setSelectedQty(o.qty || 1);
     setCustomMode(false);
     if (o.room_name) setRoom(o.room_name);
     if (o.cabinet_name) setCabinet(o.cabinet_name);
@@ -88,13 +129,14 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
   const buildPayload = () => {
     if (selectedKey) {
       const o = options.find(x => x.key === selectedKey);
+      const hasSize = !!(o.width && o.length);
       return {
         item_description: o.label,
         pickup_type: o.pickup_type,
         width: o.width,
         length: o.length,
-        quantity: o.quantity,
-        size_breakdown: o.size_breakdown,
+        quantity: selectedQty,
+        size_breakdown: hasSize ? [{ qty: selectedQty, width: o.width, length: o.length }] : null,
       };
     }
     const qty = parseFloat(customQty);
@@ -183,20 +225,35 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
             {options.length > 0 && (
               <div className="mt-1.5 space-y-1.5 max-h-56 overflow-y-auto pr-1">
                 {options.map(o => (
-                  <button
+                  <div
                     key={o.key}
-                    type="button"
-                    onClick={() => pick(o)}
                     className={cn(
-                      "w-full text-left px-3 py-2 rounded-lg border text-sm transition-colors",
+                      "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors",
                       selectedKey === o.key
-                        ? "border-orange-500 bg-orange-50 text-orange-900"
-                        : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                        ? "border-orange-500 bg-orange-50"
+                        : "border-slate-200 bg-white hover:border-slate-300"
                     )}
                   >
-                    <span className="font-medium">{o.label}</span>
-                    {o.sizeText && <span className="text-slate-500"> — {o.sizeText}</span>}
-                  </button>
+                    <button type="button" className="flex-1 text-left" onClick={() => pick(o)}>
+                      <span className="font-medium text-slate-800">{o.label}</span>
+                      {o.sizeText && <span className="text-slate-500"> — {o.sizeText}</span>}
+                    </button>
+                    {selectedKey === o.key && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedQty(Math.max(1, selectedQty - 1))}
+                          className="w-6 h-6 rounded-md border border-slate-300 bg-white text-slate-600 leading-none"
+                        >−</button>
+                        <span className="w-6 text-center font-semibold text-slate-800">{selectedQty}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedQty(selectedQty + 1)}
+                          className="w-6 h-6 rounded-md border border-slate-300 bg-white text-slate-600 leading-none"
+                        >+</button>
+                      </div>
+                    )}
+                  </div>
                 ))}
                 <button
                   type="button"
