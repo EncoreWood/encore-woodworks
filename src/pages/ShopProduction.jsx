@@ -117,7 +117,12 @@ export default function ShopProduction() {
     return () => { unsubItems(); unsubLogs(); };
   }, [queryClient]);
 
-  const activeProjects = projects.filter(p => ACTIVE_PROJECT_STATUSES.includes(p.status) && !p.archived);
+  // Projects in an active status, plus any project with production cards on the board
+  // (e.g. an early-status job whose cards were sent to production) — so they still show in Job Packets.
+  const projectIdsWithCards = new Set(items.filter(i => !i.is_job_info).map(i => i.project_id).filter(Boolean));
+  const activeProjects = projects.filter(p =>
+    !p.archived && (ACTIVE_PROJECT_STATUSES.includes(p.status) || projectIdsWithCards.has(p.id))
+  );
 
   const getProjectColor = (projectId) => {
     if (!projectId) return null;
