@@ -13,6 +13,56 @@
     "user_email": {
       "type": "string",
       "description": "Sender's email"
+    },
+    "mentions": {
+      "type": "array",
+      "description": "Team members tagged in this message via @",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Tagged team member's name"
+          },
+          "email": {
+            "type": "string",
+            "description": "Tagged team member's email"
+          }
+        }
+      }
+    },
+    "attachments": {
+      "type": "array",
+      "description": "Attached files and photos",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "File name"
+          },
+          "url": {
+            "type": "string",
+            "description": "File URL"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "file",
+              "photo"
+            ],
+            "description": "Attachment type"
+          }
+        }
+      }
+    },
+    "task_id": {
+      "type": "string",
+      "description": "ID of the Task created from this message"
+    },
+    "task_summary": {
+      "type": "string",
+      "description": "Short summary of the created task (assignee and due date)"
     }
   },
   "required": [
