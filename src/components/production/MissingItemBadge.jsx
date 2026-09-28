@@ -5,7 +5,7 @@ import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
-import { getSizeBreakdown, legacySizePairs, sizeSummary } from "./missingItemSizes";
+import { getSizeBreakdown, legacySizeSummary, sizeSummary } from "./missingItemSizes";
 
 export default function MissingItemBadge({ itemId, currentUser, onSendBackToProduction }) {
   const [open, setOpen] = useState(false);
@@ -122,24 +122,16 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
                       </span>
                       {report.room_name && <span className="text-xs text-slate-500">{report.room_name}</span>}
                       {report.cabinet_name && <span className="text-xs text-slate-400">· {report.cabinet_name}</span>}
-                      {!getSizeBreakdown(report) && legacySizePairs(report) && (
-                        <span className="text-xs text-slate-500">· {legacySizePairs(report)}</span>
-                      )}
                     </div>
                     <p className="text-sm font-medium text-slate-800">
                       {report.item_description}
                       {getSizeBreakdown(report) ? (
                         <span className="text-slate-500">{" - "}{sizeSummary(report)}</span>
-                      ) : (
-                        <>
-                          {report.quantity != null && (
-                            <span className="font-semibold text-slate-600"> ×{report.quantity}</span>
-                          )}
-                          {legacySizePairs(report) && (
-                            <span className="text-slate-500">{" - "}{legacySizePairs(report)}</span>
-                          )}
-                        </>
-                      )}
+                      ) : legacySizeSummary(report) ? (
+                        <span className="text-slate-500">{" - "}{legacySizeSummary(report)}</span>
+                      ) : report.quantity != null ? (
+                        <span className="font-semibold text-slate-600"> ×{report.quantity}</span>
+                      ) : null}
                     </p>
                     {report.description && (
                       <p className="text-xs text-slate-500 mt-0.5">{report.description}</p>
