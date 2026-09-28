@@ -429,11 +429,11 @@
           },
           "finish": {
             "type": "string",
-            "description": "Legacy single finish value. Superseded by finish_selections (multi-entry with area notes) when present."
+            "description": "Legacy single finish value. Superseded by species_finish_selections (paired with species) when present."
           },
           "wood_species": {
             "type": "string",
-            "description": "Legacy single wood species value. Superseded by wood_species_selections (multi-entry with area notes) when present."
+            "description": "Legacy single wood species value. Superseded by species_finish_selections (paired with species) when present."
           },
           "cabinet_style": {
             "type": "string",
@@ -478,9 +478,30 @@
               }
             }
           },
+          "species_finish_selections": {
+            "type": "array",
+            "description": "Paired wood species + finish selections, each with a note for the area/cabinets it applies to. Supersedes the separate wood_species_selections / finish_selections lists when present.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "wood_species": {
+                  "type": "string",
+                  "description": "Wood species (preset or custom value)"
+                },
+                "finish": {
+                  "type": "string",
+                  "description": "Finish that goes with this species (preset or custom value)"
+                },
+                "note": {
+                  "type": "string",
+                  "description": "Area / cabinets this pair applies to (e.g. Island only, perimeter uppers)"
+                }
+              }
+            }
+          },
           "wood_species_selections": {
             "type": "array",
-            "description": "Multiple wood species entries, each with a note for the area/cabinets it applies to",
+            "description": "Legacy multiple wood species entries. Superseded by species_finish_selections (paired with finish) when present.",
             "items": {
               "type": "object",
               "properties": {
@@ -497,7 +518,7 @@
           },
           "finish_selections": {
             "type": "array",
-            "description": "Multiple finish entries, each with a note for the area/cabinets it applies to",
+            "description": "Legacy multiple finish entries. Superseded by species_finish_selections (paired with species) when present.",
             "items": {
               "type": "object",
               "properties": {

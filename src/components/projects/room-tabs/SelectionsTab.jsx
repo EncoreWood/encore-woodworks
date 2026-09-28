@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, X, Save } from "lucide-react";
-import MultiSelectionCard from "@/components/projects/room-tabs/MultiSelectionCard";
+import SpeciesFinishCard from "@/components/projects/room-tabs/SpeciesFinishCard";
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -38,18 +38,6 @@ const SELECTIONS = [
     key: "cabs_to_height", label: "Cabs Finished to Height",
     options: ["Yes", "No", "Partial"]
   }
-];
-
-// Fields that allow multiple selections, each with an area/cabinets note
-const MULTI_FIELDS = [
-  {
-    key: "wood_species_selections", label: "Wood Species",
-    options: ["Painted", "Maple", "Cherry", "White Oak", "Walnut", "Alder", "MDF", "Custom"]
-  },
-  {
-    key: "finish_selections", label: "Finish",
-    options: ["TBD", "Painted White", "Painted Gray", "Painted Custom", "Natural", "Stain - Light", "Stain - Medium", "Stain - Dark", "Two-Tone", "Custom"]
-  },
 ];
 
 function SelectionCard({ field, value, customValue, onChange, onCustomChange, readOnly }) {
@@ -147,19 +135,12 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
 
   return (
     <div className="space-y-4">
-      {/* Multi-entry selections (wood species, finish) with area/cabinet notes */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {MULTI_FIELDS.map(field => (
-          <MultiSelectionCard
-            key={field.key}
-            label={field.label}
-            options={field.options}
-            entries={formData[field.key] || []}
-            onChange={(entries) => handleChange(field.key, entries)}
-            readOnly={readOnly}
-          />
-        ))}
-      </div>
+      {/* Paired wood species + finish selections, each with an area/cabinets note */}
+      <SpeciesFinishCard
+        entries={formData.species_finish_selections || []}
+        onChange={(entries) => handleChange("species_finish_selections", entries)}
+        readOnly={readOnly}
+      />
 
       {/* Preset selections grid */}
       <div className="grid grid-cols-2 gap-3">

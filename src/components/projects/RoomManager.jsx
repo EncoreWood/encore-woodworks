@@ -12,6 +12,7 @@ import SelectionsTab from "@/components/projects/room-tabs/SelectionsTab";
 import PhotosTasksTab from "@/components/projects/room-tabs/PhotosTasksTab";
 import ShopFilesTab from "@/components/projects/room-tabs/ShopFilesTab";
 import { cn } from "@/lib/utils";
+import { zipLegacySelections } from "@/components/projects/room-tabs/SpeciesFinishCard";
 
 const TABS = [
   { id: "selections", label: "🎨 Selections" },
@@ -41,8 +42,7 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
     molding: "",
     cabs_to_height: "",
     custom_selections: [],
-    wood_species_selections: [],
-    finish_selections: [],
+    species_finish_selections: zipLegacySelections(room),
     ...room
   });
 
@@ -67,8 +67,7 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
       molding: "",
       cabs_to_height: "",
       custom_selections: [],
-      wood_species_selections: [],
-      finish_selections: [],
+      species_finish_selections: zipLegacySelections(room),
       ...room
     });
   }, [room, roomIndex]);
