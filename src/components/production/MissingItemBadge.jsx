@@ -129,6 +129,13 @@ export default function MissingItemBadge({ itemId, currentUser }) {
                     {report.description && (
                       <p className="text-xs text-slate-500 mt-0.5">{report.description}</p>
                     )}
+                    {(report.material || report.finish) && (
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {report.material && <span>🪵 <span className="font-medium">{report.material}</span></span>}
+                        {report.material && report.finish && <span className="text-slate-400"> · </span>}
+                        {report.finish && <span>🎨 <span className="font-medium">{report.finish}</span></span>}
+                      </p>
+                    )}
                     <p className="text-xs text-slate-400 mt-1">
                       Reported by <span className="font-medium text-slate-600">{report.reported_by}</span>
                       {report.reported_at && ` on ${format(new Date(report.reported_at), "MMM d")}`}
