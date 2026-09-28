@@ -197,7 +197,6 @@ export default function ProductionCard({
               <MissingItemBadge
                 itemId={item.id}
                 currentUser={currentUser}
-                onSendBackToProduction={onMoveStage ? (stage) => onMoveStage(item, stage, { sent_back_for_missing: true }) : undefined}
               />
             )}
 

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
 import { getSizeBreakdown, legacySizeSummary, sizeSummary } from "./missingItemSizes";
 
-export default function MissingItemBadge({ itemId, currentUser, onSendBackToProduction }) {
+export default function MissingItemBadge({ itemId, currentUser }) {
   const [open, setOpen] = useState(false);
   const [updating, setUpdating] = useState(null); // id of item being updated
   const queryClient = useQueryClient();
@@ -15,14 +15,6 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
   const [popupPos, setPopupPos] = useState(null);
 
   const POPUP_W = 320; // w-80
-
-  const [sendStage, setSendStage] = useState("cut");
-  const SEND_STAGES = [
-    { id: "cut", label: "1. Cut" },
-    { id: "face_frame", label: "2. Face Frame" },
-    { id: "spray", label: "3. Spray" },
-    { id: "build", label: "4. Build" },
-  ];
 
   const openPopup = () => {
     // Position in the viewport (fixed) so scrollable containers can't clip it,
@@ -91,26 +83,6 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
               <span className="text-sm font-bold text-slate-800">⚠️ Missing Items ({activeReports.length})</span>
               <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600 text-xs">✕</button>
             </div>
-            {onSendBackToProduction && (
-              <div className="px-4 py-2 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
-                <Select value={sendStage} onValueChange={setSendStage}>
-                  <SelectTrigger className="h-7 text-xs flex-1">
-                    <SelectValue placeholder="Stage" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SEND_STAGES.map(s => (
-                      <SelectItem key={s.id} value={s.id} className="text-xs">{s.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <button
-                  onClick={() => { onSendBackToProduction(sendStage); setOpen(false); }}
-                  className="text-xs font-semibold px-2 py-1.5 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors flex-shrink-0"
-                >
-                  ↩ Send back
-                </button>
-              </div>
-            )}
             <div className="max-h-72 overflow-y-auto divide-y divide-slate-50">
               {activeReports.map(report => {
                 const confirmed = JSON.parse(report.confirmed_by || "[]");
@@ -158,13 +130,6 @@ export default function MissingItemBadge({ itemId, currentUser, onSendBackToProd
                             ))}
                           </SelectContent>
                         </Select>
-                        <button
-                          disabled={updating === report.id}
-                          onClick={() => callUpdateStatus(report.id, "Completed")}
-                          className="text-xs px-2 py-1 bg-green-50 border border-green-200 text-green-700 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50"
-                        >
-                          ✅ Complete
-                        </button>
                       </div>
                     )}
                   </div>
