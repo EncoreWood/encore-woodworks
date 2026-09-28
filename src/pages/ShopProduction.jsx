@@ -529,7 +529,21 @@ export default function ShopProduction() {
                 {productionColumns.map((column, colIdx) => {
                   const columnItems = items
                     .filter(i => i.stage === column.id && !i.is_job_info)
-                    .sort((a, b) => (a.sort_order ?? 999999) - (b.sort_order ?? 999999) || new Date(a.created_date) - new Date(b.created_date));
+                    .sort((a, b) => {
+                      // Group cards by project, then by the room's order on that project
+                      // (Kitchen, Pool House, Drop Zone …), then manual order, newest cards last
+                      const pa = a.project_name || a.project_id || "";
+                      const pb = b.project_name || b.project_id || "";
+                      if (pa !== pb) return pa < pb ? -1 : 1;
+                      const roomIdx = (it) => {
+                        const proj = projects.find(p => p.id === it.project_id);
+                        const idx = proj?.rooms?.findIndex(r => r.room_name === it.room_name);
+                        return (idx === undefined || idx < 0) ? 9999 : idx;
+                      };
+                      const ra = roomIdx(a), rb = roomIdx(b);
+                      if (ra !== rb) return ra - rb;
+                      return (a.sort_order ?? 999999) - (b.sort_order ?? 999999) || new Date(a.created_date) - new Date(b.created_date);
+                    });
                   const colPts = columnItems.reduce((sum, item) => {
                     const filePts = (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
                     const cardPts = parseFloat(item.pts) || 0;
