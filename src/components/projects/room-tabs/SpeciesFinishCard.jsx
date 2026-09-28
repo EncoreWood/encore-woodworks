@@ -8,7 +8,8 @@ export const FINISH_OPTIONS = ["TBD", "Painted White", "Painted Gray", "Painted 
  * Seeds combined species+finish pairs from the legacy separate lists
  * (paired by index) so existing data carries over into the new editor.
  */
-export function zipLegacySelections(room = {}) {
+export function zipLegacySelections(room) {
+  room = room || {};
   const species = Array.isArray(room.wood_species_selections) ? room.wood_species_selections : [];
   const finishes = Array.isArray(room.finish_selections) ? room.finish_selections : [];
   const out = [];
