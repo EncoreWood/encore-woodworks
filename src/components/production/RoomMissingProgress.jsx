@@ -39,8 +39,10 @@ export default function RoomMissingProgress({ items }) {
           <span className="bg-green-500" style={{ width: `${pct(counts.complete)}%` }} />
         )}
       </span>
-      <span className={cn("text-[10px] font-semibold", counts.complete === total ? "text-green-600" : "text-slate-500")}>
-        {pct(counts.complete)}% done
+      <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold whitespace-nowrap">
+        <span className="text-red-500">{pct(counts.open)}% open</span>
+        <span className="text-amber-500">{pct(counts.inProduction)}% in prod</span>
+        <span className={cn(counts.complete === total ? "text-green-600" : "text-green-500")}>{pct(counts.complete)}% complete</span>
       </span>
     </span>
   );
