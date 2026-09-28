@@ -110,7 +110,7 @@ export default function MissingItemBadge({ itemId, currentUser }) {
                       {getSizeBreakdown(report) ? (
                         <span className="text-slate-500">{" - "}{sizeSummary(report)}</span>
                       ) : legacySizeSummary(report) ? (
-                        <span className="text-slate-500">{" - "}{legacySizeSummary(report)}</span>
+                        <span className="text-slate-500">{" - "}{report.quantity != null ? `Qty ${report.quantity}: ` : ""}{legacySizeSummary(report)}</span>
                       ) : report.quantity != null ? (
                         <span className="font-semibold text-slate-600"> ×{report.quantity}</span>
                       ) : null}

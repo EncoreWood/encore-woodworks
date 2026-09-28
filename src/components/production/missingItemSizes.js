@@ -47,20 +47,11 @@ export function legacySizePairs(item) {
   return pairs.length ? pairs : null;
 }
 
-// Per-size summary for legacy records (no stored size_breakdown): the first listed
-// size gets 1 and the last gets the remainder of the total qty — the shop's drawer
-// convention (e.g. qty 4, sizes "40 1/32 x 8 & 19 1/16 x 4" → "1@ 40 1/32 x 8 & 3@ 19 1/16 x 4").
+// Size list for legacy records (no stored size_breakdown). Only the total quantity
+// is stored on these, so per-size counts are NOT shown — callers prefix the lump qty
+// (e.g. "Qty 6: 16 9/16 x 8 13/16 & 5 13/16 x 16 9/16").
 export function legacySizeSummary(item) {
   const pairs = legacySizePairs(item);
   if (!pairs) return null;
-  const total = Number(item?.quantity);
-  if (!Number.isFinite(total) || total < pairs.length) return pairs.join(" & ");
-  if (pairs.length === 1) return `${total}@ ${pairs[0]}`;
-  return pairs
-    .map((p, i) => {
-      if (i === 0) return `1@ ${p}`;
-      if (i === pairs.length - 1) return `${total - (pairs.length - 1)}@ ${p}`;
-      return `1@ ${p}`;
-    })
-    .join(" & ");
+  return pairs.join(" & ");
 }

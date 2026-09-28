@@ -173,7 +173,7 @@ export default function StillMissingDialog({ report, open, onOpenChange, onUpdat
             <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-100">
               <span className="text-sm text-slate-700">
                 {sizeText ? (
-                  <><span className="font-semibold">{totalQty ?? "?"}</span>@ {sizeText}</>
+                  <>Qty <span className="font-semibold">{totalQty ?? "?"}</span>: {sizeText}</>
                 ) : (
                   <>Qty <span className="font-semibold">{totalQty ?? "?"}</span></>
                 )}

@@ -50,7 +50,7 @@ export default function MissingItemRow({ item, card, isAdmin, updating, onStatus
           {item.cabinet_name && <span>· {item.cabinet_name}</span>}
           {getSizeBreakdown(item)
             ? <span className="text-slate-600">· {sizeSummary(item)}</span>
-            : legacySizeSummary(item) && <span className="text-slate-600">· {legacySizeSummary(item)}</span>}
+            : legacySizeSummary(item) && <span className="text-slate-600">· {item.quantity != null ? `Qty ${item.quantity}: ` : ""}{legacySizeSummary(item)}</span>}
         </div>
         {item.description && (
           <p className="text-xs text-slate-400 mb-1">{item.description}</p>
