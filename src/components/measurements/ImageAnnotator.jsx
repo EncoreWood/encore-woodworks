@@ -689,7 +689,13 @@ export default function ImageAnnotator({ open, onOpenChange, imageUrl, annotatio
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] w-[95vw] max-h-[96vh] h-[96vh] overflow-hidden flex flex-col p-0 gap-0">
+      <DialogContent
+        // z above fullscreen viewers (e.g. z-[9999] room file modal) so the editor is never hidden behind them
+        className="max-w-[95vw] w-[95vw] max-h-[96vh] h-[96vh] overflow-hidden flex flex-col p-0 gap-0 z-[10000]"
+        // don't let a stray tap outside dismiss the editor and lose unsaved marks (X / Esc still close)
+        onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader className="px-4 py-2 border-b flex-shrink-0 flex-row items-center justify-between space-y-0">
           <DialogTitle className="text-base truncate">{title}</DialogTitle>
           <button
