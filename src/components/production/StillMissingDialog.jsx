@@ -55,28 +55,81 @@ export default function StillMissingDialog({ report, open, onOpenChange, onUpdat
   const receivedTotal = totalQty != null ? totalQty - missingTotal : null;
 
   const handleSave = async () => {
-    const stillRows = rows
-      .map((r, i) => ({ ...r, missing: missing[i] || 0 }))
-      .filter(r => r.missing > 0);
+    const marked = rows.map((r, i) => ({ ...r, missing: missing[i] || 0 }));
+    const stillRows = marked.filter(r => r.missing > 0);
     const missingSum = stillRows.reduce((s, r) => s + r.missing, 0);
 
-    const payload = { status: "Open" };
-    if (breakdown) {
-      payload.size_breakdown = stillRows.map(({ missing: q, width, length }) => ({ qty: q, width, length }));
-      const widths = [...new Set(payload.size_breakdown.map(r => r.width).filter(Boolean))];
-      const lengths = [...new Set(payload.size_breakdown.map(r => r.length).filter(Boolean))];
-      if (widths.length) payload.width = widths.join(" & ");
-      if (lengths.length) payload.length = lengths.join(" & ");
+    // Nothing arrived — just reopen the report with the full quantity
+    if (receivedTotal === 0) {
+      try {
+        await base44.entities.MissingItem.update(report.id, { status: "Open" });
+        toast.success(`Reopened — all ${missingSum} still missing`);
+        onUpdated?.();
+        onOpenChange(false);
+      } catch (err) {
+        console.error("Failed to update missing item:", err);
+        toast.error("Failed to update missing item");
+      }
+      return;
     }
-    if (totalQty != null) payload.quantity = missingSum;
-    if (receivedTotal > 0) {
-      const note = `${receivedTotal} of ${totalQty} received ${format(new Date(), "MMM d")}`;
-      payload.description = report.description ? `${report.description} — ${note}` : note;
+
+    const note = `${receivedTotal} of ${totalQty} received ${format(new Date(), "MMM d")}`;
+
+    // Partial delivery — split the report instead of collapsing it:
+    // the original record keeps the RECEIVED portion (with its current status, so it
+    // can move through the production stages), and a new report is created for
+    // what's still missing.
+    const keepPayload = { description: report.description ? `${report.description} — ${note}` : note };
+    const newPayload = {
+      production_item_id: report.production_item_id,
+      production_item_name: report.production_item_name,
+      project_id: report.project_id,
+      project_name: report.project_name,
+      room_name: report.room_name,
+      cabinet_name: report.cabinet_name,
+      item_description: report.item_description,
+      missing_item_type: report.missing_item_type,
+      quantity: missingSum,
+      status: "Open",
+      reported_by: report.reported_by,
+      reported_at: new Date().toISOString()
+    };
+
+    if (breakdown) {
+      keepPayload.size_breakdown = marked
+        .filter(r => (r.qty || 0) - r.missing > 0)
+        .map(r => ({ qty: (r.qty || 0) - r.missing, width: r.width, length: r.length }));
+      newPayload.size_breakdown = stillRows.map(r => ({ qty: r.missing, width: r.width, length: r.length }));
+      const joinDims = (bd, key) => {
+        const vals = [...new Set(bd.map(r => r[key]).filter(Boolean))];
+        return vals.length ? vals.join(" & ") : null;
+      };
+      keepPayload.width = joinDims(keepPayload.size_breakdown, "width");
+      keepPayload.length = joinDims(keepPayload.size_breakdown, "length");
+      newPayload.width = joinDims(newPayload.size_breakdown, "width");
+      newPayload.length = joinDims(newPayload.size_breakdown, "length");
+    } else if (totalQty != null) {
+      keepPayload.quantity = receivedTotal;
+      if (report.width) newPayload.width = report.width;
+      if (report.length) newPayload.length = report.length;
+    } else {
+      // No known quantity — just reopen with the entered count
+      try {
+        await base44.entities.MissingItem.update(report.id, { status: "Open", quantity: missingSum });
+        toast.success(`Updated — ${missingSum} still missing`);
+        onUpdated?.();
+        onOpenChange(false);
+      } catch (err) {
+        console.error("Failed to update missing item:", err);
+        toast.error("Failed to update missing item");
+      }
+      return;
     }
 
     try {
-      await base44.entities.MissingItem.update(report.id, payload);
-      toast.success(`Updated — ${missingSum} still missing 🚩`);
+      await base44.entities.MissingItem.update(report.id, keepPayload);
+      await base44.entities.MissingItem.create(newPayload);
+      toast.success(`Split — ${missingSum} still missing, ${receivedTotal} received`);
       onUpdated?.();
       onOpenChange(false);
     } catch (err) {
@@ -95,7 +148,7 @@ export default function StillMissingDialog({ report, open, onOpenChange, onUpdat
           </DialogTitle>
           <DialogDescription>
             {report?.item_description ? `${report.item_description}` : "Update this missing item to show what never showed up."}
-            {" "}Mark how many are still missing — the report reopens with the remaining quantity.
+            {" "}Mark how many are still missing — the received portion stays on the card to move through production, and a new report opens for what's still missing.
           </DialogDescription>
         </DialogHeader>
 
