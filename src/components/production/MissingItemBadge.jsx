@@ -6,10 +6,13 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
 import { getSizeBreakdown, legacySizeSummary, sizeSummary } from "./missingItemSizes";
+import StillMissingDialog from "./StillMissingDialog";
+import { Flag } from "lucide-react";
 
 export default function MissingItemBadge({ itemId, currentUser }) {
   const [open, setOpen] = useState(false);
   const [updating, setUpdating] = useState(null); // id of item being updated
+  const [flaggedReport, setFlaggedReport] = useState(null);
   const queryClient = useQueryClient();
   const dotRef = useRef(null);
   const [popupPos, setPopupPos] = useState(null);
@@ -94,6 +97,13 @@ export default function MissingItemBadge({ itemId, currentUser }) {
                       </span>
                       {report.room_name && <span className="text-xs text-slate-500">{report.room_name}</span>}
                       {report.cabinet_name && <span className="text-xs text-slate-400">· {report.cabinet_name}</span>}
+                      <button
+                        onClick={() => setFlaggedReport(report)}
+                        className="ml-auto w-6 h-6 flex items-center justify-center rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                        title="Some are still missing"
+                      >
+                        <Flag className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                     <p className="text-sm font-medium text-slate-800">
                       {report.item_description}
@@ -137,6 +147,18 @@ export default function MissingItemBadge({ itemId, currentUser }) {
               })}
             </div>
           </div>
+          {flaggedReport && (
+            <StillMissingDialog
+              report={flaggedReport}
+              open
+              onOpenChange={(o) => { if (!o) setFlaggedReport(null); }}
+              onUpdated={() => {
+                queryClient.invalidateQueries({ queryKey: ["missingItems"] });
+                setFlaggedReport(null);
+                setOpen(false);
+              }}
+            />
+          )}
         </>
       )}
     </div>
