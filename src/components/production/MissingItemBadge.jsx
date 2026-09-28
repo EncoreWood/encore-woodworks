@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { base44 } from "@/api/base44Client";
@@ -15,19 +15,17 @@ export default function MissingItemBadge({ itemId, currentUser }) {
   const [flaggedReport, setFlaggedReport] = useState(null);
   const queryClient = useQueryClient();
   const dotRef = useRef(null);
+  const popupRef = useRef(null);
+  const [anchorRect, setAnchorRect] = useState(null);
   const [popupPos, setPopupPos] = useState(null);
 
   const POPUP_W = 320; // w-80
 
   const openPopup = () => {
-    // Position in the viewport (fixed) so scrollable containers can't clip it,
-    // clamped so it never runs off the left or right edge of the screen
+    // Remember where the badge dot is; the popup is positioned in the viewport
+    // (fixed) so scrollable containers can't clip it
     const rect = dotRef.current?.getBoundingClientRect();
-    if (rect) {
-      const left = Math.max(8, Math.min(rect.left, window.innerWidth - POPUP_W - 8));
-      const top = Math.min(rect.bottom + 6, window.innerHeight - 100);
-      setPopupPos({ left, top });
-    }
+    if (rect) setAnchorRect({ left: rect.left, top: rect.top, bottom: rect.bottom });
     setOpen(true);
   };
 
@@ -39,6 +37,19 @@ export default function MissingItemBadge({ itemId, currentUser }) {
 
   const cardReports = allMissing.filter(m => m.production_item_id === itemId && !m.archived);
   const activeReports = cardReports.filter(m => !DONE_STATUSES.includes(m.status));
+
+  // Prefer showing the popup below the badge; if it would run off the bottom of
+  // the screen, flip it to show above the card instead
+  useLayoutEffect(() => {
+    if (!open || !anchorRect || !popupRef.current) return;
+    const h = popupRef.current.offsetHeight;
+    const left = Math.max(8, Math.min(anchorRect.left, window.innerWidth - POPUP_W - 8));
+    let top = anchorRect.bottom + 6;
+    if (top + h > window.innerHeight - 8) {
+      top = Math.max(8, anchorRect.top - h - 6);
+    }
+    setPopupPos({ left, top });
+  }, [open, anchorRect, activeReports.length]);
 
   if (activeReports.length === 0) return null;
 
@@ -78,6 +89,7 @@ export default function MissingItemBadge({ itemId, currentUser }) {
       {open && (
         <>
           <div
+            ref={popupRef}
             className="fixed z-50 w-80 bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden"
             style={popupPos ? { left: popupPos.left, top: popupPos.top } : { left: 8, top: 60 }}
           >
