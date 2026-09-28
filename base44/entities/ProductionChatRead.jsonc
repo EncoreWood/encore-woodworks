@@ -1,0 +1,17 @@
+{
+  "name": "ProductionChatRead",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user this read marker belongs to"
+    },
+    "last_read_at": {
+      "type": "string",
+      "description": "ISO timestamp of the newest message this user has seen"
+    }
+  },
+  "required": [
+    "user_email"
+  ]
+}

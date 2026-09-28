@@ -8,7 +8,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset } from "lucide-react";
+import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
 import GiveComplimentDialog from "../components/production/GiveComplimentDialog";
@@ -20,6 +20,8 @@ import PickupItemForm from "../components/pickup/PickupItemForm";
 import ProductionCard from "../components/production/ProductionCard";
 import JobPacketsTab from "../components/production/JobPacketsTab";
 import ProductionMissingItemsTab from "../components/production/ProductionMissingItemsTab";
+import ProductionChatTab from "../components/production/ProductionChatTab";
+import { useProductionChatUnread } from "../components/production/useProductionChatUnread";
 import QuickReportMissingDialog from "../components/production/QuickReportMissingDialog";
 import PickupFromHighlightDialog from "../components/production/PickupFromHighlightDialog";
 
@@ -60,6 +62,8 @@ export default function ShopProduction() {
   useEffect(() => {
     base44.auth.me().then(setCurrentUser).catch(() => {});
   }, []);
+
+  const chatUnread = useProductionChatUnread(currentUser);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -508,6 +512,14 @@ export default function ShopProduction() {
             <TabsTrigger value="missing_items" className="flex items-center gap-2">
               <PackageX className="w-4 h-4" /> Missing Items
             </TabsTrigger>
+            <TabsTrigger value="production_chat" className="flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" /> Production Chat
+              {activeTab !== "production_chat" && chatUnread > 0 && (
+                <span className="ml-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                  {chatUnread > 9 ? "9+" : chatUnread}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           {/* ── PRODUCTION TAB ── */}
@@ -580,6 +592,11 @@ export default function ShopProduction() {
           {/* ── MISSING ITEMS TAB ── */}
           <TabsContent value="missing_items" className="mt-0">
             <ProductionMissingItemsTab currentUser={currentUser} />
+          </TabsContent>
+
+          {/* ── PRODUCTION CHAT TAB ── */}
+          <TabsContent value="production_chat" className="mt-0">
+            <ProductionChatTab currentUser={currentUser} />
           </TabsContent>
 
           {/* ── JOB PACKETS TAB ── */}

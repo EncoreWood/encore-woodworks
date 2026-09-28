@@ -1,0 +1,22 @@
+{
+  "name": "ProductionChatMessage",
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string",
+      "description": "Message content"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Sender's display name"
+    },
+    "user_email": {
+      "type": "string",
+      "description": "Sender's email"
+    }
+  },
+  "required": [
+    "message",
+    "user_name"
+  ]
+}
