@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, Upload, Loader2, PenLine, FileCode2, ChevronDown, PackageX, Flag, Boxes, StickyNote } from "lucide-react";
 import MissingItemBadge from "@/components/production/MissingItemBadge";
-import RoomMissingProgress from "@/components/production/RoomMissingProgress";
 import GlbViewer from "@/components/cad/GlbViewer";
 import DxfViewer from "@/components/cad/DxfViewer";
 import { base44 } from "@/api/base44Client";
@@ -173,16 +172,11 @@ export default function ProductionCard({
           </button>
         )}
 
-        {/* Header: project/room name + room missing-item progress */}
+        {/* Header: project/room name */}
         {item.project_name && (
-          <div className="flex items-center gap-1.5 mb-1 pr-10">
-            <p className="text-xs text-slate-500 font-medium truncate flex-1 min-w-0">
-              {item.project_name}{item.room_name ? ` · ${item.room_name}` : ""}
-            </p>
-            {item.project_id && item.room_name && (
-              <RoomMissingProgress projectId={item.project_id} roomName={item.room_name} />
-            )}
-          </div>
+          <p className="text-xs text-slate-500 font-medium truncate pr-10 mb-1">
+            {item.project_name}{item.room_name ? ` · ${item.room_name}` : ""}
+          </p>
         )}
 
         {/* Sent back for a missing item */}

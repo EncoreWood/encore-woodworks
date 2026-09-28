@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import MissingItemRow from "./MissingItemRow";
+import RoomMissingProgress from "./RoomMissingProgress";
 
 /**
  * Groups missing items by job (project) then room, with collapsible sections.
@@ -71,6 +72,7 @@ export default function MissingItemsGroupedList({ items, cardById, isAdmin, upda
                         {roomCollapsed ? <ChevronRight className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
                         <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{roomName}</span>
                         <span className="text-xs text-slate-400">{roomItems.length} item{roomItems.length !== 1 ? "s" : ""}</span>
+                        <RoomMissingProgress items={roomItems} />
                       </button>
 
                       {!roomCollapsed && (
