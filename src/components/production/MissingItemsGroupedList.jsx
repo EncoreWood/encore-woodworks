@@ -1,5 +1,7 @@
 import { useMemo } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
+import { createPageUrl } from "@/utils";
 import { cn } from "@/lib/utils";
 import MissingItemRow from "./MissingItemRow";
 import RoomMissingProgress from "./RoomMissingProgress";
@@ -47,15 +49,30 @@ export default function MissingItemsGroupedList({ items, cardById, projects, isA
         return (
           <div key={jobName} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
             {/* Job header */}
-            <button
-              type="button"
-              onClick={() => onToggleJob(jobName)}
-              className="w-full px-5 py-3 flex items-center gap-2 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
-            >
-              {jobCollapsed ? <ChevronRight className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
-              <span className="text-sm font-bold text-slate-800">{jobName}</span>
-              <span className="text-xs font-medium text-slate-500 bg-white border border-slate-200 rounded-full px-2 py-0.5">{jobCount}</span>
-            </button>
+            <div className="w-full px-5 py-3 flex items-center gap-2 bg-slate-50 hover:bg-slate-100 transition-colors">
+              <button
+                type="button"
+                onClick={() => onToggleJob(jobName)}
+                className="flex items-center gap-2 flex-1 min-w-0 text-left"
+              >
+                {jobCollapsed ? <ChevronRight className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
+                <span className="text-sm font-bold text-slate-800">{jobName}</span>
+                <span className="text-xs font-medium text-slate-500 bg-white border border-slate-200 rounded-full px-2 py-0.5">{jobCount}</span>
+              </button>
+              {(() => {
+                const project = (projects || []).find(p => p.project_name === jobName);
+                if (!project) return null;
+                return (
+                  <Link
+                    to={`${createPageUrl("ProjectDetails")}?id=${project.id}`}
+                    className="flex-shrink-0 text-slate-400 hover:text-amber-600 transition-colors p-1"
+                    title="Open project"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Link>
+                );
+              })()}
+            </div>
 
             {!jobCollapsed && (
               <div>
