@@ -398,6 +398,7 @@ export default function ProjectDetails() {
               { key: "measurements", label: "Job Measurements" },
               { key: "photos", label: "Job Photos" },
               { key: "estimates", label: "Estimates/Proposal" },
+              { key: "financials", label: "Financials" },
               { key: "client_portal", label: "Client Portal" },
               { key: "meetings", label: "Meetings", count: unread.meetings, channel: "meeting_read_at" },
               { key: "emails", label: "Emails" },
@@ -424,6 +425,9 @@ export default function ProjectDetails() {
         {activeTab === "estimates" && currentUser?.role === "admin" && (
           <EstimatesProposalTab project={project} />
         )}
+        {activeTab === "financials" && currentUser?.role === "admin" && (
+          <PaymentLog project={project} onSave={(data) => updateMutation.mutate(data)} />
+        )}
         {activeTab === "emails" && currentUser?.role === "admin" && (
           <ProjectEmailsTab project={project} />
         )}
@@ -433,7 +437,7 @@ export default function ProjectDetails() {
         {activeTab === "meetings" && currentUser?.role === "admin" && (
           <ProjectMeetingsTab project={project} />
         )}
-        {(activeTab !== "client_portal" && activeTab !== "measurements" && activeTab !== "photos" && activeTab !== "estimates" && activeTab !== "emails" && activeTab !== "chat" && activeTab !== "meetings" || currentUser?.role !== "admin") && (
+        {(activeTab !== "client_portal" && activeTab !== "measurements" && activeTab !== "photos" && activeTab !== "estimates" && activeTab !== "financials" && activeTab !== "emails" && activeTab !== "chat" && activeTab !== "meetings" || currentUser?.role !== "admin") && (
         <>
         {/* Full-width Project Timeline */}
         <ProjectTimelineSection project={project} />
@@ -703,8 +707,8 @@ export default function ProjectDetails() {
               );
             })()}
 
-            {/* Payment Log */}
-            <PaymentLog project={project} onSave={(data) => updateMutation.mutate(data)} />
+            {/* Payment Log — admins use the Financials tab; still shown inline for non-admins */}
+            {currentUser?.role !== "admin" && <PaymentLog project={project} onSave={(data) => updateMutation.mutate(data)} />}
           </div>
         </div>
 
