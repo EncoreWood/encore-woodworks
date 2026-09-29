@@ -15,9 +15,19 @@ const PRODUCTION_STAGES = [
   { id: "build", label: "Build" },
 ];
 
-export default function MissingItemRow({ item, card, isAdmin, updating, onStatus, onSendToProduction, sending, onViewCard }) {
+export default function MissingItemRow({ item, card, projects, isAdmin, updating, onStatus, onSendToProduction, sending, onViewCard }) {
   const [sendStage, setSendStage] = useState("cut");
   const confirmed = JSON.parse(item.confirmed_by || "[]");
+
+  // Wood species / finish for this item's room, pulled from the project's room selections
+  const room = projects?.find(p => p.id === item.project_id)?.rooms?.find(r => r.room_name === item.room_name);
+  const joinVals = (list, key) => (Array.isArray(list) ? list.map(s => s?.[key]).filter(Boolean).join(", ") : "") || null;
+  const species = joinVals(room?.species_finish_selections, "wood_species")
+    || joinVals(room?.wood_species_selections, "value")
+    || room?.wood_species || null;
+  const finish = joinVals(room?.species_finish_selections, "finish")
+    || joinVals(room?.finish_selections, "value")
+    || room?.finish || null;
   const cfg = STATUS_CONFIG[item.status] || STATUS_CONFIG.Open;
   const isDone = DONE_STATUSES.includes(item.status);
   return (
@@ -52,6 +62,12 @@ export default function MissingItemRow({ item, card, isAdmin, updating, onStatus
             ? <span className="text-slate-600">· {sizeSummary(item)}</span>
             : legacySizeSummary(item) && <span className="text-slate-600">· {item.quantity != null ? `Qty ${item.quantity}: ` : ""}{legacySizeSummary(item)}</span>}
         </div>
+        {(species || finish) && (
+          <div className="text-xs text-slate-500 mb-1">
+            {species && <span>{species}{finish ? <span className="text-slate-400"> · </span> : null}</span>}
+            {finish && <span>{finish}</span>}
+          </div>
+        )}
         {item.description && (
           <p className="text-xs text-slate-400 mb-1">{item.description}</p>
         )}

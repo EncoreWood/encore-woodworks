@@ -219,6 +219,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
           <MissingItemsGroupedList
             items={filtered}
             cardById={cardById}
+            projects={projects}
             isAdmin={isAdmin}
             updating={updating}
             onStatus={callUpdateStatus}

@@ -8,7 +8,7 @@ import RoomMissingProgress from "./RoomMissingProgress";
  * Groups missing items by job (project) then room, with collapsible sections.
  * expandedJobs: Set of job keys, expandedRooms: Set of "job||room" keys. Sections start collapsed.
  */
-export default function MissingItemsGroupedList({ items, cardById, isAdmin, updating, onStatus, onSendToProduction, sending, onViewCard, expandedJobs, expandedRooms, onToggleJob, onToggleRoom }) {
+export default function MissingItemsGroupedList({ items, cardById, projects, isAdmin, updating, onStatus, onSendToProduction, sending, onViewCard, expandedJobs, expandedRooms, onToggleJob, onToggleRoom }) {
   const grouped = useMemo(() => {
     const jobs = new Map();
     for (const item of items) {
@@ -78,7 +78,7 @@ export default function MissingItemsGroupedList({ items, cardById, isAdmin, upda
                       {!roomCollapsed && (
                         <div className="divide-y divide-slate-50">
                           {roomItems.map(item => (
-                            <MissingItemRow key={item.id} item={item} card={cardById?.get(item.production_item_id)} isAdmin={isAdmin} updating={updating} onStatus={onStatus} onSendToProduction={onSendToProduction} sending={sending} onViewCard={onViewCard} />
+                            <MissingItemRow key={item.id} item={item} card={cardById?.get(item.production_item_id)} projects={projects} isAdmin={isAdmin} updating={updating} onStatus={onStatus} onSendToProduction={onSendToProduction} sending={sending} onViewCard={onViewCard} />
                           ))}
                         </div>
                       )}
