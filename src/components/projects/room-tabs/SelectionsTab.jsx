@@ -70,7 +70,6 @@ function SelectionCard({ field, value, customValue, onChange, onCustomChange, re
         <OptionsEditor
           label={field.label}
           options={options}
-          lockedCount={(SELECTION_DEFAULTS[field.key] || []).length}
           onAdd={v => optionsApi.addOption(field.key, v)}
           onRemove={v => optionsApi.removeOption(field.key, v)}
         />

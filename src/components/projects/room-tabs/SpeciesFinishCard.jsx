@@ -98,14 +98,12 @@ export default function SpeciesFinishCard({ entries, onChange, readOnly = false,
           <OptionsEditor
             label="Wood Species"
             options={speciesOptions}
-            lockedCount={SPECIES_OPTIONS.length}
             onAdd={v => optionsApi.addOption("wood_species", v)}
             onRemove={v => optionsApi.removeOption("wood_species", v)}
           />
           <OptionsEditor
             label="Finish"
             options={finishOptions}
-            lockedCount={FINISH_OPTIONS.length}
             onAdd={v => optionsApi.addOption("finish", v)}
             onRemove={v => optionsApi.removeOption("finish", v)}
           />

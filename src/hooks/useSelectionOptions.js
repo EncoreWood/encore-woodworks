@@ -15,25 +15,29 @@ export const SELECTION_DEFAULTS = {
 };
 
 /**
- * Loads custom dropdown options for the Selections tab and merges them with
- * the built-in defaults. addOption/removeOption persist to the database so
- * changes apply app-wide.
+ * Dropdown options for the Selections tab. Built-in defaults can be hidden
+ * (tracked as "removed" markers) and custom options can be added — all
+ * persisted to the database so changes apply app-wide.
  */
 export default function useSelectionOptions() {
-  const [customOptions, setCustomOptions] = useState({});
+  const [additions, setAdditions] = useState({}); // key -> [values added by team]
+  const [hidden, setHidden] = useState({}); // key -> [default values hidden]
 
   useEffect(() => {
     let cancelled = false;
     base44.entities.SelectionOption.list()
       .then(recs => {
         if (cancelled) return;
-        const map = {};
+        const adds = {};
+        const hides = {};
         recs.forEach(r => {
           if (!r.field_key || !r.value) return;
-          if (!map[r.field_key]) map[r.field_key] = [];
-          map[r.field_key].push(r.value);
+          const target = r.removed ? hides : adds;
+          if (!target[r.field_key]) target[r.field_key] = [];
+          target[r.field_key].push(r.value);
         });
-        setCustomOptions(map);
+        setAdditions(adds);
+        setHidden(hides);
       })
       .catch(err => console.error("Failed to load selection options:", err));
     return () => { cancelled = true; };
@@ -41,24 +45,44 @@ export default function useSelectionOptions() {
 
   const getOptions = useCallback((key) => {
     const defaults = SELECTION_DEFAULTS[key] || [];
-    const custom = customOptions[key] || [];
-    return [...defaults, ...custom.filter(c => !defaults.includes(c))];
-  }, [customOptions]);
+    const hiddenVals = hidden[key] || [];
+    const adds = additions[key] || [];
+    const visibleDefaults = defaults.filter(d => !hiddenVals.includes(d));
+    return [...visibleDefaults, ...adds.filter(c => !defaults.includes(c))];
+  }, [additions, hidden]);
 
   const addOption = useCallback(async (key, value) => {
     const v = (value || "").trim();
     if (!v) return;
     const defaults = SELECTION_DEFAULTS[key] || [];
-    if (defaults.includes(v) || (customOptions[key] || []).includes(v)) return;
+    if (defaults.includes(v)) {
+      // Re-showing a hidden built-in option — remove its removal marker(s)
+      const hiddenVals = hidden[key] || [];
+      if (hiddenVals.includes(v)) {
+        await base44.entities.SelectionOption.deleteMany({ field_key: key, value: v, removed: true });
+        setHidden(prev => ({ ...prev, [key]: (prev[key] || []).filter(x => x !== v) }));
+      }
+      return;
+    }
+    if ((additions[key] || []).includes(v)) return;
     await base44.entities.SelectionOption.create({ field_key: key, value: v });
-    setCustomOptions(prev => ({ ...prev, [key]: [...(prev[key] || []), v] }));
-  }, [customOptions]);
+    setAdditions(prev => ({ ...prev, [key]: [...(prev[key] || []), v] }));
+  }, [additions, hidden]);
 
   const removeOption = useCallback(async (key, value) => {
-    if ((SELECTION_DEFAULTS[key] || []).includes(value)) return; // built-in options can't be removed
-    await base44.entities.SelectionOption.deleteMany({ field_key: key, value });
-    setCustomOptions(prev => ({ ...prev, [key]: (prev[key] || []).filter(v => v !== value) }));
-  }, []);
+    const defaults = SELECTION_DEFAULTS[key] || [];
+    if (defaults.includes(value)) {
+      // Hide a built-in default via a removal marker
+      const hiddenVals = hidden[key] || [];
+      if (!hiddenVals.includes(value)) {
+        await base44.entities.SelectionOption.create({ field_key: key, value, removed: true });
+        setHidden(prev => ({ ...prev, [key]: [...(prev[key] || []), value] }));
+      }
+      return;
+    }
+    await base44.entities.SelectionOption.deleteMany({ field_key: key, value, removed: false });
+    setAdditions(prev => ({ ...prev, [key]: (prev[key] || []).filter(v => v !== value) }));
+  }, [hidden]);
 
   return { getOptions, addOption, removeOption };
 }
