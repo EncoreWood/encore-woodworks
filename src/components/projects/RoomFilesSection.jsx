@@ -129,15 +129,15 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
       </div>
 
       {files.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           {files.map((f) => (
             <div key={f.id} className={cn("relative group rounded-lg overflow-hidden border bg-slate-50", f.is_shop_file ? "border-amber-400 ring-1 ring-amber-400" : "border-slate-200")}>
               {f.file_type === "image" ? (
                 <button className="w-full" onClick={() => setLightbox(f)}>
-                  <img src={f.file_url} alt={f.label || f.file_name} className="w-full h-16 object-cover hover:opacity-90 transition-opacity" />
+                  <img src={f.file_url} alt={f.label || f.file_name} className="w-full h-28 object-cover hover:opacity-90 transition-opacity" />
                 </button>
               ) : (
-                <button className="w-full h-16 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition-colors" onClick={() => setPdfViewer(f)}>
+                <button className="w-full h-28 flex flex-col items-center justify-center gap-1 hover:bg-slate-100 transition-colors" onClick={() => setPdfViewer(f)}>
                   <FileText className="w-5 h-5 text-red-500" />
                   <span className="text-xs text-slate-500 truncate px-1 w-full text-center">{f.label || f.file_name}</span>
                 </button>

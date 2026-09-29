@@ -20,7 +20,7 @@ import {
 import {
 ArrowLeft, Edit, Trash2, User, Mail, Phone, MapPin, Calendar,
 DollarSign, Palette, Wrench, FileText, Loader2, DoorOpen,
-ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X, Calculator, Box, Upload, Archive, ArchiveRestore,
+ExternalLink, Plus, Eye, PackageOpen, Paintbrush, TreePine, Save, X, Box, Upload, Archive, ArchiveRestore,
 ChevronDown, ChevronRight, Pencil
 } from "lucide-react";
 import { format } from "date-fns";
@@ -157,13 +157,6 @@ export default function ProjectDetails() {
   const { data: projectOrders = [] } = useQuery({
     queryKey: ["projectOrders", projectId],
     queryFn: () => base44.entities.ProjectOrder.filter({ project_id: projectId }),
-    enabled: !!projectId,
-    staleTime: 30000
-  });
-
-  const { data: linkedBids = [] } = useQuery({
-    queryKey: ["bids_for_project", projectId],
-    queryFn: () => base44.entities.Bid.filter({ project_id: projectId }),
     enabled: !!projectId,
     staleTime: 30000
   });
@@ -442,45 +435,9 @@ export default function ProjectDetails() {
         {/* Full-width Project Timeline */}
         <ProjectTimelineSection project={project} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column */}
+        <div className="space-y-6">
+          {/* Rooms + side sections, full width */}
           <div className="space-y-6">
-            {/* Plan Bid */}
-            <Card className="p-6 bg-white border-0 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                  <Calculator className="w-5 h-5 text-amber-500" /> Plan Bids
-                </h2>
-                <a href={createPageUrl("PlanBidding") + "?project_id=" + projectId}>
-                  <Button size="sm" className="bg-amber-600 hover:bg-amber-700 h-8 gap-1.5">
-                    <Plus className="w-3.5 h-3.5" /> New Bid
-                  </Button>
-                </a>
-              </div>
-              {linkedBids.length === 0 ? (
-                <p className="text-sm text-slate-400">No bids linked yet.</p>
-              ) : (
-                <div className="space-y-2">
-                  {linkedBids.map(bid => {
-                    const statusColors = { draft: "bg-amber-100 text-amber-700", finalized: "bg-green-100 text-green-700", sent: "bg-blue-100 text-blue-700" };
-                    return (
-                      <a key={bid.id} href={createPageUrl("PlanBidding") + "?bid_id=" + bid.id} className="flex items-center gap-3 p-3 rounded-lg border border-slate-100 hover:border-amber-200 hover:bg-amber-50 transition-all">
-                        <FileText className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">{bid.project_name}</p>
-                          <p className="text-xs text-slate-400">{bid.rooms?.length || 0} rooms · {bid.total_lf ? `${bid.total_lf} LF` : "—"}</p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-bold text-slate-800">${(bid.total || 0).toLocaleString()}</p>
-                          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${statusColors[bid.status] || statusColors.draft}`}>{bid.status || "draft"}</span>
-                        </div>
-                      </a>
-                    );
-                  })}
-                </div>
-              )}
-            </Card>
-
             {/* Rooms */}
             <Card className="p-6 bg-white border-0 shadow-sm">
               <div className="flex items-center justify-between mb-4">
@@ -643,11 +600,11 @@ export default function ProjectDetails() {
                                   <Badge className="text-xs bg-blue-100 text-blue-700 border-blue-200">{room.files.filter(f => f.in_production).length} in production</Badge>
                                 )}
                               </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                {room.files.slice(0, 4).map((file, fIdx) => (
+                              <div className="grid grid-cols-4 gap-2">
+                                {room.files.slice(0, 8).map((file, fIdx) => (
                                   <div key={fIdx} className="relative">
                                     {file.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                                      <img src={file.url} alt={file.name} className="w-full h-16 object-cover rounded border border-slate-200" />
+                                      <img src={file.url} alt={file.name} className="w-full h-24 object-cover rounded border border-slate-200" />
                                     ) : (
                                       <div className="w-full h-16 bg-slate-100 rounded border border-slate-200 flex items-center justify-center">
                                         <FileText className="w-4 h-4 text-slate-400" />
@@ -695,10 +652,10 @@ export default function ProjectDetails() {
                     <span className="text-sm text-amber-600">{showPhotos ? "Hide" : "View"}</span>
                   </button>
                   {showPhotos && (
-                    <div className="grid grid-cols-3 gap-2 mt-4">
+                    <div className="grid grid-cols-4 md:grid-cols-6 gap-2 mt-4">
                       {photos.map((photo, idx) => (
                         <button key={idx} onClick={() => setLightboxPhoto({ ...photo, allPhotos: photos, idx })} className="focus:outline-none">
-                          <img src={photo.url} alt={photo.name} className="w-full h-20 object-cover rounded-lg border border-slate-200 hover:opacity-90 transition-opacity" />
+                          <img src={photo.url} alt={photo.name} className="w-full h-28 object-cover rounded-lg border border-slate-200 hover:opacity-90 transition-opacity" />
                         </button>
                       ))}
                     </div>
