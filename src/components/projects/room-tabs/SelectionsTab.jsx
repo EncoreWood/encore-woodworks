@@ -8,40 +8,24 @@ import SpeciesFinishCard from "@/components/projects/room-tabs/SpeciesFinishCard
 import { base44 } from "@/api/base44Client";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import useSelectionOptions, { SELECTION_DEFAULTS } from "@/hooks/useSelectionOptions";
+import OptionsEditor from "@/components/projects/room-tabs/OptionsEditor";
+import { Settings2 } from "lucide-react";
 
 const SELECTIONS = [
-  {
-    key: "cabinet_style", label: "Cabinet Style",
-    options: ["FF Inset - Shaker", "FF Inset - Flat", "Overlay - Shaker", "Overlay - Flat", "Euro - Frameless", "Custom"]
-  },
-  {
-    key: "door_style", label: "Door Style",
-    options: ["Shaker", "Flat Panel", "Raised Panel", "Beadboard", "Glass Insert", "Slab", "Custom"]
-  },
-  {
-    key: "handles", label: "Handles / Hardware",
-    options: ["TBD", "Bar Pull", "Cup Pull", "Knob", "No Hardware", "Custom"]
-  },
-  {
-    key: "drawer_glides", label: "Drawer Glides",
-    options: ["Soft Close", "Full Extension", "Standard", "Custom"]
-  },
-  {
-    key: "hinges", label: "Hinges",
-    options: ["Soft Close", "Standard", "Concealed", "Custom"]
-  },
-  {
-    key: "molding", label: "Molding",
-    options: ["None", "Crown - Simple", "Crown - Build Up", "Light Rail", "Base Molding", "Custom"]
-  },
-  {
-    key: "cabs_to_height", label: "Cabs Finished to Height",
-    options: ["Yes", "No", "Partial"]
-  }
+  { key: "cabinet_style", label: "Cabinet Style" },
+  { key: "door_style", label: "Door Style" },
+  { key: "handles", label: "Handles / Hardware" },
+  { key: "drawer_glides", label: "Drawer Glides" },
+  { key: "hinges", label: "Hinges" },
+  { key: "molding", label: "Molding" },
+  { key: "cabs_to_height", label: "Cabs Finished to Height" }
 ];
 
-function SelectionCard({ field, value, customValue, onChange, onCustomChange, readOnly }) {
-  const isCustom = value === "Custom" || (value && !field.options.includes(value));
+function SelectionCard({ field, value, customValue, onChange, onCustomChange, readOnly, optionsApi }) {
+  const [showEditor, setShowEditor] = useState(false);
+  const options = optionsApi ? optionsApi.getOptions(field.key) : [];
+  const isCustom = value === "Custom" || (value && !options.includes(value));
   const displayCustom = isCustom && value !== "Custom";
 
   if (readOnly) {
@@ -55,14 +39,24 @@ function SelectionCard({ field, value, customValue, onChange, onCustomChange, re
 
   return (
     <div className="bg-white rounded-lg p-3 border border-slate-200">
-      <p className="text-xs text-slate-500 mb-1.5 font-medium">{field.label}</p>
+      <div className="flex items-center justify-between mb-1.5">
+        <p className="text-xs text-slate-500 font-medium">{field.label}</p>
+        <button
+          type="button"
+          onClick={() => setShowEditor(p => !p)}
+          className={`p-0.5 ${showEditor ? "text-amber-600" : "text-slate-300 hover:text-amber-600"}`}
+          title="Edit options"
+        >
+          <Settings2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
       <select
         value={isCustom && !displayCustom ? "Custom" : (value || "")}
         onChange={e => onChange(field.key, e.target.value)}
         className="w-full text-sm border border-slate-200 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-amber-300"
       >
         <option value="">— Select —</option>
-        {field.options.map(o => <option key={o} value={o}>{o}</option>)}
+        {options.map(o => <option key={o} value={o}>{o}</option>)}
       </select>
       {(isCustom) && (
         <Input
@@ -72,12 +66,22 @@ function SelectionCard({ field, value, customValue, onChange, onCustomChange, re
           onChange={e => onCustomChange(field.key, e.target.value)}
         />
       )}
+      {showEditor && optionsApi && (
+        <OptionsEditor
+          label={field.label}
+          options={options}
+          lockedCount={(SELECTION_DEFAULTS[field.key] || []).length}
+          onAdd={v => optionsApi.addOption(field.key, v)}
+          onRemove={v => optionsApi.removeOption(field.key, v)}
+        />
+      )}
     </div>
   );
 }
 
 export default function SelectionsTab({ formData, setFormData, project, roomIndex, readOnly = false, onSaved }) {
   const queryClient = useQueryClient();
+  const optionsApi = useSelectionOptions();
   const [newCustomLabel, setNewCustomLabel] = useState("");
   const [newCustomValue, setNewCustomValue] = useState("");
   const [addingCustom, setAddingCustom] = useState(false);
@@ -140,6 +144,7 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
         entries={formData.species_finish_selections || []}
         onChange={(entries) => handleChange("species_finish_selections", entries)}
         readOnly={readOnly}
+        optionsApi={optionsApi}
       />
 
       {/* Preset selections grid */}
@@ -153,6 +158,7 @@ export default function SelectionsTab({ formData, setFormData, project, roomInde
             onChange={handleChange}
             onCustomChange={handleCustomChange}
             readOnly={readOnly}
+            optionsApi={optionsApi}
           />
         ))}
 

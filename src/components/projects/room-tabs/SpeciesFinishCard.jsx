@@ -1,5 +1,7 @@
-import { Plus, X } from "lucide-react";
+import { useState } from "react";
+import { Plus, X, Settings2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import OptionsEditor from "@/components/projects/room-tabs/OptionsEditor";
 
 export const SPECIES_OPTIONS = ["Painted", "Maple", "Cherry", "White Oak", "Walnut", "Alder", "MDF"];
 export const FINISH_OPTIONS = ["TBD", "Painted White", "Painted Gray", "Painted Custom", "Natural", "Stain - Light", "Stain - Medium", "Stain - Dark", "Two-Tone"];
@@ -53,8 +55,11 @@ function PairSelect({ label, options, value, onChange }) {
  * a species, the finish that goes with it, and an optional note for the
  * area/cabinets it applies to.
  */
-export default function SpeciesFinishCard({ entries, onChange, readOnly = false }) {
+export default function SpeciesFinishCard({ entries, onChange, readOnly = false, optionsApi }) {
+  const [showOptions, setShowOptions] = useState(false);
   const list = Array.isArray(entries) ? entries : [];
+  const speciesOptions = optionsApi ? optionsApi.getOptions("wood_species") : SPECIES_OPTIONS;
+  const finishOptions = optionsApi ? optionsApi.getOptions("finish") : FINISH_OPTIONS;
 
   const updateEntry = (idx, patch) =>
     onChange(list.map((e, i) => (i === idx ? { ...e, ...patch } : e)));
@@ -66,15 +71,46 @@ export default function SpeciesFinishCard({ entries, onChange, readOnly = false 
       <div className="flex items-center justify-between mb-1.5">
         <p className="text-xs text-slate-500 font-medium">Wood Species & Finish</p>
         {!readOnly && (
-          <button
-            type="button"
-            onClick={addEntry}
-            className="flex items-center gap-1 text-xs font-semibold text-amber-600 hover:text-amber-700"
-          >
-            <Plus className="w-3 h-3" /> Add
-          </button>
+          <div className="flex items-center gap-2">
+            {optionsApi && (
+              <button
+                type="button"
+                onClick={() => setShowOptions(p => !p)}
+                className={`p-0.5 ${showOptions ? "text-amber-600" : "text-slate-300 hover:text-amber-600"}`}
+                title="Edit options"
+              >
+                <Settings2 className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={addEntry}
+              className="flex items-center gap-1 text-xs font-semibold text-amber-600 hover:text-amber-700"
+            >
+              <Plus className="w-3 h-3" /> Add
+            </button>
+          </div>
         )}
       </div>
+
+      {showOptions && optionsApi && !readOnly && (
+        <div className="mb-2 space-y-2">
+          <OptionsEditor
+            label="Wood Species"
+            options={speciesOptions}
+            lockedCount={SPECIES_OPTIONS.length}
+            onAdd={v => optionsApi.addOption("wood_species", v)}
+            onRemove={v => optionsApi.removeOption("wood_species", v)}
+          />
+          <OptionsEditor
+            label="Finish"
+            options={finishOptions}
+            lockedCount={FINISH_OPTIONS.length}
+            onAdd={v => optionsApi.addOption("finish", v)}
+            onRemove={v => optionsApi.removeOption("finish", v)}
+          />
+        </div>
+      )}
 
       {list.length === 0 && (
         <p className="text-sm text-slate-400">
@@ -100,13 +136,13 @@ export default function SpeciesFinishCard({ entries, onChange, readOnly = false 
               <div className="grid grid-cols-2 gap-1.5">
                 <PairSelect
                   label="Wood Species"
-                  options={SPECIES_OPTIONS}
+                  options={speciesOptions}
                   value={entry.wood_species}
                   onChange={v => updateEntry(idx, { wood_species: v })}
                 />
                 <PairSelect
                   label="Finish"
-                  options={FINISH_OPTIONS}
+                  options={finishOptions}
                   value={entry.finish}
                   onChange={v => updateEntry(idx, { finish: v })}
                 />
