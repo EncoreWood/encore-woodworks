@@ -114,6 +114,15 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     }
   };
 
+  // Status select handler: picking "Open" pulls the card out of production (On Hold)
+  const handleStatus = (itemId, status) => {
+    if (status === "Open") {
+      const item = missingItems.find(i => i.id === itemId);
+      if (item) { sendBackToOpen(item); return; }
+    }
+    callUpdateStatus(itemId, status);
+  };
+
   // Send a card out of production: card goes to On Hold, item goes back to Open
   const sendBackToOpen = async (item) => {
     setUpdating(item.id);
@@ -241,7 +250,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
             projects={projects}
             isAdmin={isAdmin}
             updating={updating}
-            onStatus={callUpdateStatus}
+            onStatus={handleStatus}
             onSendToProduction={sendCardToProduction}
             onBackToOpen={sendBackToOpen}
             sending={sending}
