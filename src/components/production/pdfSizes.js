@@ -37,6 +37,18 @@ async function extractLines(doc) {
   return lines;
 }
 
+// Which section of the cut sheet a line belongs to (door list PDFs group parts
+// under headers like "DOOR FRONTS", "DRAWER BOXES", ...).
+function sectionOf(line) {
+  const l = line.toLowerCase();
+  if (/front/.test(l)) return "front";
+  if (/drawer\s*box|box/.test(l)) return "box";
+  if (/panel/.test(l)) return "panel";
+  if (/mold|crown/.test(l)) return "molding";
+  if (/hinge|glide|hardware|handle|knob|pull|slide/.test(l)) return "hardware";
+  return null;
+}
+
 // Best-effort part label: the text preceding the size on the same line
 function labelBefore(line, matchIndex) {
   let before = line.slice(0, matchIndex).replace(/[\s,\-–:]+$/, "").trim();
@@ -60,17 +72,27 @@ export async function extractSizesFromPdf(url) {
   const lines = await extractLines(doc);
   const byKey = new Map();
 
+  let section = null;
   lines.forEach(line => {
+    // Track cut-sheet sections so only front rows are kept
+    const hasSize = SIZE_RE.test(line);
     SIZE_RE.lastIndex = 0;
+    if (!hasSize) {
+      const sec = sectionOf(line);
+      if (sec) section = sec;
+      return;
+    }
+
     let m;
     while ((m = SIZE_RE.exec(line))) {
       const width = m[2];
       const length = m[3];
       const w = toInches(width);
       const l = toInches(length);
-      // Only pull front sizes (door fronts / drawer fronts)
+      // Only pull front sizes (door fronts / drawer fronts): keep rows whose
+      // label mentions "front", or rows inside a fronts section of the sheet
       const label0 = labelBefore(line, m.index) || "";
-      if (!/front/i.test(label0)) continue;
+      if (!/front/i.test(label0) && section !== "front") continue;
       // Filter noise: real part dims fall in a sane inch range
       if (!Number.isFinite(w) || !Number.isFinite(l)) continue;
       if (w < 2 || w > 120 || l < 2 || l > 120) continue;
