@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { base44 } from "@/api/base44Client";
 import { appParams } from "@/lib/app-params";
 import { getSizeBreakdown, splitDimList } from "./missingItemSizes";
+import { extractSizesFromPdf, inferPickupType } from "./pdfSizes";
 
 const API_BASE = "https://vivica-d92c9f97.base44.app/functions/reportMissingItem";
 
@@ -38,6 +39,34 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
     enabled: open && !!item?.id,
     staleTime: 30_000,
   });
+
+  // Sizes pulled from the PDFs attached to the production card
+  const pdfFiles = useMemo(
+    () => (item?.files || []).filter(f => f.url && /\.pdf$/i.test(f.url)),
+    [item?.id]
+  );
+  const [pdfOptions, setPdfOptions] = useState([]);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open || pdfFiles.length === 0) { setPdfOptions([]); setPdfLoading(false); return; }
+    let cancelled = false;
+    setPdfLoading(true);
+    (async () => {
+      try {
+        const results = await Promise.all(
+          pdfFiles.map(f => extractSizesFromPdf(f.url).catch(err => {
+            console.error("Failed to read sizes from attached PDF:", err);
+            return [];
+          }))
+        );
+        if (!cancelled) setPdfOptions(results.flat());
+      } finally {
+        if (!cancelled) setPdfLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, item?.id]);
 
   // One selectable row per size (so the user can report a single door at one size),
   // instead of one row bundling every size of the part.
@@ -98,8 +127,21 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
         });
       });
     });
+
+    (pdfOptions || []).forEach(p => {
+      const key = `pdf|${p.label}|${p.width}|${p.length}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({
+        key, label: p.label,
+        sizeText: [p.width, p.length].filter(Boolean).join(" x "),
+        pickup_type: inferPickupType(p.label),
+        room_name: p.room_name || null, cabinet_name: null,
+        qty: p.qty || 1, width: p.width, length: p.length,
+      });
+    });
     return out;
-  }, [cardParts]);
+  }, [cardParts, pdfOptions]);
 
   const showCustom = customMode || options.length === 0;
   const canSubmit = !!selectedKey || (showCustom && (customText.trim() || customType));
@@ -221,6 +263,10 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
 
           <div>
             <Label className="text-xs font-semibold text-slate-700">What's missing *</Label>
+
+            {pdfLoading && (
+              <p className="mt-1.5 text-xs text-slate-500 animate-pulse">📄 Reading sizes from attached PDF...</p>
+            )}
 
             {options.length > 0 && (
               <div className="mt-1.5 space-y-1.5 max-h-56 overflow-y-auto pr-1">
