@@ -15,7 +15,7 @@ const PRODUCTION_STAGES = [
   { id: "build", label: "Build" },
 ];
 
-export default function MissingItemRow({ item, card, projects, isAdmin, updating, onStatus, onSendToProduction, sending, onViewCard }) {
+export default function MissingItemRow({ item, card, projects, isAdmin, updating, onStatus, onSendToProduction, onBackToOpen, sending, onViewCard }) {
   const [sendStage, setSendStage] = useState("cut");
   const confirmed = JSON.parse(item.confirmed_by || "[]");
 
@@ -50,12 +50,14 @@ export default function MissingItemRow({ item, card, projects, isAdmin, updating
               View Card
             </button>
           )}
-          {item.production_item_id && card && card.stage && card.stage !== "complete" && (
-            card.stage ? (
+          {item.production_item_id && card && (
+            card.stage === "on_hold" ? (
+              <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 text-[10px] px-2 py-0">⏸ On Hold</Badge>
+            ) : card.stage && card.stage !== "complete" ? (
               <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0">🏭 In Production: {STAGE_LABELS[card.stage] || card.stage.replace(/_/g, " ")}</Badge>
-            ) : (
+            ) : !card.stage ? (
               <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 text-[10px] px-2 py-0">In Job Packet</Badge>
-            )
+            ) : null
           )}
           {item.cabinet_name && <span>· {item.cabinet_name}</span>}
           {getSizeBreakdown(item)
@@ -89,19 +91,21 @@ export default function MissingItemRow({ item, card, projects, isAdmin, updating
         </div>
       </div>
 
-      {isAdmin && !isDone && (
+      {isAdmin && (
         <div className="flex items-center gap-1.5 flex-wrap flex-shrink-0 mt-0.5">
-          <Select value={item.status} onValueChange={(v) => onStatus(item.id, v)}>
-            <SelectTrigger className="h-7 w-[136px] text-xs" disabled={updating === item.id}>
-              <SelectValue placeholder="Set status" />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUS_FLOW.map(s => (
-                <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {item.production_item_id && (
+          {!isDone && (
+            <Select value={item.status} onValueChange={(v) => onStatus(item.id, v)}>
+              <SelectTrigger className="h-7 w-[136px] text-xs" disabled={updating === item.id}>
+                <SelectValue placeholder="Set status" />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_FLOW.map(s => (
+                  <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {item.production_item_id && !isDone && (
             <>
               <Select value={sendStage} onValueChange={setSendStage}>
                 <SelectTrigger className="h-7 w-[110px] text-xs" disabled={sending === item.id}>
@@ -122,6 +126,16 @@ export default function MissingItemRow({ item, card, projects, isAdmin, updating
                 🏭 To Production
               </button>
             </>
+          )}
+          {item.status !== "Open" && (
+            <button
+              disabled={updating === item.id}
+              onClick={() => onBackToOpen?.(item)}
+              className="text-xs px-2.5 py-1 bg-slate-50 border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors disabled:opacity-50"
+              title="Take the card out of production (On Hold) and set this item back to Open"
+            >
+              ↩ Open
+            </button>
           )}
         </div>
       )}

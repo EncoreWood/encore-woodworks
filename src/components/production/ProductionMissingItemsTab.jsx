@@ -15,7 +15,6 @@ export default function ProductionMissingItemsTab({ currentUser }) {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterProject, setFilterProject] = useState("all");
-  const [showResolved, setShowResolved] = useState(false);
   const [updating, setUpdating] = useState(null);
   const [sending, setSending] = useState(null);
   const [expandedJobs, setExpandedJobs] = useState(() => new Set());
@@ -115,6 +114,29 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     }
   };
 
+  // Send a card out of production: card goes to On Hold, item goes back to Open
+  const sendBackToOpen = async (item) => {
+    setUpdating(item.id);
+    try {
+      await base44.entities.MissingItem.update(item.id, { status: "Open", resolved_date: "" });
+      if (item.production_item_id) {
+        try {
+          await base44.entities.ProductionItem.update(item.production_item_id, { stage: "on_hold" });
+          queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+        } catch (err) {
+          console.error("Failed to move card out of production:", err);
+        }
+      }
+      toast.success("Sent back to Open ✓");
+      queryClient.invalidateQueries({ queryKey: ["missingItems"] });
+    } catch (err) {
+      console.error("Failed to send item back to Open:", err);
+      toast.error("Failed to send back to Open");
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   // Send this item's linked production card back into the production flow (Cut stage)
   const sendCardToProduction = async (item, stage) => {
     if (!item.production_item_id) {
@@ -138,11 +160,8 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     }
   };
 
-  const visible = missingItems.filter(i => {
-    if (i.archived) return false;
-    if (!showResolved && DONE_STATUSES.includes(i.status)) return false;
-    return true;
-  });
+  // Completed items stay visible so per-room progress reflects them
+  const visible = missingItems.filter(i => !i.archived);
 
   const filtered = visible.filter(item => {
     if (filterStatus !== "all" && item.status !== filterStatus) return false;
@@ -200,12 +219,6 @@ export default function ProductionMissingItemsTab({ currentUser }) {
             {projects.map(p => <SelectItem key={p.id} value={p.id}>{p.project_name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <button
-          onClick={() => setShowResolved(v => !v)}
-          className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${showResolved ? "bg-green-100 border-green-300 text-green-800" : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"}`}
-        >
-          {showResolved ? "Hide Completed" : "Show Completed"}
-        </button>
       </div>
 
       {/* Grouped list */}
@@ -230,6 +243,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
             updating={updating}
             onStatus={callUpdateStatus}
             onSendToProduction={sendCardToProduction}
+            onBackToOpen={sendBackToOpen}
             sending={sending}
             onViewCard={setViewCardId}
             expandedJobs={expandedJobs}
