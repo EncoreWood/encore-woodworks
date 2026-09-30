@@ -37,15 +37,13 @@ async function extractLines(doc) {
   return lines;
 }
 
-// Which section of the cut sheet a line belongs to (door list PDFs group parts
-// under headers like "DOOR FRONTS", "DRAWER BOXES", ...).
-function sectionOf(line) {
+// Only these part types should surface in the missing-item dialog.
+// Returns a canonical label when the row is one of them, else null.
+function partTypeOf(line) {
   const l = line.toLowerCase();
-  if (/front/.test(l)) return "front";
-  if (/drawer\s*box|box/.test(l)) return "box";
-  if (/panel/.test(l)) return "panel";
-  if (/mold|crown/.test(l)) return "molding";
-  if (/hinge|glide|hardware|handle|knob|pull|slide/.test(l)) return "hardware";
+  if (/drawer\s*front/.test(l)) return "Drawer Front";
+  if (/door/.test(l)) return "Door";
+  if (/end\s*panel|slab\s*end|fend/.test(l)) return "End Panel";
   return null;
 }
 
@@ -72,37 +70,27 @@ export async function extractSizesFromPdf(url) {
   const lines = await extractLines(doc);
   const byKey = new Map();
 
-  let section = null;
   lines.forEach(line => {
-    // Track cut-sheet sections so only front rows are kept
-    const hasSize = SIZE_RE.test(line);
-    SIZE_RE.lastIndex = 0;
-    if (!hasSize) {
-      const sec = sectionOf(line);
-      if (sec) section = sec;
-      return;
-    }
+    // Only keep rows the sheet itself labels as door / drawer front / end panel
+    const partType = partTypeOf(line);
+    if (!partType) return;
 
     let m;
+    SIZE_RE.lastIndex = 0;
     while ((m = SIZE_RE.exec(line))) {
       const width = m[2];
       const length = m[3];
       const w = toInches(width);
       const l = toInches(length);
-      // Only pull front sizes (door fronts / drawer fronts): keep rows whose
-      // label mentions "front", or rows inside a fronts section of the sheet
-      const label0 = labelBefore(line, m.index) || "";
-      if (!/front/i.test(label0) && section !== "front") continue;
       // Filter noise: real part dims fall in a sane inch range
       if (!Number.isFinite(w) || !Number.isFinite(l)) continue;
       if (w < 2 || w > 120 || l < 2 || l > 120) continue;
       const qty = m[1] ? parseInt(m[1], 10) : 1;
-      const label = label0 || "Part";
-      const key = `${label.toLowerCase()}|${width}|${length}`;
+      const key = `${partType.toLowerCase()}|${width}|${length}`;
       if (byKey.has(key)) {
         byKey.get(key).qty += qty;
       } else {
-        byKey.set(key, { label, qty, width, length });
+        byKey.set(key, { label: partType, qty, width, length });
       }
     }
   });
