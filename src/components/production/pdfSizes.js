@@ -68,11 +68,14 @@ export async function extractSizesFromPdf(url) {
       const length = m[3];
       const w = toInches(width);
       const l = toInches(length);
+      // Only pull front sizes (door fronts / drawer fronts)
+      const label0 = labelBefore(line, m.index) || "";
+      if (!/front/i.test(label0)) continue;
       // Filter noise: real part dims fall in a sane inch range
       if (!Number.isFinite(w) || !Number.isFinite(l)) continue;
       if (w < 2 || w > 120 || l < 2 || l > 120) continue;
       const qty = m[1] ? parseInt(m[1], 10) : 1;
-      const label = labelBefore(line, m.index) || "Part";
+      const label = label0 || "Part";
       const key = `${label.toLowerCase()}|${width}|${length}`;
       if (byKey.has(key)) {
         byKey.get(key).qty += qty;
