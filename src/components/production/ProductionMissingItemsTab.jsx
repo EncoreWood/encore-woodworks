@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import MissingItemsGroupedList from "./MissingItemsGroupedList";
 import MissingItemCardViewerDialog from "./MissingItemCardViewerDialog";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
+import { format } from "date-fns";
 
 export default function ProductionMissingItemsTab({ currentUser }) {
   const queryClient = useQueryClient();
@@ -52,24 +53,29 @@ export default function ProductionMissingItemsTab({ currentUser }) {
 
   // Auto-sync: when a missing item's production card is actively in the shop
   // (cut / face frame / spray / build), its status should read "In Production"
-  // rather than "Ordered"/"Received". Synced once per record.
+  // rather than "Ordered"/"Received". When the card reaches the complete stage,
+  // the missing item is marked "Completed". Synced once per record.
   const autoSyncedIds = useRef(new Set());
   useEffect(() => {
     const ACTIVE_STAGES = ["cut", "face_frame", "spray", "build"];
-    const toSync = missingItems.filter(mi =>
-      !mi.archived &&
-      mi.production_item_id &&
-      !autoSyncedIds.current.has(mi.id) &&
-      ["Ordered", "Received"].includes(mi.status) &&
-      ACTIVE_STAGES.includes(cardById.get(mi.production_item_id)?.stage)
-    );
+    const toSync = missingItems.filter(mi => {
+      if (mi.archived || !mi.production_item_id || autoSyncedIds.current.has(mi.id)) return false;
+      const cardStage = cardById.get(mi.production_item_id)?.stage;
+      if (cardStage === "complete") return !DONE_STATUSES.includes(mi.status);
+      return ["Ordered", "Received"].includes(mi.status) && ACTIVE_STAGES.includes(cardStage);
+    });
     if (toSync.length === 0) return;
     toSync.forEach(mi => autoSyncedIds.current.add(mi.id));
     (async () => {
       let updated = 0;
       for (const mi of toSync) {
+        const cardStage = cardById.get(mi.production_item_id)?.stage;
+        const newStatus = cardStage === "complete" ? "Completed" : "In Production";
         try {
-          await base44.entities.MissingItem.update(mi.id, { status: "In Production" });
+          await base44.entities.MissingItem.update(mi.id, {
+            status: newStatus,
+            ...(newStatus === "Completed" ? { resolved_date: format(new Date(), "yyyy-MM-dd") } : {}),
+          });
           updated++;
         } catch (err) {
           console.error("Auto-sync missing item status failed:", err);

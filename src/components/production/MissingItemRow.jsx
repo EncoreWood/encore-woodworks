@@ -50,7 +50,7 @@ export default function MissingItemRow({ item, card, projects, isAdmin, updating
               View Card
             </button>
           )}
-          {item.production_item_id && card && (
+          {item.production_item_id && card && card.stage && card.stage !== "complete" && (
             card.stage ? (
               <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0">🏭 In Production: {STAGE_LABELS[card.stage] || card.stage.replace(/_/g, " ")}</Badge>
             ) : (

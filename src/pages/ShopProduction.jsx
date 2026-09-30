@@ -291,6 +291,21 @@ export default function ShopProduction() {
       try { await base44.entities.PickupItem.update(item.pickup_item_id, { production_stage: newStage }); queryClient.invalidateQueries({ queryKey: ["pickupItems"] }); } catch (e) {}
     }
 
+    // When the card completes, mark its linked missing items as Completed
+    // (and pull them out of the production-stage view on the Missing Items page)
+    if (newStage === "complete") {
+      try {
+        const linked = await base44.entities.MissingItem.filter({ production_item_id: itemId });
+        const toComplete = linked.filter(mi => !mi.archived && !["Completed", "Resolved"].includes(mi.status));
+        for (const mi of toComplete) {
+          try {
+            await base44.entities.MissingItem.update(mi.id, { status: "Completed", resolved_date: localDateStr });
+          } catch (e) { console.error("Failed to complete linked missing item:", e); }
+        }
+        if (toComplete.length > 0) queryClient.invalidateQueries({ queryKey: ["missingItems"] });
+      } catch (e) { console.error("Failed to fetch linked missing items:", e); }
+    }
+
     if (item?.project_id) {
       try {
         // Use locally-cached project data — avoids extra network round-trip
