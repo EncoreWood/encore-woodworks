@@ -131,7 +131,7 @@ export default function ShopProduction() {
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.ProductionItem.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["productionItems"] }); setShowForm(false); setEditingItem(null); }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["productionItems"] }); setShowForm(false); setEditingItem(null); setPacketsFormContext(null); }
   });
 
   const updateMutation = useMutation({
@@ -151,7 +151,7 @@ export default function ShopProduction() {
         }
       }
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["productionItems"] }); setShowForm(false); setEditingItem(null); }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["productionItems"] }); setShowForm(false); setEditingItem(null); setPacketsFormContext(null); }
   });
 
   const deleteMutation = useMutation({
@@ -667,7 +667,7 @@ export default function ShopProduction() {
           open={showForm}
           onOpenChange={(open) => { setShowForm(open); if (!open) { setEditingItem(null); setPacketsFormContext(null); } }}
           onSubmit={(data) => {
-            const finalData = packetsFormContext
+            const finalData = (packetsFormContext && !editingItem?.id)
               ? { ...data, is_job_info: false, project_id: packetsFormContext.project.id, project_name: packetsFormContext.project.project_name, room_name: packetsFormContext.roomName }
               : data;
             if (editingItem?.id) {
