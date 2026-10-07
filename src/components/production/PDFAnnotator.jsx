@@ -76,6 +76,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const [aiNotes, setAiNotes] = useState(initialNotes);
   const [commentInput, setCommentInput] = useState(null); // pixel pos + page for comment input placement
   const [commentValue, setCommentValue] = useState("");
+  const [editingComment, setEditingComment] = useState(null); // annList index being edited
+  const [commentEditText, setCommentEditText] = useState("");
 
   useEffect(() => { setAiNotes(initialNotes); }, [initialNotes]);
   useEffect(() => { setAnnList(annotations); }, [annotations]);
@@ -462,10 +464,14 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
 
   const commentDragRef = useRef(null);
 
+  const canEditComment = (ann) => !ann.author || ann.author === currentUserName;
+
   const startCommentDrag = (e, idx, ann) => {
     e.stopPropagation();
+    // Don't hijack pointer events while the edit textarea is open
+    if (editingComment !== null) return;
     e.preventDefault();
-    commentDragRef.current = { idx, moved: false, sx: e.clientX, sy: e.clientY, ox: ann.x, oy: ann.y };
+    commentDragRef.current = { idx, moved: false, sx: e.clientX, sy: e.clientY, ox: ann.x, oy: ann.y, canEdit: canEditComment(ann) };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
@@ -486,10 +492,26 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const endCommentDrag = () => {
     const d = commentDragRef.current;
     commentDragRef.current = null;
-    if (d && d.moved) {
+    if (!d) return;
+    if (d.moved) {
       // Auto-save the new position (viewer mode has no Save button)
       onSave(annList, aiNotes, true);
+    } else if (d.canEdit) {
+      // A plain click on your own comment opens the inline editor
+      setEditingComment(d.idx);
+      setCommentEditText(annList[d.idx]?.text ?? "");
     }
+  };
+
+  const commitCommentEdit = () => {
+    if (editingComment === null) return;
+    const idx = editingComment;
+    const val = commentEditText.trim();
+    const next = !val ? annList.filter((_, i) => i !== idx) : annList.map((a, i) => i === idx ? { ...a, text: val } : a);
+    setAnnList(next);
+    setEditingComment(null);
+    setCommentEditText("");
+    onSave(next, aiNotes, true);
   };
 
   const commitNoteEdit = () => {
@@ -1032,16 +1054,32 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                           onPointerUp={endCommentDrag}
                           onPointerCancel={() => { commentDragRef.current = null; }}
                         >
+                          {editingComment === idx ? (
+                            <textarea
+                              autoFocus
+                              rows={2}
+                              value={commentEditText}
+                              onChange={e => setCommentEditText(e.target.value)}
+                              onBlur={commitCommentEdit}
+                              onKeyDown={e => {
+                                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) commitCommentEdit();
+                                if (e.key === "Escape") { setEditingComment(null); setCommentEditText(""); }
+                              }}
+                              className="w-56 border-2 border-violet-500 rounded-lg p-2 text-xs shadow-lg outline-none bg-white"
+                              placeholder="Edit comment..."
+                            />
+                          ) : (
                           <div
                             className="bg-violet-50 border-2 border-violet-500 rounded-lg px-2.5 py-1.5 shadow-md"
-                            title={ann.author ? `Comment by ${ann.author}` : "Team comment"}
+                            title={ann.author ? (canEditComment(ann) ? `Comment by ${ann.author} — click to edit` : `Comment by ${ann.author}`) : "Team comment"}
                           >
                             {ann.author && (
                               <p className="text-[10px] font-bold text-violet-700 leading-tight">{ann.author}</p>
                             )}
                             <p className="text-xs text-slate-800 leading-snug whitespace-pre-wrap">{ann.text}</p>
                           </div>
-                          {tool === "comment" && (
+                          )}
+                          {(tool === "comment" || canEditComment(ann)) && (
                             <button
                               type="button"
                               onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
