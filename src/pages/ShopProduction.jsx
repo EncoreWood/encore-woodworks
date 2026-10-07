@@ -350,12 +350,14 @@ export default function ShopProduction() {
     setCurrentAnnotations(file.annotations || []);
   };
 
-  const handleSaveAnnotations = (annotations) => {
+  const handleSaveAnnotations = (annotations, _notes, keepOpen) => {
     const { item, fileIndex } = annotatingPdf;
     const updatedFiles = [...item.files];
     updatedFiles[fileIndex] = { ...updatedFiles[fileIndex], annotations };
     updateMutation.mutate({ id: item.id, data: { files: updatedFiles }, syncToProject: item.project_id ? { project_id: item.project_id, room_name: item.room_name } : null });
-    setAnnotatingPdf(null); setCurrentPdfUrl(null); setCurrentAnnotations([]);
+    // keepOpen = comment auto-save from read-only viewer — keep the viewer open
+    if (!keepOpen) { setAnnotatingPdf(null); setCurrentPdfUrl(null); setCurrentAnnotations([]); }
+    else setCurrentAnnotations(annotations);
   };
 
   // PTS stats — read from ColumnMoveLog, summing points_awarded by to_column within time windows
@@ -768,6 +770,7 @@ export default function ShopProduction() {
             pdfUrl={currentPdfUrl}
             annotations={currentAnnotations}
             onSave={handleSaveAnnotations}
+            currentUserName={currentUser?.full_name || currentUser?.email || ""}
             roomInfo={{
               projectId: annotatingPdf.item.project_id,
               projectName: annotatingPdf.item.project_name,

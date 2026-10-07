@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Pencil, Eraser, Download, Trash2, ZoomIn, ZoomOut, RotateCw, Undo2, Type, ArrowRight, Minus, Highlighter, Hand, ClipboardCheck, ClipboardList, FolderOpen } from "lucide-react";
+import { Pencil, Eraser, Download, Trash2, ZoomIn, ZoomOut, RotateCw, Undo2, Type, ArrowRight, Minus, Highlighter, Hand, ClipboardCheck, ClipboardList, FolderOpen, MessageSquare, X } from "lucide-react";
 import RoomFilesModal from "@/components/production/RoomFilesModal";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
@@ -24,7 +24,7 @@ const HIGHLIGHT_COLORS = [
 
 const DEFAULT_SIZE = { width: 595, height: 842 };
 
-export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", hideDownload = false, onRequestPickup, onRequestMissing, roomInfo = null, initialMode = "view" }) {
+export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", hideDownload = false, onRequestPickup, onRequestMissing, roomInfo = null, initialMode = "view", currentUserName = "" }) {
   const [numPages, setNumPages] = useState(null);
   // The page currently in view (scroll-spy) — drives Undo / Clear Page and the header.
   const [pageNumber, setPageNumber] = useState(1);
@@ -74,6 +74,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const [color, setColor] = useState("#e53e3e");
   const [highlightColor, setHighlightColor] = useState("#f59e0b");
   const [aiNotes, setAiNotes] = useState(initialNotes);
+  const [commentInput, setCommentInput] = useState(null); // pixel pos + page for comment input placement
+  const [commentValue, setCommentValue] = useState("");
 
   useEffect(() => { setAiNotes(initialNotes); }, [initialNotes]);
   useEffect(() => { setAnnList(annotations); }, [annotations]);
@@ -89,6 +91,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       setPendingHighlights({});
       setLastHighlight({});
       setMissingRects({});
+      setCommentInput(null);
+      setCommentValue("");
       setAnnotateMode(initialMode === "annotate");
       setTool(initialMode === "annotate" ? "pen" : "pan");
     }
@@ -257,6 +261,9 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     } else if (tool === "text") {
       setTextInput({ ...pos, page });
       setTextValue("");
+    } else if (tool === "comment") {
+      setCommentInput({ ...pos, page });
+      setCommentValue("");
     }
   };
 
@@ -368,7 +375,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         return Math.hypot(ann.start.x * w - x, ann.start.y * h - y) >= t &&
                Math.hypot(ann.end.x * w - x, ann.end.y * h - y) >= t;
       }
-      if (ann.type === "text") return Math.hypot(ann.x * w - x, ann.y * h - y) >= t * 2;
+      if (ann.type === "text" || ann.type === "comment") return Math.hypot(ann.x * w - x, ann.y * h - y) >= t * 2;
       return true;
     }));
     // Keep pending pickup highlights in sync with the eraser (pending only holds highlights)
@@ -394,6 +401,28 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     }
     setTextInput(null);
     setTextValue("");
+  };
+
+  const commitComment = () => {
+    if (commentInput && commentValue.trim()) {
+      const { width: w, height: h } = getSize(commentInput.page);
+      const ann = {
+        type: "comment",
+        x: commentInput.x / w,
+        y: commentInput.y / h,
+        text: commentValue.trim(),
+        author: currentUserName,
+        color: "#7c3aed",
+        page: commentInput.page,
+        created_at: new Date().toISOString()
+      };
+      const next = [...annList, ann];
+      setAnnList(next);
+      // In read-only viewer mode there is no Save button — persist the comment right away
+      if (!annotateMode) onSave(next, aiNotes, true);
+    }
+    setCommentInput(null);
+    setCommentValue("");
   };
 
   // ── Text notes: drag to move, click to edit ────────────────────────────────
@@ -647,7 +676,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     { key: "eraser",    label: "Eraser",    icon: Eraser,     activeClass: "bg-slate-600 hover:bg-slate-700" },
   ];
 
-  const cursorStyle = tool === "pan" ? (panStartRef.current ? "grabbing" : "grab") : tool === "text" ? "text" : (tool === "highlight" || tool === "missing") ? "cell" : "crosshair";
+  const cursorStyle = tool === "pan" ? (panStartRef.current ? "grabbing" : "grab") : tool === "text" ? "text" : tool === "comment" ? "pointer" : (tool === "highlight" || tool === "missing") ? "cell" : "crosshair";
 
   if (!pdfUrl) return null;
 
@@ -686,6 +715,21 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
               </Button>
               <Button variant="outline" size="sm" onClick={clearPage}>Clear Page</Button>
             </>
+          )}
+
+          {/* Comments — available from the viewer too, so team members can pin notes on the plan */}
+          <Button
+            variant={tool === "comment" ? "default" : "outline"}
+            size="sm"
+            onClick={() => { setTool("comment"); setTextInput(null); }}
+            className={tool === "comment" ? "bg-violet-600 hover:bg-violet-700" : "text-violet-600 hover:text-violet-700"}
+          >
+            <MessageSquare className="w-4 h-4 mr-1" /> Comments
+          </Button>
+          {tool === "comment" && (
+            <Button variant="outline" size="sm" onClick={() => setTool(annotateMode ? "pen" : "pan")}>
+              Done
+            </Button>
           )}
 
           {/* Report Missing — its own highlight-selection mode, available from the viewer too */}
@@ -861,8 +905,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                       style={{
                         cursor: cursorStyle,
                         touchAction: "none",
-                        // Capture input only in annotate/missing modes; fingers still scroll natively
-                        pointerEvents: annotateMode || tool === "missing" ? "auto" : "none",
+                        // Capture input only in annotate/missing/comment modes; fingers still scroll natively
+                        pointerEvents: annotateMode || tool === "missing" || tool === "comment" ? "auto" : "none",
                       }}
                       width={size.width}
                       height={size.height}
@@ -936,6 +980,78 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                         </div>
                       );
                     })}
+
+                    {/* Comment bubbles — pinned team comments; when the comment tool is active, clicking the × removes it */}
+                    {annList.map((ann, idx) => {
+                      if (ann.type !== "comment" || ann.page !== p) return null;
+                      return (
+                        <div
+                          key={`cmt-${idx}`}
+                          style={{
+                            position: "absolute",
+                            left: ann.x * size.width + 6,
+                            top: ann.y * size.height - 6,
+                            zIndex: 22,
+                            maxWidth: Math.min(260, size.width * 0.55),
+                          }}
+                          className="group flex items-start gap-1"
+                          onPointerDown={(e) => e.stopPropagation()}
+                        >
+                          <div
+                            className="bg-violet-50 border-2 border-violet-500 rounded-lg px-2.5 py-1.5 shadow-md"
+                            title={ann.author ? `Comment by ${ann.author}` : "Team comment"}
+                          >
+                            {ann.author && (
+                              <p className="text-[10px] font-bold text-violet-700 leading-tight">{ann.author}</p>
+                            )}
+                            <p className="text-xs text-slate-800 leading-snug whitespace-pre-wrap">{ann.text}</p>
+                          </div>
+                          {tool === "comment" && (
+                            <button
+                              type="button"
+                              onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
+                              onClick={() => {
+                                const next = annList.filter((_, i) => i !== idx);
+                                setAnnList(next);
+                                if (!annotateMode) onSave(next, aiNotes, true);
+                              }}
+                              className="bg-white border border-slate-300 rounded-full p-0.5 shadow hover:bg-red-50 hover:border-red-400 text-slate-500 hover:text-red-600"
+                              title="Delete comment"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Floating comment input */}
+                    {commentInput && commentInput.page === p && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          left: commentInput.x,
+                          top: commentInput.y - 10,
+                          zIndex: 30,
+                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
+                      >
+                        <textarea
+                          autoFocus
+                          rows={2}
+                          value={commentValue}
+                          onChange={e => setCommentValue(e.target.value)}
+                          onBlur={commitComment}
+                          onKeyDown={e => {
+                            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) commitComment();
+                            if (e.key === "Escape") { setCommentInput(null); setCommentValue(""); }
+                          }}
+                          className="w-56 border-2 border-violet-500 rounded-lg p-2 text-xs shadow-lg outline-none bg-white"
+                          placeholder={currentUserName ? `Comment as ${currentUserName}... (Enter to post)` : "Type comment... (Enter to post)"}
+                        />
+                        <p className="text-[10px] text-violet-700 mt-0.5 px-1">Ctrl+Enter to post · Esc to cancel</p>
+                      </div>
+                    )}
 
                     {/* Floating text input */}
                     {textInput && textInput.page === p && (
