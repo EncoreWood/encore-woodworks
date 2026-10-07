@@ -460,6 +460,38 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     }
   };
 
+  const commentDragRef = useRef(null);
+
+  const startCommentDrag = (e, idx, ann) => {
+    e.stopPropagation();
+    e.preventDefault();
+    commentDragRef.current = { idx, moved: false, sx: e.clientX, sy: e.clientY, ox: ann.x, oy: ann.y };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const moveCommentDrag = (e) => {
+    const d = commentDragRef.current;
+    if (!d) return;
+    const dx = e.clientX - d.sx, dy = e.clientY - d.sy;
+    if (!d.moved && Math.hypot(dx, dy) < 4) return;
+    d.moved = true;
+    const ann = annList[d.idx];
+    const live = liveScaleRef.current || 1;
+    const { width: w, height: h } = getSize(ann?.page ?? pageNumber);
+    const nx = Math.max(0, Math.min(1, d.ox + (dx / live) / w));
+    const ny = Math.max(0, Math.min(1, d.oy + (dy / live) / h));
+    setAnnList(prev => prev.map((a, i) => i === d.idx ? { ...a, x: nx, y: ny } : a));
+  };
+
+  const endCommentDrag = () => {
+    const d = commentDragRef.current;
+    commentDragRef.current = null;
+    if (d && d.moved) {
+      // Auto-save the new position (viewer mode has no Save button)
+      onSave(annList, aiNotes, true);
+    }
+  };
+
   const commitNoteEdit = () => {
     if (editingNote === null) return;
     const idx = editingNote;
@@ -994,8 +1026,11 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                             zIndex: 22,
                             maxWidth: Math.min(260, size.width * 0.55),
                           }}
-                          className="group flex items-start gap-1"
-                          onPointerDown={(e) => e.stopPropagation()}
+                          className="group flex items-start gap-1 cursor-move"
+                          onPointerDown={(e) => startCommentDrag(e, idx, ann)}
+                          onPointerMove={moveCommentDrag}
+                          onPointerUp={endCommentDrag}
+                          onPointerCancel={() => { commentDragRef.current = null; }}
                         >
                           <div
                             className="bg-violet-50 border-2 border-violet-500 rounded-lg px-2.5 py-1.5 shadow-md"
