@@ -382,7 +382,9 @@ export default function ProjectTimelineSection({ project }) {
                         </div>
                         {/* Bar area */}
                         <div className="flex-1 relative bg-slate-50/50">
-                          {style.isDiamond ? (
+                          {!event.start_date ? (
+                            <span className="absolute inset-0 flex items-center px-3 text-[11px] text-slate-300 select-none pointer-events-none">No dates set</span>
+                          ) : style.isDiamond ? (
                             <button
                               type="button"
                               disabled={clientView}

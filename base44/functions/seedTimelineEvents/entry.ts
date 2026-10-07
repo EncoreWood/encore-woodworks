@@ -16,23 +16,14 @@ Deno.serve(async (req) => {
       return Response.json({ success: true, message: 'Timeline events already exist', count: existing.length });
     }
 
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    const startDate = project.start_date || todayStr;
-
-    const addDays = (dateStr, days) => {
-      const d = new Date(dateStr);
-      d.setDate(d.getDate() + days);
-      return d.toISOString().split('T')[0];
-    };
-
+    // Phases are created WITHOUT dates — the team fills dates in manually.
     const defaults = [
-      { event_name: "Design", event_type: "phase", color: "#3b82f6", start_date: addDays(startDate, 0), end_date: addDays(startDate, 14), sort_order: 0 },
-      { event_name: "Orders", event_type: "phase", color: "#f59e0b", start_date: addDays(startDate, 14), end_date: addDays(startDate, 28), sort_order: 1 },
-      { event_name: "Prep", event_type: "phase", color: "#8b5cf6", start_date: addDays(startDate, 28), end_date: addDays(startDate, 42), sort_order: 2 },
-      { event_name: "Production", event_type: "phase", color: "#f97316", start_date: addDays(startDate, 42), end_date: addDays(startDate, 84), sort_order: 3 },
-      { event_name: "Install", event_type: "phase", color: "#14b8a6", start_date: addDays(startDate, 84), end_date: addDays(startDate, 98), sort_order: 4 },
-      { event_name: "Complete", event_type: "milestone", color: "#22c55e", start_date: addDays(startDate, 98), end_date: addDays(startDate, 98), sort_order: 5 },
+      { event_name: "Design", event_type: "phase", color: "#3b82f6", sort_order: 0 },
+      { event_name: "Orders", event_type: "phase", color: "#f59e0b", sort_order: 1 },
+      { event_name: "Prep", event_type: "phase", color: "#8b5cf6", sort_order: 2 },
+      { event_name: "Production", event_type: "phase", color: "#f97316", sort_order: 3 },
+      { event_name: "Install", event_type: "phase", color: "#14b8a6", sort_order: 4 },
+      { event_name: "Complete", event_type: "milestone", color: "#22c55e", sort_order: 5 },
     ];
 
     const records = defaults.map(e => ({
@@ -40,8 +31,6 @@ Deno.serve(async (req) => {
       project_name: project.project_name || '',
       event_name: e.event_name,
       event_type: e.event_type,
-      start_date: e.start_date,
-      end_date: e.end_date,
       color: e.color,
       is_client_visible: true,
       is_completed: false,
