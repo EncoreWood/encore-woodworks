@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Boxes } from "lucide-react";
+import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Boxes } from "lucide-react";
 import MissingItemBadge from "@/components/production/MissingItemBadge";
 import GlbViewer from "@/components/cad/GlbViewer";
 import DxfViewer from "@/components/cad/DxfViewer";
@@ -267,7 +267,7 @@ export default function ProductionCard({
                 }`}
                 title={item.is_urgent ? "Remove urgent flag" : "Mark as urgent — moves card to top"}
               >
-                <Flag className="w-3 h-3" fill={item.is_urgent ? "currentColor" : "none"} />
+                <Star className="w-3.5 h-3.5" fill={item.is_urgent ? "currentColor" : "none"} />
               </button>
             )}
 
