@@ -49,6 +49,8 @@ import ProjectEmailsTab from "../components/projects/ProjectEmailsTab";
 import ProjectChatTab from "../components/projects/ProjectChatTab";
 import JobPhotosTab from "../components/projects/JobPhotosTab";
 import EstimatesProposalTab from "../components/projects/EstimatesProposalTab";
+import ProjectFilesPanel from "../components/projects/ProjectFilesPanel";
+import ProjectOverviewCards from "../components/projects/ProjectOverviewCards";
 import ProjectMeetingsTab from "../components/projects/ProjectMeetingsTab";
 import { useProjectNotifications, countsFor } from "@/hooks/useProjectNotifications";
 import UnreadBadge from "@/components/projects/UnreadBadge";
@@ -138,6 +140,13 @@ export default function ProjectDetails() {
     queryFn: () => base44.entities.ProductionItem.filter({ project_id: projectId }),
     enabled: !!projectId,
     staleTime: 30_000,
+  });
+
+  const { data: meetings = [] } = useQuery({
+    queryKey: ["portalMeetings", projectId],
+    queryFn: () => base44.entities.PortalMeeting.filter({ project_id: projectId }),
+    enabled: !!projectId,
+    staleTime: 30000,
   });
 
   const { data: project, isLoading } = useQuery({
@@ -393,6 +402,7 @@ export default function ProjectDetails() {
           <div className="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-slate-100 p-1 w-fit flex-wrap">
             {[
               { key: "project", label: "Project", count: unread.notes, channel: "note_read_at" },
+              { key: "info", label: "Project Info" },
               { key: "onsite", label: "Onsite" },
               { key: "financials", label: "Financials" },
               { key: "client_relations", label: "Client Relations", count: (unread.meetings || 0) + (unread.messages || 0) },
@@ -426,15 +436,20 @@ export default function ProjectDetails() {
             <ProjectEmailsTab project={project} />
           </div>
         )}
-        {(activeTab === "project" || currentUser?.role !== "admin") && (
+        {(activeTab === "project" || activeTab === "info" || currentUser?.role !== "admin") && (
         <>
-        {/* Full-width Project Timeline */}
-        <ProjectTimelineSection project={project} />
+        {(activeTab === "project" || currentUser?.role !== "admin") && (
+          <ProjectTimelineSection project={project} />
+        )}
 
-        <div className="space-y-6">
-          {/* Rooms + side sections, full width */}
-          <div className="space-y-6">
+        {activeTab === "project" && currentUser?.role === "admin" && (
+          <ProjectOverviewCards project={project} meetings={meetings} />
+        )}
+
+        <div className={activeTab === "info" ? "grid grid-cols-1 xl:grid-cols-3 items-start gap-6" : "space-y-6"}>
+          <div className={activeTab === "info" ? "xl:col-span-2 space-y-6" : "space-y-6"}>
             {/* Rooms */}
+            {(activeTab === "info" || currentUser?.role !== "admin") && (
             <Card className="p-6 bg-white border-0 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-slate-900">Rooms ({project.rooms?.length || 0})</h2>
@@ -631,9 +646,14 @@ export default function ProjectDetails() {
                 <p className="text-sm text-slate-500 text-center py-8">No rooms added yet. Click "Add Room" to get started.</p>
               )}
             </Card>
+            )}
           </div>
 
-          {/* Right Column */}
+          {activeTab === "info" && (
+            <ProjectFilesPanel project={project} onSave={(data) => updateMutation.mutate(data)} />
+          )}
+
+          {activeTab !== "info" && (
           <div className="space-y-6">
             {/* Job Photos */}
             {(() => {
@@ -663,8 +683,10 @@ export default function ProjectDetails() {
             {/* Payment Log — admins use the Financials tab; still shown inline for non-admins */}
             {currentUser?.role !== "admin" && <PaymentLog project={project} onSave={(data) => updateMutation.mutate(data)} />}
           </div>
+          )}
         </div>
 
+        {activeTab !== "info" && (<>
         {/* Full-width sections below grid */}
         {/* Specifications */}
         {(project.cabinet_style || project.hardware_type || project.finish || project.wood_types?.length > 0 || project.project_url || project.notes) && (
@@ -744,8 +766,8 @@ export default function ProjectDetails() {
           </Card>
         )}
 
-        {/* Project Files */}
-        {project.files && project.files.filter(f => { const ext = (f.name||"").toLowerCase().split('.').pop(); return f.tag !== "cad_dxf" && f.tag !== "cad_file" && ext !== "dxf" && ext !== "glb" && ext !== "gltf"; }).length > 0 && (
+        {/* Project Files (non-admins — admins use the Project Info tab) */}
+        {currentUser?.role !== "admin" && project.files && project.files.filter(f => { const ext = (f.name||"").toLowerCase().split('.').pop(); return f.tag !== "cad_dxf" && f.tag !== "cad_file" && ext !== "dxf" && ext !== "glb" && ext !== "gltf"; }).length > 0 && (
           <Card className="p-6 bg-white border-0 shadow-sm">
             {(() => { const nonCadFiles = project.files.filter(f => { const ext = (f.name||"").toLowerCase().split('.').pop(); return f.tag !== "cad_dxf" && f.tag !== "cad_file" && ext !== "dxf" && ext !== "glb" && ext !== "gltf"; }); return (<>
               <h2 className="text-lg font-semibold text-slate-900 mb-4">Project Files ({nonCadFiles.length})</h2>
@@ -758,6 +780,7 @@ export default function ProjectDetails() {
 
         {/* CAD Drawings */}
         <CadDrawingsSection project={project} currentUser={currentUser} onSave={(data) => updateMutation.mutateAsync(data)} />
+        </>)}
 
         </>
         )}
