@@ -741,6 +741,9 @@ export default function ShopProduction() {
             onRequestPickup={({ crops, pageDataUrl, pageNumber }) => {
               setPickupFromHighlight({ crops, pageDataUrl, pageNumber, productionItem: annotatingPdf.item, currentUser });
             }}
+            onRequestMissing={({ crops, pageDataUrl, pageNumber }) => {
+              setPickupFromHighlight({ crops, pageDataUrl, pageNumber, productionItem: annotatingPdf.item, currentUser });
+            }}
           />
         )}
 

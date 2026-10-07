@@ -390,6 +390,7 @@ export default function JobMeasurementsTab({ project }) {
           pdfUrl={annotatingItem.measurement.file_url}
           annotations={(() => { try { return JSON.parse(annotatingItem.measurement.annotations || "[]"); } catch { return []; } })()}
           onSave={(anns) => handleSaveAnnotations(anns)}
+          initialMode="annotate"
           hideDownload={false}
         />
       )}

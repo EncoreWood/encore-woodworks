@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Pencil, Eraser, Download, Trash2, ZoomIn, ZoomOut, RotateCw, Undo2, Type, ArrowRight, Minus, Highlighter, Hand, ClipboardCheck, FolderOpen } from "lucide-react";
+import { Pencil, Eraser, Download, Trash2, ZoomIn, ZoomOut, RotateCw, Undo2, Type, ArrowRight, Minus, Highlighter, Hand, ClipboardCheck, ClipboardList, FolderOpen } from "lucide-react";
 import RoomFilesModal from "@/components/production/RoomFilesModal";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
@@ -24,7 +24,7 @@ const HIGHLIGHT_COLORS = [
 
 const DEFAULT_SIZE = { width: 595, height: 842 };
 
-export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", hideDownload = false, onRequestPickup, roomInfo = null }) {
+export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", hideDownload = false, onRequestPickup, onRequestMissing, roomInfo = null, initialMode = "view" }) {
   const [numPages, setNumPages] = useState(null);
   // The page currently in view (scroll-spy) — drives Undo / Clear Page and the header.
   const [pageNumber, setPageNumber] = useState(1);
@@ -34,7 +34,9 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const [liveScale, setLiveScale] = useState(1);
   const [pinchPage, setPinchPage] = useState(null);
   const [rotation, setRotation] = useState(90);
-  const [tool, setTool] = useState("pen");
+  // "view" = read-only viewer (tools hidden); "annotate" = full editing tools
+  const [annotateMode, setAnnotateMode] = useState(initialMode === "annotate");
+  const [tool, setTool] = useState(initialMode === "annotate" ? "pen" : "pan");
   const [isPointerDown, setIsPointerDown] = useState(false);
   // Which page a draw gesture started on (live previews only render there)
   const [drawingPage, setDrawingPage] = useState(null);
@@ -66,6 +68,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const [textValue, setTextValue] = useState("");
   const [lastHighlight, setLastHighlight] = useState({});   // page → most recent highlight ann (for button positioning)
   const [pendingHighlights, setPendingHighlights] = useState({}); // page → highlight anns not yet turned into pickups
+  const [missingRects, setMissingRects] = useState({}); // page → transient selection rects for missing-item reporting (never saved)
   const [showRoomInfo, setShowRoomInfo] = useState(false);
 
   const [color, setColor] = useState("#e53e3e");
@@ -85,8 +88,11 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       setPanOffsets({});
       setPendingHighlights({});
       setLastHighlight({});
+      setMissingRects({});
+      setAnnotateMode(initialMode === "annotate");
+      setTool(initialMode === "annotate" ? "pen" : "pan");
     }
-  }, [open, pdfUrl]);
+  }, [open, pdfUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fit the PDF page to the available container width so it uses the screen
   // instead of opening at a tiny fixed zoom.
@@ -245,7 +251,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     } else if (tool === "eraser") {
       setIsPointerDown(true);
       eraseAt(pos, page);
-    } else if (tool === "arrow" || tool === "line" || tool === "highlight") {
+    } else if (tool === "arrow" || tool === "line" || tool === "highlight" || tool === "missing") {
       setIsPointerDown(true);
       setCurrentLine({ start: npos, end: npos });
     } else if (tool === "text") {
@@ -277,7 +283,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       setCurrentPath(prev => [...prev, npos]);
     } else if (tool === "eraser") {
       eraseAt(pos, page);
-    } else if (tool === "arrow" || tool === "line" || tool === "highlight") {
+    } else if (tool === "arrow" || tool === "line" || tool === "highlight" || tool === "missing") {
       setCurrentLine(prev => prev ? { ...prev, end: npos } : null);
     }
   };
@@ -322,6 +328,22 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         setAnnList(prev => [...prev, hl]);
         setLastHighlight(prev => ({ ...prev, [page]: hl }));
         setPendingHighlights(prev => ({ ...prev, [page]: [...(prev[page] || []), hl] }));
+      }
+      setCurrentLine(null);
+    } else if (tool === "missing" && currentLine) {
+      const rw = Math.abs(npos.x - currentLine.start.x);
+      const rh = Math.abs(npos.y - currentLine.start.y);
+      if (rw > 0.01 && rh > 0.01) {
+        setMissingRects(prev => ({
+          ...prev,
+          [page]: [...(prev[page] || []), {
+            x: Math.min(currentLine.start.x, npos.x),
+            y: Math.min(currentLine.start.y, npos.y),
+            w: rw,
+            h: rh,
+            page
+          }]
+        }));
       }
       setCurrentLine(null);
     }
@@ -422,6 +444,14 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   };
 
   const handleUndo = () => {
+    // In missing-selection mode, undo removes the last selection rect instead of an annotation
+    if (tool === "missing") {
+      setMissingRects(prev => {
+        if (!prev[pageNumber]?.length) return prev;
+        return { ...prev, [pageNumber]: prev[pageNumber].slice(0, -1) };
+      });
+      return;
+    }
     const pageAnns = annList.filter(a => a.page === pageNumber);
     if (!pageAnns.length) return;
     const last = pageAnns[pageAnns.length - 1];
@@ -435,18 +465,20 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     }
   };
 
-  const clearPage = () => setAnnList(prev => prev.filter(a => a.page !== pageNumber));
-  const clearAll = () => setAnnList([]);
+  const clearPage = () => {
+    setAnnList(prev => prev.filter(a => a.page !== pageNumber));
+    setMissingRects(prev => ({ ...prev, [pageNumber]: [] }));
+  };
+  const clearAll = () => { setAnnList([]); setMissingRects({}); };
   const handleSave = () => { onSave(annList, aiNotes); onOpenChange(false); };
 
-  // ── Capture highlighted region + full page as images for AI pick-up extraction ──
-  const handleCreatePickup = (page) => {
-    const hls = pendingHighlights[page];
-    if (!hls?.length || !onRequestPickup) return;
+  // ── Capture highlighted regions + full page as images for AI extraction ──
+  const captureCrops = (rects, page) => {
+    if (!rects?.length) return null;
     const pageCanvas = pageRefs.current[page]?.querySelector(".react-pdf__Page__canvas");
-    if (!pageCanvas) return;
+    if (!pageCanvas) return null;
     const PW = pageCanvas.width, PH = pageCanvas.height;
-    const crops = hls.map(hl => {
+    const crops = rects.map(hl => {
       const sx = Math.max(0, Math.round(hl.x * PW));
       const sy = Math.max(0, Math.round(hl.y * PH));
       const sw = Math.max(1, Math.min(PW - sx, Math.round(hl.w * PW)));
@@ -462,10 +494,26 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     });
     let pageDataUrl = null;
     try { pageDataUrl = pageCanvas.toDataURL("image/jpeg", 0.7); } catch {}
+    return { crops, pageDataUrl, pageNumber: page };
+  };
 
-    onRequestPickup({ crops, pageDataUrl, pageNumber: page });
+  const handleCreatePickup = (page) => {
+    const hls = pendingHighlights[page];
+    if (!hls?.length || !onRequestPickup) return;
+    const data = captureCrops(hls, page);
+    if (!data) return;
+    onRequestPickup(data);
     setPendingHighlights(prev => ({ ...prev, [page]: [] }));
     setLastHighlight(prev => ({ ...prev, [page]: null }));
+  };
+
+  const handleReportMissing = (page) => {
+    const rects = missingRects[page];
+    if (!rects?.length || !onRequestMissing) return;
+    const data = captureCrops(rects, page);
+    if (!data) return;
+    onRequestMissing(data);
+    setMissingRects(prev => ({ ...prev, [page]: [] }));
   };
 
   // ── Draw arrow helper (pixel coords) ──────────────────────────────────────
@@ -535,6 +583,16 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         }
       });
 
+      // Missing-item selection rects (transient — never saved with annotations)
+      (missingRects[page] || []).forEach(rect => {
+        const ax = rect.x * W, ay = rect.y * H, aw = rect.w * W, ah = rect.h * H;
+        ctx.fillStyle = "rgba(220,38,38,0.22)";
+        ctx.strokeStyle = "rgba(220,38,38,0.85)";
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(ax, ay, aw, ah);
+        ctx.strokeRect(ax, ay, aw, ah);
+      });
+
       // Live previews render only on the page being drawn
       if (page !== drawingPage) return;
       if (currentPath.length > 1) {
@@ -561,10 +619,11 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         );
       }
 
-      if (currentLine && tool === "highlight") {
-        const r = parseInt(highlightColor.slice(1,3),16);
-        const g = parseInt(highlightColor.slice(3,5),16);
-        const b = parseInt(highlightColor.slice(5,7),16);
+      if (currentLine && (tool === "highlight" || tool === "missing")) {
+        const lc = tool === "missing" ? "#dc2626" : highlightColor;
+        const r = parseInt(lc.slice(1,3),16);
+        const g = parseInt(lc.slice(3,5),16);
+        const b = parseInt(lc.slice(5,7),16);
         const x = Math.min(currentLine.start.x, currentLine.end.x) * W;
         const y = Math.min(currentLine.start.y, currentLine.end.y) * H;
         const rw = Math.abs(currentLine.end.x - currentLine.start.x) * W;
@@ -576,7 +635,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         ctx.strokeRect(x, y, rw, rh);
       }
     });
-  }, [annList, currentPath, currentLine, drawingPage, color, highlightColor, sizes, tool]);
+  }, [annList, currentPath, currentLine, drawingPage, color, highlightColor, sizes, tool, missingRects]);
 
   const toolConfig = [
     { key: "pan",       label: "Pan",       icon: Hand,       activeClass: "bg-sky-600 hover:bg-sky-700" },
@@ -588,7 +647,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     { key: "eraser",    label: "Eraser",    icon: Eraser,     activeClass: "bg-slate-600 hover:bg-slate-700" },
   ];
 
-  const cursorStyle = tool === "pan" ? (panStartRef.current ? "grabbing" : "grab") : tool === "text" ? "text" : tool === "highlight" ? "cell" : "crosshair";
+  const cursorStyle = tool === "pan" ? (panStartRef.current ? "grabbing" : "grab") : tool === "text" ? "text" : (tool === "highlight" || tool === "missing") ? "cell" : "crosshair";
 
   if (!pdfUrl) return null;
 
@@ -599,14 +658,14 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       <DialogContent className="max-w-[97vw] w-[97vw] h-[95vh] max-h-[95vh] overflow-hidden flex flex-col p-4">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>Annotate Plan</span>
+            <span>{tool === "missing" ? "Report Missing Item" : annotateMode ? "Annotate Plan" : "Plan Viewer"}</span>
             {numPages && <span className="text-sm text-slate-500">Page {pageNumber} of {numPages}</span>}
           </DialogTitle>
         </DialogHeader>
 
         {/* Toolbar */}
         <div className="flex items-center gap-1.5 pb-3 border-b flex-wrap">
-          {toolConfig.map(({ key, label, icon: Icon, activeClass }) => (
+          {annotateMode && toolConfig.map(({ key, label, icon: Icon, activeClass }) => (
             <Button
               key={key}
               variant={tool === key ? "default" : "outline"}
@@ -618,39 +677,60 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
             </Button>
           ))}
 
-          <div className="border-l h-6 mx-1" />
+          {annotateMode && (
+            <>
+              <div className="border-l h-6 mx-1" />
 
-          <Button variant="outline" size="sm" onClick={handleUndo}>
-            <Undo2 className="w-4 h-4 mr-1" /> Undo
+              <Button variant="outline" size="sm" onClick={handleUndo}>
+                <Undo2 className="w-4 h-4 mr-1" /> Undo
+              </Button>
+              <Button variant="outline" size="sm" onClick={clearPage}>Clear Page</Button>
+            </>
+          )}
+
+          {/* Report Missing — its own highlight-selection mode, available from the viewer too */}
+          <Button
+            variant={tool === "missing" ? "default" : "outline"}
+            size="sm"
+            onClick={() => { setTool("missing"); setTextInput(null); }}
+            className={tool === "missing" ? "bg-red-600 hover:bg-red-700" : "text-red-600 hover:text-red-700"}
+          >
+            <ClipboardList className="w-4 h-4 mr-1" /> Report Missing
           </Button>
-          <Button variant="outline" size="sm" onClick={clearPage}>Clear Page</Button>
+          {tool === "missing" && (
+            <Button variant="outline" size="sm" onClick={() => setTool(annotateMode ? "pen" : "pan")}>
+              Done
+            </Button>
+          )}
 
-          {tool === "highlight" ? (
-            <div className="flex items-center gap-1.5 ml-1">
-              <label className="text-sm text-slate-600 font-medium">Category:</label>
-              {HIGHLIGHT_COLORS.map(hc => (
-                <button
-                  key={hc.label}
-                  onClick={() => setHighlightColor(hc.color)}
-                  title={hc.label}
-                  className="px-3 py-1 rounded-full text-xs font-semibold transition-all border"
-                  style={{
-                    background: hc.hex,
-                    borderColor: highlightColor === hc.color ? hc.color : "transparent",
-                    color: hc.color,
-                    boxShadow: highlightColor === hc.color ? `0 0 0 2px ${hc.color}` : "none",
-                    outline: "none"
-                  }}
-                >
-                  {hc.label}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="flex items-center gap-1.5 ml-1">
-              <label className="text-sm text-slate-600">Color:</label>
-              <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-8 h-8 rounded border cursor-pointer" />
-            </div>
+          {annotateMode && (
+            tool === "highlight" ? (
+              <div className="flex items-center gap-1.5 ml-1">
+                <label className="text-sm text-slate-600 font-medium">Category:</label>
+                {HIGHLIGHT_COLORS.map(hc => (
+                  <button
+                    key={hc.label}
+                    onClick={() => setHighlightColor(hc.color)}
+                    title={hc.label}
+                    className="px-3 py-1 rounded-full text-xs font-semibold transition-all border"
+                    style={{
+                      background: hc.hex,
+                      borderColor: highlightColor === hc.color ? hc.color : "transparent",
+                      color: hc.color,
+                      boxShadow: highlightColor === hc.color ? `0 0 0 2px ${hc.color}` : "none",
+                      outline: "none"
+                    }}
+                  >
+                    {hc.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 ml-1">
+                <label className="text-sm text-slate-600">Color:</label>
+                <input type="color" value={color} onChange={e => setColor(e.target.value)} className="w-8 h-8 rounded border cursor-pointer" />
+              </div>
+            )
           )}
 
           <div className="border-l h-6 mx-1" />
@@ -666,10 +746,14 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
             <RotateCw className="w-4 h-4" />
           </Button>
 
-          <div className="border-l h-6 mx-1" />
-          <Button variant="outline" size="sm" onClick={clearAll} className="text-red-600 hover:text-red-700">
-            <Trash2 className="w-4 h-4 mr-1" /> Clear All
-          </Button>
+          {annotateMode && (
+            <>
+              <div className="border-l h-6 mx-1" />
+              <Button variant="outline" size="sm" onClick={clearAll} className="text-red-600 hover:text-red-700">
+                <Trash2 className="w-4 h-4 mr-1" /> Clear All
+              </Button>
+            </>
+          )}
 
           {roomInfo?.roomName && (
             <Button
@@ -688,9 +772,20 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                 <Download className="w-4 h-4 mr-1" /> Download
               </Button>
             )}
-            <Button onClick={handleSave} className="bg-amber-600 hover:bg-amber-700">
-              Save Annotations
-            </Button>
+            {annotateMode ? (
+              <>
+                <Button variant="outline" size="sm" onClick={() => { setAnnotateMode(false); setTool("pan"); }}>
+                  Done
+                </Button>
+                <Button onClick={handleSave} className="bg-amber-600 hover:bg-amber-700">
+                  Save Annotations
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => { setAnnotateMode(true); setTool("pen"); }} className="bg-amber-600 hover:bg-amber-700">
+                <Pencil className="w-4 h-4 mr-1" /> Annotate
+              </Button>
+            )}
           </div>
         </div>
 
@@ -766,8 +861,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                       style={{
                         cursor: cursorStyle,
                         touchAction: "none",
-                        // Always capture stylus/mouse; fingers fall through via touch handlers
-                        pointerEvents: "auto",
+                        // Capture input only in annotate/missing modes; fingers still scroll natively
+                        pointerEvents: annotateMode || tool === "missing" ? "auto" : "none",
                       }}
                       width={size.width}
                       height={size.height}
@@ -892,6 +987,29 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                         <ClipboardCheck className="w-3.5 h-3.5" /> Create Pick Up{pending.length > 1 ? ` (${pending.length})` : ""}
                       </button>
                     )}
+
+                    {/* Floating "Report Missing Item" action near the latest selection rect on this page */}
+                    {(missingRects[p] || []).length > 0 && onRequestMissing && (() => {
+                      const rects = missingRects[p];
+                      const last = rects[rects.length - 1];
+                      return (
+                        <button
+                          type="button"
+                          onPointerDown={(e) => { e.stopPropagation(); }}
+                          onClick={(e) => { e.stopPropagation(); handleReportMissing(p); }}
+                          style={{
+                            position: "absolute",
+                            left: Math.min(size.width - 220, (last.x + last.w) * size.width),
+                            top: Math.max(2, (last.y + last.h) * size.height + 6),
+                            zIndex: 25,
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-lg"
+                          title="Report missing item(s) from the highlighted spec rows"
+                        >
+                          <ClipboardList className="w-3.5 h-3.5" /> Report Missing Item{rects.length > 1 ? ` (${rects.length})` : ""}
+                        </button>
+                      );
+                    })()}
                   </div>
                 );
               })}

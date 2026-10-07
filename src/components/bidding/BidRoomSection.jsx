@@ -537,6 +537,7 @@ export default function BidRoomSection({ room, catalogItems, categories, pricing
         pdfUrl={room.pdf_url}
         annotations={room.pdf_annotations || []}
         onSave={handleAnnotationSave}
+        initialMode="annotate"
         showNotesField={true}
         initialNotes={room.pdf_notes || ""}
         hideDownload={true}
