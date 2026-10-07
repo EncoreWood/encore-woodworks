@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -87,6 +87,19 @@ export default function ProjectTimelineSection({ project }) {
     queryFn: () => base44.entities.TimelineEvent.filter({ project_id: project.id }, "sort_order"),
     enabled: !!project?.id,
   });
+
+  // Auto-seed a default 6-phase timeline (Design → Complete) for projects with
+  // no timeline yet — new projects and existing ones that never got one.
+  // Projects with any existing events (including cleared-by-user ones) are left untouched.
+  const seededRef = useRef(new Set());
+  useEffect(() => {
+    if (!project?.id || isLoading || events.length > 0) return;
+    if (seededRef.current.has(project.id)) return;
+    seededRef.current.add(project.id);
+    base44.functions.invoke('seedTimelineEvents', { data: { id: project.id, project_name: project.project_name, start_date: project.start_date } })
+      .then(() => queryClient.invalidateQueries({ queryKey: ["timelineEvents", project.id] }))
+      .catch((err) => { console.error("Failed to seed timeline:", err); seededRef.current.delete(project.id); });
+  }, [project?.id, isLoading, events.length, queryClient]);
 
   // ProjectOrder records drive the auto-calculated "Orders" milestone %.
   const { data: projectOrders = [] } = useQuery({
