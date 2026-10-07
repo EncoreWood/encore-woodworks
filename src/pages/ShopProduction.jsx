@@ -585,7 +585,7 @@ export default function ShopProduction() {
                   }, 0);
 
                   return (
-                    <div key={column.id} className={`flex-shrink-0 ${isCollapsed ? "w-16" : isFocused ? "w-[32rem]" : "w-80"}`}>
+                    <div key={column.id} className={isCollapsed ? "flex-shrink-0 w-16" : isFocused ? "flex-1 min-w-0" : "flex-shrink-0 w-80"}>
                       <div className="mb-3 flex items-center justify-between">
                         <button
                           type="button"
@@ -623,7 +623,7 @@ export default function ShopProduction() {
                                 </span>
                               </div>
                             ) : (
-                              <div className="space-y-3">
+                              <div className={isFocused ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3" : "space-y-3"}>
                                 {columnItems.map((item, index) => (
                                   <Draggable key={item.id} draggableId={item.id} index={index}>
                                    {(provided, snapshot) => {
