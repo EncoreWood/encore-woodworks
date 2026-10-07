@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { X, FileText, ChevronLeft, ChevronRight, Paperclip, Pencil, StickyNote } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Paperclip, Pencil, StickyNote } from "lucide-react";
 import PdfViewer from "@/components/PdfViewer";
 import ImageAnnotator from "@/components/measurements/ImageAnnotator";
 import RoomSelectionsPanel from "@/components/projects/RoomSelectionsPanel";
@@ -10,7 +10,6 @@ import { useToast } from "@/components/ui/use-toast";
 
 export default function RoomFilesModal({ projectId, projectName, roomName, onClose }) {
   const [currentIdx, setCurrentIdx] = useState(0);
-  const [pdfFile, setPdfFile] = useState(null);
   const [annotating, setAnnotating] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -186,22 +185,9 @@ export default function RoomFilesModal({ projectId, projectName, roomName, onClo
                   {files.filter(f => f.file_type === "pdf").map(f => (
                     <div key={f.id}>
                       {f.label && <p className="text-white text-xl font-semibold mb-2">{f.label}</p>}
-                      {pdfFile?.id === f.id ? (
-                        <div className="rounded-2xl overflow-hidden bg-white h-[70vh]">
-                          <PdfViewer url={f.file_url} className="h-full" />
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setPdfFile(f)}
-                          className="w-full flex items-center gap-4 p-5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/20 transition-colors text-left"
-                        >
-                          <FileText className="w-10 h-10 text-red-400 flex-shrink-0" />
-                          <div>
-                            <p className="text-white font-semibold text-lg">{f.label || f.file_name}</p>
-                            <p className="text-white/50 text-sm">{f.file_name} · Tap to open</p>
-                          </div>
-                        </button>
-                      )}
+                      <div className="rounded-2xl overflow-hidden bg-white h-[70vh]">
+                        <PdfViewer url={f.file_url} className="h-full" />
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -733,6 +733,11 @@ export default function ShopProduction() {
             pdfUrl={currentPdfUrl}
             annotations={currentAnnotations}
             onSave={handleSaveAnnotations}
+            roomInfo={{
+              projectId: annotatingPdf.item.project_id,
+              projectName: annotatingPdf.item.project_name,
+              roomName: annotatingPdf.item.room_name,
+            }}
             onRequestPickup={({ crops, pageDataUrl, pageNumber }) => {
               setPickupFromHighlight({ crops, pageDataUrl, pageNumber, productionItem: annotatingPdf.item, currentUser });
             }}
