@@ -276,10 +276,15 @@ export default function ProjectDetails() {
   const unread = countsFor(project, notifData);
   const handleTabClick = (key) => {
     setActiveTab(key);
-    const channelMap = { meetings: "meeting_read_at", chat: "chat_read_at" };
-    const field = channelMap[key];
-    if (field) {
-      base44.entities.Project.update(projectId, { [field]: new Date().toISOString() })
+    const channelMap = {
+      meetings: ["meeting_read_at"],
+      chat: ["chat_read_at"],
+      client_relations: ["meeting_read_at", "chat_read_at"],
+    };
+    const fields = channelMap[key];
+    if (fields) {
+      const updates = Object.fromEntries(fields.map(f => [f, new Date().toISOString()]));
+      base44.entities.Project.update(projectId, updates)
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ["project", projectId] });
           queryClient.invalidateQueries({ queryKey: ["projects"] });
@@ -388,14 +393,9 @@ export default function ProjectDetails() {
           <div className="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-slate-100 p-1 w-fit flex-wrap">
             {[
               { key: "project", label: "Project", count: unread.notes, channel: "note_read_at" },
-              { key: "measurements", label: "Job Measurements" },
-              { key: "photos", label: "Job Photos" },
-              { key: "estimates", label: "Estimates/Proposal" },
+              { key: "onsite", label: "Onsite" },
               { key: "financials", label: "Financials" },
-              { key: "client_portal", label: "Client Portal" },
-              { key: "meetings", label: "Meetings", count: unread.meetings, channel: "meeting_read_at" },
-              { key: "emails", label: "Emails" },
-              { key: "chat", label: "Client Chat", count: unread.messages, channel: "chat_read_at" },
+              { key: "client_relations", label: "Client Relations", count: (unread.meetings || 0) + (unread.messages || 0) },
             ].map(t => (
               <button key={t.key} onClick={() => handleTabClick(t.key)}
                 className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5 ${activeTab === t.key ? "bg-amber-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-800"}`}>
@@ -406,31 +406,27 @@ export default function ProjectDetails() {
           </div>
         )}
 
-        {activeTab === "client_portal" && currentUser?.role === "admin" && (
-          <ClientPortalTab project={project} />
-        )}
-        {activeTab === "measurements" && currentUser?.role === "admin" && (
-          <JobMeasurementsTab project={project} />
-        )}
-        {activeTab === "photos" && currentUser?.role === "admin" && (
-          <JobPhotosTab project={project} currentUser={currentUser} />
-        )}
-        {activeTab === "estimates" && currentUser?.role === "admin" && (
-          <EstimatesProposalTab project={project} />
+        {activeTab === "onsite" && currentUser?.role === "admin" && (
+          <div className="space-y-6">
+            <JobMeasurementsTab project={project} />
+            <JobPhotosTab project={project} currentUser={currentUser} />
+          </div>
         )}
         {activeTab === "financials" && currentUser?.role === "admin" && (
-          <PaymentLog project={project} onSave={(data) => updateMutation.mutate(data)} />
+          <div className="space-y-6">
+            <EstimatesProposalTab project={project} />
+            <PaymentLog project={project} onSave={(data) => updateMutation.mutate(data)} />
+          </div>
         )}
-        {activeTab === "emails" && currentUser?.role === "admin" && (
-          <ProjectEmailsTab project={project} />
+        {activeTab === "client_relations" && currentUser?.role === "admin" && (
+          <div className="space-y-6">
+            <ClientPortalTab project={project} />
+            <ProjectMeetingsTab project={project} />
+            <ProjectChatTab project={project} />
+            <ProjectEmailsTab project={project} />
+          </div>
         )}
-        {activeTab === "chat" && currentUser?.role === "admin" && (
-          <ProjectChatTab project={project} />
-        )}
-        {activeTab === "meetings" && currentUser?.role === "admin" && (
-          <ProjectMeetingsTab project={project} />
-        )}
-        {(activeTab !== "client_portal" && activeTab !== "measurements" && activeTab !== "photos" && activeTab !== "estimates" && activeTab !== "financials" && activeTab !== "emails" && activeTab !== "chat" && activeTab !== "meetings" || currentUser?.role !== "admin") && (
+        {(activeTab === "project" || currentUser?.role !== "admin") && (
         <>
         {/* Full-width Project Timeline */}
         <ProjectTimelineSection project={project} />
