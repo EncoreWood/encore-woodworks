@@ -1,18 +1,17 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { getPickupCardStyle } from "@/lib/pickupCardStyle";
 import { createPortal } from "react-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, ClipboardList, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, Upload, Loader2, PenLine, FileCode2, ChevronDown, PackageX, Flag, Boxes, StickyNote } from "lucide-react";
+import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Boxes } from "lucide-react";
 import MissingItemBadge from "@/components/production/MissingItemBadge";
 import GlbViewer from "@/components/cad/GlbViewer";
 import DxfViewer from "@/components/cad/DxfViewer";
 import { base44 } from "@/api/base44Client";
 import SketchPad from "@/components/production/SketchPad";
 import RoomFilesModal from "@/components/production/RoomFilesModal";
-import RoomNotesModal from "@/components/production/RoomNotesModal";
 import { useQuery } from "@tanstack/react-query";
 
 function PdfPreviewTooltip({ url, anchorEl }) {
@@ -85,11 +84,8 @@ export default function ProductionCard({
   const [showGlb, setShowGlb] = useState(false);
   const [showCardGlb, setShowCardGlb] = useState(false);
   const [showSketch, setShowSketch] = useState(false);
-  const [uploadingGlb, setUploadingGlb] = useState(false);
   const [viewingCad, setViewingCad] = useState(null);
   const [showRoomFiles, setShowRoomFiles] = useState(false);
-  const [showRoomNotes, setShowRoomNotes] = useState(false);
-  const glbInputRef = useRef(null);
   const isAdmin = currentUser?.role === "admin";
 
   const { data: roomFileCount = 0 } = useQuery({
@@ -102,17 +98,6 @@ export default function ProductionCard({
 
   const cardGlbUrl = item.glb_url;
   const cardGlbName = item.glb_name || item.name;
-
-  const handleGlbUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingGlb(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    await base44.entities.ProductionItem.update(item.id, { glb_url: file_url, glb_name: file.name });
-    if (onUpdate) onUpdate(item.id, { glb_url: file_url, glb_name: file.name });
-    setUploadingGlb(false);
-    e.target.value = "";
-  };
 
   const color = getProjectColor ? getProjectColor(item.project_id) : null;
   const isPickup = item.type === "pickup" || !!item.pickup_item_id;
@@ -163,7 +148,7 @@ export default function ProductionCard({
           <button
             onClick={(e) => { e.stopPropagation(); setShowRoomFiles(true); }}
             className="absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 transition-colors shadow-sm"
-            title="View room files & images"
+            title="Room info — files, images & notes"
           >
             <Boxes className="w-4 h-4" />
             {roomFileCount > 0 && (
@@ -190,7 +175,7 @@ export default function ProductionCard({
         )}
 
         {/* Action button row — sits neatly below the project name */}
-        {(onOpenRoomFolder || onReturnToFolder || showLinkButton || roomGlbUrl || onPickup || onReportStruggle || onQuickReportMissing || item.id) && (
+        {(onOpenRoomFolder || onReturnToFolder || showLinkButton || roomGlbUrl || onReportStruggle || onQuickReportMissing || item.id) && (
           <div className="flex items-center gap-1.5 mb-2 flex-wrap">
             {/* Missing item badge */}
             {item.id && (
@@ -244,28 +229,6 @@ export default function ProductionCard({
               </button>
             )}
 
-            {/* Room notes */}
-            {item.project_id && item.room_name && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setShowRoomNotes(true); }}
-                className="flex items-center justify-center w-6 h-6 rounded bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-600 hover:text-violet-800 flex-shrink-0 transition-colors"
-                title="View room notes"
-              >
-                <StickyNote className="w-3 h-3" />
-              </button>
-            )}
-
-            {/* Add pickup */}
-            {item.project_id && onPickup && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onPickup(item); }}
-                className="flex items-center justify-center w-6 h-6 rounded bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-600 hover:text-amber-700 flex-shrink-0 transition-colors"
-                title="Add pickup item"
-              >
-                <ClipboardList className="w-3 h-3" />
-              </button>
-            )}
-
             {/* Report struggle */}
             {onReportStruggle && (
               <button
@@ -314,17 +277,6 @@ export default function ProductionCard({
                 onClick={(e) => { e.stopPropagation(); setShowCardGlb(true); }}>
                 <Box className="w-3 h-3" />
               </Button>
-            )}
-            {onUpdate && (
-              <>
-                <input ref={glbInputRef} type="file" accept=".glb,.gltf" className="hidden" onChange={handleGlbUpload} />
-                <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-slate-600"
-                  title={cardGlbUrl ? "Replace 3D model" : "Upload 3D model"}
-                  disabled={uploadingGlb}
-                  onClick={(e) => { e.stopPropagation(); glbInputRef.current?.click(); }}>
-                  {uploadingGlb ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-                </Button>
-              </>
             )}
             {onEdit && (
               <Button variant="ghost" size="icon" className="h-6 w-6"
@@ -552,13 +504,6 @@ export default function ProductionCard({
           </div>
         )}
       </Card>
-      {showRoomNotes && (
-        <RoomNotesModal
-          projectId={item.project_id}
-          roomName={item.room_name}
-          onClose={() => setShowRoomNotes(false)}
-        />
-      )}
       {showRoomFiles && (
         <RoomFilesModal
           projectId={item.project_id}

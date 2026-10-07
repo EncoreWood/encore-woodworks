@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
-import { X, FileText, ChevronLeft, ChevronRight, Paperclip, Pencil } from "lucide-react";
+import { X, FileText, ChevronLeft, ChevronRight, Paperclip, Pencil, StickyNote } from "lucide-react";
 import PdfViewer from "@/components/PdfViewer";
 import ImageAnnotator from "@/components/measurements/ImageAnnotator";
 import RoomSelectionsPanel from "@/components/projects/RoomSelectionsPanel";
@@ -29,6 +29,7 @@ export default function RoomFilesModal({ projectId, projectName, roomName, onClo
     enabled: !!projectId,
   });
   const room = project?.rooms?.find(r => (r.room_name || "").toLowerCase().trim() === roomName?.toLowerCase().trim());
+  const notes = room?.notes || "";
 
   const imageFiles = files.filter(f => f.file_type === "image");
   const currentImage = imageFiles[currentIdx];
@@ -79,6 +80,17 @@ export default function RoomFilesModal({ projectId, projectName, roomName, onClo
       </div>
 
       <div className="flex-1 overflow-y-auto" onClick={e => e.stopPropagation()}>
+        {/* Room notes — shown above the files so this modal works as a combined Room Info view */}
+        {!isLoading && notes && (
+          <div className="p-6 pb-0 max-w-4xl mx-auto w-full">
+            <p className="text-white/60 text-sm uppercase tracking-widest mb-3 font-semibold flex items-center gap-2">
+              <StickyNote className="w-4 h-4" /> Room Notes
+            </p>
+            <div className="rounded-2xl bg-white/10 border border-white/20 p-4">
+              <p className="text-white/90 text-sm whitespace-pre-wrap">{notes}</p>
+            </div>
+          </div>
+        )}
         {isLoading ? (
           <div className="flex items-center justify-center h-64">
             <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" />
