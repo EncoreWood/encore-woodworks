@@ -8,7 +8,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset, MessageSquare } from "lucide-react";
+import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset, MessageSquare, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
 import GiveComplimentDialog from "../components/production/GiveComplimentDialog";
@@ -58,6 +58,7 @@ export default function ShopProduction() {
   const [showEndOfDay, setShowEndOfDay] = useState(false);
   const [scrollToProjectId, setScrollToProjectId] = useState(null);
   const [pickupFromHighlight, setPickupFromHighlight] = useState(null);
+  const [focusStage, setFocusStage] = useState(null); // stage id when viewing a single stage
 
   useEffect(() => {
     base44.auth.me().then(setCurrentUser).catch(() => {});
@@ -545,8 +546,21 @@ export default function ShopProduction() {
           {/* ── PRODUCTION TAB ── */}
           <TabsContent value="production" className="mt-0">
             <DragDropContext onDragEnd={handleDragEnd}>
+              {/* Focused-stage banner */}
+              {focusStage && (
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="text-sm text-slate-600">
+                    Showing only <span className="font-semibold text-slate-900">{productionColumns.find(c => c.id === focusStage)?.label}</span>
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => setFocusStage(null)} className="h-7">
+                    <X className="w-3.5 h-3.5 mr-1" /> Show All Stages
+                  </Button>
+                </div>
+              )}
               <div className="flex gap-4 overflow-x-auto pb-4">
                 {productionColumns.map((column, colIdx) => {
+                  const isFocused = focusStage === column.id;
+                  const isCollapsed = !!focusStage && !isFocused;
                   const columnItems = items
                     .filter(i => i.stage === column.id && !i.is_job_info)
                     .sort((a, b) => {
@@ -571,47 +585,68 @@ export default function ShopProduction() {
                   }, 0);
 
                   return (
-                    <div key={column.id} className="flex-shrink-0 w-80">
+                    <div key={column.id} className={`flex-shrink-0 ${isCollapsed ? "w-16" : isFocused ? "w-[32rem]" : "w-80"}`}>
                       <div className="mb-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <h2 className="font-semibold text-slate-700">{column.label}</h2>
-                          {colPts > 0 && (
-                            <span className="text-xs font-bold text-green-700 bg-green-100 border border-green-200 rounded-full px-2 py-0.5">{colPts} PTS</span>
+                        <button
+                          type="button"
+                          onClick={() => setFocusStage(isFocused ? null : column.id)}
+                          title={isFocused ? "Show all stages" : `View only ${column.label.replace(/^\d+\.\s*/, "")}`}
+                          className="flex items-center gap-2 rounded hover:bg-slate-100 px-1.5 py-1 -mx-1.5 transition-colors cursor-pointer"
+                        >
+                          {isCollapsed ? (
+                            <span className="text-xs font-semibold text-slate-500">{columnItems.length}</span>
+                          ) : (
+                            <>
+                              <h2 className="font-semibold text-slate-700">{column.label}</h2>
+                              {colPts > 0 && (
+                                <span className="text-xs font-bold text-green-700 bg-green-100 border border-green-200 rounded-full px-2 py-0.5">{colPts} PTS</span>
+                              )}
+                            </>
                           )}
-                        </div>
-                        <Badge variant="outline" className="text-xs">{columnItems.length}</Badge>
+                        </button>
+                        {!isCollapsed && (
+                          <Badge variant="outline" className="text-xs">{columnItems.length}</Badge>
+                        )}
                       </div>
                       <Droppable droppableId={column.id}>
                         {(provided, snapshot) => (
                           <div
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            className={`rounded-lg p-3 transition-colors overflow-y-auto ${snapshot.isDraggingOver ? "bg-slate-200" : column.color}`}
-                            style={{ maxHeight: "calc(100vh - 280px)", minHeight: 200 }}
+                            className={`rounded-lg p-3 transition-colors overflow-y-auto ${snapshot.isDraggingOver ? "bg-slate-200" : column.color} ${isCollapsed ? "border border-dashed border-slate-300" : ""}`}
+                            style={{ maxHeight: "calc(100vh - 280px)", minHeight: isCollapsed ? 280 : 200 }}
                           >
-                            <div className="space-y-3">
-                              {columnItems.map((item, index) => (
-                                <Draggable key={item.id} draggableId={item.id} index={index}>
-                                 {(provided, snapshot) => {
-                                   const proj = projects.find(p => p.id === item.project_id);
-                                   const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
-                                   return (
-                                     <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                                       <ProductionCard
-                                         item={item}
-                                         isDragging={snapshot.isDragging}
-                                         {...sharedCardProps}
-                                         roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
-                                         onReturnToFolder={currentUser?.role === "admin" && hasRoom ? returnToFolder : undefined}
-                                                                           roomFolderLabel={hasRoom ? item.room_name : undefined}
-                                         onOpenRoomFolder={hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
-                                       />
-                                     </div>
-                                   );
-                                 }}
-                                </Draggable>
-                              ))}
-                            </div>
+                            {isCollapsed ? (
+                              <div className="h-full flex items-center justify-center" title={`Drop to move to ${column.label.replace(/^\d+\.\s*/, "")}`}>
+                                <span className="text-xs font-semibold text-slate-500 select-none" style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
+                                  {column.label}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                {columnItems.map((item, index) => (
+                                  <Draggable key={item.id} draggableId={item.id} index={index}>
+                                   {(provided, snapshot) => {
+                                     const proj = projects.find(p => p.id === item.project_id);
+                                     const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
+                                     return (
+                                       <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                                         <ProductionCard
+                                           item={item}
+                                           isDragging={snapshot.isDragging}
+                                           {...sharedCardProps}
+                                           roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
+                                           onReturnToFolder={currentUser?.role === "admin" && hasRoom ? returnToFolder : undefined}
+                                                                            roomFolderLabel={hasRoom ? item.room_name : undefined}
+                                           onOpenRoomFolder={hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
+                                         />
+                                       </div>
+                                     );
+                                   }}
+                                  </Draggable>
+                                ))}
+                              </div>
+                            )}
                             {provided.placeholder}
                           </div>
                         )}
