@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset, MessageSquare, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
 import GiveComplimentDialog from "../components/production/GiveComplimentDialog";
 import ReportMissingDialog from "../components/production/ReportMissingDialog";
@@ -40,6 +41,7 @@ const ACTIVE_PROJECT_STATUSES = ["in_production", "ready_for_install", "installi
 export default function ShopProduction() {
    const navigate = useNavigate();
    const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("production");
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -412,6 +414,18 @@ export default function ShopProduction() {
     queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === id ? { ...i, ...fields } : i));
   };
 
+  const handleToggleUrgent = (item) => {
+    const next = !item.is_urgent;
+    queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, is_urgent: next } : i));
+    base44.entities.ProductionItem.update(item.id, { is_urgent: next })
+      .then(() => toast({ title: next ? "Marked urgent — card moved to top of its list" : "Urgent flag removed", duration: 3000 }))
+      .catch((err) => {
+        console.error("Failed to update urgent flag:", err);
+        queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, is_urgent: !next } : i));
+        toast({ title: "Failed to update urgent flag", variant: "destructive" });
+      });
+  };
+
   // Get CAD files from the project tagged to a specific room
   const getRoomCadFiles = (projectId, roomName) => {
     if (!projectId || !roomName) return [];
@@ -450,6 +464,7 @@ export default function ShopProduction() {
     onEdit: (item) => { setEditingItem(item); setShowForm(true); },
     onDelete: (id) => deleteMutation.mutate(id),
     onUpdate: handleGlbUpdate,
+    onToggleUrgent: handleToggleUrgent,
   };
 
   return (
@@ -566,6 +581,8 @@ export default function ShopProduction() {
                   const columnItems = items
                     .filter(i => i.stage === column.id && !i.is_job_info)
                     .sort((a, b) => {
+                      // Urgent cards float to the top of the column, then group by project …
+                      if (a.is_urgent !== b.is_urgent) return a.is_urgent ? -1 : 1;
                       // Group cards by project, then by the room's order on that project
                       // (Kitchen, Pool House, Drop Zone …), then manual order, newest cards last
                       const pa = a.project_name || a.project_id || "";

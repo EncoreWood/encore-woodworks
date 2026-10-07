@@ -81,6 +81,7 @@ export default function ProductionCard({
   onReportStruggle,      // called with item to open the struggle report dialog
   onReportMissing,       // called with item to open the missing item report dialog
   onQuickReportMissing,  // called with item to open quick report dialog
+  onToggleUrgent,        // called with item to toggle the urgent flag (floats card to top of column)
 }) {
   const [hoveredPdfUrl, setHoveredPdfUrl] = useState(null);
   const [hoveredAnchorEl, setHoveredAnchorEl] = useState(null);
@@ -255,6 +256,21 @@ export default function ProductionCard({
               </button>
             )}
 
+            {/* Urgent toggle */}
+            {onToggleUrgent && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onToggleUrgent(item); }}
+                className={`flex items-center justify-center w-6 h-6 rounded-full flex-shrink-0 transition-colors ${
+                  item.is_urgent
+                    ? "bg-red-600 hover:bg-red-700 border border-red-700 text-white shadow-sm"
+                    : "bg-orange-100 hover:bg-orange-200 border border-orange-200 text-orange-600"
+                }`}
+                title={item.is_urgent ? "Remove urgent flag" : "Mark as urgent — moves card to top"}
+              >
+                <Flag className="w-3 h-3" fill={item.is_urgent ? "currentColor" : "none"} />
+              </button>
+            )}
+
             {/* Report missing */}
             {onQuickReportMissing && (
               <button
@@ -308,6 +324,15 @@ export default function ProductionCard({
             <Badge variant="outline" className={typeBadgeClass}>{typeLabel}</Badge>
           </div>
         </div>
+
+        {/* Urgent badge */}
+        {item.is_urgent && (
+          <div className="mb-2">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-200 text-red-800 border border-red-400">
+              🔴 Urgent
+            </span>
+          </div>
+        )}
 
         {/* Priority badge — only show on pickup cards */}
         {isPickup && item.priority && (

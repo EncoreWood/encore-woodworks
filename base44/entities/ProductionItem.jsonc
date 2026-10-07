@@ -36,6 +36,11 @@
       "type": "number",
       "description": "Manual sort order within a column (admin-set)"
     },
+    "is_urgent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Marked urgent on the production board \u2014 urgent cards float to the top of their column"
+    },
     "is_job_info": {
       "type": "boolean",
       "default": false,
