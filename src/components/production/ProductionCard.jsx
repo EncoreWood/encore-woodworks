@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Building2 } from "lucide-react";
 import { getPickupCardStyle } from "@/lib/pickupCardStyle";
 import { createPortal } from "react-dom";
 import { Card } from "@/components/ui/card";
@@ -10,6 +12,7 @@ import MissingItemBadge from "@/components/production/MissingItemBadge";
 import GlbViewer from "@/components/cad/GlbViewer";
 import DxfViewer from "@/components/cad/DxfViewer";
 import { base44 } from "@/api/base44Client";
+import { createPageUrl } from "@/utils";
 import SketchPad from "@/components/production/SketchPad";
 import RoomFilesModal from "@/components/production/RoomFilesModal";
 import { useQuery } from "@tanstack/react-query";
@@ -177,6 +180,18 @@ export default function ProductionCard({
         {/* Action button row — sits neatly below the project name */}
         {(onOpenRoomFolder || onReturnToFolder || showLinkButton || roomGlbUrl || onReportStruggle || onQuickReportMissing || item.id) && (
           <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+            {/* View project */}
+            {item.project_id && (
+              <Link
+                to={`${createPageUrl("ProjectDetails")}?id=${item.project_id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center justify-center w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 hover:text-slate-800 flex-shrink-0 transition-colors"
+                title="View project"
+              >
+                <Building2 className="w-3 h-3" />
+              </Link>
+            )}
+
             {/* Missing item badge */}
             {item.id && (
               <MissingItemBadge
@@ -316,23 +331,6 @@ export default function ProductionCard({
               <img src={item.sketch_url} alt="Sketch" className="w-full rounded-md border border-slate-200 max-h-36 object-contain bg-white hover:opacity-90 transition-opacity" />
             </button>
             <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1"><PenLine className="w-3 h-3" /> Sketch (click to view/edit)</p>
-          </div>
-        )}
-
-        {/* Stage move dropdown — only on production board cards (has a stage) */}
-        {item.stage && onMoveStage && (
-          <div className="mb-2" onClick={e => e.stopPropagation()}>
-            <Select value={item.stage} onValueChange={(v) => onMoveStage(item, v)}>
-              <SelectTrigger className="h-7 text-xs border-slate-200 bg-slate-50 focus:ring-0">
-                <ChevronDown className="w-3 h-3 mr-1 text-slate-400" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PRODUCTION_STAGES.map(s => (
-                  <SelectItem key={s.id} value={s.id} className="text-xs">{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         )}
 
@@ -501,6 +499,23 @@ export default function ProductionCard({
                </div>
               );
             })}
+          </div>
+        )}
+
+        {/* Stage move dropdown — moved below the files row */}
+        {item.stage && onMoveStage && (
+          <div className="mt-2" onClick={e => e.stopPropagation()}>
+            <Select value={item.stage} onValueChange={(v) => onMoveStage(item, v)}>
+              <SelectTrigger className="h-7 text-xs border-slate-200 bg-slate-50 focus:ring-0">
+                <ChevronDown className="w-3 h-3 mr-1 text-slate-400" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PRODUCTION_STAGES.map(s => (
+                  <SelectItem key={s.id} value={s.id} className="text-xs">{s.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
       </Card>
