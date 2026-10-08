@@ -126,12 +126,17 @@ export default function PickupFromHighlightDialog({
         );
 
         if (cancelled) return;
-        setItems(results.map(r => {
+<arg_value>        setItems(results.map(r => {
           if (r.status === "fulfilled") {
             return { loading: false, highlightUrl: r.value.cropUrl, form: r.value.form };
           }
           return { loading: false, highlightUrl: null, form: { ...EMPTY } };
-        }));
+        }).map(it => ({
+          // Group by the card's room — the room key the Missing Items list uses.
+          // Only fall back to the AI-extracted header room when the card has none.
+          ...it,
+          form: { ...it.form, room: productionItem?.room_name || it.form.room || "" }
+        })));
       } catch (err) {
         if (!cancelled) toast.error("AI extraction failed — you can still fill the forms manually.");
       } finally {
