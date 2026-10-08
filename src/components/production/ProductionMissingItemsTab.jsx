@@ -60,7 +60,15 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     const toSync = missingItems.filter(mi => {
       if (mi.archived || !mi.production_item_id || autoSyncedIds.current.has(mi.id)) return false;
       const cardStage = cardById.get(mi.production_item_id)?.stage;
-      if (cardStage === "complete") return !DONE_STATUSES.includes(mi.status);
+      if (cardStage === "complete") {
+        if (DONE_STATUSES.includes(mi.status)) return false;
+        // Only auto-complete items that were reported while the card was still in
+        // production. A missing item reported ON/after the card completed (e.g. a
+        // pick up discovered later) must stay Open.
+        const completedDate = cardById.get(mi.production_item_id)?.completed_date;
+        if (!completedDate || !mi.reported_at) return false;
+        return mi.reported_at.slice(0, 10) < completedDate;
+      }
       return ["Ordered", "Received"].includes(mi.status) && ACTIVE_STAGES.includes(cardStage);
     });
     if (toSync.length === 0) return;
