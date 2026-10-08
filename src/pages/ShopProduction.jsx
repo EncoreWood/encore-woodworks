@@ -642,7 +642,10 @@ export default function ShopProduction() {
                                 </span>
                               </div>
                             ) : (
-                              <div className={isFocused ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3" : "space-y-3"}>
+                              <div
+                                className={isFocused ? "grid gap-3" : "space-y-3"}
+                                style={isFocused ? { gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" } : undefined}
+                              >
                                 {columnItems.map((item, index) => (
                                   <Draggable key={item.id} draggableId={item.id} index={index}>
                                    {(provided, snapshot) => {
