@@ -126,7 +126,7 @@ export default function PickupFromHighlightDialog({
         );
 
         if (cancelled) return;
-<arg_value>        setItems(results.map(r => {
+        setItems(results.map(r => {
           if (r.status === "fulfilled") {
             return { loading: false, highlightUrl: r.value.cropUrl, form: r.value.form };
           }
