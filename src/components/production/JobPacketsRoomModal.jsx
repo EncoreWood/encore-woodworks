@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Package, Plus, ArrowRight } from "lucide-react";
 import ProductionCard from "./ProductionCard";
 import ProductionItemForm from "./ProductionItemForm";
+import TypeGroupedGrid from "./TypeGroupedGrid";
 
 const STAGE_LABELS = { cut: "Cut", face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete", on_hold: "On Hold" };
 
@@ -110,6 +111,46 @@ export default function JobPacketsRoomModal({ project, roomName, items, currentU
     },
   };
 
+  const renderCard = (item) => {
+    const isStaged = !item.stage;
+    return (
+      <div key={item.id} className="relative">
+        {isStaged && (
+          <>
+            <div className="absolute top-2 left-2 z-10">
+              <Checkbox
+                checked={selected.has(item.id)}
+                onCheckedChange={() => toggleSelect(item.id)}
+                className="bg-white shadow"
+              />
+            </div>
+            <div className="absolute top-2 right-2 z-10">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 px-2 text-xs bg-white hover:bg-green-50 hover:border-green-400 hover:text-green-700"
+                onClick={() => handleSendToProduction([item])}
+                title="Send to Production"
+              >
+                <ArrowRight className="w-3 h-3" />
+              </Button>
+            </div>
+          </>
+        )}
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
+          {isStaged ? (
+            <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 text-[10px] px-2 py-0.5">Staged</Badge>
+          ) : (
+            <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0.5">In Production: {STAGE_LABELS[item.stage] || item.stage}</Badge>
+          )}
+        </div>
+        <div className={`rounded-lg transition-all ${isStaged && selected.has(item.id) ? "ring-2 ring-amber-400" : ""}`} onClick={isStaged ? () => toggleSelect(item.id) : undefined}>
+          <ProductionCard item={item} isDragging={false} {...sharedCardProps} />
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
       <Button
@@ -177,47 +218,7 @@ export default function JobPacketsRoomModal({ project, roomName, items, currentU
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1 pt-3">
-                {roomItems.map(item => {
-                  const isStaged = !item.stage;
-                  return (
-                  <div key={item.id} className="relative">
-                    {isStaged && (
-                      <>
-                        <div className="absolute top-2 left-2 z-10">
-                          <Checkbox
-                            checked={selected.has(item.id)}
-                            onCheckedChange={() => toggleSelect(item.id)}
-                            className="bg-white shadow"
-                          />
-                        </div>
-                        <div className="absolute top-2 right-2 z-10">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 px-2 text-xs bg-white hover:bg-green-50 hover:border-green-400 hover:text-green-700"
-                            onClick={() => handleSendToProduction([item])}
-                            title="Send to Production"
-                          >
-                            <ArrowRight className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
-                      {isStaged ? (
-                        <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 text-[10px] px-2 py-0.5">Staged</Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0.5">In Production: {STAGE_LABELS[item.stage] || item.stage}</Badge>
-                      )}
-                    </div>
-                    <div className={`rounded-lg transition-all ${isStaged && selected.has(item.id) ? "ring-2 ring-amber-400" : ""}`} onClick={isStaged ? () => toggleSelect(item.id) : undefined}>
-                      <ProductionCard item={item} isDragging={false} {...sharedCardProps} />
-                    </div>
-                  </div>
-                  );
-                })}
-              </div>
+              <TypeGroupedGrid items={roomItems} renderCard={renderCard} />
             )}
           </div>
         </DialogContent>

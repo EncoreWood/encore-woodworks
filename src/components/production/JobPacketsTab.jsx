@@ -12,6 +12,7 @@ import { base44 } from "@/api/base44Client";
 import ProductionCard from "./ProductionCard";
 import RoomFilesModal from "./RoomFilesModal";
 import SendToProductionDialog from "./SendToProductionDialog";
+import TypeGroupedGrid from "./TypeGroupedGrid";
 
 const STAGE_LABELS = { cut: "Cut", face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete", on_hold: "On Hold" };
 
@@ -76,6 +77,60 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
     onSendToProduction(sendTarget, stage);
     setSendTarget(null);
     setSelected(new Set());
+  };
+
+  const renderCard = (item) => {
+    const isStaged = !item.stage;
+    return (
+      <div key={item.id} className="relative">
+        {isStaged && (
+          <>
+            {/* Selection checkbox overlay */}
+            <div className="absolute top-2 left-2 z-10">
+              <Checkbox
+                checked={selected.has(item.id)}
+                onCheckedChange={() => toggleSelect(item.id)}
+                className="bg-white shadow"
+              />
+            </div>
+            {/* Send individually */}
+            <div className="absolute top-2 right-2 z-10">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 px-2 text-xs bg-white hover:bg-green-50 hover:border-green-400 hover:text-green-700"
+                onClick={() => handleSendOne(item)}
+                title="Send to Production"
+              >
+                <ArrowRight className="w-3 h-3" />
+              </Button>
+            </div>
+          </>
+        )}
+        {/* Stage badge */}
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
+          {isStaged ? (
+            item.completed_date ? (
+              <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 text-[10px] px-2 py-0.5">Complete</Badge>
+            ) : (
+              <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 text-[10px] px-2 py-0.5">Staged</Badge>
+            )
+          ) : (
+            <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0.5">In Production: {STAGE_LABELS[item.stage] || item.stage}</Badge>
+          )}
+        </div>
+        <div
+          className={`rounded-lg transition-all ${isStaged && selected.has(item.id) ? "ring-2 ring-amber-400" : ""}`}
+          onClick={isStaged ? () => toggleSelect(item.id) : undefined}
+        >
+          <ProductionCard
+            item={item}
+            isDragging={false}
+            {...sharedCardProps}
+          />
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -181,61 +236,7 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
                 </Button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1 pt-3">
-                {roomItems.map(item => {
-                  const isStaged = !item.stage;
-                  return (
-                  <div key={item.id} className="relative">
-                    {isStaged && (
-                      <>
-                        {/* Selection checkbox overlay */}
-                        <div className="absolute top-2 left-2 z-10">
-                          <Checkbox
-                            checked={selected.has(item.id)}
-                            onCheckedChange={() => toggleSelect(item.id)}
-                            className="bg-white shadow"
-                          />
-                        </div>
-                        {/* Send individually */}
-                        <div className="absolute top-2 right-2 z-10">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-6 px-2 text-xs bg-white hover:bg-green-50 hover:border-green-400 hover:text-green-700"
-                            onClick={() => handleSendOne(item)}
-                            title="Send to Production"
-                          >
-                            <ArrowRight className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                    {/* Stage badge */}
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
-                      {isStaged ? (
-                        item.completed_date ? (
-                          <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 text-[10px] px-2 py-0.5">Complete</Badge>
-                        ) : (
-                          <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 text-[10px] px-2 py-0.5">Staged</Badge>
-                        )
-                      ) : (
-                        <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0.5">In Production: {STAGE_LABELS[item.stage] || item.stage}</Badge>
-                      )}
-                    </div>
-                    <div
-                      className={`rounded-lg transition-all ${isStaged && selected.has(item.id) ? "ring-2 ring-amber-400" : ""}`}
-                      onClick={isStaged ? () => toggleSelect(item.id) : undefined}
-                    >
-                      <ProductionCard
-                        item={item}
-                        isDragging={false}
-                        {...sharedCardProps}
-                      />
-                    </div>
-                  </div>
-                  );
-                })}
-              </div>
+              <TypeGroupedGrid items={roomItems} renderCard={renderCard} />
             )}
           </div>
         </DialogContent>

@@ -150,6 +150,7 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
                     <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="cabinet">Cabinet</SelectItem>
+                      <SelectItem value="cut">Cut</SelectItem>
                       <SelectItem value="misc">Misc</SelectItem>
                       <SelectItem value="pickup">Pick up</SelectItem>
                     </SelectContent>
