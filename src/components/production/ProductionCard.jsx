@@ -326,6 +326,21 @@ export default function ProductionCard({
           </div>
         </div>
 
+        {/* Misc sub-items list */}
+        {item.type === "misc" && item.misc_items?.length > 0 && (
+          <div className="mb-2 rounded-lg bg-purple-50 border border-purple-100 px-2 py-1.5 space-y-0.5">
+            {item.misc_items.map((mi, idx) => (
+              <div key={idx} className="text-[11px] text-purple-900 leading-snug truncate">
+                <span className="font-semibold">{mi.name}</span>
+                {mi.qty ? <span className="font-medium"> × {mi.qty}</span> : ""}
+                {mi.wood_type ? <span> · {mi.wood_type}</span> : ""}
+                {mi.finish ? <span> · {mi.finish}</span> : ""}
+                {mi.notes ? <span className="text-purple-600 italic"> · {mi.notes}</span> : ""}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Urgent badge */}
         {item.is_urgent && (
           <div className="mb-2">

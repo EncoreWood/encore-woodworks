@@ -71,6 +71,35 @@
       "type": "number",
       "description": "Card-level point value (used when no files are attached, e.g. pickup items)"
     },
+    "misc_items": {
+      "type": "array",
+      "description": "For Misc-type cards: selected sub-items (Base, Crown, Toe Kick, Skin, 1/4 Scribe, Cleat) each with qty, wood type, finish and notes",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Sub-item name, e.g. Toe Kick"
+          },
+          "qty": {
+            "type": "number",
+            "description": "Quantity"
+          },
+          "wood_type": {
+            "type": "string",
+            "description": "Wood species"
+          },
+          "finish": {
+            "type": "string",
+            "description": "Finish spec"
+          },
+          "notes": {
+            "type": "string",
+            "description": "Notes for this sub-item"
+          }
+        }
+      }
+    },
     "columns_visited": {
       "type": "string",
       "default": "[]",

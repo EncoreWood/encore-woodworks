@@ -16,10 +16,14 @@ const initialFormState = {
   type: "cabinet",
   stage: "face_frame",
   files: [],
+  misc_items: [],
   notes: "",
   is_job_info: false,
   sketch_url: null
 };
+
+// Selectable sub-items for Misc-type cards
+const MISC_ITEM_OPTIONS = ["Base", "Crown", "Toe Kick", "Skin", "1/4'' Scribe", "Cleat"];
 
 // jobInfoProjects: if provided, form is in "Job Info" mode — shows project dropdown instead of type, hides stage
 export default function ProductionItemForm({ open, onOpenChange, onSubmit, initialData, isLoading, jobInfoProjects, rooms }) {
@@ -67,6 +71,25 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Misc sub-items — add from dropdown, remove, and edit qty/wood/finish/notes per item
+  const addMiscItem = (name) => {
+    setFormData((prev) => {
+      if ((prev.misc_items || []).some(m => m.name === name)) return prev;
+      return { ...prev, misc_items: [...(prev.misc_items || []), { name, qty: "", wood_type: "", finish: "", notes: "" }] };
+    });
+  };
+
+  const removeMiscItem = (name) => {
+    setFormData((prev) => ({ ...prev, misc_items: (prev.misc_items || []).filter(m => m.name !== name) }));
+  };
+
+  const updateMiscItem = (name, field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      misc_items: (prev.misc_items || []).map(m => m.name === name ? { ...m, [field]: value } : m),
+    }));
   };
 
   return (
@@ -170,6 +193,61 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+            )}
+
+            {/* Misc sub-items — only for Misc-type cards */}
+            {formData.type === "misc" && (
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-slate-600">Items</Label>
+                <Select value="__pick__" onValueChange={(v) => { if (v !== "__pick__") addMiscItem(v); }}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select item to add..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__pick__" disabled className="hidden">Select item to add...</SelectItem>
+                    {MISC_ITEM_OPTIONS.map(opt => (
+                      <SelectItem key={opt} value={opt} disabled={(formData.misc_items || []).some(m => m.name === opt)}>
+                        {opt}{(formData.misc_items || []).some(m => m.name === opt) ? " ✓" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {(formData.misc_items || []).map((mi) => (
+                  <div key={mi.name} className="rounded-lg border border-purple-200 bg-purple-50 p-2 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-purple-800">{mi.name}</span>
+                      <button type="button" onClick={() => removeMiscItem(mi.name)} className="text-purple-400 hover:text-red-500" title={`Remove ${mi.name}`}>
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        type="number" min="0" step="1"
+                        value={mi.qty ?? ""}
+                        onChange={(e) => updateMiscItem(mi.name, "qty", e.target.value === "" ? "" : parseFloat(e.target.value))}
+                        placeholder="Qty"
+                        className="h-7 text-xs"
+                      />
+                      <Input
+                        value={mi.wood_type || ""}
+                        onChange={(e) => updateMiscItem(mi.name, "wood_type", e.target.value)}
+                        placeholder="Wood type"
+                        className="h-7 text-xs"
+                      />
+                      <Input
+                        value={mi.finish || ""}
+                        onChange={(e) => updateMiscItem(mi.name, "finish", e.target.value)}
+                        placeholder="Finish"
+                        className="h-7 text-xs"
+                      />
+                      <Input
+                        value={mi.notes || ""}
+                        onChange={(e) => updateMiscItem(mi.name, "notes", e.target.value)}
+                        placeholder="Notes"
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
