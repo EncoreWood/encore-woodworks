@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, Fragment } from "react";
 import { format, startOfWeek, startOfMonth } from "date-fns";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,7 +8,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset, MessageSquare, X } from "lucide-react";
+import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset, MessageSquare, X, Hammer } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
@@ -36,6 +36,15 @@ const productionColumns = [
 ];
 
 const ACTIVE_PROJECT_STATUSES = ["in_production", "ready_for_install", "installing", "in_design", "approved"];
+
+// Column ordering: "Currently Working On" cards first, then urgent (queued in the
+// order they became urgent), then everything else. Manual sort_order wins within
+// each group; cards without one (new arrivals) fall to the bottom by created date.
+const sortColumnItems = (a, b) => {
+  if (!!a.is_being_worked !== !!b.is_being_worked) return a.is_being_worked ? -1 : 1;
+  if (!!a.is_urgent !== !!b.is_urgent) return a.is_urgent ? -1 : 1;
+  return (a.sort_order ?? 999999) - (b.sort_order ?? 999999) || new Date(a.created_date) - new Date(b.created_date);
+};
 
 
 export default function ShopProduction() {
@@ -182,19 +191,29 @@ export default function ShopProduction() {
     if (oldStage === newStage && currentUser?.role === "admin") {
       const columnItems = items
         .filter(i => i.stage === oldStage && !i.is_job_info)
-        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+        .sort(sortColumnItems);
+      const workingCountBefore = columnItems.filter(i => i.is_being_worked).length;
       // Apply the reorder
       const reordered = [...columnItems];
       const [moved] = reordered.splice(result.source.index, 1);
       reordered.splice(result.destination.index, 0, moved);
+      // Dragging across the "Currently Working On" boundary starts/stops working on the card
+      const wasWorking = !!moved.is_being_worked;
+      const workingAfterRemoval = workingCountBefore - (wasWorking ? 1 : 0);
+      let isWorking = wasWorking;
+      if (!wasWorking && result.destination.index < workingCountBefore) isWorking = true;
+      else if (wasWorking && result.destination.index >= workingAfterRemoval) isWorking = false;
+      const finalOrder = reordered.map(it => it.id === moved.id ? { ...it, is_being_worked: isWorking } : it);
       // Optimistic update
       queryClient.setQueryData(["productionItems"], (old = []) => {
-        const orderMap = Object.fromEntries(reordered.map((it, idx) => [it.id, idx]));
-        return old.map(i => orderMap[i.id] !== undefined ? { ...i, sort_order: orderMap[i.id] } : i);
+        const orderMap = Object.fromEntries(finalOrder.map((it, idx) => [it.id, idx]));
+        return old.map(i => orderMap[i.id] !== undefined ? { ...i, sort_order: orderMap[i.id], ...(i.id === moved.id ? { is_being_worked: isWorking } : {}) } : i);
       });
       // Persist all reordered items
-      await Promise.all(reordered.map((it, idx) =>
-        base44.entities.ProductionItem.update(it.id, { sort_order: idx })
+      await Promise.all(finalOrder.map((it, idx) =>
+        base44.entities.ProductionItem.update(it.id, it.id === moved.id
+          ? { sort_order: idx, is_being_worked: isWorking }
+          : { sort_order: idx })
       ));
       return;
     }
@@ -265,6 +284,10 @@ export default function ShopProduction() {
       sent_back_for_missing: newStage === "complete"
         ? false
         : (extraUpdates?.sent_back_for_missing ?? item.sent_back_for_missing ?? false),
+      // Auto-organize: a moved card lands at the bottom of its new column
+      // (urgent cards float to the top via the sort, multiple urgents queue in line)
+      sort_order: Math.max(-1, ...items.filter(i => i.stage === newStage && !i.is_job_info && i.id !== itemId).map(i => i.sort_order ?? -1)) + 1,
+      is_being_worked: false,
     };
 
     // Optimistic update immediately so UI feels instant
@@ -416,13 +439,40 @@ export default function ShopProduction() {
 
   const handleToggleUrgent = (item) => {
     const next = !item.is_urgent;
-    queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, is_urgent: next } : i));
-    base44.entities.ProductionItem.update(item.id, { is_urgent: next })
-      .then(() => toast({ title: next ? "Marked urgent — card moved to top of its list" : "Urgent flag removed", duration: 3000 }))
+    // Urgent cards queue at the top of their column in the order they became urgent:
+    // the first urgent card goes to the very top, the next one slots in line after it.
+    let newSort = item.sort_order;
+    if (next) {
+      const columnOthers = items.filter(i => i.stage === item.stage && !i.is_job_info && i.id !== item.id);
+      const urgentOthers = columnOthers.filter(i => i.is_urgent).map(i => i.sort_order ?? -1);
+      newSort = urgentOthers.length
+        ? Math.max(...urgentOthers) + 1
+        : Math.max(-1, ...columnOthers.map(i => i.sort_order ?? -1)) + 1;
+    }
+    queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, is_urgent: next, ...(next ? { sort_order: newSort } : {}) } : i));
+    base44.entities.ProductionItem.update(item.id, next ? { is_urgent: true, sort_order: newSort } : { is_urgent: false })
+      .then(() => toast({ title: next ? "Marked urgent — card moved to the top of its list" : "Urgent flag removed", duration: 3000 }))
       .catch((err) => {
         console.error("Failed to update urgent flag:", err);
-        queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, is_urgent: !next } : i));
+        queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, is_urgent: !next, sort_order: item.sort_order } : i));
         toast({ title: "Failed to update urgent flag", variant: "destructive" });
+      });
+  };
+
+  // "Currently Working On" flag — moves the card into the column's working section
+  const handleToggleWorking = (item) => {
+    const next = !item.is_being_worked;
+    const columnOthers = items.filter(i => i.stage === item.stage && !i.is_job_info && i.id !== item.id);
+    const newSort = next
+      ? Math.max(-1, ...columnOthers.filter(i => i.is_being_worked).map(i => i.sort_order ?? -1)) + 1
+      : Math.max(-1, ...columnOthers.map(i => i.sort_order ?? -1)) + 1;
+    queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, is_being_worked: next, sort_order: newSort } : i));
+    base44.entities.ProductionItem.update(item.id, { is_being_worked: next, sort_order: newSort })
+      .then(() => toast({ title: next ? "Marked as currently working on" : "Removed from Currently Working On", duration: 3000 }))
+      .catch((err) => {
+        console.error("Failed to update working flag:", err);
+        queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, is_being_worked: !next, sort_order: item.sort_order } : i));
+        toast({ title: "Failed to update", variant: "destructive" });
       });
   };
 
@@ -465,6 +515,7 @@ export default function ShopProduction() {
     onDelete: (id) => deleteMutation.mutate(id),
     onUpdate: handleGlbUpdate,
     onToggleUrgent: handleToggleUrgent,
+    onToggleWorking: (item) => { if (item.stage) handleToggleWorking(item); },
   };
 
   return (
@@ -580,23 +631,8 @@ export default function ShopProduction() {
                   const isCollapsed = !!focusStage && !isFocused;
                   const columnItems = items
                     .filter(i => i.stage === column.id && !i.is_job_info)
-                    .sort((a, b) => {
-                      // Urgent cards float to the top of the column, then group by project …
-                      if (a.is_urgent !== b.is_urgent) return a.is_urgent ? -1 : 1;
-                      // Group cards by project, then by the room's order on that project
-                      // (Kitchen, Pool House, Drop Zone …), then manual order, newest cards last
-                      const pa = a.project_name || a.project_id || "";
-                      const pb = b.project_name || b.project_id || "";
-                      if (pa !== pb) return pa < pb ? -1 : 1;
-                      const roomIdx = (it) => {
-                        const proj = projects.find(p => p.id === it.project_id);
-                        const idx = proj?.rooms?.findIndex(r => r.room_name === it.room_name);
-                        return (idx === undefined || idx < 0) ? 9999 : idx;
-                      };
-                      const ra = roomIdx(a), rb = roomIdx(b);
-                      if (ra !== rb) return ra - rb;
-                      return (a.sort_order ?? 999999) - (b.sort_order ?? 999999) || new Date(a.created_date) - new Date(b.created_date);
-                    });
+                    .sort(sortColumnItems);
+                  const workingCount = columnItems.filter(i => i.is_being_worked).length;
                   const colPts = columnItems.reduce((sum, item) => {
                     const filePts = (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
                     const cardPts = parseFloat(item.pts) || 0;
@@ -647,7 +683,16 @@ export default function ShopProduction() {
                                 style={isFocused ? { gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" } : undefined}
                               >
                                 {columnItems.map((item, index) => (
-                                  <Draggable key={item.id} draggableId={item.id} index={index}>
+                                  <Fragment key={item.id}>
+                                    {index === workingCount && workingCount > 0 && (
+                                      <div className="flex items-center gap-2 my-1" style={isFocused ? { gridColumn: "1 / -1" } : undefined}>
+                                        <span className="text-[11px] font-bold uppercase tracking-wider text-blue-800 bg-blue-100 border border-blue-300 rounded-full px-2.5 py-1 flex items-center gap-1.5 flex-shrink-0">
+                                          <Hammer className="w-3 h-3" /> Currently Working On ({workingCount})
+                                        </span>
+                                        <div className="flex-1 h-px bg-blue-200" />
+                                      </div>
+                                    )}
+                                  <Draggable draggableId={item.id} index={index}>
                                    {(provided, snapshot) => {
                                      const proj = projects.find(p => p.id === item.project_id);
                                      const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
@@ -666,7 +711,8 @@ export default function ShopProduction() {
                                      );
                                    }}
                                   </Draggable>
-                                ))}
+                                  </Fragment>
+                                  ))}
                               </div>
                             )}
                             {provided.placeholder}
@@ -704,11 +750,15 @@ export default function ShopProduction() {
               setShowForm(true);
             }}
             onSendToProduction={async (selectedItems, stage = "cut") => {
+              // New arrivals land at the bottom of the destination column
+              let nextSort = Math.max(-1, ...items.filter(i => i.stage === stage && !i.is_job_info).map(i => i.sort_order ?? -1)) + 1;
               for (const item of selectedItems) {
                 await base44.entities.ProductionItem.update(item.id, {
                   ...item,
                   is_job_info: false,
-                  stage: stage
+                  stage: stage,
+                  sort_order: nextSort++,
+                  is_being_worked: false
                 });
               }
               queryClient.invalidateQueries({ queryKey: ["productionItems"] });

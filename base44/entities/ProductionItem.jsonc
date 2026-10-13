@@ -35,12 +35,17 @@
     },
     "sort_order": {
       "type": "number",
-      "description": "Manual sort order within a column (admin-set)"
+      "description": "Sort order within a column \u2014 new/moved cards get max+1 (bottom of the list); urgent toggles slot after existing urgent cards"
     },
     "is_urgent": {
       "type": "boolean",
       "default": false,
-      "description": "Marked urgent on the production board \u2014 urgent cards float to the top of their column"
+      "description": "Marked urgent on the production board \u2014 urgent cards float to the top of their column, in the order they became urgent"
+    },
+    "is_being_worked": {
+      "type": "boolean",
+      "default": false,
+      "description": "Card is flagged as currently being worked on \u2014 shown in the column's 'Currently Working On' section"
     },
     "is_job_info": {
       "type": "boolean",

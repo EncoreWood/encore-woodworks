@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Boxes } from "lucide-react";
+import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Boxes, Hammer } from "lucide-react";
 import MissingItemBadge from "@/components/production/MissingItemBadge";
 import GlbViewer from "@/components/cad/GlbViewer";
 import DxfViewer from "@/components/cad/DxfViewer";
@@ -82,6 +82,7 @@ export default function ProductionCard({
   onReportMissing,       // called with item to open the missing item report dialog
   onQuickReportMissing,  // called with item to open quick report dialog
   onToggleUrgent,        // called with item to toggle the urgent flag (floats card to top of column)
+  onToggleWorking,       // called with item to toggle the "currently working on" flag
 }) {
   const [hoveredPdfUrl, setHoveredPdfUrl] = useState(null);
   const [hoveredAnchorEl, setHoveredAnchorEl] = useState(null);
@@ -272,6 +273,21 @@ export default function ProductionCard({
               </button>
             )}
 
+            {/* Currently-working toggle */}
+            {onToggleWorking && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onToggleWorking(item); }}
+                className={`flex items-center justify-center w-6 h-6 rounded-full flex-shrink-0 transition-colors ${
+                  item.is_being_worked
+                    ? "bg-blue-600 hover:bg-blue-700 border border-blue-700 text-white shadow-sm"
+                    : "bg-blue-100 hover:bg-blue-200 border border-blue-200 text-blue-600"
+                }`}
+                title={item.is_being_worked ? "Stop working on this" : "Mark as currently working on — shows in the 'Currently Working On' section"}
+              >
+                <Hammer className="w-3.5 h-3.5" />
+              </button>
+            )}
+
             {/* Report missing */}
             {onQuickReportMissing && (
               <button
@@ -346,6 +362,15 @@ export default function ProductionCard({
           <div className="mb-2">
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-200 text-red-800 border border-red-400">
               🔴 Urgent
+            </span>
+          </div>
+        )}
+
+        {/* Working badge */}
+        {item.is_being_worked && (
+          <div className="mb-2">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-200 text-blue-800 border border-blue-400">
+              🔨 Working On It
             </span>
           </div>
         )}
