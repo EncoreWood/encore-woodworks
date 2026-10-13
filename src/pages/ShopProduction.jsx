@@ -702,7 +702,7 @@ export default function ShopProduction() {
                   }, 0);
 
                   return (
-                    <div key={column.id} className={isCollapsed ? "flex-shrink-0 w-16" : isFocused ? "flex-1 min-w-0" : "flex-shrink-0 w-80"}>
+                    <div key={column.id} className={isCollapsed ? (isMobile ? "hidden" : "flex-shrink-0 w-16") : isFocused ? (isMobile ? "w-full flex-shrink-0" : "flex-1 min-w-0") : "flex-shrink-0 w-80"}>
                       <div className="mb-3 flex items-center justify-between">
                         <button
                           type="button"
