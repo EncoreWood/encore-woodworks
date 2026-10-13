@@ -5,6 +5,7 @@ import { X, ChevronLeft, ChevronRight, Paperclip, Pencil, StickyNote } from "luc
 import PdfViewer from "@/components/PdfViewer";
 import ImageAnnotator from "@/components/measurements/ImageAnnotator";
 import RoomSelectionsPanel from "@/components/projects/RoomSelectionsPanel";
+import RoomNotesTasksEditor from "@/components/production/RoomNotesTasksEditor";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -79,15 +80,13 @@ export default function RoomFilesModal({ projectId, projectName, roomName, onClo
       </div>
 
       <div className="flex-1 overflow-y-auto" onClick={e => e.stopPropagation()}>
-        {/* Room notes — shown above the files so this modal works as a combined Room Info view */}
-        {!isLoading && notes && (
+        {/* Room notes + tasks — editable, shown above the files so this modal works as a combined Room Info view */}
+        {!isLoading && (
           <div className="p-6 pb-0 max-w-4xl mx-auto w-full">
             <p className="text-white/60 text-sm uppercase tracking-widest mb-3 font-semibold flex items-center gap-2">
               <StickyNote className="w-4 h-4" /> Room Notes
             </p>
-            <div className="rounded-2xl bg-white/10 border border-white/20 p-4">
-              <p className="text-white/90 text-sm whitespace-pre-wrap">{notes}</p>
-            </div>
+            <RoomNotesTasksEditor project={project} roomName={roomName} />
           </div>
         )}
         {isLoading ? (
