@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Home, Factory, MessageSquare, Clock, Menu } from "lucide-react";
+import { LayoutDashboard, Home, Factory, MessageSquare, Clock, Menu, ListTodo } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { base44 } from "@/api/base44Client";
 
@@ -10,6 +10,7 @@ const ALL_TABS = [
   { label: "Dashboard", icon: LayoutDashboard, page: "Dashboard", scope: ["Dashboard"] },
   { label: "Projects", icon: Home, page: "Kanban", scope: ["Kanban", "ProjectDetails"] },
   { label: "Shop", icon: Factory, page: "ShopProduction", scope: ["ShopProduction"] },
+  { label: "Tasks", icon: ListTodo, page: "MyAssignments", scope: ["MyAssignments"] },
   { label: "Chat", icon: MessageSquare, page: "ChatBoard", scope: ["ChatBoard"] },
   { label: "More", icon: Menu, page: "__more__", scope: [] },
 ];

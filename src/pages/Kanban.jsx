@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { useState, useEffect, useRef } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import ProjectForm from "../components/projects/ProjectForm";
 import TaskForm from "../components/projects/TaskForm";
@@ -55,7 +56,10 @@ export default function Kanban() {
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [taskProject, setTaskProject] = useState(null);
+  const isMobileKanban = useIsMobile();
   const [activeTab, setActiveTab] = useState(() => {
+    // On phones, Projects opens straight to the production board
+    if (isMobileKanban) return "production";
     return localStorage.getItem("kanban_active_tab") || "pre-production";
   });
   const [newProjectStatus, setNewProjectStatus] = useState(null);

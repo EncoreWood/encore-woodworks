@@ -369,6 +369,16 @@ export default function ShopProduction() {
     }
   };
 
+  // Phone view: move a card to a different stage via tap buttons (no drag needed)
+  const handleMobileMove = async (item, newStage) => {
+    try {
+      await handleDragEnd({ draggableId: item.id, destination: { droppableId: newStage } });
+      setExpandedCardId(null);
+    } catch (e) {
+      console.error("Failed to move card:", e);
+    }
+  };
+
   const handleAnnotatePdf = (item, fileIndex) => {
     const file = item.files[fileIndex];
     setAnnotatingPdf({ item, fileIndex });
@@ -803,6 +813,8 @@ export default function ShopProduction() {
                                           isBeingWorked={item.is_being_worked}
                                           expanded={expandedCardId === item.id}
                                           onToggle={() => setExpandedCardId(expandedCardId === item.id ? null : item.id)}
+                                          moveStages={productionColumns.filter(c => c.id !== item.stage).map(c => ({ id: c.id, label: c.label.replace(/^\d+\.\s*/, "") }))}
+                                          onMove={(stageId) => handleMobileMove(item, stageId)}
                                         >
                                           <ProductionCard
                                             item={item}
@@ -843,6 +855,8 @@ export default function ShopProduction() {
                                              isBeingWorked={item.is_being_worked}
                                              expanded={expandedCardId === item.id}
                                              onToggle={() => setExpandedCardId(expandedCardId === item.id ? null : item.id)}
+                                             moveStages={productionColumns.filter(c => c.id !== item.stage).map(c => ({ id: c.id, label: c.label.replace(/^\d+\.\s*/, "") }))}
+                                             onMove={(stageId) => handleMobileMove(item, stageId)}
                                            >
                                              <ProductionCard
                                                item={item}
