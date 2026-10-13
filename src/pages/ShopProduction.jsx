@@ -277,8 +277,15 @@ export default function ShopProduction() {
       // Auto-organize: a moved card lands at the bottom of its new column
       // (urgent cards float to the top via the sort, multiple urgents queue in line)
       sort_order: Math.max(-1, ...items.filter(i => i.stage === newStage && !i.is_job_info && i.id !== itemId).map(i => i.sort_order ?? -1)) + 1,
-      is_being_worked: false,
+      // The "Currently Working On" flag carries over to the new stage
+      is_being_worked: !!item.is_being_worked,
     };
+    // A card being worked on slots into the new column's working section,
+    // after the working cards already there
+    if (item.is_being_worked) {
+      const destWorkingSorts = items.filter(i => i.stage === newStage && !i.is_job_info && i.id !== itemId && i.is_being_worked).map(i => i.sort_order ?? -1);
+      updatePayload.sort_order = (destWorkingSorts.length ? Math.max(...destWorkingSorts) : Math.max(-1, ...items.filter(i => i.stage === newStage && !i.is_job_info && i.id !== itemId).map(i => i.sort_order ?? -1))) + 1;
+    }
 
     // Optimistic update immediately so UI feels instant
     queryClient.setQueryData(["productionItems"], (old = []) =>
@@ -758,8 +765,6 @@ export default function ShopProduction() {
                                     <div
                                       draggable
                                       onDragStart={(e) => {
-                                        const proj = projects.find(p => p.id === item.project_id);
-                                        const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
                                         e.dataTransfer.effectAllowed = "move";
                                         e.dataTransfer.setData("text/plain", item.id);
                                         gridDragRef.current = item.id;
@@ -820,7 +825,7 @@ export default function ShopProduction() {
                                   )}
                                   </Fragment>
                                   );
-                                  })}
+                                })}
                               </div>
                             )}
                             {provided.placeholder}
