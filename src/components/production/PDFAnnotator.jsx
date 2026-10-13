@@ -231,8 +231,9 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
 
   // ── Pointer handlers (mouse + Apple Pencil / stylus) ──────────────────────
   const handlePointerDown = (e, page) => {
-    // Finger touches scroll natively; ignore them here
-    if (e.pointerType === "touch") return;
+    // Finger touches scroll natively; allow them for comment/missing tools so
+    // iPad users can pin comments and report missing items without a stylus
+    if (e.pointerType === "touch" && tool !== "comment" && tool !== "missing") return;
 
     const canvas = e.currentTarget;
     const pos = getPos(e, canvas);
@@ -270,7 +271,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   };
 
   const handlePointerMove = (e) => {
-    if (e.pointerType === "touch") return;
+    if (e.pointerType === "touch" && tool !== "comment" && tool !== "missing") return;
 
     // Pan
     if (tool === "pan" && panStartRef.current) {
@@ -298,7 +299,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   };
 
   const handlePointerUp = (e) => {
-    if (e.pointerType === "touch") return;
+    if (e.pointerType === "touch" && tool !== "comment" && tool !== "missing") return;
     if (tool === "pan") { panStartRef.current = null; return; }
     e.preventDefault();
 
