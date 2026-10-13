@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, Fragment } from "react";
+import { useState, useCallback, useEffect, useRef, Fragment } from "react";
 import { format, startOfWeek, startOfMonth } from "date-fns";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -204,17 +204,7 @@ export default function ShopProduction() {
       if (!wasWorking && result.destination.index < workingCountBefore) isWorking = true;
       else if (wasWorking && result.destination.index >= workingAfterRemoval) isWorking = false;
       const finalOrder = reordered.map(it => it.id === moved.id ? { ...it, is_being_worked: isWorking } : it);
-      // Optimistic update
-      queryClient.setQueryData(["productionItems"], (old = []) => {
-        const orderMap = Object.fromEntries(finalOrder.map((it, idx) => [it.id, idx]));
-        return old.map(i => orderMap[i.id] !== undefined ? { ...i, sort_order: orderMap[i.id], ...(i.id === moved.id ? { is_being_worked: isWorking } : {}) } : i);
-      });
-      // Persist all reordered items
-      await Promise.all(finalOrder.map((it, idx) =>
-        base44.entities.ProductionItem.update(it.id, it.id === moved.id
-          ? { sort_order: idx, is_being_worked: isWorking }
-          : { sort_order: idx })
-      ));
+      await persistColumnOrder(finalOrder, moved.id, isWorking);
       return;
     }
 
@@ -476,6 +466,67 @@ export default function ShopProduction() {
       });
   };
 
+  // Save a new card order for one column (used by both drag systems)
+  const persistColumnOrder = async (orderedItems, movedId, movedIsWorking) => {
+    // Optimistic update
+    queryClient.setQueryData(["productionItems"], (old = []) => {
+      const orderMap = Object.fromEntries(orderedItems.map((it, idx) => [it.id, idx]));
+      return old.map(i => orderMap[i.id] !== undefined ? { ...i, sort_order: orderMap[i.id], ...(i.id === movedId ? { is_being_worked: movedIsWorking } : {}) } : i);
+    });
+    try {
+      await Promise.all(orderedItems.map((it, idx) =>
+        base44.entities.ProductionItem.update(it.id, it.id === movedId
+          ? { sort_order: idx, is_being_worked: movedIsWorking }
+          : { sort_order: idx })
+      ));
+    } catch (err) {
+      console.error("Failed to save card order:", err);
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+      toast({ title: "Failed to save the new card order", variant: "destructive" });
+    }
+  };
+
+  // Focused-column grid: native drag & drop reordering — drag a card between two
+  // cards and drop it; a blue bar shows exactly where it will land.
+  const gridDragRef = useRef(null);
+  const [gridDrag, setGridDrag] = useState(null); // { itemId, overId, pos: "before" | "after" }
+  const clearGridDrag = () => { gridDragRef.current = null; setGridDrag(null); };
+
+  const handleGridDrop = async (stage, dragId, targetItem, dropAfter) => {
+    clearGridDrag();
+    const dragged = items.find(i => i.id === dragId);
+    if (!dragged || !targetItem || dragId === targetItem.id) return;
+    const columnItems = items.filter(i => i.stage === stage && !i.is_job_info).sort(sortColumnItems);
+    const fromIdx = columnItems.findIndex(i => i.id === dragId);
+    if (fromIdx < 0) return;
+    const reordered = [...columnItems];
+    const [moved] = reordered.splice(fromIdx, 1);
+    let toIdx = reordered.findIndex(i => i.id === targetItem.id);
+    if (toIdx < 0) return;
+    if (dropAfter) toIdx += 1;
+    reordered.splice(toIdx, 0, moved);
+    // Dropping next to a "Currently Working On" card joins that section; dropping
+    // next to a regular card leaves it (same as dragging across the divider)
+    const neighbor = dropAfter ? reordered[toIdx - 1] : reordered[toIdx + 1];
+    const isWorking = neighbor ? !!neighbor.is_being_worked : !!moved.is_being_worked;
+    const finalOrder = reordered.map(it => it.id === moved.id ? { ...it, is_being_worked: isWorking } : it);
+    await persistColumnOrder(finalOrder, moved.id, isWorking);
+  };
+
+  const handleGridDropEnd = async (stage, dragId) => {
+    clearGridDrag();
+    const dragged = items.find(i => i.id === dragId);
+    if (!dragged) return;
+    const columnItems = items.filter(i => i.stage === stage && !i.is_job_info).sort(sortColumnItems);
+    const fromIdx = columnItems.findIndex(i => i.id === dragId);
+    if (fromIdx < 0) return;
+    const reordered = [...columnItems];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.push(moved);
+    const finalOrder = reordered.map(it => it.id === moved.id ? { ...it, is_being_worked: !!moved.is_being_worked } : it);
+    await persistColumnOrder(finalOrder, moved.id, !!moved.is_being_worked);
+  };
+
   // Get CAD files from the project tagged to a specific room
   const getRoomCadFiles = (projectId, roomName) => {
     if (!projectId || !roomName) return [];
@@ -681,8 +732,17 @@ export default function ShopProduction() {
                               <div
                                 className={isFocused ? "grid gap-3" : "space-y-3"}
                                 style={isFocused ? { gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" } : undefined}
+                                onDragOver={isFocused ? (e) => { if (gridDragRef.current != null) e.preventDefault(); } : undefined}
+                                onDrop={isFocused ? (e) => {
+                                  if (!gridDragRef.current) return;
+                                  e.preventDefault();
+                                  handleGridDropEnd(column.id, gridDragRef.current || e.dataTransfer.getData("text/plain"));
+                                } : undefined}
                               >
-                                {columnItems.map((item, index) => (
+                                {columnItems.map((item, index) => {
+                                  const proj = projects.find(p => p.id === item.project_id);
+                                  const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
+                                  return (
                                   <Fragment key={item.id}>
                                     {index === workingCount && workingCount > 0 && (
                                       <div className="flex items-center gap-2 my-1" style={isFocused ? { gridColumn: "1 / -1" } : undefined}>
@@ -692,6 +752,52 @@ export default function ShopProduction() {
                                         <div className="flex-1 h-px bg-blue-200" />
                                       </div>
                                     )}
+                                  {isFocused ? (
+                                    /* Focused grid: native drag & drop — drop between two
+                                       cards places the dragged card there (blue bar = landing spot) */
+                                    <div
+                                      draggable
+                                      onDragStart={(e) => {
+                                        const proj = projects.find(p => p.id === item.project_id);
+                                        const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
+                                        e.dataTransfer.effectAllowed = "move";
+                                        e.dataTransfer.setData("text/plain", item.id);
+                                        gridDragRef.current = item.id;
+                                        setGridDrag({ itemId: item.id, overId: null, pos: null });
+                                      }}
+                                      onDragEnd={clearGridDrag}
+                                      onDragOver={(e) => {
+                                        if (gridDragRef.current == null || gridDragRef.current === item.id) return;
+                                        e.preventDefault();
+                                        e.dataTransfer.dropEffect = "move";
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        const after = (e.clientX - rect.left) > rect.width / 2;
+                                        if (gridDrag?.overId !== item.id || gridDrag?.pos !== after) {
+                                          setGridDrag({ itemId: gridDragRef.current, overId: item.id, pos: after ? "after" : "before" });
+                                        }
+                                      }}
+                                      onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        const dragId = gridDragRef.current || e.dataTransfer.getData("text/plain");
+                                        const dropAfter = gridDrag?.overId === item.id && gridDrag?.pos === "after";
+                                        handleGridDrop(column.id, dragId, item, dropAfter);
+                                      }}
+                                      className="relative"
+                                    >
+                                      <ProductionCard
+                                        item={item}
+                                        {...sharedCardProps}
+                                        roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
+                                        onReturnToFolder={currentUser?.role === "admin" && hasRoom ? returnToFolder : undefined}
+                                        roomFolderLabel={hasRoom ? item.room_name : undefined}
+                                        onOpenRoomFolder={hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
+                                      />
+                                      {gridDrag?.overId === item.id && (
+                                        <div className={`absolute top-1 bottom-1 w-1 rounded-full bg-blue-500 z-20 ${gridDrag.pos === "after" ? "-right-1.5" : "-left-1.5"}`} />
+                                      )}
+                                    </div>
+                                  ) : (
                                   <Draggable draggableId={item.id} index={index}>
                                    {(provided, snapshot) => {
                                      const proj = projects.find(p => p.id === item.project_id);
@@ -711,8 +817,10 @@ export default function ShopProduction() {
                                      );
                                    }}
                                   </Draggable>
+                                  )}
                                   </Fragment>
-                                  ))}
+                                  );
+                                  })}
                               </div>
                             )}
                             {provided.placeholder}
