@@ -22,6 +22,8 @@ import ProductionCard from "../components/production/ProductionCard";
 import JobPacketsTab from "../components/production/JobPacketsTab";
 import ProductionMissingItemsTab from "../components/production/ProductionMissingItemsTab";
 import ProductionChatTab from "../components/production/ProductionChatTab";
+import MobileCompactCard from "../components/production/MobileCompactCard";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useProductionChatUnread } from "../components/production/useProductionChatUnread";
 import QuickReportMissingDialog from "../components/production/QuickReportMissingDialog";
 import PickupFromHighlightDialog from "../components/production/PickupFromHighlightDialog";
@@ -70,6 +72,8 @@ export default function ShopProduction() {
   const [scrollToProjectId, setScrollToProjectId] = useState(null);
   const [pickupFromHighlight, setPickupFromHighlight] = useState(null);
   const [focusStage, setFocusStage] = useState(null); // stage id when viewing a single stage
+  const isMobile = useIsMobile();
+  const [expandedCardId, setExpandedCardId] = useState(null); // phone view: which compact card is expanded
 
   useEffect(() => {
     base44.auth.me().then(setCurrentUser).catch(() => {});
@@ -790,14 +794,35 @@ export default function ShopProduction() {
                                       }}
                                       className="relative"
                                     >
-                                      <ProductionCard
-                                        item={item}
-                                        {...sharedCardProps}
-                                        roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
-                                        onReturnToFolder={currentUser?.role === "admin" && hasRoom ? returnToFolder : undefined}
-                                        roomFolderLabel={hasRoom ? item.room_name : undefined}
-                                        onOpenRoomFolder={hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
-                                      />
+                                      {isMobile ? (
+                                        <MobileCompactCard
+                                          jobName={item.project_name}
+                                          roomName={item.room_name}
+                                          cardName={item.name}
+                                          isUrgent={item.is_urgent}
+                                          isBeingWorked={item.is_being_worked}
+                                          expanded={expandedCardId === item.id}
+                                          onToggle={() => setExpandedCardId(expandedCardId === item.id ? null : item.id)}
+                                        >
+                                          <ProductionCard
+                                            item={item}
+                                            {...sharedCardProps}
+                                            roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
+                                            onReturnToFolder={currentUser?.role === "admin" && hasRoom ? returnToFolder : undefined}
+                                            roomFolderLabel={hasRoom ? item.room_name : undefined}
+                                            onOpenRoomFolder={hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
+                                          />
+                                        </MobileCompactCard>
+                                      ) : (
+                                        <ProductionCard
+                                          item={item}
+                                          {...sharedCardProps}
+                                          roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
+                                          onReturnToFolder={currentUser?.role === "admin" && hasRoom ? returnToFolder : undefined}
+                                          roomFolderLabel={hasRoom ? item.room_name : undefined}
+                                          onOpenRoomFolder={hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
+                                        />
+                                      )}
                                       {gridDrag?.overId === item.id && (
                                         <div className={`absolute top-1 bottom-1 w-1 rounded-full bg-blue-500 z-20 ${gridDrag.pos === "after" ? "-right-1.5" : "-left-1.5"}`} />
                                       )}
@@ -809,15 +834,37 @@ export default function ShopProduction() {
                                      const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
                                      return (
                                        <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                                         <ProductionCard
-                                           item={item}
-                                           isDragging={snapshot.isDragging}
-                                           {...sharedCardProps}
-                                           roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
-                                           onReturnToFolder={currentUser?.role === "admin" && hasRoom ? returnToFolder : undefined}
-                                                                            roomFolderLabel={hasRoom ? item.room_name : undefined}
-                                           onOpenRoomFolder={hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
-                                         />
+                                         {isMobile ? (
+                                           <MobileCompactCard
+                                             jobName={item.project_name}
+                                             roomName={item.room_name}
+                                             cardName={item.name}
+                                             isUrgent={item.is_urgent}
+                                             isBeingWorked={item.is_being_worked}
+                                             expanded={expandedCardId === item.id}
+                                             onToggle={() => setExpandedCardId(expandedCardId === item.id ? null : item.id)}
+                                           >
+                                             <ProductionCard
+                                               item={item}
+                                               isDragging={snapshot.isDragging}
+                                               {...sharedCardProps}
+                                               roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
+                                               onReturnToFolder={currentUser?.role === "admin" && hasRoom ? returnToFolder : undefined}
+                                               roomFolderLabel={hasRoom ? item.room_name : undefined}
+                                               onOpenRoomFolder={hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
+                                             />
+                                           </MobileCompactCard>
+                                         ) : (
+                                           <ProductionCard
+                                             item={item}
+                                             isDragging={snapshot.isDragging}
+                                             {...sharedCardProps}
+                                             roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
+                                             onReturnToFolder={currentUser?.role === "admin" && hasRoom ? returnToFolder : undefined}
+                                             roomFolderLabel={hasRoom ? item.room_name : undefined}
+                                             onOpenRoomFolder={hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
+                                           />
+                                         )}
                                        </div>
                                      );
                                    }}
