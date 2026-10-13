@@ -536,6 +536,25 @@
           "notes": {
             "type": "string"
           },
+          "room_tasks": {
+            "type": "array",
+            "description": "Task checklist for this room, shown in the Room Notes section",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "done": {
+                  "type": "boolean",
+                  "default": false
+                }
+              }
+            }
+          },
           "completed": {
             "type": "boolean",
             "default": false
