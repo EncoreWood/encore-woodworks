@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef, Fragment } from "react";
-import { format, startOfWeek, startOfMonth } from "date-fns";
+import { format, startOfWeek, startOfMonth, subDays } from "date-fns";
+import CompleteStageCards from "../components/production/CompleteStageCards";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import usePullToRefresh from "@/components/usePullToRefresh";
@@ -590,6 +591,39 @@ export default function ShopProduction() {
     onToggleWorking: (item) => { if (item.stage) handleToggleWorking(item); },
   };
 
+  // Complete column renders through CompleteStageCards (grouped by completion
+  // date), so it needs a card renderer without drag handles.
+  const renderCompleteCard = (item) => {
+    const proj = projects.find(p => p.id === item.project_id);
+    const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
+    const card = (
+      <ProductionCard
+        item={item}
+        {...sharedCardProps}
+        roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
+        onReturnToFolder={currentUser?.role === "admin" && hasRoom ? returnToFolder : undefined}
+        roomFolderLabel={hasRoom ? item.room_name : undefined}
+        onOpenRoomFolder={hasRoom ? () => { setOpenFolderContext({ projectId: item.project_id, roomName: item.room_name }); setActiveTab("job_packets"); } : undefined}
+      />
+    );
+    if (!isMobile) return card;
+    return (
+      <MobileCompactCard
+        jobName={item.project_name}
+        roomName={item.room_name}
+        cardName={item.name}
+        isUrgent={item.is_urgent}
+        isBeingWorked={item.is_being_worked}
+        expanded={expandedCardId === item.id}
+        onToggle={() => setExpandedCardId(expandedCardId === item.id ? null : item.id)}
+        moveStages={productionColumns.filter(c => c.id !== item.stage).map(c => ({ id: c.id, label: c.label.replace(/^\d+\.\s*/, "") }))}
+        onMove={(stageId) => handleMobileMove(item, stageId)}
+      >
+        {card}
+      </MobileCompactCard>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
@@ -710,6 +744,10 @@ export default function ShopProduction() {
                     const cardPts = parseFloat(item.pts) || 0;
                     return sum + filePts + cardPts;
                   }, 0);
+                  // Complete column: cards older than a week are hidden from the board view
+                  const completeVisibleCount = column.id === "complete"
+                    ? columnItems.filter(i => !i.completed_date || i.completed_date >= format(subDays(new Date(), 6), "yyyy-MM-dd")).length
+                    : columnItems.length;
 
                   return (
                     <div key={column.id} className={isCollapsed ? (isMobile ? "hidden" : "flex-shrink-0 w-16") : isFocused ? (isMobile ? "w-full flex-shrink-0" : "flex-1 min-w-0") : "flex-shrink-0 w-80"}>
@@ -721,7 +759,7 @@ export default function ShopProduction() {
                           className="flex items-center gap-2 rounded hover:bg-slate-100 px-1.5 py-1 -mx-1.5 transition-colors cursor-pointer"
                         >
                           {isCollapsed ? (
-                            <span className="text-xs font-semibold text-slate-500">{columnItems.length}</span>
+                            <span className="text-xs font-semibold text-slate-500">{completeVisibleCount}</span>
                           ) : (
                             <>
                               <h2 className="font-semibold text-slate-700">{column.label}</h2>
@@ -732,7 +770,7 @@ export default function ShopProduction() {
                           )}
                         </button>
                         {!isCollapsed && (
-                          <Badge variant="outline" className="text-xs">{columnItems.length}</Badge>
+                          <Badge variant="outline" className="text-xs">{completeVisibleCount}</Badge>
                         )}
                       </div>
                       <Droppable droppableId={column.id}>
@@ -760,7 +798,14 @@ export default function ShopProduction() {
                                   handleGridDropEnd(column.id, gridDragRef.current || e.dataTransfer.getData("text/plain"));
                                 } : undefined}
                               >
-                                {columnItems.map((item, index) => {
+                                {column.id === "complete" && (
+                                  <CompleteStageCards
+                                    items={columnItems}
+                                    isFocused={isFocused}
+                                    renderCard={renderCompleteCard}
+                                  />
+                                )}
+                                {(column.id === "complete" ? [] : columnItems).map((item, index) => {
                                   const proj = projects.find(p => p.id === item.project_id);
                                   const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
                                   return (
