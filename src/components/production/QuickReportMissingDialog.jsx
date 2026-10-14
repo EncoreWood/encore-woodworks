@@ -291,7 +291,7 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
     if (!canSubmit) return;
     setLoading(true);
 
-    let created = 0, confirmed = 0, confirmedBy = null, already = 0, failed = 0;
+    let created = 0, merged = 0, confirmed = 0, confirmedBy = null, already = 0, failed = 0;
 
     for (const payload of buildPayloads()) {
       try {
@@ -305,6 +305,7 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
           ...payload,
         }).then(r => r.data);
         if (data.result === "created") created++;
+        else if (data.result === "merged") merged++;
         else if (data.result === "confirmed") { confirmed++; confirmedBy = confirmedBy || data.reported_by; }
         else if (data.result === "already_confirmed") already++;
         else { failed++; console.error("reportMissingItem failed:", data?.error); }
@@ -315,14 +316,15 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
     }
 
     setLoading(false);
-    if (created || confirmed || already) {
+    if (created || merged || confirmed || already) {
       const parts = [
         created ? `${created} reported` : null,
+        merged ? `${merged} added to existing report` : null,
         confirmed ? `${confirmed} confirmed (already reported by ${confirmedBy})` : null,
         already ? `${already} already reported` : null,
       ].filter(Boolean).join(", ");
       if (failed) toast.warning(`${parts}. ${failed} item${failed > 1 ? "s" : ""} failed.`);
-      else toast.success(`Missing item${created + confirmed + already > 1 ? "s" : ""} — ${parts} ✓`);
+      else toast.success(`Missing item${created + merged + confirmed + already > 1 ? "s" : ""} — ${parts} ✓`);
       queryClient.invalidateQueries({ queryKey: ["missingItems"] });
       reset();
       onOpenChange(false);
