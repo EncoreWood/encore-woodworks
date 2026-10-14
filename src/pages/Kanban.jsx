@@ -80,7 +80,7 @@ export default function Kanban() {
     production: [
       { id: "in_design", label: "In Design", color: "bg-violet-50" },
       { id: "in_production", label: "In Production", color: "bg-amber-50" },
-      { id: "ready_for_install", label: "Ready", color: "bg-cyan-50" },
+      { id: "ready_for_install", label: "Production/ Install", color: "bg-cyan-50" },
       { id: "installing", label: "Installing", color: "bg-orange-50" },
       { id: "on_hold", label: "On Hold", color: "bg-red-50" }
     ],
