@@ -69,6 +69,8 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
   // quick type filter driving the one-tap Door Fronts / Drawer Fronts / End Panels chips.
   const [aiOptions, setAiOptions] = useState([]);
   const [aiLoadingType, setAiLoadingType] = useState(null);
+  const [aiProgress, setAiProgress] = useState("");
+  const [aiMessage, setAiMessage] = useState("");
   const [typeFilter, setTypeFilter] = useState(null);
 
   const runAiExtraction = async (type) => {
@@ -77,14 +79,23 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
       return;
     }
     setAiLoadingType(type);
+    setAiProgress("");
+    setAiMessage("");
     try {
-      const results = await Promise.all(
-        pdfFiles.map(async f => {
-          const pages = await renderPdfPagesToImages(f.url, 2, 8).catch(() => []);
-          if (pages.length === 0) return [];
+      let added = 0;
+      for (const f of pdfFiles) {
+        const pages = await renderPdfPagesToImages(f.url, 4, (i, n) =>
+          setAiProgress(`page ${i} of ${n}`)
+        );
+        if (pages.length === 0) {
+          setAiMessage("Couldn't open the attached PDF — enter the parts manually below.");
+          continue;
+        }
+        for (const pageUrl of pages) {
+          setAiProgress("reading with AI…");
           const res = await base44.integrations.Core.InvokeLLM({
             prompt: AI_EXTRACT_PROMPT(type),
-            file_urls: pages,
+            file_urls: [pageUrl],
             response_json_schema: {
               type: "object",
               properties: {
@@ -104,7 +115,7 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
               },
             },
           });
-          return (res?.rows || []).map(r => ({
+          const rows = (res?.rows || []).map(r => ({
             label: type,
             quick_type: type,
             qty: r.qty || 1,
@@ -113,19 +124,24 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
             material: r.material || null,
             finish: r.finish || null,
           }));
-        })
-      );
-      const rows = results.flat();
-      if (rows.length === 0) toast.info(`No ${type.toLowerCase()}s found in the PDF`);
-      setAiOptions(prev => {
-        const seen = new Set(prev.map(p => `${p.width}|${p.length}`));
-        return [...prev, ...rows.filter(r => !seen.has(`${r.width}|${r.length}`))];
-      });
+          if (rows.length) {
+            added += rows.length;
+            setAiOptions(prev => {
+              const seen = new Set(prev.map(p => `${p.width}|${p.length}`));
+              return [...prev, ...rows.filter(r => !seen.has(`${r.width}|${r.length}`))];
+            });
+          }
+        }
+      }
+      if (added === 0) {
+        setAiMessage(`No ${type.toLowerCase()}s found in the PDF — enter them manually below.`);
+      }
     } catch (err) {
       console.error("AI PDF extraction failed:", err);
-      toast.error("Couldn't read those from the PDF — enter them manually.");
+      setAiMessage("Couldn't read those from the PDF — enter them manually below.");
     } finally {
       setAiLoadingType(null);
+      setAiProgress("");
     }
   };
 
