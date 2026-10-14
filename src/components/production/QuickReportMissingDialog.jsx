@@ -8,12 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { base44 } from "@/api/base44Client";
-import { appParams } from "@/lib/app-params";
 import { getSizeBreakdown, splitDimList } from "./missingItemSizes";
 import { extractSizesFromPdf, inferPickupType } from "@/components/production/pdfSizes";
 import readMissingPartsFromPdf from "@/components/production/readMissingPartsFromPdf";
-
-const API_BASE = "https://vivica-d92c9f97.base44.app/functions/reportMissingItem";
 
 const CUSTOM_TYPES = ["Door", "Drawer Front", "Drawer Box", "End Panel", "Panel", "Molding", "Hardware", "Other"];
 
@@ -294,18 +291,11 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
     if (!canSubmit) return;
     setLoading(true);
 
-    const token = appParams.token;
-
     let created = 0, confirmed = 0, confirmedBy = null, already = 0, failed = 0;
 
     for (const payload of buildPayloads()) {
-      const res = await fetch(API_BASE, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({
+      try {
+        const data = await base44.functions.invoke("reportMissingItem", {
           production_item_id: item?.id,
           production_item_name: item?.name,
           project_name: item?.project_name,
@@ -313,13 +303,15 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
           cabinet,
           notes,
           ...payload,
-        }),
-      });
-      const data = await res.json();
-      if (data.result === "created") created++;
-      else if (data.result === "confirmed") { confirmed++; confirmedBy = confirmedBy || data.reported_by; }
-      else if (data.result === "already_confirmed") already++;
-      else { failed++; console.error("reportMissingItem failed:", data.error); }
+        }).then(r => r.data);
+        if (data.result === "created") created++;
+        else if (data.result === "confirmed") { confirmed++; confirmedBy = confirmedBy || data.reported_by; }
+        else if (data.result === "already_confirmed") already++;
+        else { failed++; console.error("reportMissingItem failed:", data?.error); }
+      } catch (err) {
+        failed++;
+        console.error("reportMissingItem failed:", err);
+      }
     }
 
     setLoading(false);
