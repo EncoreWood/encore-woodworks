@@ -65,6 +65,25 @@ export function inferPickupType(label) {
   return null;
 }
 
+// Render each PDF page to a JPEG data URL so the AI can read it visually
+// (same idea as the plan-highlight flow) when text extraction finds nothing.
+export async function renderPdfPagesToImages(url, scale = 2, maxPages = 8) {
+  const doc = await pdfjs.getDocument({ url }).promise;
+  const out = [];
+  const n = Math.min(doc.numPages, maxPages);
+  for (let p = 1; p <= n; p++) {
+    const page = await doc.getPage(p);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext("2d");
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    out.push(canvas.toDataURL("image/jpeg", 0.85));
+  }
+  return out;
+}
+
 export async function extractSizesFromPdf(url) {
   const doc = await pdfjs.getDocument({ url }).promise;
   const lines = await extractLines(doc);

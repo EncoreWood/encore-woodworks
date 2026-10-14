@@ -10,11 +10,28 @@ import { cn } from "@/lib/utils";
 import { base44 } from "@/api/base44Client";
 import { appParams } from "@/lib/app-params";
 import { getSizeBreakdown, splitDimList } from "./missingItemSizes";
-import { extractSizesFromPdf, inferPickupType } from "./pdfSizes";
+import { extractSizesFromPdf, inferPickupType, renderPdfPagesToImages } from "./pdfSizes";
 
 const API_BASE = "https://vivica-d92c9f97.base44.app/functions/reportMissingItem";
 
-const CUSTOM_TYPES = ["Door", "Drawer Front", "Drawer Box", "Panel", "Molding", "Hardware", "Other"];
+const CUSTOM_TYPES = ["Door", "Drawer Front", "Drawer Box", "End Panel", "Panel", "Molding", "Hardware", "Other"];
+
+// One-tap part types: info is pulled from the PDFs attached to the card.
+const QUICK_TYPES = [
+  { label: "Door Fronts", type: "Door" },
+  { label: "Drawer Fronts", type: "Drawer Front" },
+  { label: "End Panels", type: "End Panel" },
+];
+
+const AI_EXTRACT_PROMPT = (type) => `You are reading a cabinet shop manufacturing plan / cut list PDF page.
+List every ${type} entry you can find on the page. Only include rows that are ${type}s (no other part types).
+For each row return:
+- qty: the numeric quantity (default 1 if not shown)
+- width: the width as a fraction string (e.g. "15 5/8")
+- length: the length as a fraction string (e.g. "24 13/16")
+- material: the material spec for the row (e.g. "Maple FF"), empty string if not shown
+- finish: the finish spec from the page header, empty string if not shown
+Return an empty rows array if there are no ${type}s on the page.`;
 
 export default function QuickReportMissingDialog({ open, onOpenChange, item, currentUser }) {
   const [room, setRoom] = useState(item?.room_name || "");
@@ -48,6 +65,81 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
   const [pdfOptions, setPdfOptions] = useState([]);
   const [pdfLoading, setPdfLoading] = useState(false);
 
+  // AI-extracted rows (used when text extraction can't read the PDF) and the
+  // quick type filter driving the one-tap Door Fronts / Drawer Fronts / End Panels chips.
+  const [aiOptions, setAiOptions] = useState([]);
+  const [aiLoadingType, setAiLoadingType] = useState(null);
+  const [typeFilter, setTypeFilter] = useState(null);
+
+  const runAiExtraction = async (type) => {
+    if (pdfFiles.length === 0) {
+      toast.info("No PDF attached to this card");
+      return;
+    }
+    setAiLoadingType(type);
+    try {
+      const results = await Promise.all(
+        pdfFiles.map(async f => {
+          const pages = await renderPdfPagesToImages(f.url, 2, 8).catch(() => []);
+          if (pages.length === 0) return [];
+          const res = await base44.integrations.Core.InvokeLLM({
+            prompt: AI_EXTRACT_PROMPT(type),
+            file_urls: pages,
+            response_json_schema: {
+              type: "object",
+              properties: {
+                rows: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      qty: { type: "number" },
+                      width: { type: "string" },
+                      length: { type: "string" },
+                      material: { type: "string" },
+                      finish: { type: "string" },
+                    },
+                  },
+                },
+              },
+            },
+          });
+          return (res?.rows || []).map(r => ({
+            label: type,
+            quick_type: type,
+            qty: r.qty || 1,
+            width: r.width || null,
+            length: r.length || null,
+            material: r.material || null,
+            finish: r.finish || null,
+          }));
+        })
+      );
+      const rows = results.flat();
+      if (rows.length === 0) toast.info(`No ${type.toLowerCase()}s found in the PDF`);
+      setAiOptions(prev => {
+        const seen = new Set(prev.map(p => `${p.width}|${p.length}`));
+        return [...prev, ...rows.filter(r => !seen.has(`${r.width}|${r.length}`))];
+      });
+    } catch (err) {
+      console.error("AI PDF extraction failed:", err);
+      toast.error("Couldn't read those from the PDF — enter them manually.");
+    } finally {
+      setAiLoadingType(null);
+    }
+  };
+
+  const handleQuickType = (type) => {
+    const next = typeFilter === type ? null : type;
+    setTypeFilter(next);
+    if (next && !aiLoadingType) {
+      const haveRows = [...pdfOptions, ...aiOptions].some(o =>
+        o.quick_type === next || o.label === next || inferPickupType(o.label) === next
+      );
+      if (!haveRows) runAiExtraction(next);
+    }
+  };
+
   useEffect(() => {
     if (!open || pdfFiles.length === 0) { setPdfOptions([]); setPdfLoading(false); return; }
     let cancelled = false;
@@ -70,7 +162,7 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
 
   // One selectable row per size (so the user can report a single door at one size),
   // instead of one row bundling every size of the part.
-  const options = useMemo(() => {
+  const allOptions = useMemo(() => {
     const seen = new Set();
     const out = [];
     (cardParts || []).forEach(p => {
@@ -140,8 +232,29 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
         qty: p.qty || 1, width: p.width, length: p.length,
       });
     });
+    (aiOptions || []).forEach(p => {
+      const key = `ai|${p.label}|${p.width}|${p.length}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push({
+        key, label: p.label,
+        sizeText: [p.width, p.length].filter(Boolean).join(" x "),
+        pickup_type: inferPickupType(p.label),
+        quick_type: p.quick_type || null,
+        room_name: p.room_name || null, cabinet_name: null,
+        qty: p.qty || 1, width: p.width, length: p.length,
+        material: p.material || null, finish: p.finish || null,
+      });
+    });
     return out;
-  }, [cardParts, pdfOptions]);
+  }, [cardParts, pdfOptions, aiOptions]);
+
+  // The quick chips narrow the list to one part type at a time.
+  const options = useMemo(() => (
+    typeFilter
+      ? allOptions.filter(o => o.quick_type === typeFilter || o.label === typeFilter || inferPickupType(o.label) === typeFilter)
+      : allOptions
+  ), [allOptions, typeFilter]);
 
   const showCustom = customMode || options.length === 0;
   const canSubmit = !!selectedKey || (showCustom && (customText.trim() || customType));
@@ -158,6 +271,9 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
     setCustomWidth("");
     setCustomLength("");
     setNotes("");
+    setAiOptions([]);
+    setAiLoadingType(null);
+    setTypeFilter(null);
   };
 
   const pick = (o) => {
@@ -179,6 +295,8 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
         length: o.length,
         quantity: selectedQty,
         size_breakdown: hasSize ? [{ qty: selectedQty, width: o.width, length: o.length }] : null,
+        material: o.material || null,
+        finish: o.finish || null,
       };
     }
     const qty = parseFloat(customQty);
@@ -264,6 +382,30 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
           <div>
             <Label className="text-xs font-semibold text-slate-700">What's missing *</Label>
 
+            <div className="flex flex-wrap gap-1.5 mt-1.5">
+              {QUICK_TYPES.map(q => (
+                <button
+                  key={q.type}
+                  type="button"
+                  onClick={() => handleQuickType(q.type)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-full border text-xs font-medium transition-colors",
+                    typeFilter === q.type
+                      ? "border-orange-500 bg-orange-100 text-orange-800"
+                      : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                  )}
+                >
+                  {q.label}
+                </button>
+              ))}
+            </div>
+
+            {aiLoadingType && (
+              <p className="mt-1.5 text-xs text-slate-500 animate-pulse">
+                🤖 Pulling {aiLoadingType.toLowerCase()}s from the attached PDF…
+              </p>
+            )}
+
             {pdfLoading && (
               <p className="mt-1.5 text-xs text-slate-500 animate-pulse">📄 Reading sizes from attached PDF...</p>
             )}
@@ -291,7 +433,13 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
                           onClick={() => setSelectedQty(Math.max(1, selectedQty - 1))}
                           className="w-6 h-6 rounded-md border border-slate-300 bg-white text-slate-600 leading-none"
                         >−</button>
-                        <span className="w-6 text-center font-semibold text-slate-800">{selectedQty}</span>
+                        <input
+                          type="number"
+                          min={1}
+                          value={selectedQty}
+                          onChange={e => setSelectedQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                          className="w-12 h-7 text-center font-semibold text-slate-800 rounded-md border border-orange-300 bg-white"
+                        />
                         <button
                           type="button"
                           onClick={() => setSelectedQty(selectedQty + 1)}

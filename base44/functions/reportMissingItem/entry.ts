@@ -22,6 +22,8 @@ Deno.serve(async (req) => {
     length,
     quantity,
     size_breakdown,
+    material,
+    finish,
   } = body;
 
   if (!item_description?.trim()) {
@@ -82,6 +84,8 @@ Deno.serve(async (req) => {
     length: length || null,
     quantity: quantity ?? null,
     size_breakdown: size_breakdown || null,
+    material: material || null,
+    finish: finish || null,
     reported_by: reporterName,
     reported_at: new Date().toISOString(),
     confirmed_by: '[]',
