@@ -5,18 +5,12 @@ import { Clock } from "lucide-react";
 import { format } from "date-fns";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
 import { getSizeBreakdown, legacySizeSummary, sizeSummary } from "./missingItemSizes";
+import SendToProductionDialog from "./SendToProductionDialog";
 
 const STAGE_LABELS = { cut: "Cut", face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete", on_hold: "On Hold" };
 
-const PRODUCTION_STAGES = [
-  { id: "cut", label: "Cut" },
-  { id: "face_frame", label: "Face Frame" },
-  { id: "spray", label: "Spray" },
-  { id: "build", label: "Build" },
-];
-
 export default function MissingItemRow({ item, card, projects, isAdmin, updating, onStatus, onSendToProduction, onBackToOpen, sending, onViewCard }) {
-  const [sendStage, setSendStage] = useState("cut");
+  const [stageDialogOpen, setStageDialogOpen] = useState(false);
   const confirmed = JSON.parse(item.confirmed_by || "[]");
 
   // Wood species / finish for this item's room, pulled from the project's room selections
@@ -107,24 +101,20 @@ export default function MissingItemRow({ item, card, projects, isAdmin, updating
           )}
           {item.production_item_id && !isDone && (
             <>
-              <Select value={sendStage} onValueChange={setSendStage}>
-                <SelectTrigger className="h-7 w-[110px] text-xs" disabled={sending === item.id}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRODUCTION_STAGES.map(s => (
-                    <SelectItem key={s.id} value={s.id} className="text-xs">{s.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
               <button
                 disabled={sending === item.id}
-                onClick={() => onSendToProduction(item, sendStage)}
+                onClick={() => setStageDialogOpen(true)}
                 className="text-xs px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
-                title="Send this item's production card back into the selected production stage"
+                title="Send this item's production card back into a production stage"
               >
                 🏭 To Production
               </button>
+              <SendToProductionDialog
+                open={stageDialogOpen}
+                items={[item]}
+                onConfirm={(stage) => { setStageDialogOpen(false); onSendToProduction(item, stage); }}
+                onClose={() => setStageDialogOpen(false)}
+              />
             </>
           )}
           {item.status !== "Open" && (
