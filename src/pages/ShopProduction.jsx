@@ -463,7 +463,7 @@ export default function ShopProduction() {
     }
     queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, is_urgent: next, ...(next ? { sort_order: newSort } : {}) } : i));
     base44.entities.ProductionItem.update(item.id, next ? { is_urgent: true, sort_order: newSort } : { is_urgent: false })
-      .then(() => toast({ title: next ? "Marked urgent — card moved to the top of its list" : "Urgent flag removed", duration: 3000 }))
+      .then(() => {})
       .catch((err) => {
         console.error("Failed to update urgent flag:", err);
         queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, is_urgent: !next, sort_order: item.sort_order } : i));
