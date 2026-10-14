@@ -2,6 +2,7 @@
 // attached PDF (door list, drawer list, cut sheet...). Uses the pdfjs build
 // already bundled with react-pdf.
 import { pdfjs } from "react-pdf";
+import { partTypeOf, readPartTable } from "@/components/production/pdfPartTable";
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
@@ -17,41 +18,30 @@ const toInches = (str) => {
   return whole + frac;
 };
 
-// Group a page's text items into visual lines by y-coordinate
-async function extractLines(doc) {
-  const lines = [];
+// Normalize to the displayed page BEFORE grouping: cabinet PDFs can be rotated 90°.
+async function extractPages(doc) {
+  const pages = [];
   for (let p = 1; p <= doc.numPages; p++) {
     const page = await doc.getPage(p);
+    const viewport = page.getViewport({ scale: 1 });
     const content = await page.getTextContent();
-    const rows = new Map();
-    content.items.forEach(it => {
-      if (!it.str || !it.str.trim()) return;
-      const y = Math.round(it.transform[5]);
-      if (!rows.has(y)) rows.set(y, []);
-      rows.get(y).push({ x: it.transform[4], str: it.str });
+    const items = content.items.filter(it => it.str?.trim()).map(it => {
+      const transform = pdfjs.Util.transform(viewport.transform, it.transform);
+      return { x: transform[4], y: transform[5], str: it.str.trim(), height: Math.hypot(transform[0], transform[1]) };
+    }).sort((a, b) => a.y - b.y || a.x - b.x);
+    const lines = [];
+    for (const item of items) {
+      const row = lines[lines.length - 1];
+      if (row && Math.abs(row.y - item.y) < 2) row.parts.push(item);
+      else lines.push({ y: item.y, parts: [item] });
+    }
+    lines.forEach(row => {
+      row.parts.sort((a, b) => a.x - b.x);
+      row.text = row.parts.map(part => part.str).join(" ");
     });
-    [...rows.values()].forEach(parts => {
-      lines.push(parts.sort((a, b) => a.x - b.x).map(p => p.str).join(" ").trim());
-    });
+    pages.push(lines);
   }
-  return lines;
-}
-
-// Only these part types should surface in the missing-item dialog.
-// Returns a canonical label when the row is one of them, else null.
-function partTypeOf(line) {
-  const l = line.toLowerCase();
-  if (/drawer\s*front/.test(l)) return "Drawer Front";
-  if (/door/.test(l)) return "Door";
-  if (/end\s*panel|slab\s*end|fend/.test(l)) return "End Panel";
-  return null;
-}
-
-// Best-effort part label: the text preceding the size on the same line
-function labelBefore(line, matchIndex) {
-  let before = line.slice(0, matchIndex).replace(/[\s,\-–:]+$/, "").trim();
-  if (before.length > 48) before = before.slice(-48).replace(/^\S+\s/, "");
-  return before;
+  return pages;
 }
 
 export function inferPickupType(label) {
@@ -65,61 +55,42 @@ export function inferPickupType(label) {
   return null;
 }
 
-// Render each PDF page to a JPEG data URL so the AI can read it visually
-// (same idea as the plan-highlight flow) when text extraction finds nothing.
-export async function renderPdfPagesToImages(url, maxPages = 4, onProgress) {
-  const doc = await pdfjs.getDocument({ url }).promise;
-  const out = [];
-  const n = Math.min(doc.numPages, maxPages);
-  for (let p = 1; p <= n; p++) {
-    if (onProgress) onProgress(p, n);
-    const page = await doc.getPage(p);
-    const base = page.getViewport({ scale: 1 });
-    const s = Math.min(2, 1600 / base.width);
-    const viewport = page.getViewport({ scale: s });
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.floor(viewport.width);
-    canvas.height = Math.floor(viewport.height);
-    const ctx = canvas.getContext("2d");
-    // White background so transparent areas aren't black in the JPEG
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    await page.render({ canvasContext: ctx, viewport }).promise;
-    out.push(canvas.toDataURL("image/jpeg", 0.8));
-  }
-  try { doc.destroy(); } catch (_) {}
-  return out;
-}
-
 export async function extractSizesFromPdf(url) {
   const doc = await pdfjs.getDocument({ url }).promise;
-  const lines = await extractLines(doc);
-  const byKey = new Map();
-
-  lines.forEach(line => {
-    // Only keep rows the sheet itself labels as door / drawer front / end panel
-    const partType = partTypeOf(line);
-    if (!partType) return;
-
-    let m;
-    SIZE_RE.lastIndex = 0;
-    while ((m = SIZE_RE.exec(line))) {
-      const width = m[2];
-      const length = m[3];
-      const w = toInches(width);
-      const l = toInches(length);
-      // Filter noise: real part dims fall in a sane inch range
-      if (!Number.isFinite(w) || !Number.isFinite(l)) continue;
-      if (w < 2 || w > 120 || l < 2 || l > 120) continue;
-      const qty = m[1] ? parseInt(m[1], 10) : 1;
-      const key = `${partType.toLowerCase()}|${width}|${length}`;
-      if (byKey.has(key)) {
-        byKey.get(key).qty += qty;
-      } else {
-        byKey.set(key, { label: partType, qty, width, length });
+  try {
+    const pages = await extractPages(doc);
+    const all = new Map();
+    let finish = null;
+    for (const lines of pages) {
+      const header = lines.find(line => /\bfinish\s*:/i.test(line.text));
+      finish = header?.text.match(/\bfinish\s*:\s*(.*)$/i)?.[1]?.trim() || finish;
+      const tableParts = readPartTable(lines).map(part => ({ ...part, finish }));
+      const parts = [...tableParts];
+      // Retain support for older lists using "qty@ width x length".
+      if (!tableParts.length) lines.forEach(({ text }) => {
+        const label = partTypeOf(text);
+        if (!label) return;
+        SIZE_RE.lastIndex = 0;
+        let match;
+        while ((match = SIZE_RE.exec(text))) {
+          const w = toInches(match[2]), l = toInches(match[3]);
+          if (w < 2 || w > 120 || l < 2 || l > 120 || !Number.isFinite(w) || !Number.isFinite(l)) continue;
+          parts.push({ label, quick_type: label, qty: Number(match[1] || 1), width: match[2], length: match[3] });
+        }
+      });
+      const pageParts = new Map();
+      for (const part of parts) {
+        const key = [part.label, part.width, part.length, part.material || ""].join("|");
+        if (pageParts.has(key)) pageParts.get(key).qty += part.qty;
+        else pageParts.set(key, { ...part });
+      }
+      // Repeated face-frame/cabinet tables describe the same parts, not extra quantities.
+      for (const [key, part] of pageParts) {
+        if (!all.has(key) || part.qty > all.get(key).qty) all.set(key, part);
       }
     }
-  });
-
-  return [...byKey.values()];
+    return [...all.values()];
+  } finally {
+    await doc.destroy();
+  }
 }

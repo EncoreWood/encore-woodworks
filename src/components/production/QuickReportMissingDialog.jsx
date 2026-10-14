@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
 import { base44 } from "@/api/base44Client";
 import { appParams } from "@/lib/app-params";
 import { getSizeBreakdown, splitDimList } from "./missingItemSizes";
-import { extractSizesFromPdf, inferPickupType, renderPdfPagesToImages } from "./pdfSizes";
+import { extractSizesFromPdf, inferPickupType } from "@/components/production/pdfSizes";
+import readMissingPartsFromPdf from "@/components/production/readMissingPartsFromPdf";
 
 const API_BASE = "https://vivica-d92c9f97.base44.app/functions/reportMissingItem";
 
@@ -22,16 +23,6 @@ const QUICK_TYPES = [
   { label: "Drawer Fronts", type: "Drawer Front" },
   { label: "End Panels", type: "End Panel" },
 ];
-
-const AI_EXTRACT_PROMPT = (type) => `You are reading a cabinet shop manufacturing plan / cut list PDF page.
-List every ${type} entry you can find on the page. Only include rows that are ${type}s (no other part types).
-For each row return:
-- qty: the numeric quantity (default 1 if not shown)
-- width: the width as a fraction string (e.g. "15 5/8")
-- length: the length as a fraction string (e.g. "24 13/16")
-- material: the material spec for the row (e.g. "Maple FF"), empty string if not shown
-- finish: the finish spec from the page header, empty string if not shown
-Return an empty rows array if there are no ${type}s on the page.`;
 
 export default function QuickReportMissingDialog({ open, onOpenChange, item, currentUser }) {
   const [room, setRoom] = useState(item?.room_name || "");
@@ -57,10 +48,11 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
     staleTime: 30_000,
   });
 
-  // Sizes pulled from the PDFs attached to the production card
+  // Keep the read stable when the production board refreshes the same card.
+  const pdfFileKey = JSON.stringify((item?.files || []).map(f => [f.name, f.url]));
   const pdfFiles = useMemo(
-    () => (item?.files || []).filter(f => f.url && /\.pdf$/i.test(f.url)),
-    [item?.id]
+    () => (item?.files || []).filter(f => f.url && (/\.pdf$/i.test(f.name || "") || /\.pdf(?:$|[?#])/i.test(f.url))),
+    [item?.id, pdfFileKey]
   );
   const [pdfOptions, setPdfOptions] = useState([]);
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -72,109 +64,68 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
   const [aiProgress, setAiProgress] = useState("");
   const [aiMessage, setAiMessage] = useState("");
   const [typeFilter, setTypeFilter] = useState(null);
+  const pdfReadRef = useRef(Promise.resolve([]));
+  const extractionRun = useRef(0);
 
   const runAiExtraction = async (type) => {
-    if (pdfFiles.length === 0) {
-      toast.info("No PDF attached to this card");
-      return;
-    }
+    const run = ++extractionRun.current;
     setAiLoadingType(type);
-    setAiProgress("");
+    setAiProgress("reading the part table…");
     setAiMessage("");
     try {
-      let added = 0;
-      for (const f of pdfFiles) {
-        const pages = await renderPdfPagesToImages(f.url, 4, (i, n) =>
-          setAiProgress(`page ${i} of ${n}`)
-        );
-        if (pages.length === 0) {
-          setAiMessage("Couldn't open the attached PDF — enter the parts manually below.");
-          continue;
-        }
-        for (const pageUrl of pages) {
-          setAiProgress("reading with AI…");
-          const res = await base44.integrations.Core.InvokeLLM({
-            prompt: AI_EXTRACT_PROMPT(type),
-            file_urls: [pageUrl],
-            response_json_schema: {
-              type: "object",
-              properties: {
-                rows: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      qty: { type: "number" },
-                      width: { type: "string" },
-                      length: { type: "string" },
-                      material: { type: "string" },
-                      finish: { type: "string" },
-                    },
-                  },
-                },
-              },
-            },
-          });
-          const rows = (res?.rows || []).map(r => ({
-            label: type,
-            quick_type: type,
-            qty: r.qty || 1,
-            width: r.width || null,
-            length: r.length || null,
-            material: r.material || null,
-            finish: r.finish || null,
-          }));
-          if (rows.length) {
-            added += rows.length;
-            setAiOptions(prev => {
-              const seen = new Set(prev.map(p => `${p.width}|${p.length}`));
-              return [...prev, ...rows.filter(r => !seen.has(`${r.width}|${r.length}`))];
-            });
-          }
-        }
+      // Wait for the text read instead of racing it with an AI call.
+      const textParts = await pdfReadRef.current;
+      if (run !== extractionRun.current) return;
+      if (textParts.some(p => p.quick_type === type || p.label === type)) return;
+      if (!pdfFiles.length) {
+        setAiMessage("No PDF is attached to this card.");
+        return;
       }
-      if (added === 0) {
-        setAiMessage(`No ${type.toLowerCase()}s found in the PDF — enter them manually below.`);
-      }
+      const rows = await readMissingPartsFromPdf(pdfFiles, type, message => {
+        if (run === extractionRun.current) setAiProgress(message);
+      });
+      if (run !== extractionRun.current) return;
+      setAiOptions(prev => [...prev.filter(p => p.quick_type !== type), ...rows]);
+      if (!rows.length) setAiMessage(`No ${type.toLowerCase()}s found in the attached PDF.`);
     } catch (err) {
-      console.error("AI PDF extraction failed:", err);
-      setAiMessage("Couldn't read those from the PDF — enter them manually below.");
+      console.error("PDF part extraction failed:", err);
+      if (run === extractionRun.current) setAiMessage(`Couldn't read the attached PDF: ${err?.message || "Please try again."}`);
     } finally {
-      setAiLoadingType(null);
-      setAiProgress("");
+      if (run === extractionRun.current) {
+        setAiLoadingType(null);
+        setAiProgress("");
+      }
     }
   };
 
   const handleQuickType = (type) => {
     const next = typeFilter === type ? null : type;
     setTypeFilter(next);
-    if (next && !aiLoadingType) {
-      const haveRows = [...pdfOptions, ...aiOptions].some(o =>
-        o.quick_type === next || o.label === next || inferPickupType(o.label) === next
-      );
-      if (!haveRows) runAiExtraction(next);
-    }
+    setSelectedKey(null);
+    setCustomMode(false);
+    setAiMessage("");
+    if (next && ![...pdfOptions, ...aiOptions].some(o => o.quick_type === next || o.label === next)) runAiExtraction(next);
   };
 
   useEffect(() => {
-    if (!open || pdfFiles.length === 0) { setPdfOptions([]); setPdfLoading(false); return; }
     let cancelled = false;
+    setPdfOptions([]);
+    if (!open || !pdfFiles.length) {
+      pdfReadRef.current = Promise.resolve([]);
+      setPdfLoading(false);
+      return;
+    }
     setPdfLoading(true);
-    (async () => {
-      try {
-        const results = await Promise.all(
-          pdfFiles.map(f => extractSizesFromPdf(f.url).catch(err => {
-            console.error("Failed to read sizes from attached PDF:", err);
-            return [];
-          }))
-        );
-        if (!cancelled) setPdfOptions(results.flat());
-      } finally {
-        if (!cancelled) setPdfLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [open, item?.id]);
+    pdfReadRef.current = Promise.all(pdfFiles.map(f => extractSizesFromPdf(f.url).catch(err => {
+      console.error("Failed to read the PDF part table:", err);
+      return [];
+    }))).then(results => {
+      const parts = results.flat();
+      if (!cancelled) setPdfOptions(parts);
+      return parts;
+    }).finally(() => { if (!cancelled) setPdfLoading(false); });
+    return () => { cancelled = true; extractionRun.current++; };
+  }, [open, pdfFiles]);
 
   // One selectable row per size (so the user can report a single door at one size),
   // instead of one row bundling every size of the part.
@@ -237,19 +188,20 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
     });
 
     (pdfOptions || []).forEach(p => {
-      const key = `pdf|${p.label}|${p.width}|${p.length}`;
+      const key = `pdf|${p.label}|${p.width}|${p.length}|${p.material || ""}`;
       if (seen.has(key)) return;
       seen.add(key);
       out.push({
         key, label: p.label,
         sizeText: [p.width, p.length].filter(Boolean).join(" x "),
-        pickup_type: inferPickupType(p.label),
+        pickup_type: inferPickupType(p.label), quick_type: p.quick_type || p.label,
         room_name: p.room_name || null, cabinet_name: null,
         qty: p.qty || 1, width: p.width, length: p.length,
+        material: p.material || null, finish: p.finish || null,
       });
     });
     (aiOptions || []).forEach(p => {
-      const key = `ai|${p.label}|${p.width}|${p.length}`;
+      const key = `ai|${p.label}|${p.width}|${p.length}|${p.material || ""}`;
       if (seen.has(key)) return;
       seen.add(key);
       out.push({
@@ -276,6 +228,7 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
   const canSubmit = !!selectedKey || (showCustom && (customText.trim() || customType));
 
   const reset = () => {
+    extractionRun.current++;
     setRoom(item?.room_name || "");
     setCabinet("");
     setSelectedKey(null);
@@ -405,6 +358,7 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
                 <button
                   key={q.type}
                   type="button"
+                  disabled={!!aiLoadingType}
                   onClick={() => handleQuickType(q.type)}
                   className={cn(
                     "px-2.5 py-1 rounded-full border text-xs font-medium transition-colors",
@@ -446,6 +400,7 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
                     <button type="button" className="flex-1 text-left" onClick={() => pick(o)}>
                       <span className="font-medium text-slate-800">{o.label}</span>
                       {o.sizeText && <span className="text-slate-500"> — {o.sizeText}</span>}
+                      {o.material && <span className="block text-xs text-muted-foreground">{o.material}</span>}
                     </button>
                     {selectedKey === o.key && (
                       <div className="flex items-center gap-1 flex-shrink-0">
