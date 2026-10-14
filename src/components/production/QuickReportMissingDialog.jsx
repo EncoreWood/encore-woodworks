@@ -27,8 +27,7 @@ const QUICK_TYPES = [
 export default function QuickReportMissingDialog({ open, onOpenChange, item, currentUser }) {
   const [room, setRoom] = useState(item?.room_name || "");
   const [cabinet, setCabinet] = useState("");
-  const [selectedKey, setSelectedKey] = useState(null);
-  const [selectedQty, setSelectedQty] = useState(1);
+  const [selected, setSelected] = useState({}); // { optionKey: qty }
   const [customMode, setCustomMode] = useState(false);
   const [customText, setCustomText] = useState("");
   const [customType, setCustomType] = useState("");
@@ -101,7 +100,6 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
   const handleQuickType = (type) => {
     const next = typeFilter === type ? null : type;
     setTypeFilter(next);
-    setSelectedKey(null);
     setCustomMode(false);
     setAiMessage("");
     if (next && ![...pdfOptions, ...aiOptions].some(o => o.quick_type === next || o.label === next)) runAiExtraction(next);
@@ -225,14 +223,14 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
   ), [allOptions, typeFilter]);
 
   const showCustom = customMode || options.length === 0;
-  const canSubmit = !!selectedKey || (showCustom && (customText.trim() || customType));
+  const selectedCount = Object.keys(selected).length;
+  const canSubmit = selectedCount > 0 || (showCustom && (customText.trim() || customType));
 
   const reset = () => {
     extractionRun.current++;
     setRoom(item?.room_name || "");
     setCabinet("");
-    setSelectedKey(null);
-    setSelectedQty(1);
+    setSelected({});
     setCustomMode(false);
     setCustomText("");
     setCustomType("");
@@ -248,39 +246,48 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
   };
 
   const pick = (o) => {
-    setSelectedKey(prev => (prev === o.key ? null : o.key));
-    setSelectedQty(o.qty || 1);
+    setSelected(prev => {
+      const next = { ...prev };
+      if (o.key in next) delete next[o.key];
+      else next[o.key] = o.qty || 1;
+      return next;
+    });
     setCustomMode(false);
     if (o.room_name) setRoom(o.room_name);
     if (o.cabinet_name) setCabinet(o.cabinet_name);
   };
 
-  const buildPayload = () => {
-    if (selectedKey) {
-      const o = options.find(x => x.key === selectedKey);
-      const hasSize = !!(o.width && o.length);
-      return {
-        item_description: o.label,
-        pickup_type: o.pickup_type,
-        width: o.width,
-        length: o.length,
-        quantity: selectedQty,
-        size_breakdown: hasSize ? [{ qty: selectedQty, width: o.width, length: o.length }] : null,
-        material: o.material || null,
-        finish: o.finish || null,
-      };
+  const buildPayloads = () => {
+    const payloads = options
+      .filter(o => o.key in selected)
+      .map(o => {
+        const qty = selected[o.key] || o.qty || 1;
+        const hasSize = !!(o.width && o.length);
+        return {
+          item_description: o.label,
+          pickup_type: o.pickup_type,
+          width: o.width,
+          length: o.length,
+          quantity: qty,
+          size_breakdown: hasSize ? [{ qty, width: o.width, length: o.length }] : null,
+          material: o.material || null,
+          finish: o.finish || null,
+        };
+      });
+    if (showCustom && (customText.trim() || customType)) {
+      const qty = parseFloat(customQty);
+      const validQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
+      const hasSize = !!(customWidth.trim() && customLength.trim());
+      payloads.push({
+        item_description: customText.trim() || customType,
+        pickup_type: customType || null,
+        width: hasSize ? customWidth.trim() : null,
+        length: hasSize ? customLength.trim() : null,
+        quantity: hasSize ? validQty : null,
+        size_breakdown: hasSize ? [{ qty: validQty, width: customWidth.trim(), length: customLength.trim() }] : null,
+      });
     }
-    const qty = parseFloat(customQty);
-    const validQty = Number.isFinite(qty) && qty > 0 ? qty : 1;
-    const hasSize = !!(customWidth.trim() && customLength.trim());
-    return {
-      item_description: customText.trim() || customType,
-      pickup_type: customType || null,
-      width: hasSize ? customWidth.trim() : null,
-      length: hasSize ? customLength.trim() : null,
-      quantity: hasSize ? validQty : null,
-      size_breakdown: hasSize ? [{ qty: validQty, width: customWidth.trim(), length: customLength.trim() }] : null,
-    };
+    return payloads;
   };
 
   const handleSubmit = async () => {
@@ -289,42 +296,46 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
 
     const token = appParams.token;
 
-    const res = await fetch(API_BASE, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        production_item_id: item?.id,
-        production_item_name: item?.name,
-        project_name: item?.project_name,
-        room,
-        cabinet,
-        notes,
-        ...buildPayload(),
-      }),
-    });
+    let created = 0, confirmed = 0, confirmedBy = null, already = 0, failed = 0;
 
-    const data = await res.json();
+    for (const payload of buildPayloads()) {
+      const res = await fetch(API_BASE, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          production_item_id: item?.id,
+          production_item_name: item?.name,
+          project_name: item?.project_name,
+          room,
+          cabinet,
+          notes,
+          ...payload,
+        }),
+      });
+      const data = await res.json();
+      if (data.result === "created") created++;
+      else if (data.result === "confirmed") { confirmed++; confirmedBy = confirmedBy || data.reported_by; }
+      else if (data.result === "already_confirmed") already++;
+      else { failed++; console.error("reportMissingItem failed:", data.error); }
+    }
+
     setLoading(false);
-
-    if (data.result === "created") {
-      toast.success("Missing item reported ✓");
+    if (created || confirmed || already) {
+      const parts = [
+        created ? `${created} reported` : null,
+        confirmed ? `${confirmed} confirmed (already reported by ${confirmedBy})` : null,
+        already ? `${already} already reported` : null,
+      ].filter(Boolean).join(", ");
+      if (failed) toast.warning(`${parts}. ${failed} item${failed > 1 ? "s" : ""} failed.`);
+      else toast.success(`Missing item${created + confirmed + already > 1 ? "s" : ""} — ${parts} ✓`);
       queryClient.invalidateQueries({ queryKey: ["missingItems"] });
-      reset();
-      onOpenChange(false);
-    } else if (data.result === "confirmed") {
-      toast.warning(`Already reported by ${data.reported_by}. You've been added as a confirmer.`);
-      queryClient.invalidateQueries({ queryKey: ["missingItems"] });
-      reset();
-      onOpenChange(false);
-    } else if (data.result === "already_confirmed") {
-      toast.info("You already reported or confirmed this item.");
       reset();
       onOpenChange(false);
     } else {
-      toast.error(data.error || "Something went wrong");
+      toast.error("Something went wrong");
     }
   };
 
@@ -392,7 +403,7 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
                     key={o.key}
                     className={cn(
                       "flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-colors",
-                      selectedKey === o.key
+                      o.key in selected
                         ? "border-orange-500 bg-orange-50"
                         : "border-slate-200 bg-white hover:border-slate-300"
                     )}
@@ -402,23 +413,23 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
                       {o.sizeText && <span className="text-slate-500"> — {o.sizeText}</span>}
                       {o.material && <span className="block text-xs text-muted-foreground">{o.material}</span>}
                     </button>
-                    {selectedKey === o.key && (
+                    {o.key in selected && (
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <button
                           type="button"
-                          onClick={() => setSelectedQty(Math.max(1, selectedQty - 1))}
+                          onClick={() => setSelected(prev => ({ ...prev, [o.key]: Math.max(1, (prev[o.key] || 1) - 1) }))}
                           className="w-6 h-6 rounded-md border border-slate-300 bg-white text-slate-600 leading-none"
                         >−</button>
                         <input
                           type="number"
                           min={1}
-                          value={selectedQty}
-                          onChange={e => setSelectedQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                          value={selected[o.key] ?? 1}
+                          onChange={e => setSelected(prev => ({ ...prev, [o.key]: Math.max(1, parseInt(e.target.value, 10) || 1) }))}
                           className="w-12 h-7 text-center font-semibold text-slate-800 rounded-md border border-orange-300 bg-white"
                         />
                         <button
                           type="button"
-                          onClick={() => setSelectedQty(selectedQty + 1)}
+                          onClick={() => setSelected(prev => ({ ...prev, [o.key]: (prev[o.key] || 1) + 1 }))}
                           className="w-6 h-6 rounded-md border border-slate-300 bg-white text-slate-600 leading-none"
                         >+</button>
                       </div>
@@ -427,7 +438,7 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
                 ))}
                 <button
                   type="button"
-                  onClick={() => { setCustomMode(v => !v); setSelectedKey(null); }}
+                  onClick={() => setCustomMode(v => !v)}
                   className="w-full text-left px-3 py-2 rounded-lg border border-dashed border-slate-300 text-xs text-slate-500 hover:bg-slate-50"
                 >
                   + Something else — type my own
