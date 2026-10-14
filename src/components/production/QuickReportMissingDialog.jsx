@@ -289,6 +289,8 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
     setNotes("");
     setAiOptions([]);
     setAiLoadingType(null);
+    setAiProgress("");
+    setAiMessage("");
     setTypeFilter(null);
   };
 
@@ -418,8 +420,11 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
 
             {aiLoadingType && (
               <p className="mt-1.5 text-xs text-slate-500 animate-pulse">
-                🤖 Pulling {aiLoadingType.toLowerCase()}s from the attached PDF…
+                🤖 Pulling {aiLoadingType.toLowerCase()}s from the attached PDF… {aiProgress}
               </p>
+            )}
+            {!aiLoadingType && aiMessage && (
+              <p className="mt-1.5 text-xs text-slate-500">{aiMessage}</p>
             )}
 
             {pdfLoading && (
