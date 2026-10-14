@@ -21,13 +21,22 @@ export default function ProjectFilesPanel({ project, onSave }) {
   ];
 
   const handleUpload = async (tag, e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingTag(tag);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    onSave({ files: [...files, { name: file.name, url: file_url, tag, uploaded_date: new Date().toISOString() }] });
-    setUploadingTag(null);
+    const selected = Array.from(e.target.files || []);
     e.target.value = "";
+    if (selected.length === 0) return;
+    setUploadingTag(tag);
+    try {
+      const newEntries = [];
+      for (const file of selected) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        newEntries.push({ name: file.name, url: file_url, tag, uploaded_date: new Date().toISOString() });
+      }
+      onSave({ files: [...files, ...newEntries] });
+    } catch (err) {
+      console.error("Upload failed:", err);
+    } finally {
+      setUploadingTag(null);
+    }
   };
 
   const handleDelete = (idx) => {
@@ -58,7 +67,7 @@ export default function ProjectFilesPanel({ project, onSave }) {
               </div>
             )}
             <label className="cursor-pointer block">
-              <input type="file" className="hidden" onChange={(e) => handleUpload(section.tag, e)} />
+              <input type="file" multiple className="hidden" onChange={(e) => handleUpload(section.tag, e)} />
               <span className="flex items-center justify-center gap-2 w-full h-9 rounded-lg border-2 border-dashed border-slate-300 hover:border-amber-400 hover:bg-amber-50 text-xs text-slate-500 hover:text-amber-600 transition-colors">
                 {uploadingTag === section.tag ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                 Upload {section.label}
