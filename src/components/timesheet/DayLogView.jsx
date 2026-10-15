@@ -26,7 +26,7 @@ function DayRow({ date, entries, isToday, openEntryId, isAdmin, onEdit, onDelete
   const workEntries = entries.filter(e => e.entry_type === "work");
   const otherEntries = entries.filter(e => e.entry_type !== "work");
   const totalHours = workEntries.reduce((s, e) => s + (e.hours_worked || 0), 0);
-  const hasActive = workEntries.some(e => !e.clock_out);
+  const hasActive = workEntries.some(e => !e.clock_out && e.clock_in);
   const hasEntries = entries.length > 0;
 
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
@@ -117,7 +117,9 @@ function DayRow({ date, entries, isToday, openEntryId, isAdmin, onEdit, onDelete
                   <span className="font-mono text-xs text-slate-700">
                     {to12hr(entry.clock_in) || "—"} → {entry.clock_out
                       ? to12hr(entry.clock_out)
-                      : <span className="text-green-600 animate-pulse font-semibold">Active</span>
+                      : entry.clock_in
+                        ? <span className="text-green-600 animate-pulse font-semibold">Active</span>
+                        : "—"
                     }
                   </span>
                   {entry.hours_worked != null && (
