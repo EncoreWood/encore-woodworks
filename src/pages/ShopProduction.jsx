@@ -9,7 +9,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset, MessageSquare, X, Hammer } from "lucide-react";
+import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset, MessageSquare, X, Hammer, History } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
@@ -23,6 +23,7 @@ import ProductionCard from "../components/production/ProductionCard";
 import JobPacketsTab from "../components/production/JobPacketsTab";
 import ProductionMissingItemsTab from "../components/production/ProductionMissingItemsTab";
 import ProductionChatTab from "../components/production/ProductionChatTab";
+import MoveHistoryTab from "../components/production/MoveHistoryTab";
 import MobileCompactCard from "../components/production/MobileCompactCard";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProductionChatUnread } from "../components/production/useProductionChatUnread";
@@ -715,6 +716,9 @@ export default function ShopProduction() {
                 </span>
               )}
             </TabsTrigger>
+            <TabsTrigger value="move_history" className="flex items-center gap-2">
+              <History className="w-4 h-4" /> Move History
+            </TabsTrigger>
           </TabsList>
 
           {/* ── PRODUCTION TAB ── */}
@@ -953,6 +957,11 @@ export default function ShopProduction() {
           {/* ── PRODUCTION CHAT TAB ── */}
           <TabsContent value="production_chat" className="mt-0">
             <ProductionChatTab currentUser={currentUser} />
+          </TabsContent>
+
+          {/* ── MOVE HISTORY TAB ── */}
+          <TabsContent value="move_history" className="mt-0">
+            <MoveHistoryTab columnMoveLogs={columnMoveLogs} />
           </TabsContent>
 
           {/* ── JOB PACKETS TAB ── */}
