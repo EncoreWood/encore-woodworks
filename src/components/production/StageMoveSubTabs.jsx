@@ -23,7 +23,9 @@ export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items =
     const out = [];
     Object.entries(byItem).forEach(([itemId, moves]) => {
       const card = cardMap[itemId];
-      if (card && card.is_job_info) return;
+      // Only cards currently sitting in this production stage
+      if (!card || card.is_job_info) return;
+      if (card.stage !== stageId) return;
       moves.sort((a, b) => (a.moved_at || "").localeCompare(b.moved_at || ""));
       const passes = buildPasses(moves, now);
       const pts = card
@@ -62,11 +64,33 @@ export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items =
   const stats = useMemo(() => {
     const durations = rows.map(r => r.duration);
     const avgMs = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : null;
-    const perPointVals = rows.filter(r => r.pts > 0 && r.isBeingWorked).map(r => r.duration / 60000 / r.pts);
-    const avgPerPoint = perPointVals.length ? perPointVals.reduce((a, b) => a + b, 0) / perPointVals.length : null;
     const currentCount = rows.filter(r => r.isCurrent).length;
-    return { count: rows.length, avgMs, avgPerPoint, currentCount };
-  }, [rows]);
+
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    const weekStart = now - 7 * 24 * 60 * 60 * 1000;
+    const monthStart = now - 30 * 24 * 60 * 60 * 1000;
+
+    const avgPerPointFor = (pred) => {
+      const vals = rows
+        .filter(r => r.pts > 0 && r.isBeingWorked && pred(r))
+        .map(r => r.duration / 60000 / r.pts);
+      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    };
+
+    return {
+      count: rows.length,
+      avgMs,
+      currentCount,
+      avgPerPointAll: avgPerPointFor(() => true),
+      avgPerPointMonth: avgPerPointFor(r => (parseDate(r.moved_at)?.getTime() ?? 0) >= monthStart),
+      avgPerPointWeek: avgPerPointFor(r => (parseDate(r.moved_at)?.getTime() ?? 0) >= weekStart),
+      avgPerPointDay: avgPerPointFor(r => (parseDate(r.moved_at)?.getTime() ?? 0) >= dayStart.getTime())
+    };
+  }, [rows, now]);
+
+  const fmtPerPoint = (v) =>
+    v == null ? "—" : `${v < 10 ? v.toFixed(1) : Math.round(v)} min/pt`;
 
   const visibleRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -91,9 +115,16 @@ export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items =
     {
       icon: Gauge,
       label: "Avg per point",
-      value: stats.avgPerPoint != null ? `${stats.avgPerPoint < 10 ? stats.avgPerPoint.toFixed(1) : Math.round(stats.avgPerPoint)} min/pt` : "—",
+      value: fmtPerPoint(stats.avgPerPointAll),
       sub: "cards currently being worked on"
     }
+  ];
+
+  const periodStats = [
+    { label: "All time", value: stats.avgPerPointAll },
+    { label: "This month (30d)", value: stats.avgPerPointMonth },
+    { label: "This week (7d)", value: stats.avgPerPointWeek },
+    { label: "Today", value: stats.avgPerPointDay }
   ];
 
   return (
@@ -108,6 +139,18 @@ export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items =
               </div>
               <p className="text-2xl font-bold text-slate-800 mt-1">{sc.value}</p>
               <p className="text-xs text-slate-400 mt-0.5">{sc.sub}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {periodStats.map(ps => (
+          <Card key={ps.label} className="border-0 shadow-sm bg-slate-50">
+            <CardContent className="p-3">
+              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{ps.label}</p>
+              <p className="text-lg font-bold text-slate-800 mt-0.5">{fmtPerPoint(ps.value)}</p>
+              <p className="text-[11px] text-slate-400">avg min/pt, being worked on</p>
             </CardContent>
           </Card>
         ))}
