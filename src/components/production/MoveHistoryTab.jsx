@@ -5,10 +5,12 @@ import { Clock, Search, Undo2 } from "lucide-react";
 import { format } from "date-fns";
 import { parseDate } from "@/lib/parseDate";
 import { STAGES, stageLabel, stageChip, formatDuration, buildPasses } from "./moveHistoryUtils";
+import StageMoveSubTabs from "./StageMoveSubTabs";
 
 export default function MoveHistoryTab({ columnMoveLogs = [], items = [] }) {
   const [search, setSearch] = useState("");
   const [openItemId, setOpenItemId] = useState(null);
+  const [activeTab, setActiveTab] = useState("all");
   const now = Date.now();
 
   const cardHistories = useMemo(() => {
@@ -53,6 +55,54 @@ export default function MoveHistoryTab({ columnMoveLogs = [], items = [] }) {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          onClick={() => setActiveTab("all")}
+          className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+            activeTab === "all"
+              ? "bg-slate-800 text-white border-slate-800"
+              : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+          }`}
+        >
+          All Cards
+        </button>
+        {STAGES.map(s => (
+          <button
+            key={s.id}
+            onClick={() => setActiveTab(s.id)}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
+              activeTab === s.id
+                ? "bg-slate-800 text-white border-slate-800"
+                : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab !== "all" && (
+        <React.Fragment>
+          <div className="relative max-w-md">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search card or project..."
+              className="pl-9"
+            />
+          </div>
+          <StageMoveSubTabs
+            stageId={activeTab}
+            columnMoveLogs={columnMoveLogs}
+            items={items}
+            search={search}
+          />
+        </React.Fragment>
+      )}
+
+      {activeTab === "all" && (
+      <>
       <div className="relative max-w-md">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <Input
@@ -169,6 +219,8 @@ export default function MoveHistoryTab({ columnMoveLogs = [], items = [] }) {
           )}
         </CardContent>
       </Card>
+      </>
+      )}
     </div>
   );
 }
