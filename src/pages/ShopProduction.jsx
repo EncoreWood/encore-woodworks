@@ -1080,6 +1080,7 @@ export default function ShopProduction() {
             onRequestMissing={({ crops, pageDataUrl, pageNumber }) => {
               setPickupFromHighlight({ crops, pageDataUrl, pageNumber, productionItem: annotatingPdf.item, currentUser });
             }}
+            onQuickReportMissing={() => setQuickReportItem(annotatingPdf.item)}
           />
         )}
 

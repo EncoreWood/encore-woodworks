@@ -24,7 +24,7 @@ const HIGHLIGHT_COLORS = [
 
 const DEFAULT_SIZE = { width: 595, height: 842 };
 
-export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", hideDownload = false, onRequestPickup, onRequestMissing, roomInfo = null, initialMode = "view", currentUserName = "" }) {
+export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", hideDownload = false, onRequestPickup, onRequestMissing, onQuickReportMissing, roomInfo = null, initialMode = "view", currentUserName = "" }) {
   const [numPages, setNumPages] = useState(null);
   // The page currently in view (scroll-spy) — drives Undo / Clear Page and the header.
   const [pageNumber, setPageNumber] = useState(1);
@@ -787,19 +787,33 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
             </Button>
           )}
 
-          {/* Report Missing — its own highlight-selection mode, available from the viewer too */}
-          <Button
-            variant={tool === "missing" ? "default" : "outline"}
-            size="sm"
-            onClick={() => { setTool("missing"); setTextInput(null); }}
-            className={tool === "missing" ? "bg-red-600 hover:bg-red-700" : "text-red-600 hover:text-red-700"}
-          >
-            <ClipboardList className="w-4 h-4 mr-1" /> Report Missing
-          </Button>
-          {tool === "missing" && (
-            <Button variant="outline" size="sm" onClick={() => setTool(annotateMode ? "pen" : "pan")}>
-              Done
+          {/* Report Missing — on production cards this opens the same quick report dialog as the card's action menu;
+              elsewhere (bid plans, measurements) it keeps the highlight-selection mode */}
+          {onQuickReportMissing ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onQuickReportMissing()}
+              className="text-red-600 hover:text-red-700"
+            >
+              <ClipboardList className="w-4 h-4 mr-1" /> Report Missing
             </Button>
+          ) : (
+            <>
+              <Button
+                variant={tool === "missing" ? "default" : "outline"}
+                size="sm"
+                onClick={() => { setTool("missing"); setTextInput(null); }}
+                className={tool === "missing" ? "bg-red-600 hover:bg-red-700" : "text-red-600 hover:text-red-700"}
+              >
+                <ClipboardList className="w-4 h-4 mr-1" /> Report Missing
+              </Button>
+              {tool === "missing" && (
+                <Button variant="outline" size="sm" onClick={() => setTool(annotateMode ? "pen" : "pan")}>
+                  Done
+                </Button>
+              )}
+            </>
           )}
 
           {annotateMode && (
