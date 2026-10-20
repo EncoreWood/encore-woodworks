@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Clock, Undo2, ArrowRightCircle, Timer, Gauge } from "lucide-react";
 import { format } from "date-fns";
 import { parseDate } from "@/lib/parseDate";
-import { stageLabel, stageChip, formatDuration, buildPasses, isOnProductionBoard } from "./moveHistoryUtils";
+import { stageLabel, stageChip, formatDuration, buildPasses, workMsBetween } from "./moveHistoryUtils";
 
 // Per-stage overview: recent moves into the stage, avg time a card spends
 // there, and avg minutes-per-point (e.g. 1h in stage on a 2pt card = 30 min/pt).
@@ -11,9 +11,6 @@ export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items =
   const now = Date.now();
 
   const rows = useMemo(() => {
-    const cardMap = {};
-    items.forEach(i => { if (i.id) cardMap[i.id] = i; });
-
     const byItem = {};
     columnMoveLogs.forEach(log => {
       if (!log.item_id) return;
@@ -21,40 +18,59 @@ export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items =
     });
 
     const out = [];
-    Object.entries(byItem).forEach(([itemId, moves]) => {
-      const card = cardMap[itemId];
-      // Only cards that are actually on the Shop Production board
-      if (!isOnProductionBoard(card)) return;
+    // Only cards currently sitting in this specific production stage
+    items.forEach(card => {
+      if (!card || card.is_job_info || card.stage !== stageId) return;
+      const moves = byItem[card.id] || [];
       moves.sort((a, b) => (a.moved_at || "").localeCompare(b.moved_at || ""));
-      const passes = buildPasses(moves, now);
-      const pts = card
-        ? (card.pts != null ? card.pts : (card.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0))
-        : null;
-      const name = card?.name || moves[0]?.item_name || "";
-      const project = card?.project_name || moves[0]?.project_name || "";
-      passes.forEach((p, pi) => {
-        p.moves.forEach((mv, mi) => {
-          if (mv.to_stage !== stageId) return;
-          const isLastOfPass = mi === p.moves.length - 1;
-          const isCurrent = isLastOfPass && pi === passes.length - 1 && p.currentDwell != null;
-          const duration = isCurrent ? p.currentDwell : mv.duration;
-          if (duration == null) return;
-          out.push({
-            id: `${itemId}-${mv.moved_at}-${mi}`,
-            name,
-            project,
-            pts,
-            isBeingWorked: !!card?.is_being_worked,
-            moved_at: mv.moved_at,
-            moved_by: mv.moved_by,
-            duration,
-            isCurrent,
-            sentBack: p.sentBack,
-            passIndex: pi + 1,
-            passCount: passes.length
+      const pts = card.pts != null ? card.pts : (card.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
+
+      if (moves.length) {
+        const passes = buildPasses(moves, now);
+        passes.forEach((p, pi) => {
+          p.moves.forEach((mv, mi) => {
+            if (mv.to_stage !== stageId) return;
+            const isLastOfPass = mi === p.moves.length - 1;
+            const isCurrent = isLastOfPass && pi === passes.length - 1 && p.currentDwell != null;
+            const duration = isCurrent ? p.currentDwell : mv.duration;
+            if (duration == null) return;
+            out.push({
+              id: `${card.id}-${mv.moved_at}-${mi}`,
+              name: card.name,
+              project: card.project_name || "",
+              pts,
+              isBeingWorked: !!card.is_being_worked,
+              moved_at: mv.moved_at,
+              moved_by: mv.moved_by,
+              duration,
+              isCurrent,
+              sentBack: p.sentBack,
+              passIndex: pi + 1,
+              passCount: passes.length
+            });
           });
         });
-      });
+      } else {
+        // Card was created directly in this stage and has no move history yet —
+        // show it as currently in stage, counting from when it was created.
+        const entered = parseDate(card.created_date);
+        if (entered) {
+          out.push({
+            id: `${card.id}-created`,
+            name: card.name,
+            project: card.project_name || "",
+            pts,
+            isBeingWorked: !!card.is_being_worked,
+            moved_at: card.created_date,
+            moved_by: null,
+            duration: workMsBetween(entered, new Date(now)),
+            isCurrent: true,
+            sentBack: false,
+            passIndex: 1,
+            passCount: 1
+          });
+        }
+      }
     });
     out.sort((a, b) => (b.moved_at || "").localeCompare(a.moved_at || ""));
     return out;
