@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Clock, Search, Undo2 } from "lucide-react";
 import { format } from "date-fns";
 import { parseDate } from "@/lib/parseDate";
-import { STAGES, stageLabel, stageChip, formatDuration, buildPasses } from "./moveHistoryUtils";
+import { STAGES, stageLabel, stageChip, formatDuration, buildPasses, isOnProductionBoard } from "./moveHistoryUtils";
 import StageMoveSubTabs from "./StageMoveSubTabs";
 
 export default function MoveHistoryTab({ columnMoveLogs = [], items = [] }) {
@@ -29,7 +29,7 @@ export default function MoveHistoryTab({ columnMoveLogs = [], items = [] }) {
   }, [columnMoveLogs, now]);
 
   // Only cards currently on the production board
-  const boardCards = useMemo(() => items.filter(i => !i.is_job_info), [items]);
+  const boardCards = useMemo(() => items.filter(isOnProductionBoard), [items]);
 
   const visibleCards = useMemo(() => {
     const q = search.trim().toLowerCase();

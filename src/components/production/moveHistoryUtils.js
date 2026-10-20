@@ -17,6 +17,12 @@ export function stageChip(id) {
   return STAGES.find(s => s.id === id)?.chip || "bg-slate-100 text-slate-700";
 }
 
+// True when this production item is one of the cards rendered on the Shop
+// Production board columns (Cut / Face Frame / Spray / Build / Complete / On Hold).
+export function isOnProductionBoard(item) {
+  return !!item && !item.is_job_info && STAGES.some(s => s.id === item.stage);
+}
+
 export function formatDuration(ms) {
   if (ms == null || ms < 0) return null;
   const mins = Math.floor(ms / 60000);

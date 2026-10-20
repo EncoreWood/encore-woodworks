@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Clock, Undo2, ArrowRightCircle, Timer, Gauge } from "lucide-react";
 import { format } from "date-fns";
 import { parseDate } from "@/lib/parseDate";
-import { stageLabel, stageChip, formatDuration, buildPasses } from "./moveHistoryUtils";
+import { stageLabel, stageChip, formatDuration, buildPasses, isOnProductionBoard } from "./moveHistoryUtils";
 
 // Per-stage overview: recent moves into the stage, avg time a card spends
 // there, and avg minutes-per-point (e.g. 1h in stage on a 2pt card = 30 min/pt).
@@ -23,9 +23,8 @@ export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items =
     const out = [];
     Object.entries(byItem).forEach(([itemId, moves]) => {
       const card = cardMap[itemId];
-      // Only cards still in active production (not completed, not job info)
-      if (!card || card.is_job_info) return;
-      if (card.stage === "complete") return;
+      // Only cards that are actually on the Shop Production board
+      if (!isOnProductionBoard(card)) return;
       moves.sort((a, b) => (a.moved_at || "").localeCompare(b.moved_at || ""));
       const passes = buildPasses(moves, now);
       const pts = card
