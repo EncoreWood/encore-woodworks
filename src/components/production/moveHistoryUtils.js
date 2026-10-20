@@ -1,4 +1,5 @@
 import { parseDate } from "@/lib/parseDate";
+import { format, subDays } from "date-fns";
 
 export const STAGES = [
   { id: "cut", label: "Cut", chip: "bg-orange-100 text-orange-800" },
@@ -20,7 +21,10 @@ export function stageChip(id) {
 // True when this production item is one of the cards rendered on the Shop
 // Production board columns (Cut / Face Frame / Spray / Build / Complete / On Hold).
 export function isOnProductionBoard(item) {
-  return !!item && !item.is_job_info && STAGES.some(s => s.id === item.stage);
+  if (!item || item.is_job_info || !STAGES.some(s => s.id === item.stage)) return false;
+  // Match CompleteStageCards: older completed cards live only in room folders.
+  return item.stage !== "complete" || !item.completed_date
+    || item.completed_date >= format(subDays(new Date(), 6), "yyyy-MM-dd");
 }
 
 export function formatDuration(ms) {

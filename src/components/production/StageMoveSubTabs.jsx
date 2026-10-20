@@ -1,123 +1,32 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Clock, Undo2, ArrowRightCircle, Timer, Gauge } from "lucide-react";
 import { format } from "date-fns";
 import { parseDate } from "@/lib/parseDate";
-import { stageLabel, stageChip, formatDuration, buildPasses, workMsBetween } from "./moveHistoryUtils";
+import { stageLabel, formatDuration } from "@/components/production/moveHistoryUtils";
+import { Button } from "@/components/ui/button";
+import useProductionStageHistory from "@/hooks/useProductionStageHistory";
 
 // Per-stage overview: recent moves into the stage, avg time a card spends
 // there, and avg minutes-per-point (e.g. 1h in stage on a 2pt card = 30 min/pt).
-export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items = [], search = "" }) {
-  const now = Date.now();
+export default function StageMoveSubTabs({ stageId, search = "" }) {
+  const { rows: visibleRows, stats, isPending, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useProductionStageHistory(stageId, search);
 
-  const rows = useMemo(() => {
-    const byItem = {};
-    columnMoveLogs.forEach(log => {
-      if (!log.item_id) return;
-      (byItem[log.item_id] = byItem[log.item_id] || []).push(log);
-    });
-
-    const out = [];
-    // Only cards currently sitting in this specific production stage
-    items.forEach(card => {
-      if (!card || card.is_job_info || card.stage !== stageId) return;
-      const moves = byItem[card.id] || [];
-      moves.sort((a, b) => (a.moved_at || "").localeCompare(b.moved_at || ""));
-      const pts = card.pts != null ? card.pts : (card.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
-
-      if (moves.length) {
-        const passes = buildPasses(moves, now);
-        passes.forEach((p, pi) => {
-          p.moves.forEach((mv, mi) => {
-            if (mv.to_stage !== stageId) return;
-            const isLastOfPass = mi === p.moves.length - 1;
-            const isCurrent = isLastOfPass && pi === passes.length - 1 && p.currentDwell != null;
-            const duration = isCurrent ? p.currentDwell : mv.duration;
-            if (duration == null) return;
-            out.push({
-              id: `${card.id}-${mv.moved_at}-${mi}`,
-              name: card.name,
-              project: card.project_name || "",
-              pts,
-              isBeingWorked: !!card.is_being_worked,
-              moved_at: mv.moved_at,
-              moved_by: mv.moved_by,
-              duration,
-              isCurrent,
-              sentBack: p.sentBack,
-              passIndex: pi + 1,
-              passCount: passes.length
-            });
-          });
-        });
-      } else {
-        // Card was created directly in this stage and has no move history yet —
-        // show it as currently in stage, counting from when it was created.
-        const entered = parseDate(card.created_date);
-        if (entered) {
-          out.push({
-            id: `${card.id}-created`,
-            name: card.name,
-            project: card.project_name || "",
-            pts,
-            isBeingWorked: !!card.is_being_worked,
-            moved_at: card.created_date,
-            moved_by: null,
-            duration: workMsBetween(entered, new Date(now)),
-            isCurrent: true,
-            sentBack: false,
-            passIndex: 1,
-            passCount: 1
-          });
-        }
-      }
-    });
-    out.sort((a, b) => (b.moved_at || "").localeCompare(a.moved_at || ""));
-    return out;
-  }, [columnMoveLogs, items, stageId, now]);
-
-  const stats = useMemo(() => {
-    const durations = rows.map(r => r.duration);
-    const avgMs = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : null;
-    const currentCount = rows.filter(r => r.isCurrent).length;
-
-    const dayStart = new Date();
-    dayStart.setHours(0, 0, 0, 0);
-    const weekStart = now - 7 * 24 * 60 * 60 * 1000;
-    const monthStart = now - 30 * 24 * 60 * 60 * 1000;
-
-    const avgPerPointFor = (pred) => {
-      const vals = rows
-        .filter(r => r.pts > 0 && r.isBeingWorked && pred(r))
-        .map(r => r.duration / 60000 / r.pts);
-      return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-    };
-
-    return {
-      count: rows.length,
-      avgMs,
-      currentCount,
-      avgPerPointAll: avgPerPointFor(() => true),
-      avgPerPointMonth: avgPerPointFor(r => (parseDate(r.moved_at)?.getTime() ?? 0) >= monthStart),
-      avgPerPointWeek: avgPerPointFor(r => (parseDate(r.moved_at)?.getTime() ?? 0) >= weekStart),
-      avgPerPointDay: avgPerPointFor(r => (parseDate(r.moved_at)?.getTime() ?? 0) >= dayStart.getTime())
-    };
-  }, [rows, now]);
+  if (isPending) return <p className="text-sm text-muted-foreground py-6 text-center">Loading stage history...</p>;
+  if (isError) return (
+    <div role="alert" className="py-6 text-center space-y-2">
+      <p className="text-sm text-destructive">Could not load stage history.</p>
+      <Button variant="outline" onClick={() => refetch()}>Try again</Button>
+    </div>
+  );
 
   const fmtPerPoint = (v) =>
     v == null ? "—" : `${v < 10 ? v.toFixed(1) : Math.round(v)} min/pt`;
 
-  const visibleRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return rows
-      .filter(r => !q || r.name?.toLowerCase().includes(q) || r.project?.toLowerCase().includes(q))
-      .slice(0, 60);
-  }, [rows, search]);
-
   const statCards = [
     {
       icon: ArrowRightCircle,
-      label: "Moves into " + stageLabel(stageId),
+      label: "Recorded stays in " + stageLabel(stageId),
       value: String(stats.count),
       sub: stats.currentCount > 0 ? `${stats.currentCount} currently in stage` : "none currently in stage"
     },
@@ -125,7 +34,7 @@ export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items =
       icon: Timer,
       label: "Avg time in stage",
       value: formatDuration(stats.avgMs) || "—",
-      sub: "across all recorded stays"
+      sub: "stays with known entry times"
     },
     {
       icon: Gauge,
@@ -174,10 +83,10 @@ export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items =
       <Card className="border-0 shadow-sm">
         <CardContent className="pt-4">
           <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-2">
-            Stage moves — newest first
+            Stage visits — newest first
           </p>
           {visibleRows.length === 0 ? (
-            <p className="text-sm text-slate-400 py-6 text-center">No moves into {stageLabel(stageId)} logged yet.</p>
+            <p className="text-sm text-muted-foreground py-6 text-center">No matching moves into or out of {stageLabel(stageId)} for cards still on the production board.</p>
           ) : (
             <div className="divide-y divide-slate-100">
               {visibleRows.map(r => (
@@ -204,17 +113,22 @@ export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items =
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-xs text-slate-500">
-                      {r.moved_at ? format(parseDate(r.moved_at), "MMM d, h:mm a") : "—"}
+                      {r.eventLabel} · {r.moved_at ? format(parseDate(r.moved_at), "MMM d, h:mm a") : "—"}
                     </p>
                     {r.moved_by && <p className="text-[11px] text-slate-400">by {r.moved_by}</p>}
                   </div>
                   <span className="text-xs text-slate-500 flex items-center gap-1 flex-shrink-0 w-28 justify-end">
                     <Clock className="w-3 h-3" />
-                    {r.isCurrent ? `${formatDuration(r.duration)} so far` : formatDuration(r.duration)}
+                    {r.isCurrent ? `${formatDuration(r.duration)} so far` : (formatDuration(r.duration) || "Time unknown")}
                   </span>
                 </div>
               ))}
             </div>
+          )}
+          {hasNextPage && (
+            <Button variant="outline" className="mt-4" disabled={isFetchingNextPage} onClick={() => fetchNextPage()}>
+              {isFetchingNextPage ? "Loading..." : "Load more"}
+            </Button>
           )}
         </CardContent>
       </Card>
