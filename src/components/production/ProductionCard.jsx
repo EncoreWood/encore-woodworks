@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Boxes, Hammer } from "lucide-react";
+import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Boxes, Hammer, Clock } from "lucide-react";
+import CardMoveHistoryDialog from "@/components/production/CardMoveHistoryDialog";
 import MissingItemBadge from "@/components/production/MissingItemBadge";
 import GlbViewer from "@/components/cad/GlbViewer";
 import DxfViewer from "@/components/cad/DxfViewer";
@@ -91,6 +92,7 @@ export default function ProductionCard({
   const [showSketch, setShowSketch] = useState(false);
   const [viewingCad, setViewingCad] = useState(null);
   const [showRoomFiles, setShowRoomFiles] = useState(false);
+  const [showMoveHistory, setShowMoveHistory] = useState(false);
   const isAdmin = currentUser?.role === "admin";
 
   const { data: roomFileCount = 0 } = useQuery({
@@ -296,6 +298,17 @@ export default function ProductionCard({
                 title="Report a missing item"
               >
                 <Flag className="w-3 h-3" />
+              </button>
+            )}
+
+            {/* Move history */}
+            {item.id && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowMoveHistory(true); }}
+                className="flex items-center justify-center w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 hover:text-slate-800 flex-shrink-0 transition-colors"
+                title="Move history — stage timestamps & time in each stage"
+              >
+                <Clock className="w-3 h-3" />
               </button>
             )}
           </div>
@@ -593,6 +606,7 @@ export default function ProductionCard({
           onClose={() => setShowRoomFiles(false)}
         />
       )}
+      <CardMoveHistoryDialog item={item} open={showMoveHistory} onClose={() => setShowMoveHistory(false)} />
       <PdfPreviewTooltip url={hoveredPdfUrl} anchorEl={hoveredAnchorEl} />
       {viewingCad && (() => {
         const ext = (viewingCad.name || "").toLowerCase().split('.').pop();
