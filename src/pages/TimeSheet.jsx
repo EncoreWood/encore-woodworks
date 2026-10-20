@@ -720,7 +720,12 @@ export default function TimeSheet() {
                 <Card className="border-0 shadow-sm">
                   <CardHeader className="pb-2"><CardTitle className="text-base">Pay Periods</CardTitle></CardHeader>
                   <CardContent>
-                    <PayPeriodsView employeeEntries={employeeEntries} />
+                    <PayPeriodsView
+                      employeeEntries={employeeEntries}
+                      isAdmin={isAdmin}
+                      onEditEntry={handleOpenEdit}
+                      onDeleteEntry={(e) => deleteEntryMutation.mutate(e.id)}
+                    />
                   </CardContent>
                 </Card>
               </>

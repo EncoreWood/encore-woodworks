@@ -8,7 +8,7 @@ function to12hr(time24) {
   const h12 = h % 12 || 12;
   return `${h12}:${String(m).padStart(2, "0")} ${period}`;
 }
-import { ChevronLeft, ChevronRight, Clock, TrendingUp, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, TrendingUp, Calendar, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { calcWeeklyOT } from "@/lib/weeklyOT";
 
@@ -33,7 +33,7 @@ function getPeriodLabel(start, end) {
   return `${format(start, "MMM d")} – ${format(end, "MMM d, yyyy")}`;
 }
 
-export default function PayPeriodsView({ employeeEntries }) {
+export default function PayPeriodsView({ employeeEntries, isAdmin = false, onEditEntry, onDeleteEntry }) {
   const today = new Date();
   const [periodOffset, setPeriodOffset] = useState(0); // 0 = current period, -1 = prev, etc.
 
@@ -217,14 +217,36 @@ export default function PayPeriodsView({ employeeEntries }) {
                         <div className="w-24 flex-shrink-0">
                           <p className="text-xs font-semibold text-slate-700">{format(d, "EEE, MMM d")}</p>
                         </div>
-                        <div className="flex-1 flex flex-wrap gap-1">
+                        <div className="flex-1 flex flex-wrap gap-1 items-center">
                           {dayEntries.map(e => e.entry_type === "work" ? (
-                            <span key={e.id} className="text-xs bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full font-mono">
-                              {to12hr(e.clock_in) || "?"} → {e.clock_out ? to12hr(e.clock_out) : "active"}{e.project_name ? ` · ${e.project_name}` : ""}
+                            <span key={e.id} className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full font-mono">
+                              <span>
+                                {to12hr(e.clock_in) || "?"} → {e.clock_out ? to12hr(e.clock_out) : "active"}{e.project_name ? ` · ${e.project_name}` : ""}
+                              </span>
+                              {isAdmin && (
+                                <button
+                                  onClick={() => onEditEntry?.(e)}
+                                  title="Edit this time entry"
+                                  className="text-blue-500 hover:text-blue-800 hover:bg-blue-100 rounded-full p-0.5"
+                                >
+                                  <Pencil className="w-3 h-3" />
+                                </button>
+                              )}
                             </span>
                           ) : (
-                            <span key={e.id} className={`text-xs border px-2 py-0.5 rounded-full font-medium ${typeColors[e.entry_type] || "bg-slate-50 text-slate-700 border-slate-200"}`}>
-                              {typeLabels[e.entry_type] || e.entry_type}{e.hours_worked ? ` · ${e.hours_worked.toFixed(1)}h` : ""}
+                            <span key={e.id} className={`inline-flex items-center gap-1 text-xs border px-2 py-0.5 rounded-full font-medium ${typeColors[e.entry_type] || "bg-slate-50 text-slate-700 border-slate-200"}`}>
+                              <span>
+                                {typeLabels[e.entry_type] || e.entry_type}{e.hours_worked ? ` · ${e.hours_worked.toFixed(1)}h` : ""}
+                              </span>
+                              {isAdmin && (
+                                <button
+                                  onClick={() => onDeleteEntry?.(e)}
+                                  title="Delete this entry"
+                                  className="text-red-400 hover:text-red-700 hover:bg-red-100 rounded-full p-0.5"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              )}
                             </span>
                           ))}
                         </div>
