@@ -20,7 +20,6 @@ import ClockInModal from "../components/timesheet/ClockInModal";
 import TimeDataTab from "../components/timesheet/TimeDataTab";
 import PayPeriodsView from "../components/timesheet/PayPeriodsView";
 import PayrollTab from "../components/timesheet/PayrollTab";
-import GustoPanel from "../components/timesheet/GustoPanel";
 import { cn } from "@/lib/utils";
 
 function useElapsedTime(clockInTime) {
@@ -870,10 +869,7 @@ export default function TimeSheet() {
           {/* PAYROLL TAB */}
           {isAdmin && (
             <TabsContent value="payroll" className="mt-5">
-              <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
-                <PayrollTab employees={employees} timeEntries={timeEntries} vacations={allVacations} accrualRate={settings[0]?.accrual_rate || 0.0192} />
-                <GustoPanel />
-              </div>
+              <PayrollTab employees={employees} timeEntries={timeEntries} vacations={allVacations} accrualRate={settings[0]?.accrual_rate || 0.0192} />
             </TabsContent>
           )}
 
