@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,18 @@ export default function Team() {
     queryKey: ["employees"],
     queryFn: () => base44.entities.Employee.list("-created_date")
   });
+
+  // Open an employee's card directly from a ?employee_id= deep link (e.g. the Team Card button on the Time Sheet)
+  useEffect(() => {
+    if (!employees.length) return;
+    const urlEmpId = new URLSearchParams(window.location.search).get("employee_id");
+    if (!urlEmpId) return;
+    const emp = employees.find(e => e.id === urlEmpId);
+    if (emp) {
+      setViewingEmployee(emp);
+      setShowEmployeeDetails(true);
+    }
+  }, [employees]);
 
   const { data: tasks = [] } = useQuery({
     queryKey: ["tasks"],

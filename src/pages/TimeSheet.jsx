@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Clock, Plus, Trash2, Play, Square, Settings, Circle,
   Calendar, Pencil, Briefcase, ArrowLeftRight,
-  UtensilsCrossed, ChevronDown, ChevronRight, PencilLine
+  UtensilsCrossed, ChevronDown, ChevronRight, PencilLine, User
 } from "lucide-react";
 import { format, addWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isWithinInterval } from "date-fns";
+import { Link } from "react-router-dom";
 import EditRequestDialog from "../components/timesheet/EditRequestDialog";
 import EditRequestsReviewCard from "../components/timesheet/EditRequestsReviewCard";
 import VacationRequestForm from "../components/team/VacationRequestForm";
@@ -620,6 +621,14 @@ export default function TimeSheet() {
               <p className="text-sm text-slate-500">{selectedEmployee.full_name} · {format(today, "EEEE, MMMM d")}</p>
             )}
           </div>
+          <div className="flex items-center gap-2">
+          {selectedEmployee && (
+            <Button asChild variant="outline" className="h-9 text-sm">
+              <Link to={`/Team?employee_id=${selectedEmployee.id}`}>
+                <User className="w-4 h-4 mr-2" />Team Card
+              </Link>
+            </Button>
+          )}
           {isAdmin && (
             <Select
               value={selectedEmployee?.id || ""}
@@ -641,6 +650,7 @@ export default function TimeSheet() {
               </SelectContent>
             </Select>
           )}
+          </div>
         </div>
 
         {/* Tabs */}
