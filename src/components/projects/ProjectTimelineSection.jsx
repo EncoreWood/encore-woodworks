@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { parseDate } from "@/lib/parseDate";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -60,16 +61,16 @@ function makeId() {
 }
 
 function addDaysStr(dateStr, days) {
-  const d = new Date(dateStr);
+  const d = parseDate(dateStr);
   d.setDate(d.getDate() + days);
   return d.toISOString().split("T")[0];
 }
 
 function formatRange(startStr, endStr) {
   if (!startStr) return "";
-  const start = format(new Date(startStr), "M/d");
+  const start = format(parseDate(startStr), "M/d");
   if (!endStr) return start;
-  const end = format(new Date(endStr), "M/d");
+  const end = format(parseDate(endStr), "M/d");
   if (start === end) return start;
   return `${start} - ${end}`;
 }
@@ -183,7 +184,7 @@ export default function ProjectTimelineSection({ project }) {
       return { minDate: today, maxDate: addDays(today, 90), totalDays: 90 };
     }
     const dates = eventsWithCompletion
-      .flatMap(e => [e.start_date, e.end_date].filter(Boolean).map(d => new Date(d)))
+      .flatMap(e => [e.start_date, e.end_date].filter(Boolean).map(d => parseDate(d)))
       .filter(d => !isNaN(d));
     if (dates.length === 0) {
       const today = new Date();
@@ -213,8 +214,8 @@ export default function ProjectTimelineSection({ project }) {
   }, [minDate, maxDate, totalDays]);
 
   const getBarStyle = (event) => {
-    const start = new Date(event.start_date);
-    const end = new Date(event.end_date || event.start_date);
+    const start = parseDate(event.start_date);
+    const end = parseDate(event.end_date || event.start_date);
     const isDiamond = event.event_type === "milestone" || (event.start_date === event.end_date);
     const daysFromStart = differenceInDays(start, minDate);
     const duration = Math.max(1, differenceInDays(end, start) + 1);

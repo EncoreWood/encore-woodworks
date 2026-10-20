@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { cn } from "@/lib/utils";
+import { parseDate } from "@/lib/parseDate";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { useState } from "react";
@@ -153,7 +154,7 @@ export default function ProjectCard({ project }) {
           {project.estimated_completion && (
             <div className="flex items-center gap-2 text-sm text-slate-600">
               <Calendar className="w-4 h-4 text-slate-400" />
-              <span>Due {format(new Date(project.estimated_completion), "MMM d, yyyy")}</span>
+              <span>Due {format(parseDate(project.estimated_completion), "MMM d, yyyy")}</span>
               <button
                 onClick={(e) => { e.preventDefault(); setShowTimeline(true); }}
                 className="ml-auto text-xs flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
@@ -176,8 +177,8 @@ export default function ProjectCard({ project }) {
             <div className="flex items-center gap-2 text-sm text-slate-600">
               <Calendar className="w-4 h-4 text-amber-500" />
               <span className="text-amber-700 font-medium">
-                Install: {project.install_start_date ? format(new Date(project.install_start_date), "MMM d") : "?"}
-                {project.install_end_date ? ` – ${format(new Date(project.install_end_date), "MMM d, yyyy")}` : ""}
+                Install: {project.install_start_date ? format(parseDate(project.install_start_date), "MMM d") : "?"}
+                {project.install_end_date ? ` – ${format(parseDate(project.install_end_date), "MMM d, yyyy")}` : ""}
               </span>
             </div>
           )}
@@ -188,7 +189,7 @@ export default function ProjectCard({ project }) {
                   <Hammer className="w-3.5 h-3.5 text-orange-500 flex-shrink-0" />
                   <span className="text-orange-700 font-medium">Install Event</span>
                   <span className="text-slate-500">
-                    {ev.date ? format(new Date(ev.date), "MMM d") : ""}
+                    {ev.date ? format(parseDate(ev.date), "MMM d") : ""}
                     {ev.time ? ` · ${ev.time}` : ""}
                     {(ev.tasks || []).filter(t => t.text).length > 0 ? ` · ${(ev.tasks || []).filter(t => t.text).length} task${(ev.tasks || []).filter(t => t.text).length > 1 ? "s" : ""}` : ""}
                   </span>

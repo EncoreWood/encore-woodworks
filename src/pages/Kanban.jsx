@@ -7,6 +7,7 @@ import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { parseDate } from "@/lib/parseDate";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -531,8 +532,8 @@ export default function Kanban() {
                                                    <div className="flex items-center gap-2">
                                                      <Calendar className="w-3 h-3 flex-shrink-0" />
                                                      <span>
-                                                       {format(new Date(project.estimated_completion), "MMM d")}
-                                                     </span>
+                                                       {format(parseDate(project.estimated_completion), "MMM d")}
+                                                                                                             </span>
                                                      <button
                                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setTimelineProject(project); }}
                                                        className="ml-auto text-[10px] flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
@@ -778,7 +779,7 @@ export default function Kanban() {
                           <div className="space-y-2 text-xs text-slate-600">
                             {project.client_name && <div className="flex items-center gap-2"><User className="w-3 h-3 flex-shrink-0" /><span className="truncate">{project.client_name}</span></div>}
                             {project.address && <div className="flex items-center gap-2"><MapPin className="w-3 h-3 flex-shrink-0" /><span className="truncate">{project.address}</span></div>}
-                            {project.estimated_completion && <div className="flex items-center gap-2"><Calendar className="w-3 h-3 flex-shrink-0" /><span>{format(new Date(project.estimated_completion), "MMM d")}</span></div>}
+                            {project.estimated_completion && <div className="flex items-center gap-2"><Calendar className="w-3 h-3 flex-shrink-0" /><span>{format(parseDate(project.estimated_completion), "MMM d")}</span></div>}
                             {(() => {
                               const co = (project.change_orders || []).reduce((s, c) => s + (c.amount || 0), 0);
                               const val = (project.base_amount || project.total_amount || project.estimated_budget || 0) + co;

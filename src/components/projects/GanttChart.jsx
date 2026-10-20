@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { format, differenceInDays, addDays } from "date-fns";
 import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parseDate } from "@/lib/parseDate";
 import { getProgressStatus, STATUS_BAR_COLOR } from "@/components/projects/timelineStatus";
 
 const TYPE_COLORS = {
@@ -18,7 +19,7 @@ export default function GanttChart({ events, onBarClick, readOnly }) {
       const today = new Date();
       return { minDate: today, maxDate: addDays(today, 30), totalDays: 30, hasDates: false };
     }
-    const dates = events.flatMap(e => [e.start_date, e.end_date]).filter(Boolean).map(d => new Date(d)).filter(d => !isNaN(d));
+    const dates = events.flatMap(e => [e.start_date, e.end_date]).filter(Boolean).map(d => parseDate(d)).filter(d => !isNaN(d));
     // If no events have valid dates, fall back to a valid today-based window so
     // date formatting below never throws on an Invalid Date.
     if (dates.length === 0) {
@@ -40,8 +41,8 @@ export default function GanttChart({ events, onBarClick, readOnly }) {
 
   const getBarStyle = (event) => {
     if (!event.start_date || !event.end_date) return null;
-    const start = new Date(event.start_date);
-    const end = new Date(event.end_date);
+    const start = parseDate(event.start_date);
+    const end = parseDate(event.end_date);
     const isMilestone = event.start_date === event.end_date;
     const daysFromStart = differenceInDays(start, minDate);
     const duration = Math.max(1, differenceInDays(end, start) + 1);
@@ -108,7 +109,7 @@ export default function GanttChart({ events, onBarClick, readOnly }) {
                       >
                         <span className="text-[10px] font-bold text-white truncate flex items-center gap-1">
                           {getProgressStatus(event) === "completed" && <CheckCircle2 className="w-3 h-3 flex-shrink-0" />}
-                          {format(new Date(event.start_date), "M/d")} - {format(new Date(event.end_date), "M/d")}
+                          {format(parseDate(event.start_date), "M/d")} - {format(parseDate(event.end_date), "M/d")}
                         </span>
                       </button>
                     )}

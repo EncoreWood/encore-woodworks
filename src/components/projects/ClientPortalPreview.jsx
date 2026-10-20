@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
+import { parseDate } from "@/lib/parseDate";
 import { CheckCircle2, Circle, ChevronLeft, ChevronRight, Download, MessageSquare, DollarSign, Image, FileText, Calendar, MapPin, ClipboardList, StickyNote, X, DoorOpen, Clock } from "lucide-react";
 import GanttChart from "@/components/projects/GanttChart";
 import SlideCard from "@/components/presentations/SlideCard";
@@ -111,7 +112,7 @@ function ClientTasksPreview({ tasks }) {
             <p className="text-sm font-semibold text-slate-800">{task.title}</p>
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${statusColor[task.status] || statusColor.Pending}`}>{task.status}</span>
           </div>
-          <p className="text-xs text-slate-500">{task.task_type}{task.due_date ? ` · Due ${format(new Date(task.due_date), "MMM d, yyyy")}` : ""}</p>
+          <p className="text-xs text-slate-500">{task.task_type}{task.due_date ? ` · Due ${format(parseDate(task.due_date), "MMM d, yyyy")}` : ""}</p>
           {task.admin_notes && <p className="text-xs text-slate-500 mt-1 italic border-t border-slate-200 pt-1">{task.admin_notes}</p>}
         </div>
       ))}
@@ -301,10 +302,10 @@ export default function ClientPortalPreview({ project, settings, tasks, notes, o
             {settings?.show_status !== false && (project.start_date || project.estimated_completion || project.install_start_date) && (
               <Section title="Project Status" icon={Calendar}>
                 <div className="grid grid-cols-2 gap-3">
-                  {project.start_date && <div><p className="text-xs text-slate-400 mb-0.5">Start Date</p><p className="text-sm font-semibold text-slate-700">{format(new Date(project.start_date), "MMM d, yyyy")}</p></div>}
-                  {project.estimated_completion && <div><p className="text-xs text-slate-400 mb-0.5">Est. Completion</p><p className="text-sm font-semibold text-slate-700">{format(new Date(project.estimated_completion), "MMM d, yyyy")}</p></div>}
-                  {project.install_start_date && <div><p className="text-xs text-slate-400 mb-0.5">Install Start</p><p className="text-sm font-semibold text-amber-700">{format(new Date(project.install_start_date), "MMM d, yyyy")}</p></div>}
-                  {project.install_end_date && <div><p className="text-xs text-slate-400 mb-0.5">Install End</p><p className="text-sm font-semibold text-amber-700">{format(new Date(project.install_end_date), "MMM d, yyyy")}</p></div>}
+                  {project.start_date && <div><p className="text-xs text-slate-400 mb-0.5">Start Date</p><p className="text-sm font-semibold text-slate-700">{format(parseDate(project.start_date), "MMM d, yyyy")}</p></div>}
+                  {project.estimated_completion && <div><p className="text-xs text-slate-400 mb-0.5">Est. Completion</p><p className="text-sm font-semibold text-slate-700">{format(parseDate(project.estimated_completion), "MMM d, yyyy")}</p></div>}
+                  {project.install_start_date && <div><p className="text-xs text-slate-400 mb-0.5">Install Start</p><p className="text-sm font-semibold text-amber-700">{format(parseDate(project.install_start_date), "MMM d, yyyy")}</p></div>}
+                  {project.install_end_date && <div><p className="text-xs text-slate-400 mb-0.5">Install End</p><p className="text-sm font-semibold text-amber-700">{format(parseDate(project.install_end_date), "MMM d, yyyy")}</p></div>}
                 </div>
               </Section>
             )}

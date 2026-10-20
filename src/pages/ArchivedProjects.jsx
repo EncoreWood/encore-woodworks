@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ArchiveRestore, ExternalLink, Search, User, MapPin, Calendar, DollarSign } from "lucide-react";
 import { format } from "date-fns";
+import { parseDate } from "@/lib/parseDate";
 
 const statusConfig = {
   inquiry: "bg-slate-100 text-slate-700",
@@ -88,7 +89,7 @@ export default function ArchivedProjects() {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-slate-800 truncate">{project.project_name}</h3>
                     {project.archived_date && (
-                      <p className="text-xs text-slate-400 mt-0.5">Archived {format(new Date(project.archived_date), "MMM d, yyyy")}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">Archived {format(parseDate(project.archived_date), "MMM d, yyyy")}</p>
                     )}
                   </div>
                   <Link to={createPageUrl("ProjectDetails") + "?id=" + project.id} className="text-slate-400 hover:text-amber-600 ml-2 flex-shrink-0">
@@ -112,7 +113,7 @@ export default function ArchivedProjects() {
                   {project.actual_completion && (
                     <div className="flex items-center gap-1.5">
                       <Calendar className="w-3 h-3 flex-shrink-0" />
-                      <span>Completed {format(new Date(project.actual_completion), "MMM d, yyyy")}</span>
+                      <span>Completed {format(parseDate(project.actual_completion), "MMM d, yyyy")}</span>
                     </div>
                   )}
                   {project.estimated_budget && (

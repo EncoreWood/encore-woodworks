@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { parseDate } from "@/lib/parseDate";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -99,7 +100,7 @@ function InlineDateEdit({ label, value, onSave }) {
     <div className="flex items-center justify-between group">
       <div>
         <p className="text-sm text-slate-500">{label}</p>
-        <p className="font-medium text-slate-900">{value ? format(new Date(value), "MMM d, yyyy") : <span className="text-slate-400 text-sm">Not set</span>}</p>
+        <p className="font-medium text-slate-900">{value ? format(parseDate(value), "MMM d, yyyy") : <span className="text-slate-400 text-sm">Not set</span>}</p>
       </div>
       <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => { setVal(value || ""); setEditing(true); }}>
         <Edit className="w-3 h-3" />
