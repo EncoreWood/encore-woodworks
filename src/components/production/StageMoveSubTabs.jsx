@@ -45,10 +45,10 @@ export default function StageMoveSubTabs({ stageId, search = "" }) {
   ];
 
   const periodStats = [
-    { label: "All time", value: stats.avgPerPointAll },
-    { label: "This month (30d)", value: stats.avgPerPointMonth },
-    { label: "This week (7d)", value: stats.avgPerPointWeek },
-    { label: "Today", value: stats.avgPerPointDay }
+    { label: "All time", value: stats.avgPerPointAll, moved: stats.movedAll },
+    { label: "This month (30d)", value: stats.avgPerPointMonth, moved: stats.movedMonth },
+    { label: "This week (7d)", value: stats.avgPerPointWeek, moved: stats.movedWeek },
+    { label: "Today", value: stats.avgPerPointDay, moved: stats.movedDay }
   ];
 
   return (
@@ -73,8 +73,12 @@ export default function StageMoveSubTabs({ stageId, search = "" }) {
           <Card key={ps.label} className="border-0 shadow-sm bg-slate-50">
             <CardContent className="p-3">
               <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{ps.label}</p>
-              <p className="text-lg font-bold text-slate-800 mt-0.5">{fmtPerPoint(ps.value)}</p>
-              <p className="text-[11px] text-slate-400">avg min/pt, being worked on</p>
+              <p className="text-lg font-bold text-slate-800 mt-0.5">
+                {ps.moved} card{ps.moved === 1 ? "" : "s"} moved in
+              </p>
+              <p className="text-[11px] text-slate-400">
+                {ps.value == null ? "no min/pt yet, being worked on" : `avg ${fmtPerPoint(ps.value)}, being worked on`}
+              </p>
             </CardContent>
           </Card>
         ))}

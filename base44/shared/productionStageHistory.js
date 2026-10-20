@@ -122,9 +122,14 @@ export function stageHistoryStats(rows, now) {
     const values = measured.filter(row => row.pts > 0 && row.isBeingWorked && predicate(row));
     return values.length ? values.reduce((sum, row) => sum + row.duration / 60000 / row.pts, 0) / values.length : null;
   };
+  const movedIn = predicate => rows.filter(row => predicate(row)).length;
   return {
     count: rows.length,
     currentCount: rows.filter(row => row.isCurrent).length,
+    movedAll: movedIn(() => true),
+    movedMonth: movedIn(row => new Date(row.moved_at).getTime() >= now - 30 * 86400000),
+    movedWeek: movedIn(row => new Date(row.moved_at).getTime() >= now - 7 * 86400000),
+    movedDay: movedIn(row => shopTime(row.moved_at).toISOString().slice(0, 10) === today),
     avgMs: measured.length ? measured.reduce((sum, row) => sum + row.duration, 0) / measured.length : null,
     avgPerPointAll: perPoint(() => true),
     avgPerPointMonth: perPoint(row => new Date(row.moved_at).getTime() >= now - 30 * 86400000),
