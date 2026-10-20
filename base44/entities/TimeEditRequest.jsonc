@@ -1,0 +1,54 @@
+{
+  "name": "TimeEditRequest",
+  "type": "object",
+  "properties": {
+    "employee_id": {
+      "type": "string",
+      "description": "Employee the request belongs to"
+    },
+    "employee_name": {
+      "type": "string",
+      "description": "Employee full name for reference"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Day the edit is requested for"
+    },
+    "reason": {
+      "type": "string",
+      "description": "What needs to change and why"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending",
+      "description": "Review status"
+    },
+    "requested_by": {
+      "type": "string",
+      "description": "Name of who requested the edit"
+    },
+    "requested_at": {
+      "type": "string",
+      "description": "ISO timestamp of the request"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Admin who reviewed the request"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "description": "ISO timestamp of the review"
+    }
+  },
+  "required": [
+    "employee_id",
+    "date",
+    "reason"
+  ]
+}

@@ -10,9 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Clock, Plus, Trash2, Play, Square, Settings, Circle,
   Calendar, Pencil, Briefcase, ArrowLeftRight,
-  UtensilsCrossed, ChevronDown, ChevronRight
+  UtensilsCrossed, ChevronDown, ChevronRight, PencilLine
 } from "lucide-react";
 import { format, addWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isWithinInterval } from "date-fns";
+import EditRequestDialog from "../components/timesheet/EditRequestDialog";
+import EditRequestsReviewCard from "../components/timesheet/EditRequestsReviewCard";
 import VacationRequestForm from "../components/team/VacationRequestForm";
 import ClockInModal from "../components/timesheet/ClockInModal";
 import TimeDataTab from "../components/timesheet/TimeDataTab";
@@ -62,9 +64,12 @@ const typeColors = {
   sick: "bg-red-100 text-red-800"
 };
 
-function DayRow({ date, entries, isToday, isAdmin, onEdit, onDelete, onDeductLunch }) {
+function DayRow({ date, entries, isToday, isAdmin, onEdit, onDelete, onDeductLunch, editRequests = [], onRequestEdit }) {
   const [expanded, setExpanded] = useState(isToday);
   const dateStr = format(date, "yyyy-MM-dd");
+  const pendingRequest = editRequests.find(r => r.status === "pending");
+  const lastDecided = [...editRequests].filter(r => r.status !== "pending")
+    .sort((a, b) => (b.reviewed_at || "").localeCompare(a.reviewed_at || ""))[0];
   const workEntries = entries.filter(e => e.entry_type === "work");
   const otherEntries = entries.filter(e => e.entry_type !== "work");
   const totalHours = workEntries.reduce((s, e) => s + (e.hours_worked || 0), 0);
@@ -80,7 +85,9 @@ function DayRow({ date, entries, isToday, isAdmin, onEdit, onDelete, onDeductLun
       isToday ? "border-amber-300 shadow-sm" : "border-slate-200",
       isWeekend && !hasEntries ? "opacity-40" : ""
     )}>
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => hasEntries && setExpanded(e => !e)}
         className={cn(
           "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
@@ -111,6 +118,15 @@ function DayRow({ date, entries, isToday, isAdmin, onEdit, onDelete, onDeductLun
           {workEntries.length > 0 && (
             <span className="text-xs text-slate-500">{workEntries.length} {workEntries.length === 1 ? "entry" : "entries"}</span>
           )}
+          {pendingRequest ? (
+            <span className="flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
+              <PencilLine className="w-3 h-3" /> Edit requested
+            </span>
+          ) : lastDecided ? (
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${lastDecided.status === "approved" ? "text-green-700 bg-green-100" : "text-red-600 bg-red-100"}`}>
+              {lastDecided.status === "approved" ? "Edit accepted" : "Edit declined"}
+            </span>
+          ) : null}
         </div>
         {totalHours > 0 && (
           <span className={cn("text-sm font-bold px-3 py-1 rounded-full flex-shrink-0",
@@ -119,7 +135,17 @@ function DayRow({ date, entries, isToday, isAdmin, onEdit, onDelete, onDeductLun
           </span>
         )}
         {!hasEntries && <span className="text-xs text-slate-400 flex-shrink-0">—</span>}
-      </button>
+        {!isAdmin && !pendingRequest && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs gap-1 flex-shrink-0 border-slate-300 text-slate-600 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700"
+            onClick={(e) => { e.stopPropagation(); onRequestEdit(dateStr); }}
+          >
+            <PencilLine className="w-3 h-3" /> Request Edit
+          </Button>
+        )}
+      </div>
 
       {expanded && hasEntries && (
         <div className="border-t border-slate-100 divide-y divide-slate-50 bg-white">
@@ -277,6 +303,8 @@ export default function TimeSheet() {
   const [adminVacForm, setAdminVacForm] = useState({ employee_id: "", entry_type: "vacation", date: "", hours_worked: "8", notes: "" });
   const [applyingLunch, setApplyingLunch] = useState(false);
   const [lunchResult, setLunchResult] = useState(null);
+  const [requestEditDate, setRequestEditDate] = useState(null);
+  const [requestSaving, setRequestSaving] = useState(false);
 
   const [settingsData, setSettingsData] = useState({
     hours_per_year: 160, accrual_rate: 0.0192,
@@ -313,12 +341,56 @@ export default function TimeSheet() {
     queryFn: () => base44.entities.Vacation.list()
   });
 
+  const { data: editRequests = [] } = useQuery({
+    queryKey: ["timeEditRequests"],
+    queryFn: () => base44.entities.TimeEditRequest.list(),
+    refetchInterval: 30000
+  });
+
   useEffect(() => {
     const unsub = base44.entities.TimeEntry.subscribe(() => {
       queryClient.invalidateQueries({ queryKey: ["timeEntries"] });
     });
     return unsub;
   }, [queryClient]);
+
+  useEffect(() => {
+    const unsub = base44.entities.TimeEditRequest.subscribe(() => {
+      queryClient.invalidateQueries({ queryKey: ["timeEditRequests"] });
+    });
+    return unsub;
+  }, [queryClient]);
+
+  const handleRequestEdit = async (dateStr, reason) => {
+    if (!selectedEmployee || !reason) return;
+    setRequestSaving(true);
+    try {
+      await base44.entities.TimeEditRequest.create({
+        employee_id: selectedEmployee.id,
+        employee_name: selectedEmployee.full_name,
+        date: dateStr,
+        reason,
+        status: "pending",
+        requested_by: currentUser?.full_name || "",
+        requested_at: new Date().toISOString()
+      });
+      queryClient.invalidateQueries({ queryKey: ["timeEditRequests"] });
+      setRequestEditDate(null);
+    } catch (err) {
+      console.error("Failed to submit edit request:", err);
+    } finally {
+      setRequestSaving(false);
+    }
+  };
+
+  const reviewEditRequest = async (req, status) => {
+    await base44.entities.TimeEditRequest.update(req.id, {
+      status,
+      reviewed_by: currentUser?.full_name || "Admin",
+      reviewed_at: new Date().toISOString()
+    });
+    queryClient.invalidateQueries({ queryKey: ["timeEditRequests"] });
+  };
 
   useEffect(() => {
     if (!employees.length) return;
@@ -592,6 +664,9 @@ export default function TimeSheet() {
                   onSwitch={() => setShowSwitchModal(true)}
                   loading={clockLoading}
                 />
+                {isAdmin && (
+                  <EditRequestsReviewCard requests={editRequests} onReview={reviewEditRequest} />
+                )}
                 <Card className="border-0 shadow-sm">
                   <CardContent className="pt-4 space-y-3">
                     <div className="flex items-center justify-between flex-wrap gap-2">
@@ -634,6 +709,8 @@ export default function TimeSheet() {
                             onEdit={handleOpenEdit}
                             onDelete={(id) => deleteEntryMutation.mutate(id)}
                             onDeductLunch={handleDeductLunch}
+                            editRequests={editRequests.filter(r => r.employee_id === selectedEmployee.id && r.date === ds)}
+                            onRequestEdit={setRequestEditDate}
                           />
                         );
                       })}
@@ -856,6 +933,14 @@ export default function TimeSheet() {
       {/* Modals */}
       <ClockInModal open={showClockInModal} onOpenChange={setShowClockInModal} projects={projects}
         onConfirm={doClockIn} title="Clock In" confirmLabel="Clock In" confirmClass="bg-green-600 hover:bg-green-700" />
+
+      <EditRequestDialog
+        open={!!requestEditDate}
+        onOpenChange={(open) => { if (!open) setRequestEditDate(null); }}
+        date={requestEditDate}
+        saving={requestSaving}
+        onSubmit={(reason) => handleRequestEdit(requestEditDate, reason)}
+      />
 
       <ClockInModal open={showSwitchModal} onOpenChange={setShowSwitchModal} projects={projects}
         onConfirm={handleSwitchProject} title="Switch Job" confirmLabel="Switch" confirmClass="bg-amber-600 hover:bg-amber-700" />
