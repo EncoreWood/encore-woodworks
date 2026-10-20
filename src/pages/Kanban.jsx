@@ -313,7 +313,8 @@ export default function Kanban() {
     const orphanCol = { id: "__uncategorized__", label: "PU/Final Touch up", color: "bg-cyan-50", _orphan: true };
     // On Production, place it right after the Installing column; otherwise append.
     if (tabKey === "production") {
-      const idx = stored.findIndex((c) => c.id === "installing");
+      let idx = stored.findIndex((c) => c.id === "installing");
+      if (idx < 0) idx = stored.findIndex((c) => c.id === "ready_for_install");
       if (idx >= 0) {
         const next = [...stored];
         next.splice(idx + 1, 0, orphanCol);
