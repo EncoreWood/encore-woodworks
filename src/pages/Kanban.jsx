@@ -662,16 +662,18 @@ export default function Kanban() {
                                                Move
                                              </Button>
                                            )}
-                                           <Button
-                                             variant="outline"
-                                             size="sm"
-                                             className="text-amber-600 hover:text-amber-700 hover:border-amber-300"
-                                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPickupFormProject(project); }}
-                                             title="Add pickup item"
-                                           >
-                                             <ClipboardList className="w-3 h-3 mr-1" />
-                                             Pickup
-                                           </Button>
+                                           {tabKey === "production" && (
+                                             <Button
+                                               variant="outline"
+                                               size="sm"
+                                               className="text-amber-600 hover:text-amber-700 hover:border-amber-300"
+                                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPickupFormProject(project); }}
+                                               title="Add pickup item"
+                                             >
+                                               <ClipboardList className="w-3 h-3 mr-1" />
+                                               Pickup
+                                             </Button>
+                                           )}
                                            {!project.archived && (
                                              <Button
                                                variant="outline"
