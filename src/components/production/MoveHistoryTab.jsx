@@ -46,10 +46,15 @@ function buildPasses(moves, now) {
 
   const closePass = (dwellForLast) => {
     if (!cur) return;
+    // The last move's time in stage: how long until the pass ended
+    if (cur.moves.length && dwellForLast != null) {
+      cur.moves[cur.moves.length - 1].duration = dwellForLast;
+    }
     passes.push({
       startAt: cur.startAt,
       sentBack: cur.sentBack,
       stageTimes: cur.stageTimes,
+      moves: cur.moves,
       lastStage,
       lastAt,
       currentDwell: dwellForLast
@@ -63,17 +68,23 @@ function buildPasses(moves, now) {
         if (lastAt && lastStage) {
           cur.stageTimes[lastStage] = (cur.stageTimes[lastStage] || 0) + (at.getTime() - lastAt.getTime());
         }
-        closePass(null);
+        // Card sat in its last stage until this send-back move
+        closePass(lastAt ? at.getTime() - lastAt.getTime() : null);
       }
-      cur = { stageTimes: {}, startAt: mv.moved_at, sentBack: true };
+      cur = { stageTimes: {}, moves: [], startAt: mv.moved_at, sentBack: true };
       lastAt = null;
       lastStage = null;
     } else if (!cur) {
-      cur = { stageTimes: {}, startAt: mv.moved_at, sentBack: false };
+      cur = { stageTimes: {}, moves: [], startAt: mv.moved_at, sentBack: false };
+    }
+    // Close out the previous move's duration
+    if (cur.moves.length && lastAt) {
+      cur.moves[cur.moves.length - 1].duration = at.getTime() - lastAt.getTime();
     }
     if (lastAt && lastStage) {
       cur.stageTimes[lastStage] = (cur.stageTimes[lastStage] || 0) + (at.getTime() - lastAt.getTime());
     }
+    cur.moves.push({ to_stage: mv.to_column, moved_at: mv.moved_at, moved_by: mv.moved_by, duration: null });
     lastAt = at;
     lastStage = mv.to_column;
   });
@@ -215,6 +226,23 @@ export default function MoveHistoryTab({ columnMoveLogs = [], items = [] }) {
                                   </span>
                                 ))}
                               </div>
+                              {p.moves.length > 0 && (
+                                <div className="mt-2 border-t border-slate-200 pt-2 space-y-1">
+                                  {p.moves.map((mv, mi) => (
+                                    <div key={mi} className="flex items-center gap-2 text-xs text-slate-500">
+                                      <Undo2 className={`w-3 h-3 text-rose-400 flex-shrink-0 ${mi === 0 && p.sentBack ? "" : "invisible"}`} />
+                                      <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${stageChip(mv.to_stage)}`}>
+                                        {stageLabel(mv.to_stage)}
+                                      </span>
+                                      <span>moved {mv.moved_at ? format(parseDate(mv.moved_at), "MMM d, h:mm a") : "—"}</span>
+                                      {mv.moved_by && <span className="text-slate-400 truncate">by {mv.moved_by}</span>}
+                                      <span className="ml-auto font-medium text-slate-600 flex-shrink-0">
+                                        {mv.duration != null ? `${formatDuration(mv.duration)} in ${stageLabel(mv.to_stage)}` : ""}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
