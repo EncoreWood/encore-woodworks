@@ -23,9 +23,9 @@ export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items =
     const out = [];
     Object.entries(byItem).forEach(([itemId, moves]) => {
       const card = cardMap[itemId];
-      // Only cards currently sitting in this production stage
+      // Only cards still in active production (not completed, not job info)
       if (!card || card.is_job_info) return;
-      if (card.stage !== stageId) return;
+      if (card.stage === "complete") return;
       moves.sort((a, b) => (a.moved_at || "").localeCompare(b.moved_at || ""));
       const passes = buildPasses(moves, now);
       const pts = card
