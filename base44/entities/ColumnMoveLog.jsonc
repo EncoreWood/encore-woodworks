@@ -33,6 +33,11 @@
     "moved_at": {
       "type": "string",
       "description": "ISO datetime of when the move occurred"
+    },
+    "sent_back": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when this move sent the card back into production because of a missing item report \u2014 starts a new pass in the card's time history"
     }
   },
   "required": [

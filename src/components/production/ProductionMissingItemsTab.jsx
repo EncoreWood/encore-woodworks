@@ -138,8 +138,26 @@ export default function ProductionMissingItemsTab({ currentUser }) {
       await base44.entities.MissingItem.update(item.id, { status: "Open", resolved_date: "" });
       if (item.production_item_id) {
         try {
-          await base44.entities.ProductionItem.update(item.production_item_id, { stage: "on_hold" });
+          const card = cardById.get(item.production_item_id);
+          const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+          const prunedLog = (card?.stage_move_log || []).filter(e => e.timestamp && new Date(e.timestamp) >= cutoff);
+          await base44.entities.ProductionItem.update(item.production_item_id, {
+            stage: "on_hold",
+            stage_move_log: [...prunedLog, { from_stage: card?.stage || null, to_stage: "on_hold", moved_by: currentUser?.full_name || currentUser?.email || "Unknown", timestamp: new Date().toISOString() }]
+          });
+          await base44.entities.ColumnMoveLog.create({
+            item_id: item.production_item_id,
+            item_name: card?.name || item.production_item_name,
+            project_name: card?.project_name || item.project_name || null,
+            from_column: card?.stage || null,
+            to_column: "on_hold",
+            points_awarded: 0,
+            moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
+            moved_at: new Date().toISOString(),
+            sent_back: false
+          });
           queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+          queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
         } catch (err) {
           console.error("Failed to move card out of production:", err);
         }
@@ -163,12 +181,28 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     const targetStage = stage || "cut";
     setSending(item.id);
     try {
+      const card = cardById.get(item.production_item_id);
+      const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+      const prunedLog = (card?.stage_move_log || []).filter(e => e.timestamp && new Date(e.timestamp) >= cutoff);
       await base44.entities.ProductionItem.update(item.production_item_id, {
         stage: targetStage,
         sent_back_for_missing: true,
+        stage_move_log: [...prunedLog, { from_stage: card?.stage || null, to_stage: targetStage, moved_by: currentUser?.full_name || currentUser?.email || "Unknown", timestamp: new Date().toISOString() }]
+      });
+      await base44.entities.ColumnMoveLog.create({
+        item_id: item.production_item_id,
+        item_name: card?.name || item.production_item_name,
+        project_name: card?.project_name || item.project_name || null,
+        from_column: card?.stage || null,
+        to_column: targetStage,
+        points_awarded: 0,
+        moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
+        moved_at: new Date().toISOString(),
+        sent_back: true
       });
       toast.success(`Card sent to production (${targetStage.replace(/_/g, " ")}) ✓`);
       queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+      queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
     } catch (err) {
       console.error("Failed to send card to production:", err);
       toast.error("Failed to send card to production");
