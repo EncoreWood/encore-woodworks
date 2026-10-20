@@ -17,6 +17,7 @@ import EditRequestDialog from "../components/timesheet/EditRequestDialog";
 import EditRequestsReviewCard from "../components/timesheet/EditRequestsReviewCard";
 import VacationRequestForm from "../components/team/VacationRequestForm";
 import ClockInModal from "../components/timesheet/ClockInModal";
+import TimePicker from "../components/timesheet/TimePicker";
 import TimeDataTab from "../components/timesheet/TimeDataTab";
 import PayPeriodsView from "../components/timesheet/PayPeriodsView";
 import PayrollTab from "../components/timesheet/PayrollTab";
@@ -957,11 +958,11 @@ export default function TimeSheet() {
             {editingEntry && <p className="text-sm text-slate-500">{editingEntry.employee_name} · {editingEntry.date}</p>}
             <div>
               <label className="text-sm font-medium text-slate-700">Clock In</label>
-              <Input type="time" value={editForm.clock_in} onChange={e => setEditForm(p => ({ ...p, clock_in: e.target.value }))} className="mt-1" />
+              <div className="mt-1"><TimePicker value={editForm.clock_in} onChange={v => setEditForm(p => ({ ...p, clock_in: v }))} /></div>
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700">Clock Out</label>
-              <Input type="time" value={editForm.clock_out} onChange={e => setEditForm(p => ({ ...p, clock_out: e.target.value }))} className="mt-1" />
+              <div className="mt-1"><TimePicker value={editForm.clock_out} onChange={v => setEditForm(p => ({ ...p, clock_out: v }))} /></div>
             </div>
             {editForm.clock_in && editForm.clock_out && (
               <p className="text-sm text-slate-500">Hours: {calculateHours(editForm.clock_in, editForm.clock_out)}</p>
@@ -1065,11 +1066,11 @@ export default function TimeSheet() {
               <>
                 <div>
                   <label className="text-sm font-medium text-slate-700">Clock In</label>
-                  <Input type="time" value={formData.clock_in} onChange={e => setFormData(d => ({ ...d, clock_in: e.target.value }))} className="mt-1" />
+                  <div className="mt-1"><TimePicker value={formData.clock_in} onChange={v => setFormData(d => ({ ...d, clock_in: v }))} /></div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-slate-700">Clock Out</label>
-                  <Input type="time" value={formData.clock_out} onChange={e => setFormData(d => ({ ...d, clock_out: e.target.value }))} className="mt-1" />
+                  <div className="mt-1"><TimePicker value={formData.clock_out} onChange={v => setFormData(d => ({ ...d, clock_out: v }))} /></div>
                 </div>
               </>
             )}
