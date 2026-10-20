@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Check, X, DollarSign, Clock, TrendingUp, Gift, ChevronLeft, ChevronRight } from "lucide-react";
 import EmployeePayPeriodDialog from "./EmployeePayPeriodDialog";
+import { calcWeeklyOT } from "@/lib/weeklyOT";
 
 function getPayPeriodForOffset(offset) {
   const today = new Date();
@@ -21,29 +22,6 @@ function getPayPeriodForOffset(offset) {
     end = new Date(anchor.getFullYear(), anchor.getMonth(), 15);
   }
   return { start, end };
-}
-
-function calcWeeklyOT(entries, startStr, endStr) {
-  const periodEntries = entries.filter(e =>
-    e.entry_type === "work" && e.date >= startStr && e.date <= endStr
-  );
-  // Group by week
-  const weeklyTotals = {};
-  periodEntries.forEach(entry => {
-    const d = new Date(entry.date + "T00:00:00");
-    const dow = (d.getDay() + 6) % 7;
-    const mon = new Date(d);
-    mon.setDate(d.getDate() - dow);
-    const key = format(mon, "yyyy-MM-dd");
-    weeklyTotals[key] = (weeklyTotals[key] || 0) + (entry.hours_worked || 0);
-  });
-  let regular = 0, overtime = 0;
-  Object.values(weeklyTotals).forEach(wk => {
-    if (wk > 40) { regular += 40; overtime += wk - 40; }
-    else regular += wk;
-  });
-  const total = regular + overtime;
-  return { total, regular, overtime };
 }
 
 function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved, availablePTO, onOpenSummary }) {

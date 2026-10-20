@@ -10,6 +10,7 @@ function to12hr(time24) {
 }
 import { ChevronLeft, ChevronRight, Clock, TrendingUp, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { calcWeeklyOT } from "@/lib/weeklyOT";
 
 /**
  * Returns the pay period that contains the given date.
@@ -64,18 +65,9 @@ export default function PayPeriodsView({ employeeEntries }) {
 
   const totalHours = periodEntries.reduce((s, e) => s + (e.hours_worked || 0), 0);
 
-  // OT is calculated per week (>40 hrs/week), matching the admin Payroll tab exactly:
-  // filter to period entries first, then group by calendar week.
-  const weeklyTotals = {};
-  periodEntries.forEach(entry => {
-    const d = new Date(entry.date + "T00:00:00");
-    const dow = (d.getDay() + 6) % 7;
-    const weekMonday = new Date(d);
-    weekMonday.setDate(d.getDate() - dow);
-    const weekKey = format(weekMonday, "yyyy-MM-dd");
-    weeklyTotals[weekKey] = (weeklyTotals[weekKey] || 0) + (entry.hours_worked || 0);
-  });
-  const overtimeHours = Object.values(weeklyTotals).reduce((sum, wk) => sum + Math.max(0, wk - 40), 0);
+  // OT is calculated per full calendar week (>40 hrs/week) — matching the admin
+  // Payroll tab exactly — so boundary weeks keep their overtime.
+  const overtimeHours = calcWeeklyOT(employeeEntries, startStr, endStr).overtime;
 
   // Group by week within the period
   const weekGroups = {};
@@ -170,7 +162,11 @@ export default function PayPeriodsView({ employeeEntries }) {
             const workTotal = entries.filter(e => e.entry_type === "work").reduce((s, e) => s + (e.hours_worked || 0), 0);
             const ptoTotal = entries.filter(e => e.entry_type !== "work").reduce((s, e) => s + (e.hours_worked || 0), 0);
             const weekTotal = workTotal;
-            const weekOT = Math.max(0, workTotal - 40);
+            // OT per full calendar week — includes hours outside the pay period
+            const fullWeekWorkTotal = employeeEntries.filter(e =>
+              e.entry_type === "work" && e.date >= format(weekStart, "yyyy-MM-dd") && e.date <= format(weekEnd, "yyyy-MM-dd")
+            ).reduce((s, e) => s + (e.hours_worked || 0), 0);
+            const weekOT = Math.max(0, fullWeekWorkTotal - 40);
 
             // Group entries by day
             const byDay = {};
