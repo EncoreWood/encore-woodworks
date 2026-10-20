@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Boxes, Hammer, Clock } from "lucide-react";
+import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Boxes, Hammer, Clock, MoreVertical } from "lucide-react";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import CardMoveHistoryDialog from "@/components/production/CardMoveHistoryDialog";
 import MissingItemBadge from "@/components/production/MissingItemBadge";
 import GlbViewer from "@/components/cad/GlbViewer";
@@ -151,23 +152,37 @@ export default function ProductionCard({
         className={`relative p-4 border-0 shadow-sm transition-shadow overflow-hidden ${isDragging ? "shadow-lg" : ""}`}
         style={{ backgroundColor: "#ffffff", ...cardStyle, ...sentBackStyle }}
       >
-        {/* Room files button — top-right corner */}
-        {item.project_id && item.room_name && (
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowRoomFiles(true); }}
-            className="absolute top-2 right-2 z-10 flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 transition-colors shadow-sm"
-            title="Room info — files, images & notes"
-          >
-            <Boxes className="w-4 h-4" />
-            {roomFileCount > 0 && (
-              <span className="text-xs font-bold">{roomFileCount}</span>
+        {/* View project + Room info — top-right corner */}
+        {(item.project_id || (item.project_id && item.room_name)) && (
+          <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+            {item.project_id && (
+              <Link
+                to={`${createPageUrl("ProjectDetails")}?id=${item.project_id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center justify-center w-7 h-7 rounded-md bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-800 transition-colors shadow-sm"
+                title="View project"
+              >
+                <Building2 className="w-4 h-4" />
+              </Link>
             )}
-          </button>
+            {item.project_id && item.room_name && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowRoomFiles(true); }}
+                className="flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 transition-colors shadow-sm"
+                title="Room info — files, images & notes"
+              >
+                <Boxes className="w-4 h-4" />
+                {roomFileCount > 0 && (
+                  <span className="text-xs font-bold">{roomFileCount}</span>
+                )}
+              </button>
+            )}
+          </div>
         )}
 
         {/* Header: project/room name */}
         {item.project_name && (
-          <p className="text-xs text-slate-500 font-medium truncate pr-10 mb-1">
+          <p className="text-xs text-slate-500 font-medium truncate pr-28 mb-1">
             {item.project_name}{item.room_name ? ` · ${item.room_name}` : ""}
           </p>
         )}
@@ -185,46 +200,12 @@ export default function ProductionCard({
         {/* Action button row — sits neatly below the project name */}
         {(onOpenRoomFolder || onReturnToFolder || showLinkButton || roomGlbUrl || onReportStruggle || onQuickReportMissing || item.id) && (
           <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-            {/* View project */}
-            {item.project_id && (
-              <Link
-                to={`${createPageUrl("ProjectDetails")}?id=${item.project_id}`}
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center justify-center w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 hover:text-slate-800 flex-shrink-0 transition-colors"
-                title="View project"
-              >
-                <Building2 className="w-3 h-3" />
-              </Link>
-            )}
-
             {/* Missing item badge */}
             {item.id && (
               <MissingItemBadge
                 itemId={item.id}
                 currentUser={currentUser}
               />
-            )}
-
-            {/* Return to Job Packets — icon only */}
-            {onReturnToFolder && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onReturnToFolder(item); }}
-                className="flex items-center justify-center w-6 h-6 rounded bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-600 hover:text-blue-800 flex-shrink-0 transition-colors"
-                title="Return to Packet"
-              >
-                <RotateCcw className="w-3 h-3" />
-              </button>
-            )}
-
-            {/* Room folder link */}
-            {onOpenRoomFolder && roomFolderLabel && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onOpenRoomFolder(); }}
-                className="flex items-center justify-center w-6 h-6 rounded bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-600 hover:text-amber-800 flex-shrink-0 transition-colors"
-                title={`Open room folder: ${roomFolderLabel}`}
-              >
-                <FolderOpen className="w-3 h-3" />
-              </button>
             )}
 
             {/* Linked card */}
@@ -260,21 +241,6 @@ export default function ProductionCard({
               </button>
             )}
 
-            {/* Urgent toggle */}
-            {onToggleUrgent && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onToggleUrgent(item); }}
-                className={`flex items-center justify-center w-6 h-6 rounded-full flex-shrink-0 transition-colors ${
-                  item.is_urgent
-                    ? "bg-red-600 hover:bg-red-700 border border-red-700 text-white shadow-sm"
-                    : "bg-orange-100 hover:bg-orange-200 border border-orange-200 text-orange-600"
-                }`}
-                title={item.is_urgent ? "Remove urgent flag" : "Mark as urgent — moves card to top"}
-              >
-                <Star className="w-3.5 h-3.5" fill={item.is_urgent ? "currentColor" : "none"} />
-              </button>
-            )}
-
             {/* Currently-working toggle */}
             {onToggleWorking && (
               <button
@@ -290,26 +256,58 @@ export default function ProductionCard({
               </button>
             )}
 
-            {/* Report missing */}
-            {onQuickReportMissing && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onQuickReportMissing(item); }}
-                className="flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 hover:bg-orange-200 border border-orange-200 text-orange-600 flex-shrink-0 transition-colors"
-                title="Report a missing item"
-              >
-                <Flag className="w-3 h-3" />
-              </button>
-            )}
-
-            {/* Move history */}
-            {item.id && (
-              <button
-                onClick={(e) => { e.stopPropagation(); setShowMoveHistory(true); }}
-                className="flex items-center justify-center w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 hover:text-slate-800 flex-shrink-0 transition-colors"
-                title="Move history — stage timestamps & time in each stage"
-              >
-                <Clock className="w-3 h-3" />
-              </button>
+            {/* Actions menu — gathers the rest of the card actions in one place */}
+            {item.id && (onReturnToFolder || onOpenRoomFolder || onToggleUrgent || onQuickReportMissing || onEdit || onDelete) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    onClick={(e) => e.stopPropagation()}
+                    className="flex items-center justify-center w-6 h-6 rounded bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 hover:text-slate-800 flex-shrink-0 transition-colors"
+                    title="More actions"
+                  >
+                    <MoreVertical className="w-3.5 h-3.5" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-52" onClick={(e) => e.stopPropagation()}>
+                  {onReturnToFolder && (
+                    <DropdownMenuItem onClick={() => onReturnToFolder(item)}>
+                      <RotateCcw className="w-3.5 h-3.5" /> Return to Packet
+                    </DropdownMenuItem>
+                  )}
+                  {onOpenRoomFolder && roomFolderLabel && (
+                    <DropdownMenuItem onClick={() => onOpenRoomFolder()}>
+                      <FolderOpen className="w-3.5 h-3.5" /> Open Room Folder
+                    </DropdownMenuItem>
+                  )}
+                  {onToggleUrgent && (
+                    <DropdownMenuItem onClick={() => onToggleUrgent(item)}>
+                      <Star className="w-3.5 h-3.5" fill={item.is_urgent ? "currentColor" : "none"} />
+                      {item.is_urgent ? "Remove urgent flag" : "Mark as urgent"}
+                    </DropdownMenuItem>
+                  )}
+                  {onQuickReportMissing && (
+                    <DropdownMenuItem onClick={() => onQuickReportMissing(item)}>
+                      <Flag className="w-3.5 h-3.5" /> Report missing item
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => setShowMoveHistory(true)}>
+                    <Clock className="w-3.5 h-3.5" /> Move History
+                  </DropdownMenuItem>
+                  {onEdit && (
+                    <DropdownMenuItem onClick={() => onEdit(item)}>
+                      <Pencil className="w-3.5 h-3.5" /> Edit
+                    </DropdownMenuItem>
+                  )}
+                  {onDelete && (
+                    <DropdownMenuItem
+                      className="text-red-600 focus:text-red-700 focus:bg-red-50"
+                      onClick={() => { if (confirm(`Delete "${item.name}"?`)) onDelete(item.id); }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         )}
@@ -337,18 +335,6 @@ export default function ProductionCard({
                 title="View card 3D model"
                 onClick={(e) => { e.stopPropagation(); setShowCardGlb(true); }}>
                 <Box className="w-3 h-3" />
-              </Button>
-            )}
-            {onEdit && (
-              <Button variant="ghost" size="icon" className="h-6 w-6"
-                onClick={(e) => { e.stopPropagation(); onEdit(item); }}>
-                <Pencil className="w-3 h-3" />
-              </Button>
-            )}
-            {onDelete && (
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
-                onClick={(e) => { e.stopPropagation(); if (confirm(`Delete "${item.name}"?`)) onDelete(item.id); }}>
-                <Trash2 className="w-3 h-3" />
               </Button>
             )}
             <Badge variant="outline" className={typeBadgeClass}>{typeLabel}</Badge>
