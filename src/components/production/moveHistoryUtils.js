@@ -30,6 +30,37 @@ export function formatDuration(ms) {
   return remHours ? `${days}d ${remHours}h` : `${days}d`;
 }
 
+// Working schedule: Monday–Thursday, 7:00 AM – 5:30 PM, minus a 12:00–12:30 lunch.
+// All stage dwell times count only this time.
+const WORK_DAYS = [1, 2, 3, 4]; // Mon, Tue, Wed, Thu
+const WORK_START_MIN = 7 * 60;         // 7:00 AM
+const WORK_END_MIN = 17 * 60 + 30;     // 5:30 PM
+const LUNCH_START_MIN = 12 * 60;       // 12:00 PM
+const LUNCH_END_MIN = 12 * 60 + 30;    // 12:30 PM
+
+// Elapsed working time (ms) between two dates, counting only work days/hours
+// and excluding the lunch break.
+export function workMsBetween(from, to) {
+  if (!from || !to || to <= from) return 0;
+  let total = 0;
+  const day = new Date(from);
+  day.setHours(0, 0, 0, 0);
+  while (day <= to) {
+    if (WORK_DAYS.includes(day.getDay())) {
+      const segStart = Math.max(day.getTime() + WORK_START_MIN * 60000, from.getTime());
+      const segEnd = Math.min(day.getTime() + WORK_END_MIN * 60000, to.getTime());
+      if (segEnd > segStart) {
+        const lunchStart = day.getTime() + LUNCH_START_MIN * 60000;
+        const lunchEnd = day.getTime() + LUNCH_END_MIN * 60000;
+        const lunchOverlap = Math.max(0, Math.min(segEnd, lunchEnd) - Math.max(segStart, lunchStart));
+        total += (segEnd - segStart) - lunchOverlap;
+      }
+    }
+    day.setDate(day.getDate() + 1);
+  }
+  return Math.max(0, total);
+}
+
 // Split a card's moves into passes. A pass ends when the card is sent back
 // into production for a missing item — that move starts the next pass, which
 // keeps its own separate time history per stage.
@@ -61,10 +92,10 @@ export function buildPasses(moves, now) {
     if (mv.sent_back) {
       if (cur) {
         if (lastAt && lastStage) {
-          cur.stageTimes[lastStage] = (cur.stageTimes[lastStage] || 0) + (at.getTime() - lastAt.getTime());
+          cur.stageTimes[lastStage] = (cur.stageTimes[lastStage] || 0) + workMsBetween(lastAt, at);
         }
         // Card sat in its last stage until this send-back move
-        closePass(lastAt ? at.getTime() - lastAt.getTime() : null);
+        closePass(lastAt ? workMsBetween(lastAt, at) : null);
       }
       cur = { stageTimes: {}, moves: [], startAt: mv.moved_at, sentBack: true };
       lastAt = null;
@@ -74,15 +105,15 @@ export function buildPasses(moves, now) {
     }
     // Close out the previous move's duration
     if (cur.moves.length && lastAt) {
-      cur.moves[cur.moves.length - 1].duration = at.getTime() - lastAt.getTime();
+      cur.moves[cur.moves.length - 1].duration = workMsBetween(lastAt, at);
     }
     if (lastAt && lastStage) {
-      cur.stageTimes[lastStage] = (cur.stageTimes[lastStage] || 0) + (at.getTime() - lastAt.getTime());
+      cur.stageTimes[lastStage] = (cur.stageTimes[lastStage] || 0) + workMsBetween(lastAt, at);
     }
     cur.moves.push({ to_stage: mv.to_column, moved_at: mv.moved_at, moved_by: mv.moved_by, duration: null });
     lastAt = at;
     lastStage = mv.to_column;
   });
-  if (cur) closePass(lastAt ? now - lastAt.getTime() : null);
+  if (cur) closePass(lastAt ? workMsBetween(lastAt, new Date(now)) : null);
   return passes;
 }
