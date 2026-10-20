@@ -43,6 +43,7 @@ export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items =
             name,
             project,
             pts,
+            isBeingWorked: !!card?.is_being_worked,
             moved_at: mv.moved_at,
             moved_by: mv.moved_by,
             duration,
@@ -61,7 +62,7 @@ export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items =
   const stats = useMemo(() => {
     const durations = rows.map(r => r.duration);
     const avgMs = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : null;
-    const perPointVals = rows.filter(r => r.pts > 0).map(r => r.duration / 60000 / r.pts);
+    const perPointVals = rows.filter(r => r.pts > 0 && r.isBeingWorked).map(r => r.duration / 60000 / r.pts);
     const avgPerPoint = perPointVals.length ? perPointVals.reduce((a, b) => a + b, 0) / perPointVals.length : null;
     const currentCount = rows.filter(r => r.isCurrent).length;
     return { count: rows.length, avgMs, avgPerPoint, currentCount };
@@ -91,7 +92,7 @@ export default function StageMoveSubTabs({ stageId, columnMoveLogs = [], items =
       icon: Gauge,
       label: "Avg per point",
       value: stats.avgPerPoint != null ? `${stats.avgPerPoint < 10 ? stats.avgPerPoint.toFixed(1) : Math.round(stats.avgPerPoint)} min/pt` : "—",
-      sub: "cards with point values"
+      sub: "cards currently being worked on"
     }
   ];
 
