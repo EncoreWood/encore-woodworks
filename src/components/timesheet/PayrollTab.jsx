@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Check, X, DollarSign, Clock, TrendingUp, Gift, ChevronLeft, ChevronRight } from "lucide-react";
+import EmployeePayPeriodDialog from "./EmployeePayPeriodDialog";
 
 function getPayPeriodForOffset(offset) {
   const today = new Date();
@@ -45,7 +46,7 @@ function calcWeeklyOT(entries, startStr, endStr) {
   return { total, regular, overtime };
 }
 
-function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved, availablePTO }) {
+function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved, availablePTO, onOpenSummary }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
@@ -113,7 +114,11 @@ function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved
   return (
     <div className="border border-slate-200 rounded-xl overflow-hidden mb-3">
       {/* Header row */}
-      <div className="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200 flex-wrap">
+      <div
+        onClick={onOpenSummary}
+        title="Click to see this pay period's time cards"
+        className="cursor-pointer hover:bg-slate-100 flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200 flex-wrap transition-colors"
+      >
         <div className="flex items-center gap-3 flex-wrap">
           <span className="font-semibold text-slate-900">{employee.full_name}</span>
 
@@ -168,15 +173,15 @@ function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved
           </span>
           {editing ? (
             <>
-              <Button size="sm" variant="ghost" onClick={handleSave} disabled={saving} className="h-7 w-7 p-0 text-green-600">
+              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleSave(); }} disabled={saving} className="h-7 w-7 p-0 text-green-600">
                 <Check className="w-3.5 h-3.5" />
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => { setEditing(false); setForm({ pay_type: employee.pay_type || "hourly", hourly_rate: employee.hourly_rate || "", monthly_salary: employee.monthly_salary || "", overtime_rate_multiplier: employee.overtime_rate_multiplier || 1.5, bonus: employee.bonus || 0 }); }} className="h-7 w-7 p-0 text-red-500">
+              <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditing(false); setForm({ pay_type: employee.pay_type || "hourly", hourly_rate: employee.hourly_rate || "", monthly_salary: employee.monthly_salary || "", overtime_rate_multiplier: employee.overtime_rate_multiplier || 1.5, bonus: employee.bonus || 0 }); }} className="h-7 w-7 p-0 text-red-500">
                 <X className="w-3.5 h-3.5" />
               </Button>
             </>
           ) : (
-            <Button size="sm" variant="ghost" onClick={() => setEditing(true)} className="h-7 w-7 p-0 text-slate-500 hover:text-slate-800">
+            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditing(true); }} className="h-7 w-7 p-0 text-slate-500 hover:text-slate-800">
               <Pencil className="w-3.5 h-3.5" />
             </Button>
           )}
@@ -226,6 +231,7 @@ function calcAvailablePTO(employee, timeEntries, vacations, accrualRate) {
 
 export default function PayrollTab({ employees, timeEntries, vacations = [], accrualRate = 0.0192 }) {
   const [periodOffset, setPeriodOffset] = useState(0);
+  const [summaryEmp, setSummaryEmp] = useState(null);
   const { start: periodStart, end: periodEnd } = getPayPeriodForOffset(periodOffset);
 
   const startStr = format(periodStart, "yyyy-MM-dd");
@@ -298,12 +304,22 @@ export default function PayrollTab({ employees, timeEntries, vacations = [], acc
             periodStart={periodStart}
             periodEnd={periodEnd}
             availablePTO={calcAvailablePTO(emp, timeEntries, vacations, accrualRate)}
+            onOpenSummary={() => setSummaryEmp(emp)}
           />
         ))}
         {activeEmployees.length === 0 && (
           <p className="text-center text-slate-400 py-10 text-sm">No employees found.</p>
         )}
       </div>
+
+      <EmployeePayPeriodDialog
+        employee={summaryEmp}
+        entries={summaryEmp ? timeEntries.filter(e => e.employee_id === summaryEmp.id) : []}
+        periodStart={periodStart}
+        periodEnd={periodEnd}
+        open={!!summaryEmp}
+        onOpenChange={(o) => { if (!o) setSummaryEmp(null); }}
+      />
     </div>
   );
 }
