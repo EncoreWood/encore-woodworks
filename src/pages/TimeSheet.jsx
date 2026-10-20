@@ -398,7 +398,10 @@ export default function TimeSheet() {
     const init = async () => {
       const user = await base44.auth.me();
       setCurrentUser(user);
-      const emp = employees.find(e => e.user_email === user?.email || e.email === user?.email);
+      // Support ?employee_id= deep link (e.g. "Timesheet" button on the Team page)
+      const urlEmpId = new URLSearchParams(window.location.search).get("employee_id");
+      const emp = (urlEmpId && employees.find(e => e.id === urlEmpId)) ||
+        employees.find(e => e.user_email === user?.email || e.email === user?.email);
       if (emp) {
         setSelectedEmployee(emp);
         const todayStr = format(new Date(), "yyyy-MM-dd");

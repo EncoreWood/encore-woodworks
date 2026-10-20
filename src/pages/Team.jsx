@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, UserPlus, Loader2, User, Mail, Phone, Calendar, Cake, FileText, ShieldCheck, Pencil, ListTodo, Settings, Trash2, Plus } from "lucide-react";
+import { Users, UserPlus, Loader2, Pencil, Settings, Trash2, Plus } from "lucide-react";
 import { format } from "date-fns";
 import EmployeeCard from "../components/team/EmployeeCard";
+import EmployeeDetailsDialog from "../components/team/EmployeeDetailsDialog";
 import EmployeeForm from "../components/team/EmployeeForm";
 import AssignTaskDialog from "../components/team/AssignTaskDialog";
 import { toast } from "sonner";
@@ -495,7 +496,23 @@ export default function Team() {
          </Dialog>
 
         {/* Employee Details Dialog */}
-         <Dialog open={showEmployeeDetails} onOpenChange={setShowEmployeeDetails}>
+        <EmployeeDetailsDialog
+          open={showEmployeeDetails}
+          onOpenChange={setShowEmployeeDetails}
+          employee={employees.find(e => e.id === viewingEmployee?.id) || viewingEmployee}
+          tasks={tasks}
+          presenters={presenters}
+          bathroomCleanings={bathroomCleanings}
+          onEdit={handleEdit}
+          onAssignTask={handleAssignTask}
+          onArchive={(emp) => {
+            archiveEmployeeMutation.mutate({ id: emp.id, archive: !emp.archived, employeeName: emp.full_name });
+          }}
+          archivePending={archiveEmployeeMutation.isPending}
+        />
+
+        {/* (unused legacy block placeholder removed) */}
+        <Dialog open={false}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Employee Details</DialogTitle>

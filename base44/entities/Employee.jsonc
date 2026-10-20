@@ -99,6 +99,23 @@
       "default": 0,
       "description": "Bonus amount for this pay period"
     },
+    "skill_levels": {
+      "type": "array",
+      "description": "Skill level (0 none - 5 expert) per company area: Office, Cut, Face Frame, Spray, Build, Install, Custom",
+      "items": {
+        "type": "object",
+        "properties": {
+          "area": {
+            "type": "string",
+            "description": "Company area, e.g. Cut, Spray, Install"
+          },
+          "level": {
+            "type": "number",
+            "description": "0 = No experience, 5 = Expert"
+          }
+        }
+      }
+    },
     "archived": {
       "type": "boolean",
       "default": false,
