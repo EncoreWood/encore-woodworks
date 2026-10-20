@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { History, ArrowRight, Clock, Search } from "lucide-react";
+import { Clock, Search } from "lucide-react";
 import { format } from "date-fns";
 import { parseDate } from "@/lib/parseDate";
 
@@ -35,79 +35,66 @@ function formatDuration(ms) {
   return remHours ? `${days}d ${remHours}h` : `${days}d`;
 }
 
-export default function MoveHistoryTab({ columnMoveLogs = [] }) {
+export default function MoveHistoryTab({ columnMoveLogs = [], items = [] }) {
   const [search, setSearch] = useState("");
+  const [openItemId, setOpenItemId] = useState(null);
 
-  // Per item: sort moves chronologically, compute how long the card sat in the
-  // stage it just left (time between this move and its previous move).
-  const rows = useMemo(() => {
+  // Per-card time history built from the move log: time spent in each stage
+  // (time between consecutive moves), plus live dwell in the current stage.
+  const cardHistories = useMemo(() => {
     const byItem = {};
     columnMoveLogs.forEach(log => {
       if (!log.item_id) return;
       if (!byItem[log.item_id]) byItem[log.item_id] = [];
       byItem[log.item_id].push(log);
     });
-    const all = [];
-    Object.values(byItem).forEach(moves => {
+    const histories = {};
+    Object.entries(byItem).forEach(([itemId, moves]) => {
       moves.sort((a, b) => (a.moved_at || "").localeCompare(b.moved_at || ""));
-      moves.forEach((mv, i) => {
-        const prev = i > 0 ? moves[i - 1] : null;
+      const stageTimes = {};
+      let lastAt = null;
+      let lastStage = null;
+      moves.forEach(mv => {
         const at = parseDate(mv.moved_at);
-        const prevAt = prev ? parseDate(prev.moved_at) : null;
-        all.push({
-          id: mv.id,
-          item_id: mv.item_id,
-          item_name: mv.item_name || "(deleted card)",
-          project_name: mv.project_name || "",
-          from_column: mv.from_column || null,
-          to_column: mv.to_column,
-          moved_by: mv.moved_by || "—",
-          moved_at: mv.moved_at,
-          at,
-          time_in_prev: prevAt && mv.from_column ? at.getTime() - prevAt.getTime() : null
-        });
+        if (lastAt && lastStage) {
+          stageTimes[lastStage] = (stageTimes[lastStage] || 0) + (at.getTime() - lastAt.getTime());
+        }
+        lastAt = at;
+        lastStage = mv.to_column;
       });
+      const now = Date.now();
+      const currentStage = lastStage;
+      const currentDwell = lastAt ? now - lastAt.getTime() : null;
+      histories[itemId] = { stageTimes, currentStage, currentDwell, lastMoveAt: lastAt };
     });
-    all.sort((a, b) => b.at.getTime() - a.at.getTime());
-    return all;
+    return histories;
   }, [columnMoveLogs]);
 
-  // Where each card is right now + how long it's been there
-  const current = useMemo(() => {
-    const latest = {};
-    rows.forEach(r => {
-      if (!latest[r.item_id] || r.at > latest[r.item_id].at) latest[r.item_id] = r;
-    });
-    const now = Date.now();
-    return Object.values(latest)
-      .map(r => ({ ...r, dwell: now - r.at.getTime() }))
+  // Only cards currently on the production board
+  const boardCards = useMemo(() => items.filter(i => !i.is_job_info), [items]);
+
+  const visibleCards = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return boardCards
+      .filter(c => !q || c.name?.toLowerCase().includes(q) || c.project_name?.toLowerCase().includes(q))
+      .map(c => ({
+        id: c.id,
+        name: c.name,
+        project_name: c.project_name || "",
+        stage: c.stage,
+        history: cardHistories[c.id] || { stageTimes: {}, currentStage: c.stage, currentDwell: null, lastMoveAt: null },
+        // fallback for cards never moved since logging began: dwell from created date
+        fallbackDwell: !cardHistories[c.id] && c.created_date ? Date.now() - parseDate(c.created_date).getTime() : null
+      }))
       .sort((a, b) => {
-        const ai = STAGES.findIndex(s => s.id === a.to_column);
-        const bi = STAGES.findIndex(s => s.id === b.to_column);
-        return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi) || a.item_name.localeCompare(b.item_name);
+        const ai = STAGES.findIndex(s => s.id === a.stage);
+        const bi = STAGES.findIndex(s => s.id === b.stage);
+        return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi) || a.name.localeCompare(b.name);
       });
-  }, [rows]);
-
-  const filteredRows = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(r =>
-      r.item_name.toLowerCase().includes(q) ||
-      r.project_name.toLowerCase().includes(q)
-    );
-  }, [rows, search]);
-
-  const filteredCurrent = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return current;
-    return current.filter(r =>
-      r.item_name.toLowerCase().includes(q) ||
-      r.project_name.toLowerCase().includes(q)
-    );
-  }, [current, search]);
+  }, [boardCards, cardHistories, search]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="relative max-w-md">
         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <Input
@@ -118,67 +105,63 @@ export default function MoveHistoryTab({ columnMoveLogs = [] }) {
         />
       </div>
 
-      {/* Current location of every card, with live time in stage */}
       <Card className="border-0 shadow-sm">
         <CardContent className="pt-4">
-          <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-            <Clock className="w-4 h-4 text-slate-500" /> Cards Now (time in current stage)
-          </h3>
-          {filteredCurrent.length === 0 ? (
-            <p className="text-sm text-slate-400 py-4 text-center">No card moves logged yet.</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-              {filteredCurrent.map(r => (
-                <div key={r.item_id} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50">
-                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${stageChip(r.to_column)}`}>
-                    {stageLabel(r.to_column)}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-800 truncate">{r.item_name}</p>
-                    {r.project_name && <p className="text-xs text-slate-400 truncate">{r.project_name}</p>}
-                  </div>
-                  <span className="text-xs font-bold text-slate-600 whitespace-nowrap">{formatDuration(r.dwell)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Full chronological move log, newest first */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="pt-4">
-          <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-1.5">
-            <History className="w-4 h-4 text-slate-500" /> Move History
-          </h3>
-          {filteredRows.length === 0 ? (
-            <p className="text-sm text-slate-400 py-4 text-center">No moves match your search.</p>
+          {visibleCards.length === 0 ? (
+            <p className="text-sm text-slate-400 py-6 text-center">No production cards on the board.</p>
           ) : (
             <div className="divide-y divide-slate-100">
-              {filteredRows.map(r => (
-                <div key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
-                  <span className="text-xs text-slate-500 w-32 flex-shrink-0">
-                    {format(r.at, "MMM d, h:mm a")}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-800 truncate">{r.item_name}</p>
-                    {r.project_name && <p className="text-xs text-slate-400 truncate">{r.project_name}</p>}
+              {visibleCards.map(card => {
+                const h = card.history;
+                const isOpen = openItemId === card.id;
+                const stagesWithTime = STAGES.filter(s => (h.stageTimes[s.id] || 0) > 0);
+                return (
+                  <div key={card.id} className="py-2.5">
+                    <div
+                      className="flex items-center gap-3 cursor-pointer select-none"
+                      onClick={() => setOpenItemId(isOpen ? null : card.id)}
+                    >
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${stageChip(card.stage)}`}>
+                        {stageLabel(card.stage)}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{card.name}</p>
+                        {card.project_name && <p className="text-xs text-slate-400 truncate">{card.project_name}</p>}
+                      </div>
+                      <span className="text-xs text-slate-500 flex items-center gap-1 flex-shrink-0">
+                        <Clock className="w-3 h-3" />
+                        {formatDuration(h.currentDwell ?? card.fallbackDwell) || "—"} in {stageLabel(card.stage)}
+                      </span>
+                    </div>
+                    {isOpen && (
+                      <div className="mt-2 ml-1 rounded-lg bg-slate-50 border border-slate-200 p-3 space-y-2">
+                        <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">Time per stage</p>
+                        {stagesWithTime.length === 0 && !card.fallbackDwell ? (
+                          <p className="text-xs text-slate-400">No stage moves logged yet for this card.</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {stagesWithTime.map(s => (
+                              <span key={s.id} className={`text-xs font-semibold px-2.5 py-1 rounded-full ${stageChip(s.id)}`}>
+                                {stageLabel(s.id)}: {formatDuration(h.stageTimes[s.id])}
+                              </span>
+                            ))}
+                            {card.fallbackDwell != null && (
+                              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${stageChip(card.stage)}`}>
+                                {stageLabel(card.stage)}: {formatDuration(card.fallbackDwell)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {h.lastMoveAt && (
+                          <p className="text-xs text-slate-400">
+                            Last moved: {format(h.lastMoveAt, "MMM d, h:mm a")} · currently in {stageLabel(h.currentStage)}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${stageChip(r.from_column)}`}>
-                      {stageLabel(r.from_column)}
-                    </span>
-                    <ArrowRight className="w-3 h-3 text-slate-400" />
-                    <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${stageChip(r.to_column)}`}>
-                      {stageLabel(r.to_column)}
-                    </span>
-                  </div>
-                  <span className="text-xs text-slate-500 w-24 text-right flex-shrink-0">
-                    {r.time_in_prev != null ? `in ${stageLabel(r.from_column)} ${formatDuration(r.time_in_prev)}` : "—"}
-                  </span>
-                  <span className="text-xs text-slate-400 w-32 truncate text-right flex-shrink-0">by {r.moved_by}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

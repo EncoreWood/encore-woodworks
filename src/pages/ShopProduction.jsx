@@ -961,7 +961,7 @@ export default function ShopProduction() {
 
           {/* ── MOVE HISTORY TAB ── */}
           <TabsContent value="move_history" className="mt-0">
-            <MoveHistoryTab columnMoveLogs={columnMoveLogs} />
+            <MoveHistoryTab columnMoveLogs={columnMoveLogs} items={items} />
           </TabsContent>
 
           {/* ── JOB PACKETS TAB ── */}
