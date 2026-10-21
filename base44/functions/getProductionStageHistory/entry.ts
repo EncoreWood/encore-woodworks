@@ -1,5 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.54";
-import { productionStages, productionBoardQuery, readHistoryPages, buildStageHistory, stageHistoryStats, periodRows } from "../../shared/productionStageHistory.js";
+import { productionStages, productionBoardQuery, readHistoryPages, buildStageHistory, stageHistoryStats, periodRows, exitRows } from "../../shared/productionStageHistory.js";
 
 export default async function(req) {
   try {
@@ -42,7 +42,7 @@ export default async function(req) {
     if (listPeriod) {
       let list = periodRows(rows, listPeriod, now);
       if (listDirection === "in") list = list.filter(row => row.eventLabel !== "Moved out");
-      if (listDirection === "out") list = list.filter(row => row.eventLabel === "Moved out");
+      if (listDirection === "out") list = exitRows(list);
       return Response.json({ rows: list, stats, nextCursor: null });
     }
     const end = offset + 50;

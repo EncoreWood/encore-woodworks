@@ -91,6 +91,9 @@ export function buildStageHistory(cards, logs, stageId, now) {
       if (move.from_column === stageId && move.from_column !== move.to_column) {
         if (open) {
           open.duration = workingMs(open.moved_at, move.moved_at);
+          open.exited = true;
+          open.exited_at = move.moved_at;
+          open.exited_by = move.moved_by;
           open = null;
         } else {
           addVisit(move, false);
@@ -127,27 +130,43 @@ export function periodRows(rows, period, now) {
   return match ? rows.filter(match) : rows;
 }
 
+// A departure from the stage: either a standalone "Moved out" event, or the
+// move that closed a logged stay (exit date recorded on the stay row).
+export function exitRows(rows) {
+  return rows.flatMap(row => {
+    if (row.eventLabel === "Moved out") return [row];
+    if (row.exited) return [{ ...row, id: row.id + "-out", eventLabel: "Moved out", moved_at: row.exited_at, moved_by: row.exited_by }];
+    return [];
+  });
+}
+
 export function stageHistoryStats(rows, now) {
   const measured = rows.filter(row => row.duration != null);
   const today = shopTime(now).toISOString().slice(0, 10);
+  const exits = exitRows(rows);
   const perPoint = predicate => {
     const values = measured.filter(row => row.pts > 0 && row.isBeingWorked && predicate(row));
     return values.length ? values.reduce((sum, row) => sum + row.duration / 60000 / row.pts, 0) / values.length : null;
   };
-  const inPeriod = predicate => rows.filter(row => predicate(row)).length;
-  const movedIn = predicate => inPeriod(row => row.eventLabel !== "Moved out" && predicate(row));
-  const movedOut = predicate => inPeriod(row => row.eventLabel === "Moved out" && predicate(row));
+  const movedIn = predicate => rows.filter(row => row.eventLabel !== "Moved out" && predicate(new Date(row.moved_at).getTime())).length;
+  const movedOut = predicate => exits.filter(row => predicate(new Date(row.moved_at).getTime())).length;
+  const periodTest = {
+    all: () => true,
+    month: at => at >= now - 30 * 86400000,
+    week: at => at >= now - 7 * 86400000,
+    day: at => shopTime(at).toISOString().slice(0, 10) === today
+  };
   return {
     count: rows.length,
     currentCount: rows.filter(row => row.isCurrent).length,
-    movedAll: movedIn(() => true),
-    movedMonth: movedIn(row => new Date(row.moved_at).getTime() >= now - 30 * 86400000),
-    movedWeek: movedIn(row => new Date(row.moved_at).getTime() >= now - 7 * 86400000),
-    movedDay: movedIn(row => shopTime(row.moved_at).toISOString().slice(0, 10) === today),
-    movedOutAll: movedOut(() => true),
-    movedOutMonth: movedOut(row => new Date(row.moved_at).getTime() >= now - 30 * 86400000),
-    movedOutWeek: movedOut(row => new Date(row.moved_at).getTime() >= now - 7 * 86400000),
-    movedOutDay: movedOut(row => shopTime(row.moved_at).toISOString().slice(0, 10) === today),
+    movedAll: movedIn(periodTest.all),
+    movedMonth: movedIn(periodTest.month),
+    movedWeek: movedIn(periodTest.week),
+    movedDay: movedIn(periodTest.day),
+    movedOutAll: movedOut(periodTest.all),
+    movedOutMonth: movedOut(periodTest.month),
+    movedOutWeek: movedOut(periodTest.week),
+    movedOutDay: movedOut(periodTest.day),
     avgMs: measured.length ? measured.reduce((sum, row) => sum + row.duration, 0) / measured.length : null,
     avgPerPointAll: perPoint(() => true),
     avgPerPointMonth: perPoint(row => new Date(row.moved_at).getTime() >= now - 30 * 86400000),
