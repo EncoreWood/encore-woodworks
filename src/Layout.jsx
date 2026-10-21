@@ -80,6 +80,7 @@ export default function Layout({ children, currentPageName }) {
       items: [
         { name: "Dashboard", icon: LayoutDashboard, iconName: "LayoutDashboard", page: "Dashboard" },
         { name: "Production Dashboard", icon: Users, iconName: "Users", page: "EmployeeDashboard" },
+        { name: "My Profile", icon: UserCircle, iconName: "UserCircle", page: "MyProfile" },
       ]
     },
     admin: {

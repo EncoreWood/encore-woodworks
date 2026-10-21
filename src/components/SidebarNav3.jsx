@@ -17,7 +17,7 @@ const GROUP_ICONS = {
 };
 
 const ALWAYS_ALLOWED = new Set([
-  "AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet",
+  "AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet", "MyProfile",
 ]);
 
 const LOGO_URL =

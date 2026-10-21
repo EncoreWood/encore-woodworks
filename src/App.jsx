@@ -42,6 +42,7 @@ import MyAssignments from './pages/MyAssignments';
 import Trainings from './pages/Trainings';
 import Flow from './pages/Flow';
 import Education from './pages/Education';
+import MyProfile from './pages/MyProfile';
 
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -100,6 +101,7 @@ const AuthenticatedApp = () => {
       <Route path="/MistakeReport" element={<LayoutWrapper currentPageName="MistakeReport"><MistakeReport /></LayoutWrapper>} />
       <Route path="/InventoryScan" element={<InventoryScan />} />
       <Route path="/ClientPortal" element={<ClientPortal />} />
+      <Route path="/MyProfile" element={<LayoutWrapper currentPageName="MyProfile"><MyProfile /></LayoutWrapper>} />
       <Route path="/MyAssignments" element={<LayoutWrapper currentPageName="MyAssignments"><MyAssignments /></LayoutWrapper>} />
       <Route path="/Trainings" element={<LayoutWrapper currentPageName="Trainings"><Trainings /></LayoutWrapper>} />
       <Route path="/Flow" element={<LayoutWrapper currentPageName="Flow"><Flow /></LayoutWrapper>} />

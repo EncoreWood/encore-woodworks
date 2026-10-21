@@ -10,10 +10,12 @@ import EmployeeCard from "../components/team/EmployeeCard";
 import EmployeeDetailsDialog from "../components/team/EmployeeDetailsDialog";
 import EmployeeForm from "../components/team/EmployeeForm";
 import AssignTaskDialog from "../components/team/AssignTaskDialog";
+import MyProfileView from "../components/team/MyProfileView";
 import { toast } from "sonner";
 
 export default function Team() {
   const [activeTab, setActiveTab] = useState('active');
+  const [currentUser, setCurrentUser] = useState(undefined); // undefined = still checking
   const [editingEmployee, setEditingEmployee] = useState(null);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
   const [assigningEmployee, setAssigningEmployee] = useState(null);
@@ -26,6 +28,12 @@ export default function Team() {
   const [editingDept, setEditingDept] = useState(null);
   const [editingDeptName, setEditingDeptName] = useState("");
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    base44.auth.me()
+      .then(setCurrentUser)
+      .catch(() => setCurrentUser(null));
+  }, []);
 
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees"],
@@ -247,12 +255,17 @@ export default function Team() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || currentUser === undefined) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-amber-600" />
       </div>
     );
+  }
+
+  // Non-admin users only ever see their own card (profile view)
+  if (currentUser?.role !== "admin") {
+    return <MyProfileView />;
   }
 
   return (

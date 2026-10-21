@@ -491,29 +491,35 @@ export default function EmployeeDetailsDialog({ open, onOpenChange, employee, ta
 
             {/* Actions */}
             <div className="border-t pt-4 flex flex-col gap-2">
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => {
-                    onOpenChange(false);
-                    onEdit(employee);
-                  }}
-                  className="flex-1"
-                >
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    onOpenChange(false);
-                    onAssignTask(employee);
-                  }}
-                  className="flex-1"
-                >
-                  <ListTodo className="w-4 h-4 mr-2" />
-                  Assign Task
-                </Button>
-              </div>
+              {(onEdit || onAssignTask) && (
+                <div className="flex gap-2">
+                  {onEdit && (
+                    <Button
+                      onClick={() => {
+                        onOpenChange(false);
+                        onEdit(employee);
+                      }}
+                      className="flex-1"
+                    >
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  )}
+                  {onAssignTask && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        onOpenChange(false);
+                        onAssignTask(employee);
+                      }}
+                      className="flex-1"
+                    >
+                      <ListTodo className="w-4 h-4 mr-2" />
+                      Assign Task
+                    </Button>
+                  )}
+                </div>
+              )}
               <div className="flex gap-2">
                 <Button
                   variant="outline"
@@ -532,20 +538,22 @@ export default function EmployeeDetailsDialog({ open, onOpenChange, employee, ta
                   PTO
                 </Button>
               </div>
-              <Button
-                variant="outline"
-                className={employee.archived ? "text-emerald-600 border-emerald-300 hover:bg-emerald-50" : "text-red-600 border-red-300 hover:bg-red-50"}
-                disabled={archivePending}
-                onClick={() => {
-                  if (confirm(`${employee.archived ? 'Restore' : 'Remove'} ${employee.full_name}?${
-                    !employee.archived ? ' This will remove them from future meeting rotations and cleaning schedules. Their time cards will remain archived and accessible.' : ''
-                  }`)) {
-                    onArchive(employee);
-                  }
-                }}
-              >
-                {archivePending ? "Processing..." : employee.archived ? "Restore Employee" : "Remove from Team"}
-              </Button>
+              {onArchive && (
+                <Button
+                  variant="outline"
+                  className={employee.archived ? "text-emerald-600 border-emerald-300 hover:bg-emerald-50" : "text-red-600 border-red-300 hover:bg-red-50"}
+                  disabled={archivePending}
+                  onClick={() => {
+                    if (confirm(`${employee.archived ? 'Restore' : 'Remove'} ${employee.full_name}?${
+                      !employee.archived ? ' This will remove them from future meeting rotations and cleaning schedules. Their time cards will remain archived and accessible.' : ''
+                    }`)) {
+                      onArchive(employee);
+                    }
+                  }}
+                >
+                  {archivePending ? "Processing..." : employee.archived ? "Restore Employee" : "Remove from Team"}
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>
