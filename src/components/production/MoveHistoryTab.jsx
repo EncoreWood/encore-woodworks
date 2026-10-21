@@ -7,7 +7,7 @@ import { parseDate } from "@/lib/parseDate";
 import { STAGES, stageLabel, stageChip, formatDuration, buildPasses, isOnProductionBoard } from "./moveHistoryUtils";
 import StageMoveSubTabs from "./StageMoveSubTabs";
 
-export default function MoveHistoryTab({ columnMoveLogs = [], items = [] }) {
+export default function MoveHistoryTab({ columnMoveLogs = [], items = [], onEdit }) {
   const [search, setSearch] = useState("");
   const [openItemId, setOpenItemId] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
@@ -96,6 +96,7 @@ export default function MoveHistoryTab({ columnMoveLogs = [], items = [] }) {
           <StageMoveSubTabs
             stageId={activeTab}
             search={search}
+            onEdit={onEdit}
           />
         </React.Fragment>
       )}

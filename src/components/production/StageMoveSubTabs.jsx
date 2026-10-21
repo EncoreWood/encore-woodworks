@@ -1,16 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, Undo2, ArrowRightCircle, Timer, Gauge } from "lucide-react";
+import { Clock, Undo2, ArrowRightCircle, Timer, Gauge, History } from "lucide-react";
 import { format } from "date-fns";
 import { parseDate } from "@/lib/parseDate";
 import { stageLabel, formatDuration } from "@/components/production/moveHistoryUtils";
 import { Button } from "@/components/ui/button";
 import useProductionStageHistory from "@/hooks/useProductionStageHistory";
+import CardMoveHistoryDialog from "./CardMoveHistoryDialog";
 
 // Per-stage overview: recent moves into the stage, avg time a card spends
 // there, and avg minutes-per-point (e.g. 1h in stage on a 2pt card = 30 min/pt).
-export default function StageMoveSubTabs({ stageId, search = "" }) {
+export default function StageMoveSubTabs({ stageId, search = "", onEdit }) {
   const { rows: visibleRows, stats, isPending, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useProductionStageHistory(stageId, search);
+  const [historyItem, setHistoryItem] = useState(null);
 
   if (isPending) return <p className="text-sm text-muted-foreground py-6 text-center">Loading stage history...</p>;
   if (isError) return (
@@ -97,7 +99,12 @@ export default function StageMoveSubTabs({ stageId, search = "" }) {
           ) : (
             <div className="divide-y divide-slate-100">
               {visibleRows.map(r => (
-                <div key={r.id} className="py-2.5 flex items-center gap-3">
+                <div
+                  key={r.id}
+                  className="py-2.5 flex items-center gap-3 cursor-pointer select-none hover:bg-slate-50 rounded px-1"
+                  onClick={() => setHistoryItem({ id: r.itemId, name: r.name, project_name: r.project })}
+                  title="View move history"
+                >
                   {r.sentBack && (
                     <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 whitespace-nowrap flex-shrink-0">
                       <Undo2 className="w-3 h-3" /> Pass {r.passIndex}
@@ -128,6 +135,7 @@ export default function StageMoveSubTabs({ stageId, search = "" }) {
                     <Clock className="w-3 h-3" />
                     {r.isCurrent ? `${formatDuration(r.duration)} so far` : (formatDuration(r.duration) || "Time unknown")}
                   </span>
+                  <History className="w-3.5 h-3.5 text-slate-300 flex-shrink-0" />
                 </div>
               ))}
             </div>
@@ -139,6 +147,13 @@ export default function StageMoveSubTabs({ stageId, search = "" }) {
           )}
         </CardContent>
       </Card>
+
+      <CardMoveHistoryDialog
+        item={historyItem}
+        open={!!historyItem}
+        onClose={() => setHistoryItem(null)}
+        onViewCard={(full) => { setHistoryItem(null); onEdit?.(full); }}
+      />
     </div>
   );
 }

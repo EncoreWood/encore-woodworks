@@ -961,7 +961,11 @@ export default function ShopProduction() {
 
           {/* ── MOVE HISTORY TAB ── */}
           <TabsContent value="move_history" className="mt-0">
-            <MoveHistoryTab columnMoveLogs={columnMoveLogs} items={items} />
+            <MoveHistoryTab
+              columnMoveLogs={columnMoveLogs}
+              items={items}
+              onEdit={(item) => { setEditingItem(item); setShowForm(true); }}
+            />
           </TabsContent>
 
           {/* ── JOB PACKETS TAB ── */}

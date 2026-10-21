@@ -3,14 +3,27 @@ import { base44 } from "@/api/base44Client";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle
 } from "@/components/ui/dialog";
-import { Clock, Undo2 } from "lucide-react";
+import { Clock, Undo2, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { parseDate } from "@/lib/parseDate";
 import { STAGES, stageLabel, stageChip, formatDuration, buildPasses } from "./moveHistoryUtils";
 
-export default function CardMoveHistoryDialog({ item, open, onClose }) {
+export default function CardMoveHistoryDialog({ item, open, onClose, onViewCard }) {
   const [moves, setMoves] = useState(null);
+  const [openingCard, setOpeningCard] = useState(false);
   const now = Date.now();
+
+  const handleViewCard = async () => {
+    if (openingCard || !item?.id) return;
+    setOpeningCard(true);
+    try {
+      const full = await base44.entities.ProductionItem.get(item.id);
+      onViewCard(full || item);
+    } finally {
+      setOpeningCard(false);
+    }
+  };
 
   useEffect(() => {
     if (!open || !item?.id) return;
@@ -40,6 +53,18 @@ export default function CardMoveHistoryDialog({ item, open, onClose }) {
             Move History — {item?.name}
           </DialogTitle>
           {item?.project_name && <p className="text-xs text-slate-400 -mt-1">{item.project_name}</p>}
+          {onViewCard && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-2"
+              disabled={openingCard}
+              onClick={handleViewCard}
+            >
+              <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+              {openingCard ? "Opening..." : "View card"}
+            </Button>
+          )}
         </DialogHeader>
 
         {moves === null && (
