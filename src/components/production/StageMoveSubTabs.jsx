@@ -7,12 +7,14 @@ import { stageLabel, formatDuration } from "@/components/production/moveHistoryU
 import { Button } from "@/components/ui/button";
 import useProductionStageHistory from "@/hooks/useProductionStageHistory";
 import CardMoveHistoryDialog from "./CardMoveHistoryDialog";
+import PeriodCardsDialog from "./PeriodCardsDialog";
 
 // Per-stage overview: recent moves into the stage, avg time a card spends
 // there, and avg minutes-per-point (e.g. 1h in stage on a 2pt card = 30 min/pt).
 export default function StageMoveSubTabs({ stageId, search = "", onEdit }) {
   const { rows: visibleRows, stats, isPending, isError, refetch, hasNextPage, fetchNextPage, isFetchingNextPage } = useProductionStageHistory(stageId, search);
   const [historyItem, setHistoryItem] = useState(null);
+  const [periodModal, setPeriodModal] = useState(null);
 
   if (isPending) return <p className="text-sm text-muted-foreground py-6 text-center">Loading stage history...</p>;
   if (isError) return (
@@ -47,10 +49,10 @@ export default function StageMoveSubTabs({ stageId, search = "", onEdit }) {
   ];
 
   const periodStats = [
-    { label: "All time", value: stats.avgPerPointAll, moved: stats.movedAll, movedOut: stats.movedOutAll },
-    { label: "This month (30d)", value: stats.avgPerPointMonth, moved: stats.movedMonth, movedOut: stats.movedOutMonth },
-    { label: "This week (7d)", value: stats.avgPerPointWeek, moved: stats.movedWeek, movedOut: stats.movedOutWeek },
-    { label: "Today", value: stats.avgPerPointDay, moved: stats.movedDay, movedOut: stats.movedOutDay }
+    { key: "all", label: "All time", value: stats.avgPerPointAll, moved: stats.movedAll, movedOut: stats.movedOutAll },
+    { key: "month", label: "This month (30d)", value: stats.avgPerPointMonth, moved: stats.movedMonth, movedOut: stats.movedOutMonth },
+    { key: "week", label: "This week (7d)", value: stats.avgPerPointWeek, moved: stats.movedWeek, movedOut: stats.movedOutWeek },
+    { key: "day", label: "Today", value: stats.avgPerPointDay, moved: stats.movedDay, movedOut: stats.movedOutDay }
   ];
 
   return (
@@ -72,7 +74,13 @@ export default function StageMoveSubTabs({ stageId, search = "", onEdit }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {periodStats.map(ps => (
-          <Card key={ps.label} className="border-0 shadow-sm bg-slate-50">
+          <Card
+            key={ps.label}
+            className="border-0 shadow-sm bg-slate-50 cursor-pointer select-none hover:bg-slate-100 transition-colors"
+            role="button"
+            onClick={() => setPeriodModal({ key: ps.key, label: ps.label })}
+            title="Show cards in this period"
+          >
             <CardContent className="p-3">
               <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">{ps.label}</p>
               <p className="text-lg font-bold text-slate-800 mt-0.5">
@@ -153,6 +161,17 @@ export default function StageMoveSubTabs({ stageId, search = "", onEdit }) {
         open={!!historyItem}
         onClose={() => setHistoryItem(null)}
         onViewCard={(full) => { setHistoryItem(null); onEdit?.(full); }}
+      />
+
+      <PeriodCardsDialog
+        stageId={stageId}
+        search={search}
+        periodKey={periodModal?.key}
+        periodLabel={periodModal?.label}
+        counts={periodModal ? periodStats.find(ps => ps.key === periodModal.key) : null}
+        open={!!periodModal}
+        onClose={() => setPeriodModal(null)}
+        onEdit={(item) => { setPeriodModal(null); onEdit?.(item); }}
       />
     </div>
   );

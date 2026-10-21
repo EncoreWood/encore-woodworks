@@ -1,14 +1,16 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.54";
-import { productionStages, productionBoardQuery, readHistoryPages, buildStageHistory, stageHistoryStats } from "../../shared/productionStageHistory.js";
+import { productionStages, productionBoardQuery, readHistoryPages, buildStageHistory, stageHistoryStats, periodRows } from "../../shared/productionStageHistory.js";
 
 export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-    const { stageId, search = "", offset = 0 } = await req.json();
+    const { stageId, search = "", offset = 0, listPeriod = "", listDirection = "" } = await req.json();
     if (!productionStages.includes(stageId) || typeof search !== "string" || search.length > 200
-      || !Number.isInteger(offset) || offset < 0 || offset > 1000000) {
+      || !Number.isInteger(offset) || offset < 0 || offset > 1000000
+      || !["", "all", "month", "week", "day"].includes(listPeriod)
+      || !["", "in", "out"].includes(listDirection)) {
       return Response.json({ error: "Invalid stage history request" }, { status: 400 });
     }
     const now = Date.now();
@@ -36,6 +38,12 @@ export default async function(req) {
       });
       const matchingIds = new Set(matching.map(card => card.id));
       rows = rows.filter(row => matchingIds.has(row.itemId));
+    }
+    if (listPeriod) {
+      let list = periodRows(rows, listPeriod, now);
+      if (listDirection === "in") list = list.filter(row => row.eventLabel !== "Moved out");
+      if (listDirection === "out") list = list.filter(row => row.eventLabel === "Moved out");
+      return Response.json({ rows: list, stats, nextCursor: null });
     }
     const end = offset + 50;
     return Response.json({ rows: rows.slice(offset, end), stats, nextCursor: end < rows.length ? end : null });

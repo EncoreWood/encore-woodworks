@@ -115,6 +115,18 @@ export function buildStageHistory(cards, logs, stageId, now) {
   return rows.sort((a, b) => new Date(b.moved_at) - new Date(a.moved_at) || a.id.localeCompare(b.id));
 }
 
+// Cards behind the per-period stat tiles: filter rows by the tile's period.
+export function periodRows(rows, period, now) {
+  const today = shopTime(now).toISOString().slice(0, 10);
+  const match = {
+    all: () => true,
+    month: row => new Date(row.moved_at).getTime() >= now - 30 * 86400000,
+    week: row => new Date(row.moved_at).getTime() >= now - 7 * 86400000,
+    day: row => shopTime(row.moved_at).toISOString().slice(0, 10) === today
+  }[period];
+  return match ? rows.filter(match) : rows;
+}
+
 export function stageHistoryStats(rows, now) {
   const measured = rows.filter(row => row.duration != null);
   const today = shopTime(now).toISOString().slice(0, 10);
