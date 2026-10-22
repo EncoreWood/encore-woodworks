@@ -10,7 +10,7 @@ import RoomMissingProgress from "./RoomMissingProgress";
  * Groups missing items by job (project) then room, with collapsible sections.
  * expandedJobs: Set of job keys, expandedRooms: Set of "job||room" keys. Sections start collapsed.
  */
-export default function MissingItemsGroupedList({ items, cardById, projects, isAdmin, updating, onStatus, onSendToProduction, onBackToOpen, sending, onViewCard, expandedJobs, expandedRooms, onToggleJob, onToggleRoom }) {
+export default function MissingItemsGroupedList({ items, cardById, projects, isAdmin, updating, onStatus, onSendToProduction, onBackToOpen, sending, onViewCard, expandedJobs, expandedRooms, onToggleJob, onToggleRoom, countsByJob }) {
   const grouped = useMemo(() => {
     const jobs = new Map();
     for (const item of items) {
@@ -57,7 +57,20 @@ export default function MissingItemsGroupedList({ items, cardById, projects, isA
               >
                 {jobCollapsed ? <ChevronRight className="w-4 h-4 text-slate-500" /> : <ChevronDown className="w-4 h-4 text-slate-500" />}
                 <span className="text-sm font-bold text-slate-800">{jobName}</span>
-                <span className="text-xs font-medium text-slate-500 bg-white border border-slate-200 rounded-full px-2 py-0.5">{jobCount}</span>
+                {(() => {
+                  const counts = countsByJob?.get(jobName);
+                  if (!counts) return (
+                    <span className="text-xs font-medium text-slate-500 bg-white border border-slate-200 rounded-full px-2 py-0.5">{jobCount}</span>
+                  );
+                  return (
+                    <span className="text-xs font-medium bg-white border border-slate-200 rounded-full px-2 py-0.5">
+                      {counts.active > 0
+                        ? <span className="text-red-600 font-bold">{counts.active} active</span>
+                        : <span className="text-green-600 font-semibold">0 active</span>}
+                      <span className="text-slate-400"> / {counts.total}</span>
+                    </span>
+                  );
+                })()}
               </button>
               {(() => {
                 const project = (projects || []).find(p => p.project_name === jobName);

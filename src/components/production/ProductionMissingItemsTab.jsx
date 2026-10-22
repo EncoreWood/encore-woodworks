@@ -7,6 +7,7 @@ import { Search, CheckCircle2, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import MissingItemsGroupedList from "./MissingItemsGroupedList";
 import MissingItemCardViewerDialog from "./MissingItemCardViewerDialog";
+import ActionQueueList from "./ActionQueueList";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
 import { format } from "date-fns";
 
@@ -20,6 +21,8 @@ export default function ProductionMissingItemsTab({ currentUser }) {
   const [expandedJobs, setExpandedJobs] = useState(() => new Set());
   const [expandedRooms, setExpandedRooms] = useState(() => new Set());
   const [viewCardId, setViewCardId] = useState(null);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const [viewMode, setViewMode] = useState("byProject");
 
   const toggleJob = (job) => setExpandedJobs(prev => {
     const next = new Set(prev);
@@ -215,10 +218,12 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     }
   };
 
-  // Completed items stay visible so per-room progress reflects them
   const visible = missingItems.filter(i => !i.archived);
+  const activeVisible = visible.filter(i => !DONE_STATUSES.includes(i.status));
 
-  const filtered = visible.filter(item => {
+  // Default view hides completed items — lists, project rows and counts reflect
+  // active items only; the summary pills above always count everything.
+  const filtered = (showCompleted ? visible : activeVisible).filter(item => {
     if (filterStatus !== "all" && item.status !== filterStatus) return false;
     if (filterProject !== "all" && item.project_id !== filterProject) return false;
     if (search) {
@@ -241,15 +246,49 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     cfg: STATUS_CONFIG[s],
   }));
 
+  // Active vs total counts per job for accordion headers (always both, regardless of toggle)
+  const countsByJob = useMemo(() => {
+    const m = new Map();
+    for (const i of visible) {
+      const k = i.project_name || "No Job";
+      const e = m.get(k) || { active: 0, total: 0 };
+      e.total++;
+      if (!DONE_STATUSES.includes(i.status)) e.active++;
+      m.set(k, e);
+    }
+    return m;
+  }, [visible]);
+
   return (
     <div className="space-y-4">
-      {/* Summary badges */}
+      {/* View mode + completed visibility toggles */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex gap-1 bg-white border border-slate-200 rounded-lg p-1">
+          <button onClick={() => setViewMode("byProject")} className={viewMode === "byProject" ? "text-xs px-3 py-1.5 rounded-md bg-slate-800 text-white font-medium transition-colors" : "text-xs px-3 py-1.5 rounded-md text-slate-600 hover:bg-slate-100 transition-colors"}>By Project</button>
+          <button onClick={() => setViewMode("queue")} className={viewMode === "queue" ? "text-xs px-3 py-1.5 rounded-md bg-slate-800 text-white font-medium transition-colors" : "text-xs px-3 py-1.5 rounded-md text-slate-600 hover:bg-slate-100 transition-colors"}>Action Queue</button>
+        </div>
+        <button
+          onClick={() => setShowCompleted(v => !v)}
+          className={`text-xs px-3 py-1.5 rounded-lg border transition-colors flex items-center gap-1.5 ${showCompleted ? "bg-emerald-50 border-emerald-300 text-emerald-700 font-medium" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+        >
+          <CheckCircle2 className={`w-3.5 h-3.5 ${showCompleted ? "text-emerald-600" : "text-slate-400"}`} />
+          Show completed{showCompleted ? " ✓" : ""}
+        </button>
+      </div>
+
+      {/* Summary pills — click to filter by status, click again to clear (counts include completed) */}
       <div className="flex gap-2 flex-wrap">
         {statusCounts.map(({ status, count, cfg }) => (
-          <div key={status} className={`border border-black/5 rounded-lg px-3 py-2 flex items-center gap-2 ${cfg.color}`}>
+          <button
+            key={status}
+            type="button"
+            onClick={() => setFilterStatus(filterStatus === status ? "all" : status)}
+            title={filterStatus === status ? "Click to clear filter" : `Show only ${cfg.label}`}
+            className={`border border-black/5 rounded-lg px-3 py-2 flex items-center gap-2 transition-all ${cfg.color} ${filterStatus === status ? "ring-2 ring-slate-600 ring-offset-1" : "hover:shadow-sm"}`}
+          >
             <span className="text-sm font-bold">{count}</span>
             <span className="text-xs">{cfg.label}</span>
-          </div>
+          </button>
         ))}
       </div>
 
@@ -276,8 +315,21 @@ export default function ProductionMissingItemsTab({ currentUser }) {
         </Select>
       </div>
 
-      {/* Grouped list */}
-      {filtered.length === 0 ? (
+      {/* List: Action Queue (flat, cross-project) or By Project accordion */}
+      {viewMode === "queue" ? (
+        <ActionQueueList
+          items={filtered}
+          cardById={cardById}
+          projects={projects}
+          isAdmin={isAdmin}
+          updating={updating}
+          onStatus={handleStatus}
+          onSendToProduction={sendCardToProduction}
+          onBackToOpen={sendBackToOpen}
+          sending={sending}
+          onViewCard={setViewCardId}
+        />
+      ) : filtered.length === 0 ? (
         <div className="text-center py-20 text-slate-400">
           <CheckCircle2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-lg font-medium">No missing items</p>
@@ -305,6 +357,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
             expandedRooms={expandedRooms}
             onToggleJob={toggleJob}
             onToggleRoom={toggleRoom}
+            countsByJob={countsByJob}
           />
         </>
       )}
