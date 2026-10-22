@@ -59,13 +59,14 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     const ACTIVE_STAGES = ["cut", "face_frame", "spray", "build"];
     const toSync = missingItems.filter(mi => {
       if (mi.archived || !mi.production_item_id || autoSyncedIds.current.has(mi.id)) return false;
-      const cardStage = cardById.get(mi.production_item_id)?.stage;
+      // The linked missing-items card drives status sync when one exists
+      const cardStage = cardById.get(mi.missing_card_id || mi.production_item_id)?.stage;
       if (cardStage === "complete") {
         if (DONE_STATUSES.includes(mi.status)) return false;
         // Only auto-complete items that were reported while the card was still in
         // production. A missing item reported ON/after the card completed (e.g. a
         // pick up discovered later) must stay Open.
-        const completedDate = cardById.get(mi.production_item_id)?.completed_date;
+        const completedDate = cardById.get(mi.missing_card_id || mi.production_item_id)?.completed_date;
         if (!completedDate || !mi.reported_at) return false;
         return mi.reported_at.slice(0, 10) < completedDate;
       }
@@ -76,7 +77,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     (async () => {
       let updated = 0;
       for (const mi of toSync) {
-        const cardStage = cardById.get(mi.production_item_id)?.stage;
+        const cardStage = cardById.get(mi.missing_card_id || mi.production_item_id)?.stage;
         const newStatus = cardStage === "complete" ? "Completed" : "In Production";
         try {
           await base44.entities.MissingItem.update(mi.id, {
@@ -131,22 +132,24 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     callUpdateStatus(itemId, status);
   };
 
-  // Send a card out of production: card goes to On Hold, item goes back to Open
+  // Send a card out of production: card goes to On Hold, item goes back to Open.
+  // With the linked-card model, the missing-items card is the one pulled out.
   const sendBackToOpen = async (item) => {
     setUpdating(item.id);
     try {
       await base44.entities.MissingItem.update(item.id, { status: "Open", resolved_date: "" });
-      if (item.production_item_id) {
+      const targetCardId = item.missing_card_id || item.production_item_id;
+      if (targetCardId) {
         try {
-          const card = cardById.get(item.production_item_id);
+          const card = cardById.get(targetCardId);
           const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
           const prunedLog = (card?.stage_move_log || []).filter(e => e.timestamp && new Date(e.timestamp) >= cutoff);
-          await base44.entities.ProductionItem.update(item.production_item_id, {
+          await base44.entities.ProductionItem.update(targetCardId, {
             stage: "on_hold",
             stage_move_log: [...prunedLog, { from_stage: card?.stage || null, to_stage: "on_hold", moved_by: currentUser?.full_name || currentUser?.email || "Unknown", timestamp: new Date().toISOString() }]
           });
           await base44.entities.ColumnMoveLog.create({
-            item_id: item.production_item_id,
+            item_id: targetCardId,
             item_name: card?.name || item.production_item_name,
             project_name: card?.project_name || item.project_name || null,
             from_column: card?.stage || null,
@@ -172,25 +175,26 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     }
   };
 
-  // Send this item's linked production card back into the production flow (Cut stage)
+  // Send this item's linked production card back into the production flow (Cut stage).
+  // With the linked-card model, the missing-items card is the one sent through.
   const sendCardToProduction = async (item, stage) => {
-    if (!item.production_item_id) {
+    const targetCardId = item.missing_card_id || item.production_item_id;
+    if (!targetCardId) {
       toast.error("This item has no linked production card");
       return;
     }
     const targetStage = stage || "cut";
     setSending(item.id);
     try {
-      const card = cardById.get(item.production_item_id);
+      const card = cardById.get(targetCardId);
       const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
       const prunedLog = (card?.stage_move_log || []).filter(e => e.timestamp && new Date(e.timestamp) >= cutoff);
-      await base44.entities.ProductionItem.update(item.production_item_id, {
+      await base44.entities.ProductionItem.update(targetCardId, {
         stage: targetStage,
-        sent_back_for_missing: true,
         stage_move_log: [...prunedLog, { from_stage: card?.stage || null, to_stage: targetStage, moved_by: currentUser?.full_name || currentUser?.email || "Unknown", timestamp: new Date().toISOString() }]
       });
       await base44.entities.ColumnMoveLog.create({
-        item_id: item.production_item_id,
+        item_id: targetCardId,
         item_name: card?.name || item.production_item_name,
         project_name: card?.project_name || item.project_name || null,
         from_column: card?.stage || null,
@@ -198,7 +202,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
         points_awarded: 0,
         moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
         moved_at: new Date().toISOString(),
-        sent_back: true
+        sent_back: false
       });
       toast.success(`Card sent to production (${targetStage.replace(/_/g, " ")}) ✓`);
       queryClient.invalidateQueries({ queryKey: ["productionItems"] });

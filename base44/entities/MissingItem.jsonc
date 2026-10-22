@@ -10,6 +10,10 @@
       "type": "string",
       "description": "ID of the production item"
     },
+    "missing_card_id": {
+      "type": "string",
+      "description": "ID of the linked missing-items production card created for this report"
+    },
     "project_id": {
       "type": "string",
       "description": "Reference to Project ID"

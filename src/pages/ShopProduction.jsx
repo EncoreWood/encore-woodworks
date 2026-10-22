@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, Fragment } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef, Fragment } from "react";
 import { format, startOfWeek, startOfMonth, subDays } from "date-fns";
 import CompleteStageCards from "../components/production/CompleteStageCards";
 import { base44 } from "@/api/base44Client";
@@ -28,6 +28,7 @@ import MobileCompactCard from "../components/production/MobileCompactCard";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProductionChatUnread } from "../components/production/useProductionChatUnread";
 import QuickReportMissingDialog from "../components/production/QuickReportMissingDialog";
+import MissingItemCardViewerDialog from "../components/production/MissingItemCardViewerDialog";
 import PickupFromHighlightDialog from "../components/production/PickupFromHighlightDialog";
 
 const productionColumns = [
@@ -69,6 +70,7 @@ export default function ShopProduction() {
   const [reportingStruggle, setReportingStruggle] = useState(null);
   const [givingCompliment, setGivingCompliment] = useState(false);
   const [reportingMissing, setReportingMissing] = useState(null);
+  const [viewMissingCardId, setViewMissingCardId] = useState(null);
   const [quickReportItem, setQuickReportItem] = useState(null);
   const [showEndOfDay, setShowEndOfDay] = useState(false);
   const [scrollToProjectId, setScrollToProjectId] = useState(null);
@@ -101,6 +103,17 @@ export default function ShopProduction() {
     // Real-time subscriptions handle instant updates; polling is just a safety net
     refetchInterval: anyModalOpen ? false : 60_000,
   });
+
+  // Missing-items cards (split off a parent card by a missing-item report)
+  const itemsById = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
+  const missingChildrenByParent = useMemo(() => {
+    const map = {};
+    for (const it of items) {
+      if (!it.parent_card_id) continue;
+      (map[it.parent_card_id] = map[it.parent_card_id] || []).push(it);
+    }
+    return map;
+  }, [items]);
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -584,6 +597,10 @@ export default function ShopProduction() {
     onUpdate: handleGlbUpdate,
     onToggleUrgent: handleToggleUrgent,
     onToggleWorking: (item) => { if (item.stage) handleToggleWorking(item); },
+    // Missing-items card links: parent badges + "From <parent>" badge on child cards
+    itemsById,
+    missingChildrenByParent,
+    onViewMissingCard: (id) => setViewMissingCardId(id),
   };
 
   // Complete column renders through CompleteStageCards (grouped by completion
@@ -1051,6 +1068,8 @@ export default function ShopProduction() {
           currentUser={currentUser}
           prefillItem={reportingMissing !== true ? reportingMissing : null}
         />
+
+        <MissingItemCardViewerDialog cardId={viewMissingCardId} onClose={() => setViewMissingCardId(null)} />
 
         <EndOfDayDialog
           open={showEndOfDay}

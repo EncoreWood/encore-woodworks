@@ -11,6 +11,7 @@ import { base44 } from "@/api/base44Client";
 import { getSizeBreakdown, splitDimList } from "./missingItemSizes";
 import { extractSizesFromPdf, inferPickupType } from "@/components/production/pdfSizes";
 import readMissingPartsFromPdf from "@/components/production/readMissingPartsFromPdf";
+import { ensureMissingItemCard } from "@/components/production/missingCardHelper";
 
 const CUSTOM_TYPES = ["Door", "Drawer Front", "Drawer Box", "End Panel", "Panel", "Molding", "Hardware", "Other"];
 
@@ -292,6 +293,7 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
     setLoading(true);
 
     let created = 0, merged = 0, confirmed = 0, confirmedBy = null, already = 0, failed = 0;
+    const reported = []; // {result data, payload} — used to build the linked missing-items card
 
     for (const payload of buildPayloads()) {
       try {
@@ -309,10 +311,35 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
         else if (data.result === "confirmed") { confirmed++; confirmedBy = confirmedBy || data.reported_by; }
         else if (data.result === "already_confirmed") already++;
         else { failed++; console.error("reportMissingItem failed:", data?.error); }
+        if ((data.result === "created" || data.result === "merged") && data.id) reported.push({ data, payload });
       } catch (err) {
         failed++;
         console.error("reportMissingItem failed:", err);
       }
+    }
+
+    // Create the separate missing-items card linked to this parent card.
+    // The parent card itself is NOT flagged or sent back — it stays put.
+    let childCard = null;
+    if (reported.length && item?.id) {
+      try {
+        childCard = await ensureMissingItemCard({
+          parentItem: item,
+          rows: reported.map(({ data, payload }) => ({
+            description: payload.item_description,
+            qty: payload.quantity,
+            width: payload.width,
+            length: payload.length,
+            material: payload.material,
+            finish: payload.finish,
+            missing_item_id: data.id,
+          })),
+          notes,
+        });
+      } catch (err) {
+        console.error("Failed to create missing-items card:", err);
+      }
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
     }
 
     setLoading(false);
@@ -323,8 +350,9 @@ export default function QuickReportMissingDialog({ open, onOpenChange, item, cur
         confirmed ? `${confirmed} confirmed (already reported by ${confirmedBy})` : null,
         already ? `${already} already reported` : null,
       ].filter(Boolean).join(", ");
+      const cardNote = childCard ? ` — card ${childCard.name} created` : "";
       if (failed) toast.warning(`${parts}. ${failed} item${failed > 1 ? "s" : ""} failed.`);
-      else toast.success(`Missing item${created + merged + confirmed + already > 1 ? "s" : ""} — ${parts} ✓`);
+      else toast.success(`Missing item${created + merged + confirmed + already > 1 ? "s" : ""} — ${parts}${cardNote} ✓`);
       queryClient.invalidateQueries({ queryKey: ["missingItems"] });
       reset();
       onOpenChange(false);

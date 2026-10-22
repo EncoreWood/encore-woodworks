@@ -85,6 +85,9 @@ export default function ProductionCard({
   onQuickReportMissing,  // called with item to open quick report dialog
   onToggleUrgent,        // called with item to toggle the urgent flag (floats card to top of column)
   onToggleWorking,       // called with item to toggle the "currently working on" flag
+  itemsById,             // map of all production items (for parent-name lookups)
+  missingChildrenByParent, // map of parent card id -> its missing-items cards
+  onViewMissingCard,     // called with a card id to open the card viewer dialog
 }) {
   const [hoveredPdfUrl, setHoveredPdfUrl] = useState(null);
   const [hoveredAnchorEl, setHoveredAnchorEl] = useState(null);
@@ -187,7 +190,7 @@ export default function ProductionCard({
           </p>
         )}
 
-        {/* Sent back for a missing item */}
+        {/* Sent back for a missing item (legacy cards reported before linked missing-items cards) */}
         {item.sent_back_for_missing && (
           <span
             className="inline-flex items-center gap-1 mb-2 px-2 py-0.5 rounded-full bg-red-100 border border-red-300 text-red-700 text-[10px] font-bold"
@@ -195,6 +198,58 @@ export default function ProductionCard({
           >
             ↩ Sent back — missing item
           </span>
+        )}
+
+        {/* Missing-items card badges — a report splits a linked card off this parent */}
+        {(missingChildrenByParent?.[item.id] || []).map(child => {
+          const ready = child.stage === "complete";
+          return ready ? (
+            <button
+              key={child.id}
+              onClick={(e) => { e.stopPropagation(); onViewMissingCard?.(child.id); }}
+              className="inline-flex items-center gap-1 mr-1 mb-2 px-2 py-0.5 rounded-full bg-green-100 border border-green-300 text-green-700 text-[10px] font-bold hover:bg-green-200 transition-colors"
+              title="Missing items are done — view the card"
+            >
+              ✓ Missing items ready → {child.name}
+            </button>
+          ) : (
+            <button
+              key={child.id}
+              onClick={(e) => { e.stopPropagation(); onViewMissingCard?.(child.id); }}
+              className="inline-flex items-center gap-1 mr-1 mb-2 px-2 py-0.5 rounded-full bg-orange-100 border border-orange-300 text-orange-700 text-[10px] font-bold hover:bg-orange-200 transition-colors"
+              title="Open this card's linked missing-items card"
+            >
+              Missing items → {child.name}
+            </button>
+          );
+        })}
+
+        {/* This card IS a missing-items card — link back to its parent */}
+        {item.parent_card_id && itemsById?.get(item.parent_card_id) && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onViewMissingCard?.(item.parent_card_id); }}
+            className="inline-flex items-center gap-1 mb-2 px-2 py-0.5 rounded-full bg-blue-100 border border-blue-300 text-blue-700 text-[10px] font-bold hover:bg-blue-200 transition-colors"
+            title="Open the parent card"
+          >
+            From {itemsById.get(item.parent_card_id).name}
+          </button>
+        )}
+
+        {/* Missing item details carried on a missing-items card face */}
+        {(item.missing_details || []).length > 0 && (
+          <div className="mb-2 rounded-lg bg-orange-50 border border-orange-200 px-2.5 py-2">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-orange-700 mb-1">Missing items</p>
+            <div className="space-y-0.5">
+              {item.missing_details.map((d, i) => (
+                <p key={i} className="text-xs text-slate-700 leading-snug">
+                  {d.qty ? <span className="font-bold text-orange-700 mr-1">{d.qty}@</span> : null}
+                  <span>{d.description || "Missing item"}</span>
+                  {d.width && d.length ? <span className="text-slate-500"> — {d.width} x {d.length}</span> : null}
+                  {d.material ? <span className="text-slate-500"> · {d.material}</span> : null}
+                </p>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Action button row — sits neatly below the project name */}

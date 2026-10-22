@@ -6,7 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+
+import { ensureMissingItemCard } from "@/components/production/missingCardHelper";
 
 const MISSING_ITEM_TYPES = [
   { value: "door", label: "Door" },
@@ -40,6 +43,7 @@ export default function ReportMissingDialog({ open, onOpenChange, currentUser, p
     production_stage: prefillItem?.stage || "",
   });
   const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
 
   const { data: projects = [] } = useQuery({
     queryKey: ["projects"],
@@ -62,12 +66,40 @@ export default function ReportMissingDialog({ open, onOpenChange, currentUser, p
   const handleSubmit = async () => {
     if (!form.production_item_name || !form.missing_item_type) return;
     setSaving(true);
-    await base44.entities.MissingItem.create({
+    const typeLabel = MISSING_ITEM_TYPES.find(t => t.value === form.missing_item_type)?.label || form.missing_item_type;
+    const record = await base44.entities.MissingItem.create({
       ...form,
       reported_by: currentUser?.full_name || currentUser?.email || "Unknown",
       reported_at: new Date().toISOString(),
-      status: "open",
+      status: "Open",
     });
+    // Create the separate missing-items card linked to the parent card.
+    // The parent card itself is NOT flagged or sent back.
+    let childCard = null;
+    if (form.production_item_id && record?.id) {
+      try {
+        childCard = await ensureMissingItemCard({
+          parentItem: prefillItem,
+          rows: [{
+            description: `${typeLabel}${form.cabinet_name ? ` — ${form.cabinet_name}` : ""}`,
+            qty: null, width: null, length: null,
+            material: null, finish: null,
+            missing_item_id: record.id,
+          }],
+          notes: form.description || null,
+        });
+        if (childCard) {
+          await base44.entities.MissingItem.update(record.id, { missing_card_id: childCard.id });
+          toast.success(`Missing item reported — card ${childCard.name} created ✓`);
+          queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+        }
+      } catch (err) {
+        console.error("Failed to create missing-items card:", err);
+        toast.error("Reported, but the linked card couldn't be created");
+      }
+    }
+    if (!childCard) toast.success("Missing item reported ✓");
+    queryClient.invalidateQueries({ queryKey: ["missingItems"] });
     setSaving(false);
     onOpenChange(false);
     setForm({

@@ -56,6 +56,47 @@
       "type": "string",
       "description": "ID of the production board card this Job Info card is linked to"
     },
+    "parent_card_id": {
+      "type": "string",
+      "description": "ID of the parent production card this missing-items card was split from"
+    },
+    "missing_details": {
+      "type": "array",
+      "description": "For missing-items cards: the reported missing parts shown on the card face",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "What is missing, e.g. Door Front"
+          },
+          "qty": {
+            "type": "number",
+            "description": "Quantity"
+          },
+          "width": {
+            "type": "string",
+            "description": "Width (fraction string)"
+          },
+          "length": {
+            "type": "string",
+            "description": "Length (fraction string)"
+          },
+          "material": {
+            "type": "string",
+            "description": "Material spec"
+          },
+          "finish": {
+            "type": "string",
+            "description": "Finish spec"
+          },
+          "missing_item_id": {
+            "type": "string",
+            "description": "ID of the linked MissingItem record"
+          }
+        }
+      }
+    },
     "project_id": {
       "type": "string",
       "description": "Reference to Project ID"
@@ -171,7 +212,7 @@
     "sent_back_for_missing": {
       "type": "boolean",
       "default": false,
-      "description": "True when this card was sent back into production stages because of a missing-item report. Shows a 'Sent back \u2014 missing item' badge on the card; cleared automatically when the card reaches Complete."
+      "description": "Legacy flag: true when this card was sent back into production stages because of a missing-item report. New reports create a separate linked missing-items card instead."
     },
     "glb_url": {
       "type": "string"
