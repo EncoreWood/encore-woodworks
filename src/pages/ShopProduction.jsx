@@ -420,7 +420,7 @@ export default function ShopProduction() {
     return { day, week, month };
   };
 
-  const colStats = Object.fromEntries(STAT_STAGES.map(s => [s, getColStats(s)]));
+  const colStats = Object.fromEntries([...new Set([...STAT_STAGES, ...productionColumns.map(c => c.id)])].map(s => [s, getColStats(s)]));
 
   const returnToFolder = async (item) => {
     const files = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
@@ -737,11 +737,10 @@ export default function ShopProduction() {
                     .filter(i => i.stage === column.id && !i.is_job_info)
                     .sort(sortColumnItems);
                   const workingCount = columnItems.filter(i => i.is_being_worked).length;
-                  const colPts = columnItems.reduce((sum, item) => {
-                    const filePts = (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
-                    const cardPts = parseFloat(item.pts) || 0;
-                    return sum + filePts + cardPts;
-                  }, 0);
+                  // Header badge: points completed by this stage today — points on cards
+                  // moved OUT of the stage today; for Complete, points of cards that
+                  // arrived there today
+                  const colPts = (colStats[column.id]?.day) || 0;
                   // Complete column: cards older than a week are hidden from the board view
                   const completeVisibleCount = column.id === "complete"
                     ? columnItems.filter(i => !i.completed_date || i.completed_date >= format(subDays(new Date(), 6), "yyyy-MM-dd")).length
