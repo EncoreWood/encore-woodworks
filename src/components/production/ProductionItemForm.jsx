@@ -182,9 +182,10 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-medium text-slate-600">Starting Stage</Label>
-                  <Select value={formData.stage} onValueChange={(v) => handleChange("stage", v)}>
+                  <Select value={formData.stage || "__staged__"} onValueChange={(v) => handleChange("stage", v === "__staged__" ? null : v)}>
                     <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Staged" /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="__staged__">Staged</SelectItem>
                       <SelectItem value="cut">Cut</SelectItem>
                       <SelectItem value="face_frame">Face Frame</SelectItem>
                       <SelectItem value="spray">Spray</SelectItem>
