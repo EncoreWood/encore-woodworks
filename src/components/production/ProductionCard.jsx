@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Boxes, Hammer, Clock, MoreVertical } from "lucide-react";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CardMoveHistoryDialog from "@/components/production/CardMoveHistoryDialog";
 import MissingItemBadge from "@/components/production/MissingItemBadge";
 import GlbViewer from "@/components/cad/GlbViewer";
@@ -94,6 +95,7 @@ export default function ProductionCard({
   const [showGlb, setShowGlb] = useState(false);
   const [showCardGlb, setShowCardGlb] = useState(false);
   const [showSketch, setShowSketch] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
   const [viewingCad, setViewingCad] = useState(null);
   const [showRoomFiles, setShowRoomFiles] = useState(false);
   const [showMoveHistory, setShowMoveHistory] = useState(false);
@@ -132,6 +134,9 @@ export default function ProductionCard({
     : "bg-emerald-50 text-emerald-700 border-emerald-200";
 
   const typeLabel = item.type === "cabinet" ? "Cabinet" : item.type === "misc" ? "Misc" : item.type === "cut" ? "Cut" : item.type === "end_panel" ? "End Panel" : "Pick up";
+
+  // Notes longer than a couple of lines are clamped on the card and open in a dialog
+  const isLongNote = (item.notes || "").length > 80 || (item.notes || "").includes("\n");
 
   return (
     <>
@@ -443,7 +448,21 @@ export default function ProductionCard({
           </div>
         )}
 
-        {item.notes && <p className="text-sm text-slate-600 mb-3">{item.notes}</p>}
+        {item.notes && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setShowNotes(true); }}
+            className="w-full text-left mb-3 -mx-1 px-1 py-1 rounded-md hover:bg-slate-50 active:bg-slate-100 transition-colors"
+            title="Tap to read the full note"
+          >
+            <p className={`text-sm text-slate-600 whitespace-pre-wrap ${isLongNote ? "line-clamp-2" : ""}`}>{item.notes}</p>
+            {isLongNote && (
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 mt-0.5">
+                <FileText className="w-3 h-3" /> Tap to read full note
+              </span>
+            )}
+          </button>
+        )}
 
         {/* Sketch thumbnail */}
         {item.sketch_url && (
@@ -647,6 +666,21 @@ export default function ProductionCard({
           roomName={item.room_name}
           onClose={() => setShowRoomFiles(false)}
         />
+      )}
+      {item.notes && (
+        <Dialog open={showNotes} onOpenChange={setShowNotes}>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <DialogHeader>
+              <DialogTitle className="text-base">Note — {item.name}</DialogTitle>
+            </DialogHeader>
+            {item.room_name && (
+              <p className="text-xs text-slate-500 -mt-2">
+                {item.project_name ? `${item.project_name} · ` : ""}{item.room_name}
+              </p>
+            )}
+            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{item.notes}</p>
+          </DialogContent>
+        </Dialog>
       )}
       <CardMoveHistoryDialog item={item} open={showMoveHistory} onClose={() => setShowMoveHistory(false)} />
       <PdfPreviewTooltip url={hoveredPdfUrl} anchorEl={hoveredAnchorEl} />
