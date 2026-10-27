@@ -176,6 +176,7 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
                       <SelectItem value="cut">Cut</SelectItem>
                       <SelectItem value="misc">Misc</SelectItem>
                       <SelectItem value="pickup">Pick up</SelectItem>
+                      <SelectItem value="end_panel">End Panel</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

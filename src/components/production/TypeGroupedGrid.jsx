@@ -9,6 +9,7 @@ const TYPE_ORDER = [
   { key: "cut", label: "Cut" },
   { key: "misc", label: "Misc" },
   { key: "pickup", label: "Pick up" },
+  { key: "end_panel", label: "End Panel" },
 ];
 
 export default function TypeGroupedGrid({ items, renderCard, gridClassName = "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-1 pt-3" }) {

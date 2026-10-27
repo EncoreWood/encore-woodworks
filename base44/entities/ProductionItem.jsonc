@@ -12,7 +12,8 @@
         "cabinet",
         "cut",
         "misc",
-        "pickup"
+        "pickup",
+        "end_panel"
       ],
       "description": "Type of production item"
     },
