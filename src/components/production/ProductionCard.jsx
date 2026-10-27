@@ -95,7 +95,8 @@ export default function ProductionCard({
   const [showGlb, setShowGlb] = useState(false);
   const [showCardGlb, setShowCardGlb] = useState(false);
   const [showSketch, setShowSketch] = useState(false);
-  const [showNotes, setShowNotes] = useState(false);
+  // { title, subtitle, body } for the note reader dialog (card note or misc sub-item note)
+  const [noteDialog, setNoteDialog] = useState(null);
   const [viewingCad, setViewingCad] = useState(null);
   const [showRoomFiles, setShowRoomFiles] = useState(false);
   const [showMoveHistory, setShowMoveHistory] = useState(false);
@@ -405,15 +406,36 @@ export default function ProductionCard({
         {/* Misc sub-items list */}
         {item.type === "misc" && item.misc_items?.length > 0 && (
           <div className="mb-2 rounded-lg bg-purple-50 border border-purple-100 px-2 py-1.5 space-y-0.5">
-            {item.misc_items.map((mi, idx) => (
-              <div key={idx} className="text-[11px] text-purple-900 leading-snug truncate">
-                <span className="font-semibold">{mi.name}</span>
-                {mi.qty ? <span className="font-medium"> × {mi.qty}</span> : ""}
-                {mi.wood_type ? <span> · {mi.wood_type}</span> : ""}
-                {mi.finish ? <span> · {mi.finish}</span> : ""}
-                {mi.notes ? <span className="text-purple-600 italic"> · {mi.notes}</span> : ""}
-              </div>
-            ))}
+            {item.misc_items.map((mi, idx) => {
+              const specs = [mi.qty ? `× ${mi.qty}` : "", mi.wood_type, mi.finish].filter(Boolean).join(" · ");
+              const rowContent = (
+                <>
+                  <span className="font-semibold">{mi.name}</span>
+                  {mi.qty ? <span className="font-medium"> × {mi.qty}</span> : ""}
+                  {mi.wood_type ? <span> · {mi.wood_type}</span> : ""}
+                  {mi.finish ? <span> · {mi.finish}</span> : ""}
+                  {mi.notes ? <span className="text-purple-600 italic underline decoration-dotted"> · {mi.notes}</span> : ""}
+                </>
+              );
+              return mi.notes ? (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setNoteDialog({ title: mi.name, subtitle: specs, body: mi.notes });
+                  }}
+                  className="w-full text-left text-[11px] text-purple-900 leading-snug truncate rounded px-0.5 py-0.5 hover:bg-purple-100 active:bg-purple-200 transition-colors"
+                  title="Tap to read the full note"
+                >
+                  {rowContent}
+                </button>
+              ) : (
+                <div key={idx} className="text-[11px] text-purple-900 leading-snug truncate">
+                  {rowContent}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -451,7 +473,14 @@ export default function ProductionCard({
         {item.notes && (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); setShowNotes(true); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setNoteDialog({
+                title: item.name,
+                subtitle: [item.project_name, item.room_name].filter(Boolean).join(" · "),
+                body: item.notes,
+              });
+            }}
             className="w-full text-left mb-3 -mx-1 px-1 py-1 rounded-md hover:bg-slate-50 active:bg-slate-100 transition-colors"
             title="Tap to read the full note"
           >
@@ -667,21 +696,17 @@ export default function ProductionCard({
           onClose={() => setShowRoomFiles(false)}
         />
       )}
-      {item.notes && (
-        <Dialog open={showNotes} onOpenChange={setShowNotes}>
-          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <DialogHeader>
-              <DialogTitle className="text-base">Note — {item.name}</DialogTitle>
-            </DialogHeader>
-            {item.room_name && (
-              <p className="text-xs text-slate-500 -mt-2">
-                {item.project_name ? `${item.project_name} · ` : ""}{item.room_name}
-              </p>
-            )}
-            <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{item.notes}</p>
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog open={!!noteDialog} onOpenChange={(open) => { if (!open) setNoteDialog(null); }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle className="text-base">Note — {noteDialog?.title}</DialogTitle>
+          </DialogHeader>
+          {noteDialog?.subtitle && (
+            <p className="text-xs text-slate-500 -mt-2">{noteDialog.subtitle}</p>
+          )}
+          <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{noteDialog?.body}</p>
+        </DialogContent>
+      </Dialog>
       <CardMoveHistoryDialog item={item} open={showMoveHistory} onClose={() => setShowMoveHistory(false)} />
       <PdfPreviewTooltip url={hoveredPdfUrl} anchorEl={hoveredAnchorEl} />
       {viewingCad && (() => {
