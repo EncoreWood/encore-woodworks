@@ -13,6 +13,7 @@ import ProjectOrdersPanel from "@/components/dashboard/ProjectOrdersPanel";
 import PtsOverviewCard from "@/components/dashboard/PtsOverviewCard";
 import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
 import { format, startOfWeek, startOfMonth, subMonths } from "date-fns";
+import { findMyEmployee } from "@/lib/findMyEmployee";
 import { Clock } from "lucide-react";
 
 export default function EmployeeDashboard() {
@@ -87,7 +88,7 @@ export default function EmployeeDashboard() {
     queryKey: ["todayTimeEntries", currentUser?.email, todayStr],
     queryFn: async () => {
       const emps = await base44.entities.Employee.list();
-      const emp = emps.find(e => e.user_email === currentUser?.email || e.email === currentUser?.email);
+      const emp = findMyEmployee(emps, currentUser?.email);
       if (!emp) return [];
       return base44.entities.TimeEntry.filter({ employee_id: emp.id, date: todayStr });
     },

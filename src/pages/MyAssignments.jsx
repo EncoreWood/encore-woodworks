@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Circle, ListTodo, Loader2, Pencil } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
+import { findMyEmployee } from "@/lib/findMyEmployee";
 
 const PRIORITY_STYLES = {
   low: "bg-slate-100 text-slate-600",
@@ -41,7 +42,7 @@ export default function MyAssignments() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["assignmentTasks"] }),
   });
 
-  const myEmployee = employees.find(e => e.user_email === currentUser?.email || e.email === currentUser?.email);
+  const myEmployee = findMyEmployee(employees, currentUser?.email);
   // Projects where this user is assigned to drawings (active, not completed)
   const myDrawingsProjects = projects.filter(
     p => myEmployee && p.drawings === myEmployee.id && p.status !== "completed"

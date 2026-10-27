@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { base44 } from "@/api/base44Client";
+import { findMyEmployee } from "@/lib/findMyEmployee";
 
 // Pages always accessible regardless of allowed_pages
 const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy"]);
@@ -27,7 +28,7 @@ async function getPermissions() {
     return _cache;
   }
   const emps = await base44.entities.Employee.list();
-  const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
+  const emp = findMyEmployee(emps, user?.email);
   const allowedPages = emp ? new Set(emp.allowed_pages || []) : DEFAULT_ALLOWED;
   _cache = { isAdmin: false, isClient: false, allowedPages };
   return _cache;

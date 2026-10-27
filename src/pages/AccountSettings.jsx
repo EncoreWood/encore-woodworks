@@ -9,6 +9,7 @@ import { ArrowLeft, User, Mail, LogOut, Trash2, ShieldAlert, Camera, Loader2, Sa
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import PageSlideWrapper from "@/components/PageSlideWrapper";
+import { findMyEmployee } from "@/lib/findMyEmployee";
 import {
   AlertDialog, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -39,7 +40,7 @@ export default function AccountSettings() {
   }, []);
 
   const employeeRecord = currentUser
-    ? employees.find(e => e.user_email === currentUser.email || e.email === currentUser.email) ?? null
+    ? findMyEmployee(employees, currentUser.email)
     : null;
 
   useEffect(() => {

@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Loader2, UserCircle } from "lucide-react";
 import EmployeeCard from "./EmployeeCard";
 import EmployeeDetailsDialog from "./EmployeeDetailsDialog";
+import { findMyEmployee } from "@/lib/findMyEmployee";
 
 // Profile view shown to non-admin users: only their own employee card.
 export default function MyProfileView() {
@@ -47,9 +48,8 @@ export default function MyProfileView() {
     );
   }
 
-  const me = currentUser
-    ? employees.find(e => (e.user_email === currentUser.email || e.email === currentUser.email) && !e.archived)
-    : null;
+  const matched = currentUser ? findMyEmployee(employees, currentUser.email) : null;
+  const me = matched && !matched.archived ? matched : null;
 
   if (!me) {
     return (

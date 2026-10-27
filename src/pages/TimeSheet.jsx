@@ -23,6 +23,7 @@ import TimeDataTab from "../components/timesheet/TimeDataTab";
 import PayPeriodsView from "../components/timesheet/PayPeriodsView";
 import PayrollTab from "../components/timesheet/PayrollTab";
 import { cn } from "@/lib/utils";
+import { findMyEmployee } from "@/lib/findMyEmployee";
 
 function useElapsedTime(clockInTime) {
   const [elapsed, setElapsed] = useState("00:00:00");
@@ -402,7 +403,7 @@ export default function TimeSheet() {
       // Support ?employee_id= deep link (e.g. "Timesheet" button on the Team page)
       const urlEmpId = new URLSearchParams(window.location.search).get("employee_id");
       const emp = (urlEmpId && employees.find(e => e.id === urlEmpId)) ||
-        employees.find(e => e.user_email === user?.email || e.email === user?.email);
+        findMyEmployee(employees, user?.email);
       if (emp) {
         setSelectedEmployee(emp);
         const todayStr = format(new Date(), "yyyy-MM-dd");

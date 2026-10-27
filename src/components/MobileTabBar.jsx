@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { LayoutDashboard, Home, Factory, MessageSquare, Clock, Menu, ListTodo } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { findMyEmployee } from "@/lib/findMyEmployee";
 import { base44 } from "@/api/base44Client";
 
 const ALL_TABS = [
@@ -27,7 +28,7 @@ export default function MobileTabBar({ currentPageName, onOpenMenu }) {
       const user = await base44.auth.me();
       if (user?.role === "admin") { setTabs(ALL_TABS); return; }
       const emps = await base44.entities.Employee.list();
-      const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
+      const emp = findMyEmployee(emps, user?.email);
       if (emp) {
         const allowed = new Set(emp.allowed_pages || []);
         setTabs(ALL_TABS.filter(tab =>

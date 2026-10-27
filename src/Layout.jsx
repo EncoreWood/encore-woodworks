@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { findMyEmployee } from "@/lib/findMyEmployee";
 
 // Module-level cache — persists across re-mounts, cleared on page reload
 const _layoutCache = {
@@ -451,7 +452,7 @@ export default function Layout({ children, currentPageName }) {
           _layoutCache.employees = emps;
           setEmployees(emps);
 
-          const emp = emps.find(e => e.user_email === user?.email || e.email === user?.email);
+          const emp = findMyEmployee(emps, user?.email);
           if (emp) {
             const allowedPages = new Set(emp.allowed_pages || []);
             _layoutCache.allowedPages = allowedPages;
@@ -554,7 +555,7 @@ export default function Layout({ children, currentPageName }) {
 
   const doClockIn = async ({ project_id, project_name }) => {
     if (!currentUser) return;
-    const employee = employees.find(e => e.user_email === currentUser.email || e.email === currentUser.email);
+    const employee = findMyEmployee(employees, currentUser.email);
     if (!employee) return;
     const now = new Date();
     const clockInStr = format(now, "HH:mm");
