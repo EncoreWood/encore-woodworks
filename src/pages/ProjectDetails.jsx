@@ -214,8 +214,19 @@ export default function ProjectDetails() {
 
   const handleSaveRoom = (roomData) => {
     const updatedRooms = [...(project.rooms || [])];
+    const oldName = editingRoomIndex !== null ? project.rooms?.[editingRoomIndex]?.room_name : null;
     if (editingRoomIndex !== null) updatedRooms[editingRoomIndex] = roomData;
     else updatedRooms.push(roomData);
+    // A room rename must follow through to the production cards already filed under the old name
+    if (oldName && roomData.room_name && oldName !== roomData.room_name) {
+      base44.entities.ProductionItem
+        .updateMany({ project_id: project.id, room_name: oldName }, { $set: { room_name: roomData.room_name } })
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+          queryClient.invalidateQueries({ queryKey: ["productionItemsAll"] });
+        })
+        .catch(() => {});
+    }
     updateMutation.mutate({ rooms: updatedRooms });
     setShowRoomManager(false);
     setEditingRoom(null);
