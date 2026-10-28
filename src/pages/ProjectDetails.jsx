@@ -226,6 +226,11 @@ export default function ProjectDetails() {
           queryClient.invalidateQueries({ queryKey: ["productionItemsAll"] });
         })
         .catch(() => {});
+      // Room files are filed under the room name too — keep them attached after a rename
+      base44.entities.RoomFile
+        .updateMany({ project_id: project.id, room_name: oldName }, { $set: { room_name: roomData.room_name } })
+        .then(() => queryClient.invalidateQueries({ queryKey: ["roomFiles", project.id] }))
+        .catch(() => {});
     }
     updateMutation.mutate({ rooms: updatedRooms });
     setShowRoomManager(false);
