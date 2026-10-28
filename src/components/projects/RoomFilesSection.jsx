@@ -56,7 +56,7 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
-  const [pendingFile, setPendingFile] = useState(null); // { file_url, file_name, file_type }
+  const [pendingFiles, setPendingFiles] = useState([]); // [{ file_url, file_name, file_type }]
   const [label, setLabel] = useState("");
   const [shopOnly, setShopOnly] = useState(false);
   const [lightbox, setLightbox] = useState(null);
@@ -77,10 +77,10 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.RoomFile.create(data),
+    mutationFn: (records) => base44.entities.RoomFile.bulkCreate(records),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
-      setPendingFile(null);
+      setPendingFiles([]);
       setLabel("");
       setShopOnly(false);
     },
@@ -111,30 +111,33 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
   };
 
   const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    const ext = file.name.toLowerCase().split('.').pop();
-    const file_type = ext === "pdf" ? "pdf" : "image";
-    setUploading(false);
-    setPendingFile({ file_url, file_name: file.name, file_type });
+    const selected = Array.from(e.target.files || []);
     e.target.value = "";
+    if (selected.length === 0) return;
+    setUploading(true);
+    const uploaded = [];
+    for (const file of selected) {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const ext = file.name.toLowerCase().split('.').pop();
+      uploaded.push({ file_url, file_name: file.name, file_type: ext === "pdf" ? "pdf" : "image" });
+    }
+    setUploading(false);
+    setPendingFiles(uploaded);
   };
 
   const handleConfirmUpload = () => {
-    if (!pendingFile) return;
-    createMutation.mutate({
+    if (pendingFiles.length === 0) return;
+    createMutation.mutate(pendingFiles.map(p => ({
       project_id: project.id,
       project_name: project.project_name,
       room_name: roomName,
       room_id: roomId || "",
-      file_url: pendingFile.file_url,
-      file_name: pendingFile.file_name,
-      file_type: pendingFile.file_type,
-      label: label.trim() || "",
+      file_url: p.file_url,
+      file_name: p.file_name,
+      file_type: p.file_type,
+      label: pendingFiles.length === 1 ? (label.trim() || "") : "",
       is_shop_file: shopOnly,
-    });
+    })));
   };
 
   return (
@@ -142,7 +145,7 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Room Files ({files.length})</p>
         <div>
-          <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png,.pdf" className="hidden" onChange={handleFileChange} />
+          <input ref={fileInputRef} type="file" multiple accept=".jpg,.jpeg,.png,.pdf" className="hidden" onChange={handleFileChange} />
           <Button
             size="sm"
             variant="outline"
@@ -201,19 +204,29 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
       )}
 
       {/* Label prompt dialog */}
-      <Dialog open={!!pendingFile} onOpenChange={(open) => { if (!open) { setPendingFile(null); setLabel(""); } }}>
+      <Dialog open={pendingFiles.length > 0} onOpenChange={(open) => { if (!open) { setPendingFiles([]); setLabel(""); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Add Label (optional)</DialogTitle>
+            <DialogTitle>
+              {pendingFiles.length > 1 ? `Add ${pendingFiles.length} Files` : "Add Label (optional)"}
+            </DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-slate-500">{pendingFile?.file_name}</p>
-          <Input
-            placeholder='e.g. "Front Elevation", "Countertop Drawing"'
-            value={label}
-            onChange={e => setLabel(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleConfirmUpload()}
-            autoFocus
-          />
+          <div className="max-h-32 overflow-y-auto space-y-0.5">
+            {pendingFiles.map((p, i) => (
+              <p key={i} className="text-sm text-slate-500 truncate">{p.file_name}</p>
+            ))}
+          </div>
+          {pendingFiles.length === 1 ? (
+            <Input
+              placeholder='e.g. "Front Elevation", "Countertop Drawing"'
+              value={label}
+              onChange={e => setLabel(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleConfirmUpload()}
+              autoFocus
+            />
+          ) : (
+            <p className="text-xs text-slate-400">They'll all be saved to this room without a label.</p>
+          )}
           <label className="flex items-center gap-2 cursor-pointer select-none py-1">
             <Switch checked={shopOnly} onCheckedChange={setShopOnly} />
             <span className="text-sm text-slate-600 flex items-center gap-1">
@@ -222,7 +235,7 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
             </span>
           </label>
           <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => { setPendingFile(null); setLabel(""); }}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setPendingFiles([]); setLabel(""); }}>Cancel</Button>
             <Button className="bg-amber-600 hover:bg-amber-700" onClick={handleConfirmUpload} disabled={createMutation.isPending}>
               {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
             </Button>
