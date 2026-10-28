@@ -18,6 +18,7 @@ import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
 import SketchPad from "@/components/production/SketchPad";
 import RoomFilesModal from "@/components/production/RoomFilesModal";
+import { roomSpecLabel } from "@/lib/roomSpec";
 import { useQuery } from "@tanstack/react-query";
 
 function PdfPreviewTooltip({ url, anchorEl }) {
@@ -102,6 +103,18 @@ export default function ProductionCard({
   const [showRoomFiles, setShowRoomFiles] = useState(false);
   const [showMoveHistory, setShowMoveHistory] = useState(false);
   const isAdmin = currentUser?.role === "admin";
+
+  // Wood species + finish from the project's room selections — shown in small lettering by the card name
+  const { data: projects = [] } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => base44.entities.Project.list(),
+    staleTime: 60_000,
+    enabled: !!item.project_id && !!item.room_name,
+  });
+  const roomSpec = roomSpecLabel(
+    projects.find(p => p.id === item.project_id),
+    item.room_name
+  );
 
   const { data: roomFileCount = 0 } = useQuery({
     queryKey: ["roomFiles", item.project_id, item.room_name],
@@ -384,6 +397,11 @@ export default function ProductionCard({
               title="Click to annotate first PDF"
             >
               {item.name}
+              {roomSpec && (
+                <span className={`ml-1.5 font-normal text-slate-400 ${compact ? "text-[10px]" : "text-[11px]"}`}>
+                  {roomSpec}
+                </span>
+              )}
             </button>
             {item.files && item.files.some(f => f.pts) && (
               <span className="text-xs font-bold text-amber-600">
@@ -532,18 +550,8 @@ export default function ProductionCard({
             {isAdmin && editingPts?.itemId === item.id && editingPts?.fileIdx === -1 ? (
               <input type="number" min="0" step="any" defaultValue={item.pts ?? ""} autoFocus
                 onClick={e => e.stopPropagation()}
-                onBlur={(e) => {
-                  const val = e.target.value === "" ? undefined : parseFloat(e.target.value);
-                  base44.entities.ProductionItem.update(item.id, { pts: val });
-                  setEditingPts(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const val = e.target.value === "" ? undefined : parseFloat(e.target.value);
-                    base44.entities.ProductionItem.update(item.id, { pts: val });
-                    setEditingPts(null);
-                  }
-                }}
+                onBlur={(e) => { onInlinePtsChange(item, -1, e.target.value); setEditingPts(null); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, -1, e.target.value); setEditingPts(null); } }}
                 className="w-14 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600 bg-amber-50" placeholder="0" />
             ) : (
               <button

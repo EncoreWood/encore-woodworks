@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset, MessageSquare, X, Hammer, History } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { usePaneNavigate } from "@/lib/paneSearch";
 import { useToast } from "@/components/ui/use-toast";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
 import GiveComplimentDialog from "../components/production/GiveComplimentDialog";
@@ -53,7 +53,7 @@ const sortColumnItems = (a, b) => {
 
 
 export default function ShopProduction() {
-   const navigate = useNavigate();
+   const navigate = usePaneNavigate();
    const queryClient = useQueryClient();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("production");
@@ -361,9 +361,19 @@ export default function ShopProduction() {
   };
 
   const handleInlinePtsChange = async (item, fileIndex, newPts) => {
-    const updatedFiles = (item.files || []).map((f, i) => i === fileIndex ? { ...f, pts: newPts === "" ? undefined : Number(newPts) } : f);
-    queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, files: updatedFiles } : i));
-    await base44.entities.ProductionItem.update(item.id, { files: updatedFiles });
+    const val = newPts === "" || newPts === undefined || newPts === null ? undefined : Number(newPts);
+    const isCardLevel = fileIndex === -1;
+    // Only schema fields are sent — extra props on a file make the write fail silently.
+    const updatedFiles = (item.files || [])
+      .map((f, i) => i === fileIndex ? { ...f, pts: val } : f)
+      .map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
+    const patch = isCardLevel ? { pts: val } : { files: updatedFiles };
+
+    queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, ...patch } : i));
+    await base44.entities.ProductionItem.update(item.id, patch);
+    queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+    if (isCardLevel) return;
+
     if (item.project_id && item.room_name) {
       const projList = await base44.entities.Project.filter({ id: item.project_id });
       const proj = projList[0];

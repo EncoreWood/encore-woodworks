@@ -9,6 +9,7 @@ import { Package, Plus, ArrowRight } from "lucide-react";
 import ProductionCard from "./ProductionCard";
 import ProductionItemForm from "./ProductionItemForm";
 import TypeGroupedGrid from "./TypeGroupedGrid";
+import { roomPts } from "@/lib/roomPts";
 
 const STAGE_LABELS = { cut: "Cut", face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete", on_hold: "On Hold" };
 
@@ -109,6 +110,18 @@ export default function JobPacketsRoomModal({ project, roomName, items, currentU
       await base44.entities.ProductionItem.update(id, fields);
       invalidate();
     },
+    onInlinePtsChange: async (item, fileIndex, newPts) => {
+      const val = newPts === "" || newPts === undefined || newPts === null ? undefined : Number(newPts);
+      if (fileIndex === -1) {
+        await base44.entities.ProductionItem.update(item.id, { pts: val });
+      } else {
+        const files = (item.files || [])
+          .map((f, i) => i === fileIndex ? { ...f, pts: val } : f)
+          .map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
+        await base44.entities.ProductionItem.update(item.id, { files });
+      }
+      invalidate();
+    },
   };
 
   const renderCard = (item) => {
@@ -162,6 +175,7 @@ export default function JobPacketsRoomModal({ project, roomName, items, currentU
       >
         <Package className="w-3 h-3" />
         Job Packets{count > 0 && ` (${count})`}
+        {count > 0 && <span className="font-bold text-amber-800">· {roomPts(roomItems)} PTS</span>}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -174,6 +188,7 @@ export default function JobPacketsRoomModal({ project, roomName, items, currentU
                 </DialogTitle>
                 <p className="text-sm text-slate-400 mt-0.5">
                   {stagedItems.length} staged{inProductionItems.length > 0 && ` · ${inProductionItems.length} in production`}
+                  <span className="ml-2 font-semibold text-amber-700">{roomPts(roomItems)} PTS</span>
                 </p>
               </div>
               <div className="flex items-center gap-2">

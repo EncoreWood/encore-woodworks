@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { usePaneNavigate } from "@/lib/paneSearch";
 import { base44 } from "@/api/base44Client";
 import { ChevronLeft, Camera, X, CheckCircle2, Loader2, AlertTriangle, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -177,7 +177,7 @@ function DataTab() {
 
 // ─── Wizard Tab ───────────────────────────────────────────────────────────────
 function WizardTab() {
-  const navigate = useNavigate();
+  const navigate = usePaneNavigate();
   const [step, setStep] = useState(1);
   const [data, setData] = useState({
     mistake_of: null, mistake_type: null, stem_of_mistake: null,

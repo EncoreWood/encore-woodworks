@@ -13,6 +13,7 @@ import ProductionCard from "./ProductionCard";
 import RoomFilesModal from "./RoomFilesModal";
 import SendToProductionDialog from "./SendToProductionDialog";
 import TypeGroupedGrid from "./TypeGroupedGrid";
+import { roomPts } from "@/lib/roomPts";
 
 const STAGE_LABELS = { cut: "Cut", face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete", on_hold: "On Hold" };
 
@@ -146,6 +147,9 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
           <p className="font-medium text-slate-800 truncate">{roomName}</p>
           <p className="text-xs text-slate-400">{roomItems.length} item{roomItems.length !== 1 ? "s" : ""}</p>
         </div>
+        <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5 flex-shrink-0">
+          {roomPts(roomItems)} PTS
+        </span>
         <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 flex-shrink-0" />
       </button>
 
@@ -159,6 +163,7 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
                 </DialogTitle>
                 <p className="text-sm text-slate-400 mt-0.5">
                   {stagedItems.length} staged{inProductionItems.length > 0 && ` · ${inProductionItems.length} in production`}
+                  <span className="ml-2 font-semibold text-amber-700">{roomPts(roomItems)} PTS</span>
                 </p>
               </div>
               <div className="flex items-center gap-2">

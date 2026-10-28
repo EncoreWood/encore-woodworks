@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { parseDate } from "@/lib/parseDate";
+import { usePaneSearch } from "@/lib/paneSearch";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -111,7 +112,7 @@ function InlineDateEdit({ label, value, onSave }) {
 
 export default function ProjectDetails() {
   const queryClient = useQueryClient();
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = new URLSearchParams(usePaneSearch());
   const projectId = urlParams.get("id");
 
   const [currentUser, setCurrentUser] = useState(null);

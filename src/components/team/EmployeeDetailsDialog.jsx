@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { usePaneNavigate } from "@/lib/paneSearch";
 import { format } from "date-fns";
 import {
   User, Mail, Phone, Calendar, Cake, FileText, ShieldCheck, Pencil, ListTodo,
@@ -19,7 +19,7 @@ const SKILL_AREAS = ["Office", "Cut", "Face Frame", "Spray", "Build", "Install",
 const SKILL_LABELS = ["No experience", "Beginner", "Basic", "Competent", "Advanced", "Expert"];
 
 export default function EmployeeDetailsDialog({ open, onOpenChange, employee, tasks = [], presenters = [], bathroomCleanings = [], onEdit, onAssignTask, onArchive, archivePending }) {
-  const navigate = useNavigate();
+  const navigate = usePaneNavigate();
   const queryClient = useQueryClient();
   const [notesDraft, setNotesDraft] = useState("");
   const [notesEditing, setNotesEditing] = useState(false);
