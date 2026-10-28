@@ -17,10 +17,10 @@ export default function TimePicker({ value, onChange }) {
   const minutes = hasValue ? m24 : null;
 
   const commit = (newHour, newMinute, newPeriod) => {
-    const hour = newHour ?? hour12;
-    const minute = newMinute ?? minutes;
-    const per = newPeriod ?? period;
-    if (hour == null || minute == null || !per) return; // wait until all three are picked
+    // Fill in any part not picked yet so a fresh (empty) picker commits right away
+    const hour = newHour ?? hour12 ?? 12;
+    const minute = newMinute ?? minutes ?? 0;
+    const per = newPeriod ?? period ?? "AM";
     const h24Out = per === "PM" ? (hour % 12) + 12 : hour % 12;
     onChange(`${String(h24Out).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
   };
