@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Check, X, PencilLine, ChevronDown, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 
-export default function EditRequestsReviewCard({ requests, onReview }) {
+export default function EditRequestsReviewCard({ requests, onReview, onFixTime }) {
   const [showResolved, setShowResolved] = useState(false);
   if (!requests.length) return null;
 
@@ -42,6 +42,10 @@ export default function EditRequestsReviewCard({ requests, onReview }) {
                 )}
               </div>
               <div className="flex gap-1 flex-shrink-0">
+                <Button size="sm" variant="outline" className="h-8 text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-100"
+                  onClick={() => onFixTime(req)}>
+                  <PencilLine className="w-3.5 h-3.5" /> Edit
+                </Button>
                 <Button size="sm" variant="outline" className="h-8 text-xs gap-1 border-green-300 text-green-700 hover:bg-green-100"
                   onClick={() => onReview(req, "approved")}>
                   <Check className="w-3.5 h-3.5" /> Accept

@@ -15,6 +15,7 @@ import {
 import { format, addWeeks, startOfWeek, endOfWeek, eachDayOfInterval, isWithinInterval } from "date-fns";
 import { Link } from "react-router-dom";
 import EditRequestDialog from "../components/timesheet/EditRequestDialog";
+import EditRequestFixDialog from "../components/timesheet/EditRequestFixDialog";
 import EditRequestsReviewCard from "../components/timesheet/EditRequestsReviewCard";
 import VacationRequestForm from "../components/team/VacationRequestForm";
 import ClockInModal from "../components/timesheet/ClockInModal";
@@ -298,6 +299,7 @@ export default function TimeSheet() {
   const [currentTab, setCurrentTab] = useState("timecard");
   const [weekOffset, setWeekOffset] = useState(0);
   const [editingEntry, setEditingEntry] = useState(null);
+  const [fixingRequest, setFixingRequest] = useState(null);
   const [editForm, setEditForm] = useState({ clock_in: "", clock_out: "", notes: "" });
 
   const [showAddEntry, setShowAddEntry] = useState(false);
@@ -680,7 +682,7 @@ export default function TimeSheet() {
                   loading={clockLoading}
                 />
                 {isAdmin && (
-                  <EditRequestsReviewCard requests={editRequests} onReview={reviewEditRequest} />
+                  <EditRequestsReviewCard requests={editRequests} onReview={reviewEditRequest} onFixTime={setFixingRequest} />
                 )}
                 <Card className="border-0 shadow-sm">
                   <CardContent className="pt-4 space-y-3">
@@ -960,6 +962,14 @@ export default function TimeSheet() {
         date={requestEditDate}
         saving={requestSaving}
         onSubmit={(reason) => handleRequestEdit(requestEditDate, reason)}
+      />
+
+      <EditRequestFixDialog
+        open={!!fixingRequest}
+        onOpenChange={(open) => { if (!open) setFixingRequest(null); }}
+        request={fixingRequest}
+        entries={fixingRequest ? timeEntries.filter(e => e.employee_id === fixingRequest.employee_id && e.date === fixingRequest.date) : []}
+        reviewerName={currentUser?.full_name}
       />
 
       <ClockInModal open={showSwitchModal} onOpenChange={setShowSwitchModal} projects={projects}
