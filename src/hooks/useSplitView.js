@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "encoreSplitView";
-const DEFAULTS = { enabled: false, rightPage: "Kanban", ratio: 0.5 };
+const DEFAULTS = { enabled: false, rightPage: "Kanban", rightSearch: "", ratio: 0.5 };
 
 function readSplit() {
   try {

@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset, MessageSquare, X, Hammer, History } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { usePaneNavigate } from "@/lib/paneSearch";
 import { useToast } from "@/components/ui/use-toast";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
 import GiveComplimentDialog from "../components/production/GiveComplimentDialog";
@@ -53,7 +53,7 @@ const sortColumnItems = (a, b) => {
 
 
 export default function ShopProduction() {
-   const navigate = useNavigate();
+   const navigate = usePaneNavigate();
    const queryClient = useQueryClient();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("production");

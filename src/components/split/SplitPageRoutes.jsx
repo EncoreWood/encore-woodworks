@@ -1,4 +1,5 @@
-import { Route, Routes, useLocation } from "react-router-dom";
+import { useMemo } from "react";
+import { Route, Routes } from "react-router-dom";
 import { PaneSearchContext } from "@/lib/paneSearch";
 
 import AccountSettings from "@/pages/AccountSettings";
@@ -105,17 +106,21 @@ export const SPLIT_PAGES = {
 };
 
 /**
- * Routes for the secondary pane. It runs on its own history, so navigating
- * inside the pane never disturbs the page on the other side.
+ * Routes for the secondary pane. It matches against the pane's own location,
+ * so navigating inside the pane never disturbs the page on the other side.
  */
-export default function SplitPageRoutes() {
-  const location = useLocation();
+export default function SplitPageRoutes({ path, search }) {
+  const paneSearch = search || "";
+  const paneLocation = useMemo(
+    () => ({ pathname: path, search: paneSearch, hash: "", state: null, key: "pane" }),
+    [path, paneSearch]
+  );
 
   return (
-    <PaneSearchContext.Provider value={location.search}>
-      <Routes>
-        {Object.entries(SPLIT_PAGES).map(([path, Page]) => (
-          <Route key={path} path={`/${path}`} element={<Page />} />
+    <PaneSearchContext.Provider value={paneSearch}>
+      <Routes location={paneLocation}>
+        {Object.entries(SPLIT_PAGES).map(([pagePath, Page]) => (
+          <Route key={pagePath} path={`/${pagePath}`} element={<Page />} />
         ))}
         <Route
           path="*"

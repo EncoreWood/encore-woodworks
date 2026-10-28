@@ -770,6 +770,7 @@ export default function Layout({ children, currentPageName }) {
             currentUser={currentUser}
             currentPageName={currentPageName}
             rightPage={split.rightPage}
+            rightSearch={split.rightSearch}
             ratio={split.ratio}
             onUpdate={updateSplit}
             onClose={() => updateSplit({ enabled: false })}

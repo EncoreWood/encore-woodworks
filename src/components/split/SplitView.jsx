@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { MemoryRouter, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { PaneNavContext } from "@/lib/paneSearch";
 import SplitPaneBar from "./SplitPaneBar";
-import SplitPageRoutes from "./SplitPageRoutes";
+import SplitPageRoutes, { SPLIT_PAGES } from "./SplitPageRoutes";
 
 const ALWAYS_ALLOWED = new Set([
   "AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet", "MyProfile",
@@ -35,6 +36,7 @@ export default function SplitView({
   currentUser,
   currentPageName,
   rightPage,
+  rightSearch,
   ratio,
   onUpdate,
   onClose,
@@ -54,6 +56,20 @@ export default function SplitView({
   const activeRight = pickablePages.includes(rightPage)
     ? rightPage
     : pickablePages[0] || "Dashboard";
+
+  // Moving inside the right pane keeps the left page untouched.
+  const goToInPane = useCallback(
+    (page, search) => {
+      if (SPLIT_PAGES[page]) onUpdate({ rightPage: page, rightSearch: search || "" });
+      else navigate(createPageUrl(page) + (search || ""));
+    },
+    [navigate, onUpdate]
+  );
+
+  const pickRightPage = useCallback(
+    (page) => onUpdate({ rightPage: page, rightSearch: "" }),
+    [onUpdate]
+  );
 
   const startDrag = useCallback(
     (e) => {
@@ -116,13 +132,13 @@ export default function SplitView({
           side="right"
           page={activeRight}
           groups={groups}
-          onChange={(page) => onUpdate({ rightPage: page })}
+          onChange={pickRightPage}
           onClose={onClose}
         />
         <div className="min-h-0 flex-1 overflow-auto">
-          <MemoryRouter key={activeRight} initialEntries={[`/${activeRight}`]}>
-            <SplitPageRoutes />
-          </MemoryRouter>
+          <PaneNavContext.Provider value={goToInPane}>
+            <SplitPageRoutes path={`/${activeRight}`} search={rightSearch} />
+          </PaneNavContext.Provider>
         </div>
       </section>
     </div>
