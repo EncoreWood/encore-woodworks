@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { FileText, Plus, Trash2, Loader2, X, ZoomIn, Eye, EyeOff, Lock } from "lucide-react";
+import { FileText, Plus, Trash2, Loader2, X, Eye, EyeOff, Lock, Pencil } from "lucide-react";
 import RoomSelectionsPanel from "@/components/projects/RoomSelectionsPanel";
+import ImageAnnotator from "@/components/measurements/ImageAnnotator";
 
-function LightboxModal({ file, room, roomName, onClose }) {
+function LightboxModal({ file, room, roomName, onClose, onAnnotate }) {
   if (!file) return null;
   return (
     <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4" onClick={onClose}>
@@ -20,6 +21,13 @@ function LightboxModal({ file, room, roomName, onClose }) {
           <p className="text-white/60 text-xs uppercase tracking-widest font-semibold mb-2">Room Selections</p>
           <p className="text-white font-semibold text-sm mb-3">{roomName}</p>
           <RoomSelectionsPanel room={room} dark />
+          <Button
+            size="sm"
+            onClick={onAnnotate}
+            className="mt-3 w-full bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
+          >
+            <Pencil className="w-3.5 h-3.5" /> Annotate
+          </Button>
         </aside>
         <button className="absolute -top-2 right-0 bg-black/50 text-white rounded-full p-1.5" onClick={onClose}>
           <X className="w-5 h-5" />
@@ -53,6 +61,7 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
   const [shopOnly, setShopOnly] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const [pdfViewer, setPdfViewer] = useState(null);
+  const [annotatingFile, setAnnotatingFile] = useState(null);
 
   const queryKey = ["roomFiles", project.id, roomName];
 
@@ -81,6 +90,25 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
     mutationFn: ({ id, data }) => base44.entities.RoomFile.update(id, data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
+
+  // Same flow as production: flatten the image + marks into a JPEG, upload it as
+  // file_url, and keep the clean original in original_file_url for re-editing.
+  const handleSaveAnnotations = async ({ flattenedBlob, annotations }) => {
+    if (!annotatingFile) return;
+    const original = annotatingFile.original_file_url || annotatingFile.file_url;
+    const update = { annotations: JSON.stringify(annotations) };
+    if (!annotatingFile.original_file_url) update.original_file_url = original;
+    if (flattenedBlob) {
+      const baseName = (annotatingFile.file_name || "room image").replace(/\.[^.]+$/, "");
+      const flatFile = new File([flattenedBlob], baseName + ".jpg", { type: "image/jpeg" });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: flatFile });
+      update.file_url = file_url;
+    } else if (annotatingFile.original_file_url) {
+      update.file_url = annotatingFile.original_file_url;
+    }
+    await updateMutation.mutateAsync({ id: annotatingFile.id, data: update });
+    setAnnotatingFile(null);
+  };
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -208,9 +236,21 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
           room={project.rooms?.find(r => (r.room_name || "").toLowerCase() === roomName?.toLowerCase())}
           roomName={roomName}
           onClose={() => setLightbox(null)}
+          onAnnotate={() => { setAnnotatingFile(lightbox); setLightbox(null); }}
         />
       )}
       {pdfViewer && <PdfModal file={pdfViewer} onClose={() => setPdfViewer(null)} />}
+
+      {annotatingFile && (
+        <ImageAnnotator
+          open
+          onOpenChange={(next) => { if (!next) setAnnotatingFile(null); }}
+          title={`${roomName} — ${annotatingFile.label || annotatingFile.file_name || "Annotate"}`}
+          imageUrl={annotatingFile.original_file_url || annotatingFile.file_url}
+          annotations={(() => { try { return JSON.parse(annotatingFile.annotations || "[]"); } catch { return []; } })()}
+          onSave={handleSaveAnnotations}
+        />
+      )}
     </div>
   );
 }

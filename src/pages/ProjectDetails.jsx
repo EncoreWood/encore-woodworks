@@ -567,6 +567,8 @@ export default function ProjectDetails() {
                               <RoomSelectionsButton
                                 room={room}
                                 roomName={room.room_name || `Room ${idx + 1}`}
+                                project={project}
+                                roomIndex={idx}
                               />
                               {room.glb_url ? (
                                 <>
