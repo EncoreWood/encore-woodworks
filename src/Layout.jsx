@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square,   Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon, ArrowLeftRight, ArchiveX, ShoppingCart as ShoppingCartIcon, ListTodo, GraduationCap, Scissors, Frame, SprayCan, HardHat, Sparkles, BookOpen, Workflow } from "lucide-react";
+import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square,   Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon, ArrowLeftRight, ArchiveX, ShoppingCart as ShoppingCartIcon, ListTodo, GraduationCap, Scissors, Frame, SprayCan, HardHat, Sparkles, BookOpen, Workflow, Pin, PinOff } from "lucide-react";
 import MobileTabBar from "@/components/MobileTabBar";
 import SidebarNav3 from "@/components/SidebarNav3";
 import ClockInModal from "@/components/timesheet/ClockInModal";
@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { findMyEmployee } from "@/lib/findMyEmployee";
 import { usePendingTimeEditRequests } from "@/hooks/usePendingTimeEditRequests";
+import { usePinnedPages } from "@/hooks/usePinnedPages";
 
 // Module-level cache — persists across re-mounts, cleared on page reload
 const _layoutCache = {
@@ -61,6 +62,7 @@ export default function Layout({ children, currentPageName }) {
   const [todayCompletedHours, setTodayCompletedHours] = useState(0);
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
   const pendingEditRequests = usePendingTimeEditRequests(currentUser?.role === "admin");
+  const { pinnedPages, togglePin, isPinned } = usePinnedPages();
   const [hoveredGroup, setHoveredGroup] = useState(null);
   const hoverCloseTimer = useRef(null);
 
@@ -207,6 +209,16 @@ export default function Layout({ children, currentPageName }) {
   };
 
   const [navGroups, setNavGroups] = useState(loadNavGroups);
+
+  // Resolve pinned page names to their nav entry (label + icon)
+  const navItemByPage = {};
+  Object.values(navGroups).forEach((group) => {
+    (group.items || []).forEach((item) => { navItemByPage[item.page] = item; });
+  });
+  const pinnedItems = pinnedPages
+    .map((page) => navItemByPage[page])
+    .filter(Boolean)
+    .map((item) => ({ ...item, Icon: item.icon || KanbanIcon }));
 
   // Force reset to defaults on mount
   useEffect(() => {
@@ -642,6 +654,14 @@ export default function Layout({ children, currentPageName }) {
 
   const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet"]);
 
+  const pinnedVisibleItems = currentUser
+    ? pinnedItems.filter(item =>
+        currentUser.role === "admin" ||
+        USER_ALLOWED_PAGES.has(item.page) ||
+        ALWAYS_ALLOWED.has(item.page)
+      )
+    : [];
+
   return (
     <div className="h-screen overflow-hidden flex" style={{ backgroundColor: "#d1d5db" }}>
       {/* Neumorphic soft-UI treatment for the sidebar nav (adapted from Sidebar Nav 3) */}
@@ -748,6 +768,34 @@ export default function Layout({ children, currentPageName }) {
 
         {/* Nav Groups */}
         <nav className="p-4 space-y-4 flex-1">
+          {/* Pinned pages */}
+          {pinnedVisibleItems.length > 0 && (
+            <div className="space-y-1 pb-3 border-b border-slate-400/60">
+              <p className="px-4 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-600">Pinned</p>
+              {pinnedVisibleItems.map((item) => (
+                <div key={`pinned-${item.page}`} className="flex items-center gap-1">
+                  <Link
+                    to={createPageUrl(item.page)}
+                    className="encore-neu-link flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium flex-1"
+                    data-active={currentPageName === item.page}
+                  >
+                    <item.Icon className="w-4 h-4 flex-shrink-0" />
+                    <span>{item.name}</span>
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => togglePin(item.page)}
+                    title="Unpin from nav"
+                    aria-label={`Unpin ${item.name}`}
+                    className="p-1.5 rounded-md text-slate-600 hover:bg-black/10 transition-colors"
+                  >
+                    <PinOff className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {Object.entries(navGroups).map(([groupKey, group]) => {
             // Admin section only visible to admins
             if (groupKey === "admin" && currentUser?.role !== "admin") return null;
@@ -795,21 +843,36 @@ export default function Layout({ children, currentPageName }) {
                 {isOpen && (
                   <div className="space-y-1 mt-2 ml-2">
                     {visibleItems.map((item) => (
-                      <Link
-                        key={item.page}
-                        to={createPageUrl(item.page)}
-                        className="encore-neu-link flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium"
-                        data-active={currentPageName === item.page}
-                        onClick={() => setHoveredGroup(null)}
-                      >
-                        <item.icon className="w-4 h-4 flex-shrink-0" />
-                        <span>{item.name}</span>
-                        {item.page === "MyAssignments" && pendingTaskCount > 0 && (
-                          <span className="ml-auto min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
-                            {pendingTaskCount}
-                          </span>
-                        )}
-                      </Link>
+                      <div key={item.page} className="flex items-center gap-1">
+                        <Link
+                          to={createPageUrl(item.page)}
+                          className="encore-neu-link flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium flex-1"
+                          data-active={currentPageName === item.page}
+                          onClick={() => setHoveredGroup(null)}
+                        >
+                          <item.icon className="w-4 h-4 flex-shrink-0" />
+                          <span>{item.name}</span>
+                          {item.page === "MyAssignments" && pendingTaskCount > 0 && (
+                            <span className="ml-auto min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
+                              {pendingTaskCount}
+                            </span>
+                          )}
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => togglePin(item.page)}
+                          title={isPinned(item.page) ? "Unpin from nav" : "Pin to nav"}
+                          aria-label={isPinned(item.page) ? `Unpin ${item.name}` : `Pin ${item.name}`}
+                          className={cn(
+                            "p-1.5 rounded-md transition-colors hover:bg-black/10",
+                            isPinned(item.page) ? "text-amber-800" : "text-slate-500"
+                          )}
+                        >
+                          {isPinned(item.page)
+                            ? <PinOff className="w-3.5 h-3.5" />
+                            : <Pin className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -854,6 +917,9 @@ export default function Layout({ children, currentPageName }) {
             allowedPages={employeeAllowedPages}
             onExpand={toggleSidebar}
             badges={{ team: pendingEditRequests }}
+            pinnedItems={pinnedItems}
+            pinnedPages={pinnedPages}
+            onTogglePin={togglePin}
           />
         </div>
       )}

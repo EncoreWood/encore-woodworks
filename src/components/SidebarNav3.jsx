@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
   LayoutDashboard, Home, Factory, Users, GraduationCap, BookOpen, BarChart3,
-  ChevronRight, X,
+  ChevronRight, X, Pin, PinOff,
 } from "lucide-react";
 
 const GROUP_ICONS = {
@@ -30,8 +30,12 @@ export default function SidebarNav3({
   allowedPages,
   onExpand,
   badges = {},
+  pinnedItems = [],
+  pinnedPages = [],
+  onTogglePin,
 }) {
   const [openGroup, setOpenGroup] = useState(null);
+  const isPinned = (page) => pinnedPages.includes(page);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") setOpenGroup(null); };
@@ -61,6 +65,15 @@ export default function SidebarNav3({
   const mainGroups = buildGroups(mainKeys);
   const adminGroups = buildGroups(["admin"]);
   const allGroups = [...mainGroups, ...adminGroups];
+
+  const pinnedVisible = currentUser
+    ? pinnedItems.filter(
+        (it) =>
+          currentUser.role === "admin" ||
+          allowedPages?.has(it.page) ||
+          ALWAYS_ALLOWED.has(it.page)
+      )
+    : [];
 
   const activeGroup = allGroups.find((g) =>
     g.items.some((it) => it.page === currentPageName)
@@ -147,6 +160,18 @@ export default function SidebarNav3({
           background:linear-gradient(145deg,var(--sn3n-active-1),var(--sn3n-active-2));
           box-shadow:inset 2px 2px 5px rgba(80,64,50,.5), inset -2px -2px 5px rgba(255,255,255,.3), 0 0 12px var(--sn3n-active-glow);
         }
+        .encore-sn3 a.sn3n-btn{ text-decoration:none; }
+        .encore-sn3 .sn3n-btn-pinned{ position:relative; }
+        .encore-sn3 .sn3n-btn-pinned::after{
+          content:""; position:absolute; bottom:3px; right:3px;
+          width:7px; height:7px; border-radius:50%;
+          background:var(--sn3n-active-1);
+          box-shadow:0 0 0 1.5px rgba(156,163,175,.95);
+        }
+        .encore-sn3 .sn3n-btn-pinned[aria-current="page"]::after{
+          background:#f6efe6;
+          box-shadow:0 0 0 1.5px rgba(118,95,77,.9);
+        }
         .encore-sn3 .sn3n-brand-seat{
           width:var(--sn3n-btn); height:var(--sn3n-btn); border-radius:50%;
           display:flex; align-items:center; justify-content:center;
@@ -188,6 +213,20 @@ export default function SidebarNav3({
           box-shadow:inset 1px 1px 3px rgba(0,0,0,.4), inset -1px -1px 3px rgba(255,255,255,.15); outline:none;
         }
         .encore-sn3 .sn3n-sub{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+        .encore-sn3 .sn3n-sub-row{ display:flex; align-items:center; gap:6px; }
+        .encore-sn3 .sn3n-pin-btn{
+          flex:0 0 auto; width:28px; height:28px; border:0; padding:0; border-radius:50%;
+          display:flex; align-items:center; justify-content:center; cursor:pointer;
+          background:linear-gradient(145deg,var(--sn3n-surface),var(--sn3n-surface-2));
+          color:var(--sn3n-icon);
+          box-shadow:-2px -2px 4px var(--sn3n-light), 2px 2px 4px var(--sn3n-dark);
+          transition:box-shadow .2s ease, color .2s ease;
+        }
+        .encore-sn3 .sn3n-pin-btn:hover,.encore-sn3 .sn3n-pin-btn:focus-visible{
+          box-shadow:inset 1px 1px 3px var(--sn3n-dark), inset -1px -1px 3px var(--sn3n-light); outline:none;
+        }
+        .encore-sn3 .sn3n-pin-btn[data-pinned="true"]{ color:#6b5645; }
+        .encore-sn3 .sn3n-pin-btn .sn3n-icon-lucide{ width:14px; height:14px; }
         .encore-sn3 .sn3n-sub-btn{
           width:100%; text-align:left; border:0; cursor:pointer; text-decoration:none;
           padding:9px 13px; border-radius:12px; display:block;
@@ -226,6 +265,21 @@ export default function SidebarNav3({
                 </button>
               </span>
             </div>
+
+            {/* Pinned pages */}
+            {pinnedVisible.map((it) => (
+              <div className="sn3n-item" key={`pin-${it.page}`}>
+                <Link
+                  to={createPageUrl(it.page)}
+                  className="sn3n-btn sn3n-btn-pinned"
+                  aria-current={currentPageName === it.page ? "page" : undefined}
+                  aria-label={`${it.name} (pinned)`}
+                  title={`${it.name} (pinned)`}
+                >
+                  <it.Icon className="sn3n-icon-lucide" />
+                </Link>
+              </div>
+            ))}
 
             <div className="sn3n-divider" role="separator" />
 
@@ -304,14 +358,31 @@ export default function SidebarNav3({
               </div>
               <ul className="sn3n-sub">
                 {(openData?.items || []).map((it) => (
-                  <li key={it.page}>
+                  <li key={it.page} className="sn3n-sub-row">
                     <Link
                       to={createPageUrl(it.page)}
                       className="sn3n-sub-btn"
+                      style={{ flex: 1 }}
                       aria-current={currentPageName === it.page ? "page" : undefined}
                     >
                       {it.name}
                     </Link>
+                    {onTogglePin && (
+                      <button
+                        type="button"
+                        className="sn3n-pin-btn"
+                        data-pinned={isPinned(it.page)}
+                        aria-label={isPinned(it.page) ? `Unpin ${it.name}` : `Pin ${it.name}`}
+                        title={isPinned(it.page) ? "Unpin from nav" : "Pin to nav"}
+                        onClick={() => onTogglePin(it.page)}
+                      >
+                        {isPinned(it.page) ? (
+                          <PinOff className="sn3n-icon-lucide" />
+                        ) : (
+                          <Pin className="sn3n-icon-lucide" />
+                        )}
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
