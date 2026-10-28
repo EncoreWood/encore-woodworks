@@ -3,6 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, Trash2, Loader2 } from "lucide-react";
+import ProjectFilePreviewDialog from "@/components/projects/ProjectFilePreviewDialog";
 
 const NAMED_SECTIONS = [
   { tag: "house_plans", label: "House Plans" },
@@ -13,6 +14,7 @@ const EXCLUDED_TAGS = ["house_plans", "appliance_specs", "job_photo", "cad_dxf",
 
 export default function ProjectFilesPanel({ project, onSave }) {
   const [uploadingTag, setUploadingTag] = useState(null);
+  const [previewFile, setPreviewFile] = useState(null);
 
   const files = project.files || [];
   const sections = [
@@ -57,7 +59,7 @@ export default function ProjectFilesPanel({ project, onSave }) {
                   return (
                     <div key={idx} className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 group">
                       <FileText className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                      <a href={file.url} target="_blank" rel="noopener noreferrer" className="flex-1 text-sm text-slate-800 truncate hover:text-amber-600">{file.name}</a>
+                      <button type="button" onClick={() => setPreviewFile(file)} className="flex-1 text-sm text-slate-800 truncate hover:text-amber-600 text-left">{file.name}</button>
                       <Button variant="ghost" size="icon" className="h-6 w-6 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 flex-shrink-0" onClick={() => handleDelete(idx)}>
                         <Trash2 className="w-3 h-3" />
                       </Button>
@@ -76,6 +78,8 @@ export default function ProjectFilesPanel({ project, onSave }) {
           </div>
         ))}
       </div>
+
+      <ProjectFilePreviewDialog file={previewFile} onClose={() => setPreviewFile(null)} />
     </Card>
   );
 }
