@@ -59,6 +59,7 @@ const PRODUCTION_STAGES = [
 
 export default function ProductionCard({
   item,
+  compact,               // tighter card used in the single-stage grid view
   editingPts,
   setEditingPts,
   onEdit,
@@ -159,7 +160,7 @@ export default function ProductionCard({
         />
       )}
       <Card
-        className={`relative p-4 border-0 shadow-sm transition-shadow overflow-hidden ${isDragging ? "shadow-lg" : ""}`}
+        className={`relative border-0 shadow-sm transition-shadow overflow-hidden ${compact ? "p-2.5" : "p-4"} ${isDragging ? "shadow-lg" : ""}`}
         style={{ backgroundColor: "#ffffff", ...cardStyle, ...sentBackStyle }}
       >
         {/* View project + Room info — top-right corner */}
@@ -169,7 +170,7 @@ export default function ProductionCard({
               <Link
                 to={`${createPageUrl("ProjectDetails")}?id=${item.project_id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="flex items-center justify-center w-7 h-7 rounded-md bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-800 transition-colors shadow-sm"
+                className={`flex items-center justify-center rounded-md bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-800 transition-colors shadow-sm ${compact ? "w-6 h-6" : "w-7 h-7"}`}
                 title="View project"
               >
                 <Building2 className="w-4 h-4" />
@@ -192,7 +193,7 @@ export default function ProductionCard({
 
         {/* Header: project/room name */}
         {item.project_name && (
-          <p className="text-xs text-slate-500 font-medium truncate pr-28 mb-1">
+          <p className={`text-slate-500 font-medium truncate mb-1 ${compact ? "text-[10px] pr-16" : "text-xs pr-28"}`}>
             {item.project_name}{item.room_name ? ` · ${item.room_name}` : ""}
           </p>
         )}
@@ -378,7 +379,7 @@ export default function ProductionCard({
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1 min-w-0">
             <button
-              className="font-medium text-slate-900 hover:text-amber-700 hover:underline text-left w-full"
+              className={`font-medium text-slate-900 hover:text-amber-700 hover:underline text-left w-full ${compact ? "text-sm leading-tight" : ""}`}
               onClick={(e) => { e.stopPropagation(); if (onAnnotate && item.files?.length > 0) { const pdfIdx = item.files.findIndex(f => f.url?.match(/\.pdf$/i)); if (pdfIdx >= 0) onAnnotate(item, pdfIdx); } }}
               title="Click to annotate first PDF"
             >
@@ -399,7 +400,7 @@ export default function ProductionCard({
                 <Box className="w-3 h-3" />
               </Button>
             )}
-            <Badge variant="outline" className={typeBadgeClass}>{typeLabel}</Badge>
+            <Badge variant="outline" className={`${typeBadgeClass} ${compact ? "text-[10px] px-1.5 py-0 h-5" : ""}`}>{typeLabel}</Badge>
           </div>
         </div>
 
@@ -451,7 +452,7 @@ export default function ProductionCard({
         {/* Working badge */}
         {item.is_being_worked && (
           <div className="mb-2">
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-200 text-blue-800 border border-blue-400">
+            <span className={`font-semibold px-2 py-0.5 rounded-full bg-blue-200 text-blue-800 border border-blue-400 ${compact ? "text-[10px]" : "text-xs"}`}>
               🔨 Working On It
             </span>
           </div>
@@ -484,7 +485,7 @@ export default function ProductionCard({
             className="w-full text-left mb-3 -mx-1 px-1 py-1 rounded-md hover:bg-slate-50 active:bg-slate-100 transition-colors"
             title="Tap to read the full note"
           >
-            <p className={`text-sm text-slate-600 whitespace-pre-wrap ${isLongNote ? "line-clamp-2" : ""}`}>{item.notes}</p>
+            <p className={`text-slate-600 whitespace-pre-wrap ${compact ? "text-[11px]" : "text-sm"} ${isLongNote ? "line-clamp-2" : ""}`}>{item.notes}</p>
             {isLongNote && (
               <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 mt-0.5">
                 <FileText className="w-3 h-3" /> Tap to read full note
@@ -588,7 +589,7 @@ export default function ProductionCard({
 
               if (isPdf) return (
                 <div key={idx} className="rounded-md border border-slate-200 overflow-hidden bg-slate-50">
-                  <div className="flex items-center gap-2 p-2">
+                  <div className={`flex items-center gap-2 ${compact ? "p-1.5" : "p-2"}`}>
                     <span
                       onMouseEnter={(e) => { setHoveredPdfUrl(file.url); setHoveredAnchorEl(e.currentTarget); }}
                       onMouseLeave={() => { setHoveredPdfUrl(null); setHoveredAnchorEl(null); }}
@@ -675,7 +676,7 @@ export default function ProductionCard({
         {item.stage && onMoveStage && (
           <div className="mt-2" onClick={e => e.stopPropagation()}>
             <Select value={item.stage} onValueChange={(v) => onMoveStage(item, v)}>
-              <SelectTrigger className="h-7 text-xs border-slate-200 bg-slate-50 focus:ring-0">
+              <SelectTrigger className={`text-xs border-slate-200 bg-slate-50 focus:ring-0 ${compact ? "h-6" : "h-7"}`}>
                 <ChevronDown className="w-3 h-3 mr-1 text-slate-400" />
                 <SelectValue />
               </SelectTrigger>

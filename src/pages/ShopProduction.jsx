@@ -764,7 +764,7 @@ export default function ShopProduction() {
                     : columnItems.length;
 
                   return (
-                    <div key={column.id} className={isCollapsed ? (isMobile ? "hidden" : "flex-shrink-0 w-8 xl:w-16") : isFocused ? (isMobile ? "w-full flex-shrink-0" : "flex-1 min-w-0") : "flex-shrink-0 w-80"}>
+                    <div key={column.id} className={isCollapsed ? "hidden lg:flex lg:flex-shrink-0 lg:w-8 xl:w-16" : isFocused ? (isMobile ? "w-full flex-shrink-0" : "flex-1 min-w-0") : "flex-shrink-0 w-80"}>
                       <div className="mb-3 flex items-center justify-between">
                         <button
                           type="button"
@@ -803,8 +803,7 @@ export default function ShopProduction() {
                               </div>
                             ) : (
                               <div
-                                className={isFocused ? "grid gap-3" : "space-y-3"}
-                                style={isFocused ? { gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" } : undefined}
+                                className={isFocused ? "grid gap-2 md:gap-3 grid-cols-1 md:grid-cols-3" : "space-y-3"}
                                 onDragOver={isFocused ? (e) => { if (gridDragRef.current != null) e.preventDefault(); } : undefined}
                                 onDrop={isFocused ? (e) => {
                                   if (!gridDragRef.current) return;
@@ -887,6 +886,7 @@ export default function ShopProduction() {
                                       ) : (
                                         <ProductionCard
                                           item={item}
+                                          compact
                                           {...sharedCardProps}
                                           roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
                                           onReturnToFolder={currentUser?.role === "admin" && hasRoom ? returnToFolder : undefined}
