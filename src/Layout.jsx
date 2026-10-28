@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square,   Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon, ArrowLeftRight, ArchiveX, ShoppingCart as ShoppingCartIcon, ListTodo, GraduationCap, Scissors, Frame, SprayCan, HardHat, Sparkles, BookOpen, Workflow, Pin, PinOff } from "lucide-react";
 import MobileTabBar from "@/components/MobileTabBar";
-import SidebarNav3 from "@/components/SidebarNav3";
+import TopPageTabs from "@/components/TopPageTabs";
 import ClockInModal from "@/components/timesheet/ClockInModal";
 import CommandPalette from "@/components/CommandPalette";
 import ShortcutHelpOverlay from "@/components/ShortcutHelpOverlay";
@@ -247,6 +247,15 @@ export default function Layout({ children, currentPageName }) {
       try { localStorage.setItem('sidebarCollapsed', String(next)); } catch {}
       return next;
     });
+  };
+
+  const openSwitchJob = async () => {
+    if (_layoutCache.projects === null) {
+      const projs = await base44.entities.Project.filter({ archived: false }, '-updated_date', 100);
+      _layoutCache.projects = projs;
+      setProjects(projs);
+    }
+    setShowSwitchModal(true);
   };
   const [editingGroupKey, setEditingGroupKey] = useState(null);
   const [editingGroupName, setEditingGroupName] = useState("");
@@ -654,16 +663,8 @@ export default function Layout({ children, currentPageName }) {
 
   const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet"]);
 
-  const pinnedVisibleItems = currentUser
-    ? pinnedItems.filter(item =>
-        currentUser.role === "admin" ||
-        USER_ALLOWED_PAGES.has(item.page) ||
-        ALWAYS_ALLOWED.has(item.page)
-      )
-    : [];
-
   return (
-    <div className="h-screen overflow-hidden flex" style={{ backgroundColor: "#d1d5db" }}>
+    <div className="h-screen overflow-hidden flex flex-col" style={{ backgroundColor: "#d1d5db" }}>
       {/* Neumorphic soft-UI treatment for the sidebar nav (adapted from Sidebar Nav 3) */}
       <style>{`
         .encore-neu-surface{
@@ -695,234 +696,25 @@ export default function Layout({ children, currentPageName }) {
           .encore-neu-surface .encore-neu-link{ transition:none; }
         }
       `}</style>
-      {/* Sidebar — hidden on mobile */}
-      <aside className={cn("encore-neu-surface w-64 border-r border-slate-400 sticky top-0 h-screen overflow-y-auto flex-col shadow-2xl", sidebarCollapsed ? "hidden" : "hidden sm:flex")} style={{ backgroundColor: "#9ca3af" }}>
-        {/* Logo & Settings */}
-        <div className="border-b border-slate-400">
-          <div className="flex items-center gap-3 p-6">
-            <Link to={createPageUrl("Dashboard")} className="flex items-center gap-3 flex-1">
-              <img src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png" alt="Encore Woodworks" className="h-24 w-auto" />
-            </Link>
-            <button onClick={toggleSidebar} title="Minimize sidebar" className="p-1.5 rounded-lg text-slate-700 hover:bg-slate-600/30 transition flex-shrink-0">
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-          </div>
 
-          {/* Clock In/Out - Users Only */}
-          {currentUser?.role === "user" && (
-            <div className="px-4 py-3 border-t border-slate-400">
-              {currentUser?.full_name && (
-                <p className="text-xs font-semibold text-slate-700 text-center mb-2 truncate">👤 {currentUser.full_name}</p>
-              )}
-              {/* Daily total completed hours */}
-              {(todayCompletedHours > 0 || clockInTime) && (
-                <div className="mb-2 text-center">
-                  <p className="text-xs text-slate-600 font-medium">
-                    Today: <span className="font-bold text-slate-800">{todayCompletedHours.toFixed(2)} hrs</span>
-                    {clockInTime && <span className="text-slate-500"> + active</span>}
-                  </p>
-                </div>
-              )}
-          {clockInTime ? (
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={handleClockOut}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg bg-red-700 hover:bg-red-800 text-white text-sm font-semibold transition-all shadow-lg"
-                  >
-                    <Square className="w-4 h-4" />
-                    <span>Out</span>
-                    <span className="text-xs font-mono bg-red-700/50 px-1.5 py-0.5 rounded">
-                      {elapsedTime}
-                    </span>
-                  </button>
-                  <button
-                    onClick={async () => {
-                      if (_layoutCache.projects === null) {
-                        const projs = await base44.entities.Project.filter({ archived: false }, '-updated_date', 100);
-                        _layoutCache.projects = projs;
-                        setProjects(projs);
-                      }
-                      setShowSwitchModal(true);
-                    }}
-                    title="Switch Job"
-                    className="flex items-center justify-center px-3 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold transition-all shadow-lg"
-                  >
-                    <ArrowLeftRight className="w-4 h-4" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={handleClockIn}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-green-700 hover:bg-green-800 text-white text-sm font-semibold transition-all shadow-lg"
-                >
-                  <Play className="w-4 h-4" />
-                  Clock In
-                </button>
-              )}
-              {clockInTime && currentProjectName && (
-                <p className="text-xs text-center text-slate-700 mt-1 truncate px-1">📋 {currentProjectName}</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Nav Groups */}
-        <nav className="p-4 space-y-4 flex-1">
-          {/* Pinned pages */}
-          {pinnedVisibleItems.length > 0 && (
-            <div className="space-y-1 pb-3 border-b border-slate-400/60">
-              <p className="px-4 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-600">Pinned</p>
-              {pinnedVisibleItems.map((item) => (
-                <div key={`pinned-${item.page}`} className="flex items-center gap-1">
-                  <Link
-                    to={createPageUrl(item.page)}
-                    className="encore-neu-link flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium flex-1"
-                    data-active={currentPageName === item.page}
-                  >
-                    <item.Icon className="w-4 h-4 flex-shrink-0" />
-                    <span>{item.name}</span>
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => togglePin(item.page)}
-                    title="Unpin from nav"
-                    aria-label={`Unpin ${item.name}`}
-                    className="p-1.5 rounded-md text-slate-600 hover:bg-black/10 transition-colors"
-                  >
-                    <PinOff className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {Object.entries(navGroups).map(([groupKey, group]) => {
-            // Admin section only visible to admins
-            if (groupKey === "admin" && currentUser?.role !== "admin") return null;
-
-            // Wait until we know the user before filtering
-            if (!currentUser) return null;
-            const visibleItems = currentUser.role === "admin"
-              ? group.items
-              : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page) || ALWAYS_ALLOWED.has(item.page));
-            if (visibleItems.length === 0) return null;
-            const isOpen = hoveredGroup === groupKey;
-            const isGroupActive = visibleItems.some(item => item.page === currentPageName);
-            return (
-              <div
-                key={groupKey}
-                onMouseEnter={() => { clearTimeout(hoverCloseTimer.current); setHoveredGroup(groupKey); }}
-                onMouseLeave={() => { hoverCloseTimer.current = setTimeout(() => setHoveredGroup(null), 160); }}
-              >
-                <button
-                  type="button"
-                  className={cn(
-                    "flex items-center gap-2 w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-all",
-                    isGroupActive ? "text-amber-900" : "text-slate-800"
-                  )}
-                  style={isOpen ? { boxShadow: "inset 2px 2px 5px rgba(45,55,72,.32), inset -2px -2px 5px rgba(255,255,255,.5)" } : undefined}
-                  aria-expanded={isOpen}
-                >
-                  <ChevronDown
-                    className={cn(
-                      "w-4 h-4 flex-shrink-0 transition-transform",
-                      !isOpen && "-rotate-90"
-                    )}
-                  />
-                  <span className="flex-1 text-left">{group.name}</span>
-                  {groupKey === "team" && pendingEditRequests > 0 && (
-                    <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                      {pendingEditRequests > 9 ? "9+" : pendingEditRequests}
-                    </span>
-                  )}
-                  {isGroupActive && !isOpen && (
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: "#8a7560" }} />
-                  )}
-                </button>
-
-                {isOpen && (
-                  <div className="space-y-1 mt-2 ml-2">
-                    {visibleItems.map((item) => (
-                      <div key={item.page} className="flex items-center gap-1">
-                        <Link
-                          to={createPageUrl(item.page)}
-                          className="encore-neu-link flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium flex-1"
-                          data-active={currentPageName === item.page}
-                          onClick={() => setHoveredGroup(null)}
-                        >
-                          <item.icon className="w-4 h-4 flex-shrink-0" />
-                          <span>{item.name}</span>
-                          {item.page === "MyAssignments" && pendingTaskCount > 0 && (
-                            <span className="ml-auto min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
-                              {pendingTaskCount}
-                            </span>
-                          )}
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => togglePin(item.page)}
-                          title={isPinned(item.page) ? "Unpin from nav" : "Pin to nav"}
-                          aria-label={isPinned(item.page) ? `Unpin ${item.name}` : `Pin ${item.name}`}
-                          className={cn(
-                            "p-1.5 rounded-md transition-colors hover:bg-black/10",
-                            isPinned(item.page) ? "text-amber-800" : "text-slate-500"
-                          )}
-                        >
-                          {isPinned(item.page)
-                            ? <PinOff className="w-3.5 h-3.5" />
-                            : <Pin className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </nav>
-
-        {/* Bottom Buttons */}
-        <div className="p-4 border-t border-slate-400 space-y-2">
-          <Link to={createPageUrl("AccountSettings")} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-slate-800 text-sm font-medium transition-all"
-            style={{ backgroundColor: "rgba(180,150,100,0.2)" }}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = "rgba(180,150,100,0.4)"}
-            onMouseLeave={e => e.currentTarget.style.backgroundColor = "rgba(180,150,100,0.2)"}
-          >
-            <UserCircle className="w-4 h-4" />
-            Account
-          </Link>
-          {currentUser?.role === "admin" && (
-            <button
-              onClick={() => setShowSettings(true)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-slate-800 text-sm font-medium transition-all"
-              style={{ backgroundColor: "rgba(180,150,100,0.3)" }}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = "rgba(180,150,100,0.5)"}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = "rgba(180,150,100,0.3)"}
-              title="Settings"
-            >
-              <Settings className="w-4 h-4" />
-              Settings
-            </button>
-          )}
-        </div>
-          </aside>
-
-      {/* Compact neumorphic icon rail (tablet/desktop when sidebar is minimized) */}
-      {sidebarCollapsed && (
-        <div className="hidden sm:flex shrink-0">
-          <SidebarNav3
-            navGroups={navGroups}
-            currentPageName={currentPageName}
-            currentUser={currentUser}
-            allowedPages={employeeAllowedPages}
-            onExpand={toggleSidebar}
-            badges={{ team: pendingEditRequests }}
-            pinnedItems={pinnedItems}
-            pinnedPages={pinnedPages}
-            onTogglePin={togglePin}
-          />
-        </div>
-      )}
+      {/* Pinned pages + group tabs running across the top (desktop/tablet) */}
+      <TopPageTabs
+        navGroups={navGroups}
+        currentPageName={currentPageName}
+        currentUser={currentUser}
+        allowedPages={employeeAllowedPages}
+        badges={{ team: pendingEditRequests }}
+        pinnedItems={pinnedItems}
+        pinnedPages={pinnedPages}
+        onTogglePin={togglePin}
+        pendingTaskCount={pendingTaskCount}
+        clockInTime={clockInTime}
+        elapsedTime={elapsedTime}
+        onClockIn={handleClockIn}
+        onClockOut={handleClockOut}
+        onSwitchJob={openSwitchJob}
+        onOpenSettings={() => setShowSettings(true)}
+      />
 
       {/* Mobile Header */}
       {(() => {
@@ -958,7 +750,7 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Page Content */}
       <main
-        className="flex-1 overflow-auto"
+        className="flex-1 min-h-0 overflow-auto"
         style={{
           paddingTop: "env(safe-area-inset-top)",
           paddingBottom: "env(safe-area-inset-bottom)",
