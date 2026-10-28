@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-import { Route, Routes } from "react-router-dom";
 import { PaneSearchContext } from "@/lib/paneSearch";
 
 import AccountSettings from "@/pages/AccountSettings";
@@ -106,31 +104,22 @@ export const SPLIT_PAGES = {
 };
 
 /**
- * Routes for the secondary pane. It matches against the pane's own location,
- * so navigating inside the pane never disturbs the page on the other side.
+ * Renders the page chosen for the secondary pane. The pane keeps its own page
+ * and query in the split preference, so it needs no routing of its own and the
+ * page on the other side is never disturbed.
  */
-export default function SplitPageRoutes({ path, search }) {
-  const paneSearch = search || "";
-  const paneLocation = useMemo(
-    () => ({ pathname: path, search: paneSearch, hash: "", state: null, key: "pane" }),
-    [path, paneSearch]
-  );
+export default function SplitPageRoutes({ page, search }) {
+  const Page = SPLIT_PAGES[page];
 
   return (
-    <PaneSearchContext.Provider value={paneSearch}>
-      <Routes location={paneLocation}>
-        {Object.entries(SPLIT_PAGES).map(([pagePath, Page]) => (
-          <Route key={pagePath} path={`/${pagePath}`} element={<Page />} />
-        ))}
-        <Route
-          path="*"
-          element={
-            <div className="p-6 text-sm text-slate-500">
-              Pick a page for this side from the menu above.
-            </div>
-          }
-        />
-      </Routes>
+    <PaneSearchContext.Provider value={search || ""}>
+      {Page ? (
+        <Page />
+      ) : (
+        <div className="p-6 text-sm text-slate-500">
+          Pick a page for this side from the menu above.
+        </div>
+      )}
     </PaneSearchContext.Provider>
   );
 }

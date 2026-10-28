@@ -137,7 +137,7 @@ export default function SplitView({
         />
         <div className="min-h-0 flex-1 overflow-auto">
           <PaneNavContext.Provider value={goToInPane}>
-            <SplitPageRoutes path={`/${activeRight}`} search={rightSearch} />
+            <SplitPageRoutes key={activeRight} page={activeRight} search={rightSearch} />
           </PaneNavContext.Provider>
         </div>
       </section>
