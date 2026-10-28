@@ -71,6 +71,27 @@ export default function SplitView({
     [onUpdate]
   );
 
+  // Links clicked inside the right pane must open there, never on the left.
+  const interceptPaneClick = useCallback(
+    (e) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        return;
+      }
+      const anchor = e.target.closest?.("a");
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      if (!href || !href.startsWith("/") || href.startsWith("//")) return;
+      if (anchor.target && anchor.target !== "_self") return;
+      if (anchor.hasAttribute("download")) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      const url = new URL(href, window.location.origin);
+      goToInPane(url.pathname.replace(/^\//, ""), url.search);
+    },
+    [goToInPane]
+  );
+
   const startDrag = useCallback(
     (e) => {
       e.preventDefault();
@@ -135,7 +156,7 @@ export default function SplitView({
           onChange={pickRightPage}
           onClose={onClose}
         />
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div className="min-h-0 flex-1 overflow-auto" onClickCapture={interceptPaneClick}>
           <PaneNavContext.Provider value={goToInPane}>
             <SplitPageRoutes key={activeRight} page={activeRight} search={rightSearch} />
           </PaneNavContext.Provider>
