@@ -30,7 +30,7 @@ export default function ProjectFilePreviewDialog({ file, onClose, elevated = fal
               )}
               {fileType === "pdf" && (
                 <div className="w-full h-full bg-white">
-                  <PdfViewer url={file.url} />
+                  <PdfViewer url={file.url} continuous />
                 </div>
               )}
               {fileType === "other" && (

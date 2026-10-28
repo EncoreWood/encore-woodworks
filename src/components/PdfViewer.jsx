@@ -8,7 +8,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@$
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 5.0;
 
-export default function PdfViewer({ url, className = "" }) {
+export default function PdfViewer({ url, className = "", continuous = false }) {
   const [numPages, setNumPages] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1);
@@ -280,7 +280,7 @@ export default function PdfViewer({ url, className = "" }) {
         ref={scrollRef}
         onWheel={handleWheel}
         className={`flex-1 overflow-auto overscroll-contain ${cursorClass}`}
-        style={{ WebkitOverflowScrolling: "touch", touchAction: "none" }}
+        style={{ WebkitOverflowScrolling: "touch", touchAction: continuous && scale <= 1 ? "pan-y" : "none" }}
       >
         {error ? (
           <div className="flex flex-col items-center justify-center h-full text-white/70 gap-3 p-6 text-center">
@@ -306,20 +306,33 @@ export default function PdfViewer({ url, className = "" }) {
             }
             className="flex flex-col items-center"
           >
-            <Page
-              key={currentPage}
-              pageNumber={currentPage}
-              scale={scale}
-              className="mb-2 shadow-lg"
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-            />
+            {continuous ? (
+              Array.from({ length: numPages || 0 }, (_, i) => (
+                <Page
+                  key={i + 1}
+                  pageNumber={i + 1}
+                  scale={scale}
+                  className="mb-3 shadow-lg"
+                  renderTextLayer={false}
+                  renderAnnotationLayer={false}
+                />
+              ))
+            ) : (
+              <Page
+                key={currentPage}
+                pageNumber={currentPage}
+                scale={scale}
+                className="mb-2 shadow-lg"
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+              />
+            )}
           </Document>
         )}
       </div>
 
-      {/* Page navigation — bottom */}
-      {numPages && numPages > 1 && (
+      {/* Page navigation — bottom (hidden in continuous scroll mode) */}
+      {!continuous && numPages && numPages > 1 && (
         <div className="flex items-center justify-center gap-3 px-3 py-2 bg-slate-900/90 text-white flex-shrink-0">
           <button
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
