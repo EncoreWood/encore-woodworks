@@ -52,10 +52,12 @@ export default function SplitView({
 
   const groups = buildGroups(navGroups, currentUser, allowedPages);
   const pickablePages = groups.flatMap((g) => g.items.map((it) => it.page));
-  // A stored page this person can no longer open falls back to their first allowed page.
-  const activeRight = pickablePages.includes(rightPage)
-    ? rightPage
-    : pickablePages[0] || "Dashboard";
+  // Detail pages (a single project, a single card) are not in the nav list, so
+  // any known page is honoured; only an unknown one falls back.
+  const activeRight =
+    SPLIT_PAGES[rightPage] || pickablePages.includes(rightPage)
+      ? rightPage
+      : pickablePages[0] || "Dashboard";
 
   // Moving inside the right pane keeps the left page untouched.
   const goToInPane = useCallback(
