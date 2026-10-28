@@ -10,12 +10,12 @@ const getFileType = (url, name) => {
   return "other";
 };
 
-export default function ProjectFilePreviewDialog({ file, onClose }) {
+export default function ProjectFilePreviewDialog({ file, onClose, elevated = false }) {
   const fileType = file ? getFileType(file.url, file.name) : "other";
 
   return (
     <Dialog open={!!file} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="max-w-5xl w-[95vw] p-0 gap-0 overflow-hidden">
+      <DialogContent className={`max-w-5xl w-[95vw] p-0 gap-0 overflow-hidden ${elevated ? "z-[10000]" : ""}`}>
         {file && (
           <>
             <DialogHeader className="px-5 py-3 border-b border-slate-200">

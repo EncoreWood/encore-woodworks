@@ -5,6 +5,7 @@ import { X, ChevronLeft, ChevronRight, Paperclip, Pencil, StickyNote } from "luc
 import PdfViewer from "@/components/PdfViewer";
 import ImageAnnotator from "@/components/measurements/ImageAnnotator";
 import RoomSelectionsPanel from "@/components/projects/RoomSelectionsPanel";
+import ProjectFilesList from "@/components/projects/ProjectFilesList";
 import RoomNotesTasksEditor from "@/components/production/RoomNotesTasksEditor";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
@@ -192,6 +193,18 @@ export default function RoomFilesModal({ projectId, projectName, roomName, onClo
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Whole-project files — reachable while working the card, opened in-app */}
+        {(project?.files || []).length > 0 && (
+          <div className="p-6 pt-0 max-w-4xl mx-auto w-full" onClick={e => e.stopPropagation()}>
+            <p className="text-white/60 text-sm uppercase tracking-widest mb-3 font-semibold">
+              Project Files ({project.files.length})
+            </p>
+            <div className="max-w-sm">
+              <ProjectFilesList files={project.files} />
+            </div>
           </div>
         )}
       </div>

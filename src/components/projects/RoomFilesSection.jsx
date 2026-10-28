@@ -8,9 +8,10 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { FileText, Plus, Trash2, Loader2, X, Eye, EyeOff, Lock, Pencil } from "lucide-react";
 import RoomSelectionsPanel from "@/components/projects/RoomSelectionsPanel";
+import ProjectFilesList from "@/components/projects/ProjectFilesList";
 import ImageAnnotator from "@/components/measurements/ImageAnnotator";
 
-function LightboxModal({ file, room, roomName, onClose, onAnnotate }) {
+function LightboxModal({ file, room, roomName, projectFiles, onClose, onAnnotate }) {
   if (!file) return null;
   return (
     <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4" onClick={onClose}>
@@ -21,6 +22,10 @@ function LightboxModal({ file, room, roomName, onClose, onAnnotate }) {
           <p className="text-white/60 text-xs uppercase tracking-widest font-semibold mb-2">Room Selections</p>
           <p className="text-white font-semibold text-sm mb-3">{roomName}</p>
           <RoomSelectionsPanel room={room} dark />
+          <div className="mt-3 pt-3 border-t border-white/10">
+            <p className="text-white/60 text-xs uppercase tracking-widest font-semibold mb-2">Project Files</p>
+            <ProjectFilesList files={projectFiles} />
+          </div>
           <Button
             size="sm"
             onClick={onAnnotate}
@@ -248,6 +253,7 @@ export default function RoomFilesSection({ project, roomName, roomId }) {
           file={lightbox}
           room={project.rooms?.find(r => (r.room_name || "").toLowerCase() === roomName?.toLowerCase())}
           roomName={roomName}
+          projectFiles={project.files || []}
           onClose={() => setLightbox(null)}
           onAnnotate={() => { setAnnotatingFile(lightbox); setLightbox(null); }}
         />
