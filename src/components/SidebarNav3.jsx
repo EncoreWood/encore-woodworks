@@ -29,6 +29,7 @@ export default function SidebarNav3({
   currentUser,
   allowedPages,
   onExpand,
+  badges = {},
 }) {
   const [openGroup, setOpenGroup] = useState(null);
 
@@ -117,6 +118,14 @@ export default function SidebarNav3({
           box-shadow:inset 1px 1px 2px var(--sn3n-dark), inset -1px -1px 2px var(--sn3n-light);
         }
         .encore-sn3 .sn3n-item{ position:relative; }
+        .encore-sn3 .sn3n-badge{
+          position:absolute; top:-3px; right:-3px; z-index:2;
+          min-width:17px; height:17px; padding:0 4px; box-sizing:border-box;
+          border-radius:9px; background:#dc2626; color:#fff;
+          font-size:10px; font-weight:700; line-height:17px; text-align:center;
+          box-shadow:0 1px 3px rgba(0,0,0,.35);
+          pointer-events:none;
+        }
         .encore-sn3 .sn3n-btn{
           appearance:none; border:0; margin:0; padding:0;
           width:var(--sn3n-btn); height:var(--sn3n-btn); border-radius:50%;
@@ -234,6 +243,11 @@ export default function SidebarNav3({
                   onClick={() => handleGroupClick(g.key)}
                 >
                   <g.Icon className="sn3n-icon-lucide" />
+                  {badges[g.key] > 0 && (
+                    <span className="sn3n-badge">
+                      {badges[g.key] > 9 ? "9+" : badges[g.key]}
+                    </span>
+                  )}
                 </button>
               </div>
             ))}

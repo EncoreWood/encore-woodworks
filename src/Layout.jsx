@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { findMyEmployee } from "@/lib/findMyEmployee";
+import { usePendingTimeEditRequests } from "@/hooks/usePendingTimeEditRequests";
 
 // Module-level cache — persists across re-mounts, cleared on page reload
 const _layoutCache = {
@@ -59,6 +60,7 @@ export default function Layout({ children, currentPageName }) {
   const [currentProjectName, setCurrentProjectName] = useState(null);
   const [todayCompletedHours, setTodayCompletedHours] = useState(0);
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
+  const pendingEditRequests = usePendingTimeEditRequests(currentUser?.role === "admin");
   const [hoveredGroup, setHoveredGroup] = useState(null);
   const hoverCloseTimer = useRef(null);
 
@@ -780,6 +782,11 @@ export default function Layout({ children, currentPageName }) {
                     )}
                   />
                   <span className="flex-1 text-left">{group.name}</span>
+                  {groupKey === "team" && pendingEditRequests > 0 && (
+                    <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                      {pendingEditRequests > 9 ? "9+" : pendingEditRequests}
+                    </span>
+                  )}
                   {isGroupActive && !isOpen && (
                     <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: "#8a7560" }} />
                   )}
@@ -846,6 +853,7 @@ export default function Layout({ children, currentPageName }) {
             currentUser={currentUser}
             allowedPages={employeeAllowedPages}
             onExpand={toggleSidebar}
+            badges={{ team: pendingEditRequests }}
           />
         </div>
       )}
