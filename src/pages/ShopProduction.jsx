@@ -641,12 +641,12 @@ export default function ShopProduction() {
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div className="px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Shop Production</h1>
             <p className="text-slate-500 mt-1">Track projects through production stages</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               onClick={() => setShowEndOfDay(true)}
               variant="outline"
