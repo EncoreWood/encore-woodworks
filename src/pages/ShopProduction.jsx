@@ -746,7 +746,7 @@ export default function ShopProduction() {
                   </Button>
                 </div>
               )}
-              <div className="flex gap-4 overflow-x-auto pb-4">
+              <div className={`flex overflow-x-auto pb-4 ${focusStage ? "gap-1.5 lg:gap-4" : "gap-4"}`}>
                 {productionColumns.map((column, colIdx) => {
                   const isFocused = focusStage === column.id;
                   const isCollapsed = !!focusStage && !isFocused;
@@ -764,7 +764,7 @@ export default function ShopProduction() {
                     : columnItems.length;
 
                   return (
-                    <div key={column.id} className={isCollapsed ? (isMobile ? "hidden" : "flex-shrink-0 w-16") : isFocused ? (isMobile ? "w-full flex-shrink-0" : "flex-1 min-w-0") : "flex-shrink-0 w-80"}>
+                    <div key={column.id} className={isCollapsed ? (isMobile ? "hidden" : "flex-shrink-0 w-8 xl:w-16") : isFocused ? (isMobile ? "w-full flex-shrink-0" : "flex-1 min-w-0") : "flex-shrink-0 w-80"}>
                       <div className="mb-3 flex items-center justify-between">
                         <button
                           type="button"
@@ -792,7 +792,7 @@ export default function ShopProduction() {
                           <div
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            className={`rounded-lg p-3 transition-colors overflow-y-auto ${snapshot.isDraggingOver ? "bg-slate-200" : column.color} ${isCollapsed ? "border border-dashed border-slate-300" : ""}`}
+                            className={`rounded-lg transition-colors overflow-y-auto ${isCollapsed ? "p-1 border border-dashed border-slate-300" : "p-3"} ${snapshot.isDraggingOver ? "bg-slate-200" : column.color}`}
                             style={{ maxHeight: "calc(100vh - 280px)", minHeight: isCollapsed ? 280 : 200 }}
                           >
                             {isCollapsed ? (
