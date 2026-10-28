@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Upload, Box, X, PenLine, ImageIcon } from "lucide-react";
+import { Loader2, Upload, Box, X, PenLine, Wand2 } from "lucide-react";
+import readCardSpecFromPdf from "@/components/production/readCardSpecFromPdf";
 import FileUploader from "../projects/FileUploader";
 import GlbViewer from "@/components/cad/GlbViewer";
 import SketchPad from "@/components/production/SketchPad";
@@ -61,6 +62,7 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
     if (open) {
       setFormData(initialData || initialFormState);
       setShowSketch(false);
+      setSpecError("");
     }
   }, [open, initialData]);
 
@@ -71,6 +73,30 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Read this card's wood type + finish off its own PDF cut list (one spec per card)
+  const [readingSpec, setReadingSpec] = useState(false);
+  const [specError, setSpecError] = useState("");
+  const handleReadSpec = async () => {
+    setReadingSpec(true);
+    setSpecError("");
+    try {
+      const spec = await readCardSpecFromPdf(formData.files || []);
+      if (!spec.wood_type && !spec.finish) {
+        setSpecError("No wood type or finish found on this PDF.");
+        return;
+      }
+      setFormData(prev => ({
+        ...prev,
+        wood_type: spec.wood_type || prev.wood_type || "",
+        finish: spec.finish || prev.finish || "",
+      }));
+    } catch (e) {
+      setSpecError(e?.message || "Could not read the PDF.");
+    } finally {
+      setReadingSpec(false);
+    }
   };
 
   // Misc sub-items — add from dropdown, remove, and edit qty/wood/finish/notes per item
@@ -252,6 +278,40 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
                 ))}
               </div>
             )}
+
+            {/* Per-card wood + finish — comes from this card's own PDF, not the room selections */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-xs font-medium text-slate-600">Wood Type &amp; Finish (this card)</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-6 px-2 text-[11px] gap-1 border-amber-200 text-amber-700 hover:bg-amber-50"
+                  disabled={readingSpec || !(formData.files || []).some(f => /\.pdf($|\?)/i.test(f.url || ""))}
+                  onClick={handleReadSpec}
+                  title="Read the wood type and finish printed on this card's PDF"
+                >
+                  {readingSpec ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                  {readingSpec ? "Reading…" : "Read from PDF"}
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Input
+                  value={formData.wood_type || ""}
+                  onChange={(e) => handleChange("wood_type", e.target.value)}
+                  placeholder="Wood type e.g. Beech"
+                  className="h-8 text-xs"
+                />
+                <Input
+                  value={formData.finish || ""}
+                  onChange={(e) => handleChange("finish", e.target.value)}
+                  placeholder="Finish e.g. Painted · Fudge"
+                  className="h-8 text-xs"
+                />
+              </div>
+              {specError && <p className="text-[11px] text-red-600">{specError}</p>}
+            </div>
 
             <div className="space-y-1">
               <Label className="text-xs font-medium text-slate-600">Points (PTS)</Label>

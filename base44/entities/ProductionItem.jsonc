@@ -21,6 +21,14 @@
       "type": "string",
       "description": "Cabinet style for this item's room (style_key or label), inherited from the bid room override so the shop knows which style to build without checking the bid"
     },
+    "wood_type": {
+      "type": "string",
+      "description": "Wood species for THIS card only (e.g. Beech, Maple) \u2014 read from the card's own PDF cut list, not inherited from the room selections"
+    },
+    "finish": {
+      "type": "string",
+      "description": "Finish/color for THIS card only (e.g. Painted \u00b7 Fudge Room) \u2014 read from the card's own PDF cut list, not inherited from the room selections"
+    },
     "stage": {
       "type": "string",
       "enum": [

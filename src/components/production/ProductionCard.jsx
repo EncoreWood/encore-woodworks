@@ -18,7 +18,7 @@ import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
 import SketchPad from "@/components/production/SketchPad";
 import RoomFilesModal from "@/components/production/RoomFilesModal";
-import { roomSpecLabel } from "@/lib/roomSpec";
+import PdfFileDialog from "@/components/production/PdfFileDialog";
 import { useQuery } from "@tanstack/react-query";
 
 function PdfPreviewTooltip({ url, anchorEl }) {
@@ -103,18 +103,10 @@ export default function ProductionCard({
   const [showRoomFiles, setShowRoomFiles] = useState(false);
   const [showMoveHistory, setShowMoveHistory] = useState(false);
   const isAdmin = currentUser?.role === "admin";
+  const [viewingPdf, setViewingPdf] = useState(null);
 
-  // Wood species + finish from the project's room selections — shown in small lettering by the card name
-  const { data: projects = [] } = useQuery({
-    queryKey: ["projects"],
-    queryFn: () => base44.entities.Project.list(),
-    staleTime: 60_000,
-    enabled: !!item.project_id && !!item.room_name,
-  });
-  const roomSpec = roomSpecLabel(
-    projects.find(p => p.id === item.project_id),
-    item.room_name
-  );
+  // Wood + finish live on the card itself (read from its own PDF) — never inherited from room selections
+  const cardSpec = [item.wood_type, item.finish].filter(Boolean).join(" · ");
 
   const { data: roomFileCount = 0 } = useQuery({
     queryKey: ["roomFiles", item.project_id, item.room_name],
@@ -397,12 +389,12 @@ export default function ProductionCard({
               title="Click to annotate first PDF"
             >
               {item.name}
-              {roomSpec && (
-                <span className={`ml-1.5 font-normal text-slate-400 ${compact ? "text-[10px]" : "text-[11px]"}`}>
-                  {roomSpec}
-                </span>
-              )}
             </button>
+            {cardSpec && (
+              <p className={`font-normal text-slate-400 leading-tight ${compact ? "text-[10px]" : "text-[11px]"}`}>
+                {cardSpec}
+              </p>
+            )}
             {item.files && item.files.some(f => f.pts) && (
               <span className="text-xs font-bold text-amber-600">
                 {item.files.reduce((s, f) => s + (parseFloat(f.pts) || 0), 0)} PTS total
@@ -570,7 +562,7 @@ export default function ProductionCard({
             {item.files.map((file, idx) => {
               if (!file.url) return null;
               const isImg = file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-              const isPdf = file.url.match(/\.pdf$/i);
+              const isPdf = file.url.match(/\.pdf($|\?)/i);
 
               if (isImg) return (
                 <div key={idx} className="relative">
@@ -615,7 +607,13 @@ export default function ProductionCard({
                       ) : (
                         <button
                           className="text-amber-600 hover:text-amber-700 underline text-left text-xs truncate"
-                          onClick={(e) => { e.stopPropagation(); window.open(file.url, "_blank", "noopener,noreferrer"); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setHoveredPdfUrl(null);
+                            setHoveredAnchorEl(null);
+                            setViewingPdf(file);
+                          }}
+                          title="Open PDF"
                         >
                           {file.name}
                         </button>
@@ -717,6 +715,7 @@ export default function ProductionCard({
         </DialogContent>
       </Dialog>
       <CardMoveHistoryDialog item={item} open={showMoveHistory} onClose={() => setShowMoveHistory(false)} />
+      {viewingPdf && <PdfFileDialog file={viewingPdf} onClose={() => setViewingPdf(null)} />}
       <PdfPreviewTooltip url={hoveredPdfUrl} anchorEl={hoveredAnchorEl} />
       {viewingCad && (() => {
         const ext = (viewingCad.name || "").toLowerCase().split('.').pop();
