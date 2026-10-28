@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
   LayoutDashboard, Home, Factory, Users, GraduationCap, BookOpen, BarChart3,
-  ChevronDown, Pin, PinOff, Settings, UserCircle, Play, Square, ArrowLeftRight,
+  ChevronDown, Pin, PinOff, Settings, UserCircle, Play, Square, ArrowLeftRight, Columns2,
 } from "lucide-react";
 
 const GROUP_ICONS = {
@@ -43,6 +43,8 @@ export default function TopPageTabs({
   onClockOut,
   onSwitchJob,
   onOpenSettings,
+  splitEnabled = false,
+  onToggleSplit,
 }) {
   const [openGroup, setOpenGroup] = useState(null);
   const navRef = useRef(null);
@@ -228,6 +230,11 @@ export default function TopPageTabs({
           box-shadow:inset 2px 2px 4px var(--tpt-dark), inset -2px -2px 4px var(--tpt-light); outline:none;
         }
         .encore-tpt .tpt-icon-btn svg{ width:17px; height:17px; }
+        .encore-tpt .tpt-icon-btn[data-on="true"]{
+          color:#fff;
+          background:linear-gradient(145deg,var(--tpt-active-1),var(--tpt-active-2));
+          box-shadow:inset 1px 1px 3px rgba(60,48,38,.45), inset -1px -1px 3px rgba(255,255,255,.22);
+        }
         .encore-tpt .tpt-clock-in{ color:#fff; background:linear-gradient(145deg,#3f7a4a,#2f6339); }
         .encore-tpt .tpt-clock-out{ color:#fff; background:linear-gradient(145deg,#a33a3a,#8a2d2d); }
         .encore-tpt .tpt-timer{
@@ -348,6 +355,19 @@ export default function TopPageTabs({
               <span>Clock In</span>
             </button>
           )
+        )}
+        {onToggleSplit && (
+          <button
+            type="button"
+            className="tpt-icon-btn"
+            data-on={splitEnabled}
+            onClick={onToggleSplit}
+            title={splitEnabled ? "Exit split screen" : "Split screen — work two pages side by side"}
+            aria-label="Split screen"
+            aria-pressed={splitEnabled}
+          >
+            <Columns2 />
+          </button>
         )}
         {currentUser?.full_name && <span className="tpt-who hidden xl:inline">{currentUser.full_name}</span>}
         <Link to={createPageUrl("AccountSettings")} className="tpt-icon-btn" title="Account" aria-label="Account">

@@ -18,6 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { findMyEmployee } from "@/lib/findMyEmployee";
 import { usePendingTimeEditRequests } from "@/hooks/usePendingTimeEditRequests";
 import { usePinnedPages } from "@/hooks/usePinnedPages";
+import { useSplitView, useIsDesktop } from "@/hooks/useSplitView";
+import SplitView from "@/components/split/SplitView";
 
 // Module-level cache — persists across re-mounts, cleared on page reload
 const _layoutCache = {
@@ -63,6 +65,9 @@ export default function Layout({ children, currentPageName }) {
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
   const pendingEditRequests = usePendingTimeEditRequests(currentUser?.role === "admin");
   const { pinnedPages, togglePin, isPinned } = usePinnedPages();
+  const { split, updateSplit } = useSplitView();
+  const isDesktop = useIsDesktop();
+  const splitActive = split.enabled && isDesktop;
   const [hoveredGroup, setHoveredGroup] = useState(null);
   const hoverCloseTimer = useRef(null);
 
@@ -714,6 +719,8 @@ export default function Layout({ children, currentPageName }) {
         onClockOut={handleClockOut}
         onSwitchJob={openSwitchJob}
         onOpenSettings={() => setShowSettings(true)}
+        splitEnabled={split.enabled}
+        onToggleSplit={() => updateSplit({ enabled: !split.enabled })}
       />
 
       {/* Mobile Header */}
@@ -750,16 +757,33 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Page Content */}
       <main
-        className="flex-1 min-h-0 overflow-auto"
+        className={splitActive ? "flex-1 min-h-0 overflow-hidden" : "flex-1 min-h-0 overflow-auto"}
         style={{
           paddingTop: "env(safe-area-inset-top)",
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
-        <div className="sm:hidden h-11" style={{ paddingTop: "env(safe-area-inset-top)" }} />
-        {children}
-        {/* Bottom spacer for mobile tab bar */}
-        <div className="sm:hidden h-16" />
+        {splitActive ? (
+          <SplitView
+            navGroups={navGroups}
+            allowedPages={employeeAllowedPages}
+            currentUser={currentUser}
+            currentPageName={currentPageName}
+            rightPage={split.rightPage}
+            ratio={split.ratio}
+            onUpdate={updateSplit}
+            onClose={() => updateSplit({ enabled: false })}
+          >
+            {children}
+          </SplitView>
+        ) : (
+          <>
+            <div className="sm:hidden h-11" style={{ paddingTop: "env(safe-area-inset-top)" }} />
+            {children}
+            {/* Bottom spacer for mobile tab bar */}
+            <div className="sm:hidden h-16" />
+          </>
+        )}
       </main>
 
       {/* Mobile Tab Bar */}

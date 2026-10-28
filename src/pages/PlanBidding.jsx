@@ -6,12 +6,13 @@ import { Card } from "@/components/ui/card";
 import { Plus, FileText, Trash2, ChevronRight, Link2, MapPin, DollarSign } from "lucide-react";
 import { format } from "date-fns";
 import { createPageUrl } from "@/utils";
+import { usePaneSearch } from "@/lib/paneSearch";
 import BidWorkspace from "@/components/bidding/BidWorkspace";
 import OnsiteBidWorkspace from "@/components/bidding/OnsiteBidWorkspace";
 import BidPricingTab from "@/components/bidding/BidPricingTab";
 
 export default function PlanBidding() {
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = new URLSearchParams(usePaneSearch());
   const urlProjectId = urlParams.get("project_id");
   const urlBidId = urlParams.get("bid_id");
   const urlTab = urlParams.get("tab"); // support ?tab=pricing
