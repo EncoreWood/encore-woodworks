@@ -2,8 +2,10 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Pencil, Eraser, Download, Trash2, ZoomIn, ZoomOut, RotateCw, Undo2, Type, ArrowRight, Minus, Highlighter, Hand, ClipboardCheck, ClipboardList, FolderOpen, MessageSquare, X } from "lucide-react";
+import { Pencil, Eraser, Download, Trash2, ZoomIn, ZoomOut, RotateCw, Undo2, Type, ArrowRight, Minus, Highlighter, Hand, ClipboardCheck, ClipboardList, FolderOpen, MessageSquare, ImagePlus, X } from "lucide-react";
 import RoomFilesModal from "@/components/production/RoomFilesModal";
+import AnnotatorImageLayer from "@/components/production/AnnotatorImageLayer";
+import { base44 } from "@/api/base44Client";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 
@@ -56,6 +58,9 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
 
   useEffect(() => { scaleRef.current = scale; }, [scale]);
 
+  const pageNumberRef = useRef(pageNumber);
+  useEffect(() => { pageNumberRef.current = pageNumber; }, [pageNumber]);
+
   const [sizes, setSizes] = useState({});           // page number → {width, height} of rendered page
   const sizesRef = useRef({});
   useEffect(() => { sizesRef.current = sizes; }, [sizes]);
@@ -78,6 +83,12 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const [commentValue, setCommentValue] = useState("");
   const [editingComment, setEditingComment] = useState(null); // annList index being edited
   const [commentEditText, setCommentEditText] = useState("");
+  // Pasted / inserted images: the currently selected one (index into annList) and its drag state
+  const [selectedAnn, setSelectedAnn] = useState(null);
+  const annListRef = useRef(annotations);
+  const selectedAnnRef = useRef(null);
+  useEffect(() => { annListRef.current = annList; }, [annList]);
+  useEffect(() => { selectedAnnRef.current = selectedAnn; }, [selectedAnn]);
 
   useEffect(() => { setAiNotes(initialNotes); }, [initialNotes]);
   useEffect(() => { setAnnList(annotations); }, [annotations]);
@@ -97,6 +108,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       setCommentValue("");
       setAnnotateMode(initialMode === "annotate");
       setTool(initialMode === "annotate" ? "pen" : "pan");
+      setSelectedAnn(null);
     }
   }, [open, pdfUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -235,6 +247,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     // iPad users can pin comments and report missing items without a stylus
     if (e.pointerType === "touch" && tool !== "comment" && tool !== "missing") return;
 
+    setSelectedAnn(null);
     const canvas = e.currentTarget;
     const pos = getPos(e, canvas);
     const { width: w, height: h } = getSize(page);
@@ -379,6 +392,10 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                Math.hypot(ann.end.x * w - x, ann.end.y * h - y) >= t;
       }
       if (ann.type === "text" || ann.type === "comment") return Math.hypot(ann.x * w - x, ann.y * h - y) >= t * 2;
+      if (ann.type === "image") {
+        const ax = ann.x * w, ay = ann.y * h, aw = ann.w * w, ah = ann.h * h;
+        return !(x >= ax && x <= ax + aw && y >= ay && y <= ay + ah);
+      }
       return true;
     }));
     // Keep pending pickup highlights in sync with the eraser (pending only holds highlights)
@@ -527,7 +544,127 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     setEditText("");
   };
 
+  // ── Pasted / inserted images (move + resize like a placed object) ──────────
+  const imageInputRef = useRef(null);
+  const copiedImageRef = useRef(null);
+
+  const insertImage = async (file) => {
+    if (!file || !file.type?.startsWith("image/")) return;
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    const page = pageNumber || 1;
+    const { width: w, height: h } = getSize(page);
+    const img = new window.Image();
+    img.src = file_url;
+    await new Promise((resolve) => { img.onload = resolve; img.onerror = resolve; });
+    const aspect = (img.naturalWidth || 1) / (img.naturalHeight || 1);
+    // Start at ~32% of the page width, centered — big enough to see, small enough to place
+    let nw = 0.32;
+    let nh = (nw * w / aspect) / h;
+    if (nh > 0.6) { nh = 0.6; nw = (nh * h * aspect) / w; }
+    const idx = annListRef.current.length;
+    setAnnList(prev => [...prev, {
+      type: "image",
+      url: file_url,
+      x: 0.5 - nw / 2,
+      y: 0.5 - nh / 2,
+      w: nw,
+      h: nh,
+      page,
+    }]);
+    setAnnotateMode(true);
+    setTool("pan");
+    setSelectedAnn(idx);
+  };
+  const insertImageRef = useRef(insertImage);
+  insertImageRef.current = insertImage;
+
+  const removeAnn = (idx) => {
+    setAnnList(prev => prev.filter((_, i) => i !== idx));
+    setSelectedAnn(null);
+  };
+
+  const pasteCopiedImage = () => {
+    const src = copiedImageRef.current;
+    if (!src) return;
+    const idx = annListRef.current.length;
+    setAnnList(prev => [...prev, {
+      ...src,
+      x: Math.max(0, Math.min(1 - src.w, src.x + 0.03)),
+      y: Math.max(0, Math.min(1 - src.h, src.y + 0.03)),
+      page: pageNumberRef.current || src.page,
+    }]);
+    setSelectedAnn(idx);
+  };
+
+  const handleImageFiles = async (e) => {
+    const files = [...(e.target.files || [])];
+    e.target.value = "";
+    for (const file of files) await insertImage(file);
+  };
+
+  // Paste from the clipboard: raw images upload directly, a copied annotation re-pastes as a copy
+  useEffect(() => {
+    if (!open) return;
+    const onPaste = (e) => {
+      const el = document.activeElement;
+      const typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+      if (typing) return;
+      const items = [...(e.clipboardData?.items || [])];
+      const imgItem = items.find(it => it.type?.startsWith("image/"));
+      if (imgItem) {
+        const file = imgItem.getAsFile();
+        if (file) {
+          e.preventDefault();
+          insertImageRef.current(file);
+        }
+        return;
+      }
+      if (copiedImageRef.current) {
+        e.preventDefault();
+        pasteCopiedImage();
+      }
+    };
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Delete / copy / paste the selected object, wherever the focus sits in the dialog
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => {
+      const el = document.activeElement;
+      const typing = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable);
+      if (typing) return;
+      const cmd = e.metaKey || e.ctrlKey;
+      const idx = selectedAnnRef.current;
+      const ann = idx !== null && annListRef.current[idx]?.type === "image" ? annListRef.current[idx] : null;
+
+      if ((e.key === "Delete" || e.key === "Backspace") && ann) {
+        e.preventDefault();
+        e.stopPropagation();
+        removeAnn(idx);
+        return;
+      }
+      if (cmd && e.key.toLowerCase() === "c" && ann) {
+        e.preventDefault();
+        e.stopPropagation();
+        copiedImageRef.current = { ...ann };
+        return;
+      }
+      if (cmd && e.key.toLowerCase() === "v" && copiedImageRef.current) {
+        e.preventDefault();
+        e.stopPropagation();
+        pasteCopiedImage();
+        return;
+      }
+      if (e.key === "Escape" && idx !== null) setSelectedAnn(null);
+    };
+    document.addEventListener("keydown", onKey, true);
+    return () => document.removeEventListener("keydown", onKey, true);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleUndo = () => {
+    setSelectedAnn(null);
     // In missing-selection mode, undo removes the last selection rect instead of an annotation
     if (tool === "missing") {
       setMissingRects(prev => {
@@ -550,10 +687,11 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   };
 
   const clearPage = () => {
+    setSelectedAnn(null);
     setAnnList(prev => prev.filter(a => a.page !== pageNumber));
     setMissingRects(prev => ({ ...prev, [pageNumber]: [] }));
   };
-  const clearAll = () => { setAnnList([]); setMissingRects({}); };
+  const clearAll = () => { setSelectedAnn(null); setAnnList([]); setMissingRects({}); };
   const handleSave = () => { onSave(annList, aiNotes); onOpenChange(false); };
 
   // ── Capture highlighted regions + full page as images for AI extraction ──
@@ -760,6 +898,28 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
               <Icon className="w-4 h-4 mr-1" /> {label}
             </Button>
           ))}
+
+          {annotateMode && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => imageInputRef.current?.click()}
+                className="text-teal-600 hover:text-teal-700"
+                title="Insert an image — or paste one with Ctrl/Cmd+V"
+              >
+                <ImagePlus className="w-4 h-4 mr-1" /> Image
+              </Button>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleImageFiles}
+              />
+            </>
+          )}
 
           {annotateMode && (
             <>
@@ -983,6 +1143,21 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                       onPointerMove={handlePointerMove}
                       onPointerUp={handlePointerUp}
                       onPointerLeave={handlePointerUp}
+                    />
+
+                    {/* Placed images — drag to move, corner handles to resize */}
+                    <AnnotatorImageLayer
+                      images={annList
+                        .map((ann, idx) => ({ ann, idx }))
+                        .filter(({ ann }) => ann.type === "image" && ann.page === p)}
+                      size={size}
+                      annotateMode={annotateMode}
+                      activeTool={tool}
+                      selectedIdx={selectedAnn}
+                      liveScaleRef={liveScaleRef}
+                      onSelect={setSelectedAnn}
+                      onUpdate={(idx, patch) => setAnnList(prev => prev.map((a, i) => i === idx ? { ...a, ...patch } : a))}
+                      onRemove={removeAnn}
                     />
 
                     {/* Text notes — click to edit, drag to move */}

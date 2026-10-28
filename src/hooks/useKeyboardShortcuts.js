@@ -91,6 +91,10 @@ export function useKeyboardShortcuts({ onOpenPalette, onOpenHelp, onCloseOverlay
       // Skip all other shortcuts when typing
       if (isTyping) return;
 
+      // A modal owns the keyboard while it's open: page shortcuts must not steal
+      // Delete / Copy / Paste or plain letters from the dialog's own editing.
+      const modalOpen = !!document.querySelector('[role="dialog"][data-state="open"]');
+
       // ── Cmd-based page shortcuts ──
       if (cmd) {
         const key = e.key.toLowerCase();
@@ -105,7 +109,7 @@ export function useKeyboardShortcuts({ onOpenPalette, onOpenHelp, onCloseOverlay
         }
 
         const cmdMap = CMD_SHORTCUTS[activePage];
-        if (cmdMap && cmdMap[key]) {
+        if (!modalOpen && cmdMap && cmdMap[key]) {
           e.preventDefault();
           window.dispatchEvent(
             new CustomEvent("encore:shortcut", {
@@ -117,6 +121,7 @@ export function useKeyboardShortcuts({ onOpenPalette, onOpenHelp, onCloseOverlay
       }
 
       // ── Non-cmd page shortcuts ──
+      if (modalOpen) return;
       const pageMap = PAGE_SHORTCUTS[activePage];
       if (pageMap) {
         const action = pageMap[e.key];
