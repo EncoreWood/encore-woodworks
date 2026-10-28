@@ -109,6 +109,18 @@ export default function JobPacketsRoomModal({ project, roomName, items, currentU
       await base44.entities.ProductionItem.update(id, fields);
       invalidate();
     },
+    onInlinePtsChange: async (item, fileIndex, newPts) => {
+      const val = newPts === "" || newPts === undefined || newPts === null ? undefined : Number(newPts);
+      if (fileIndex === -1) {
+        await base44.entities.ProductionItem.update(item.id, { pts: val });
+      } else {
+        const files = (item.files || [])
+          .map((f, i) => i === fileIndex ? { ...f, pts: val } : f)
+          .map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
+        await base44.entities.ProductionItem.update(item.id, { files });
+      }
+      invalidate();
+    },
   };
 
   const renderCard = (item) => {

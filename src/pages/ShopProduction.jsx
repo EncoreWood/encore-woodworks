@@ -361,9 +361,19 @@ export default function ShopProduction() {
   };
 
   const handleInlinePtsChange = async (item, fileIndex, newPts) => {
-    const updatedFiles = (item.files || []).map((f, i) => i === fileIndex ? { ...f, pts: newPts === "" ? undefined : Number(newPts) } : f);
-    queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, files: updatedFiles } : i));
-    await base44.entities.ProductionItem.update(item.id, { files: updatedFiles });
+    const val = newPts === "" || newPts === undefined || newPts === null ? undefined : Number(newPts);
+    const isCardLevel = fileIndex === -1;
+    // Only schema fields are sent — extra props on a file make the write fail silently.
+    const updatedFiles = (item.files || [])
+      .map((f, i) => i === fileIndex ? { ...f, pts: val } : f)
+      .map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
+    const patch = isCardLevel ? { pts: val } : { files: updatedFiles };
+
+    queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, ...patch } : i));
+    await base44.entities.ProductionItem.update(item.id, patch);
+    queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+    if (isCardLevel) return;
+
     if (item.project_id && item.room_name) {
       const projList = await base44.entities.Project.filter({ id: item.project_id });
       const proj = projList[0];
