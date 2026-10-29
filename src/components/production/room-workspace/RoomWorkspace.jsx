@@ -234,7 +234,7 @@ export default function RoomWorkspace({
 
   return createPortal(
     <div
-      className="fixed left-0 right-0 top-0 z-40 bg-slate-200/80 p-1 sm:p-2 h-screen"
+      className="fixed left-0 right-0 top-0 z-[100] bg-slate-200/80 p-1 sm:p-2 h-screen"
       style={{
         height: "100dvh",
         paddingTop: "calc(env(safe-area-inset-top) + 4px)",
@@ -290,6 +290,15 @@ export default function RoomWorkspace({
           {/* LEFT — production cards */}
           <div className="flex-1 flex flex-col min-w-0 min-h-0">
             <div className="flex flex-wrap items-center gap-1.5 px-2 sm:px-3 py-1.5 border-b border-slate-100 flex-shrink-0">
+              <Button
+                size="sm"
+                className="h-7 px-2 text-xs gap-1 bg-slate-900 hover:bg-slate-800 text-white"
+                onClick={onClose}
+                title="Exit room view"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Exit</span>
+              </Button>
               {stagedItems.length > 0 && (
                 <label className="flex items-center gap-1.5 text-xs text-slate-500 cursor-pointer select-none mr-1">
                   <Checkbox
@@ -371,7 +380,7 @@ export default function RoomWorkspace({
 
         {/* RIGHT — slide-over drawer when there isn't room for both panes (iPad portrait / small tablets / phone) */}
         {!wide && infoOpen && (
-          <div className="fixed inset-0 z-[60] flex">
+          <div className="fixed inset-0 z-[110] flex">
             <div className="flex-1 bg-slate-900/40" onClick={() => setInfoOpen(false)} />
             <aside className="w-[92%] max-w-md bg-white shadow-2xl flex flex-col min-h-0 border-l border-slate-200">
               <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-slate-200 flex-shrink-0">
