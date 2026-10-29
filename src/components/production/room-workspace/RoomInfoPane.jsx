@@ -6,19 +6,23 @@ import { createPageUrl } from "@/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import RoomNotesTasksPanel from "./RoomNotesTasksPanel";
 import RoomImageGallery from "./RoomImageGallery";
-import RoomSelectionsPanel from "@/components/projects/RoomSelectionsPanel";
 import ProjectFilesList from "@/components/projects/ProjectFilesList";
+import RoomSelectionsEditor from "./RoomSelectionsEditor";
+import RoomImageAddButton from "./RoomImageAddButton";
 import { Loader2, Images, Palette, Paperclip, FileText, ArrowLeft, ChevronDown, Check, ExternalLink } from "lucide-react";
 
-function Section({ icon: Icon, title, count, children }) {
+function Section({ icon: Icon, title, count, action, children }) {
   return (
     <section>
-      <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">
-        <Icon className="w-3 h-3" /> {title}
-        {count !== undefined && count > 0 && (
-          <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 rounded-full px-1.5">{count}</span>
-        )}
-      </p>
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <Icon className="w-3 h-3" /> {title}
+          {count !== undefined && count > 0 && (
+            <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 rounded-full px-1.5">{count}</span>
+          )}
+        </p>
+        {action}
+      </div>
       {children}
     </section>
   );
@@ -144,7 +148,19 @@ export default function RoomInfoPane({ project, roomName, onClose, onSelectRoom 
           <RoomNotesTasksPanel project={proj} roomName={roomName} />
         </Section>
 
-        <Section icon={Images} title="Images" count={images.length}>
+        <Section
+          icon={Images}
+          title="Images"
+          count={images.length}
+          action={
+            <RoomImageAddButton
+              projectId={proj.id}
+              projectName={proj.project_name}
+              roomName={roomName}
+              roomId={room?.id || roomName}
+            />
+          }
+        >
           {isLoading ? (
             <div className="py-4 flex items-center justify-center text-slate-400">
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -177,7 +193,13 @@ export default function RoomInfoPane({ project, roomName, onClose, onSelectRoom 
         )}
 
         <Section icon={Palette} title="Room Selections">
-          <RoomSelectionsPanel room={room} />
+          <RoomSelectionsEditor
+            project={proj}
+            room={room}
+            roomIndex={(proj.rooms || []).findIndex(
+              r => (r.room_name || "").toLowerCase().trim() === (roomName || "").toLowerCase().trim()
+            )}
+          />
         </Section>
 
         <Section icon={Paperclip} title="Project Files">
