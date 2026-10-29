@@ -2,24 +2,18 @@ import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, FolderOpen, Folder, ChevronRight, ArrowRight, Package, Search, X, ExternalLink, Boxes } from "lucide-react";
+import { Plus, FolderOpen, Folder, ChevronRight, Package, Search, X, ExternalLink } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
 import ProductionCard from "./ProductionCard";
-import RoomFilesModal from "./RoomFilesModal";
+import RoomWorkspace from "./room-workspace/RoomWorkspace";
 import SendToProductionDialog from "./SendToProductionDialog";
-import TypeGroupedGrid from "./TypeGroupedGrid";
 import { roomPts } from "@/lib/roomPts";
 
-const STAGE_LABELS = { cut: "Cut", face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete", on_hold: "On Hold" };
-
-// A single room folder within a project
+// A single room folder within a project — clicking it opens the combined Room Workspace
 function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, sharedCardProps, autoOpen, onAutoOpened }) {
   const [open, setOpen] = useState(false);
+  const [sendTarget, setSendTarget] = useState(null);
 
   useEffect(() => {
     if (autoOpen) {
@@ -27,111 +21,14 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
       onAutoOpened?.();
     }
   }, [autoOpen]);
-  const [selected, setSelected] = useState(new Set());
-  const [showRoomFiles, setShowRoomFiles] = useState(false);
-  const [sendTarget, setSendTarget] = useState(null);
-
-  const { data: roomFileCount = 0 } = useQuery({
-    queryKey: ["roomFiles", project.id, roomName],
-    queryFn: () => base44.entities.RoomFile.filter({ project_id: project.id }),
-    select: (all) => all.filter(f => f.room_name?.toLowerCase() === roomName?.toLowerCase()).length,
-    enabled: !!project.id && !!roomName,
-    staleTime: 60_000,
-  });
 
   const roomItems = items.filter(i => i.project_id === project.id && i.room_name === roomName && !i.is_job_info);
-  const stagedItems = roomItems.filter(i => !i.stage);
-  const inProductionItems = roomItems.filter(i => i.stage);
-
-  const toggleSelect = (id) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const toggleAll = () => {
-    if (selected.size === stagedItems.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(stagedItems.map(i => i.id)));
-    }
-  };
-
-  const handleBulkSend = () => {
-    const toSend = stagedItems.filter(i => selected.has(i.id));
-    if (toSend.length === 0) return;
-    setSendTarget(toSend);
-  };
-
-  const handleSendAll = () => {
-    if (stagedItems.length === 0) return;
-    setSendTarget(stagedItems);
-  };
-
-  const handleSendOne = (item) => {
-    setSendTarget([item]);
-  };
 
   const confirmSend = (stage) => {
     onSendToProduction(sendTarget, stage);
     setSendTarget(null);
-    setSelected(new Set());
-  };
-
-  const renderCard = (item) => {
-    const isStaged = !item.stage;
-    return (
-      <div key={item.id} className="relative">
-        {isStaged && (
-          <>
-            {/* Selection checkbox overlay */}
-            <div className="absolute top-2 left-2 z-10">
-              <Checkbox
-                checked={selected.has(item.id)}
-                onCheckedChange={() => toggleSelect(item.id)}
-                className="bg-white shadow"
-              />
-            </div>
-            {/* Send individually */}
-            <div className="absolute top-2 right-2 z-10">
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-6 px-2 text-xs bg-white hover:bg-green-50 hover:border-green-400 hover:text-green-700"
-                onClick={() => handleSendOne(item)}
-                title="Send to Production"
-              >
-                <ArrowRight className="w-3 h-3" />
-              </Button>
-            </div>
-          </>
-        )}
-        {/* Stage badge */}
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10">
-          {isStaged ? (
-            item.completed_date ? (
-              <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 text-[10px] px-2 py-0.5">Complete</Badge>
-            ) : (
-              <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-200 text-[10px] px-2 py-0.5">Staged</Badge>
-            )
-          ) : (
-            <Badge variant="outline" className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] px-2 py-0.5">In Production: {STAGE_LABELS[item.stage] || item.stage}</Badge>
-          )}
-        </div>
-        <div
-          className={`rounded-lg transition-all ${isStaged && selected.has(item.id) ? "ring-2 ring-amber-400" : ""}`}
-          onClick={isStaged ? () => toggleSelect(item.id) : undefined}
-        >
-          <ProductionCard
-            item={item}
-            isDragging={false}
-            {...sharedCardProps}
-          />
-        </div>
-      </div>
-    );
+    // Sending moves the user to the production board — drop the workspace with it
+    setOpen(false);
   };
 
   return (
@@ -153,118 +50,28 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
         <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 flex-shrink-0" />
       </button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <div className="flex items-center justify-between pr-8">
-              <div>
-                <DialogTitle className="text-lg">
-                  <span className="text-slate-500 font-normal">{project.project_name} /</span> {roomName}
-                </DialogTitle>
-                <p className="text-sm text-slate-400 mt-0.5">
-                  {stagedItems.length} staged{inProductionItems.length > 0 && ` · ${inProductionItems.length} in production`}
-                  <span className="ml-2 font-semibold text-amber-700">{roomPts(roomItems)} PTS</span>
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowRoomFiles(true)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 transition-colors shadow-sm"
-                  title="View room files & images"
-                >
-                  <Boxes className="w-4 h-4" />
-                  {roomFileCount > 0 && <span className="text-xs font-bold">{roomFileCount}</span>}
-                  <span className="text-xs font-medium">Room Files</span>
-                </button>
-                {selected.size > 0 && (
-                  <Button
-                    size="sm"
-                    className="bg-green-600 hover:bg-green-700 gap-2"
-                    onClick={handleBulkSend}
-                  >
-                    <ArrowRight className="w-4 h-4" />
-                    Send {selected.size} to Production
-                  </Button>
-                )}
-                {stagedItems.length > 0 && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-2 border-green-300 text-green-700 hover:bg-green-50"
-                    onClick={handleSendAll}
-                    title="Send all staged cards to production"
-                  >
-                    <ArrowRight className="w-4 h-4" />
-                    Send All to Production
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  className="bg-amber-600 hover:bg-amber-700 gap-2"
-                  onClick={() => onAddCard(project, roomName)}
-                >
-                  <Plus className="w-4 h-4" /> Add Card
-                </Button>
-              </div>
-            </div>
-          </DialogHeader>
-
-          {/* Select all */}
-          {stagedItems.length > 0 && (
-            <div className="flex items-center gap-2 px-1 pt-1 pb-2 border-b border-slate-100">
-              <Checkbox
-                checked={selected.size === stagedItems.length && stagedItems.length > 0}
-                onCheckedChange={toggleAll}
-                id="select-all"
-              />
-              <label htmlFor="select-all" className="text-sm text-slate-500 cursor-pointer select-none">
-                Select all
-              </label>
-              {selected.size > 0 && (
-                <span className="ml-2 text-xs text-slate-400">{selected.size} selected</span>
-              )}
-            </div>
-          )}
-
-          <div className="flex-1 overflow-y-auto">
-            {roomItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-slate-400">
-                <Package className="w-10 h-10 mb-3 opacity-40" />
-                <p className="text-sm">No items in this room yet.</p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="mt-4"
-                  onClick={() => onAddCard(project, roomName)}
-                >
-                  <Plus className="w-4 h-4 mr-1" /> Add first card
-                </Button>
-              </div>
-            ) : (
-              <TypeGroupedGrid items={roomItems} renderCard={renderCard} />
-            )}
-          </div>
-        </DialogContent>
-        </Dialog>
-
-        {showRoomFiles && (
-        <RoomFilesModal
-          projectId={project.id}
-          projectName={project.project_name}
+      {open && (
+        <RoomWorkspace
+          project={project}
           roomName={roomName}
-          onClose={() => setShowRoomFiles(false)}
+          items={items}
+          currentUser={sharedCardProps?.currentUser}
+          cardProps={sharedCardProps}
+          onAddCard={() => onAddCard(project, roomName)}
+          onSendToProduction={(list) => setSendTarget(list)}
+          onClose={() => setOpen(false)}
         />
-        )}
+      )}
 
-        <SendToProductionDialog
-          open={!!sendTarget}
-          items={sendTarget}
-          onConfirm={confirmSend}
-          onClose={() => setSendTarget(null)}
-        />
-        </>
-        );
-        }
+      <SendToProductionDialog
+        open={!!sendTarget}
+        items={sendTarget}
+        onConfirm={confirmSend}
+        onClose={() => setSendTarget(null)}
+      />
+    </>
+  );
+}
 
 // Main tab component
 export default function JobPacketsTab({ projects, items, openFolderContext, onFolderOpened, onAddCard, onSendToProduction, sharedCardProps, scrollToProjectId }) {
