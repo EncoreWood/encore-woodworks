@@ -71,16 +71,16 @@ export default function RoomInfoPane({ project, roomName, onClose, onSelectRoom 
     <div className="h-full flex flex-col min-h-0">
       {/* Pinned pane header — room switcher + project jump + Exit View */}
       <div className="flex items-start justify-between gap-2 px-3 py-2 border-b border-slate-200 bg-slate-50 flex-shrink-0">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <Popover open={roomPickerOpen} onOpenChange={setRoomPickerOpen}>
             <PopoverTrigger asChild>
               <button
                 type="button"
-                className="group flex items-center gap-1 -ml-1 px-1.5 min-h-[32px] rounded-lg hover:bg-slate-200/70 active:bg-slate-200 transition-colors max-w-full"
+                className="group flex items-center gap-1 -ml-1 px-1.5 py-1 min-h-[32px] rounded-lg hover:bg-slate-200/70 active:bg-slate-200 transition-colors max-w-full text-left"
                 title="Switch room"
                 aria-label="Switch room"
               >
-                <span className="text-sm font-bold text-slate-800 leading-tight truncate">{roomName}</span>
+                <span className="text-sm font-bold text-slate-800 leading-tight break-words">{roomName}</span>
                 <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-700 flex-shrink-0" />
               </button>
             </PopoverTrigger>
