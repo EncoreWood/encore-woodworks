@@ -14,9 +14,11 @@ import { roomPts } from "@/lib/roomPts";
 /**
  * Combined Room Workspace — production cards (left) and room info (right) in one
  * full-screen split view. Replaces the separate room card dialog and the room
- * detail modal: clicking a room opens this. The right pane collapses so the
- * cards can use the full width, and becomes a slide-over drawer on narrow
- * screens (iPad portrait / phone).
+ * detail modal: clicking a room opens this. On wide screens (desktop / iPad
+ * landscape) the pane sits beside the cards; on narrow ones (iPad portrait,
+ * phone) it stacks above them at ~45% viewport height with its own scroll.
+ * Either way both panes stay live and interactive — never a modal overlay —
+ * and the top-bar Room Info button collapses the pane.
  */
 export default function RoomWorkspace({
   project,
@@ -201,8 +203,6 @@ export default function RoomWorkspace({
     />
   );
 
-  // Docked side-by-side only when there is room for both panes (iPad landscape and up)
-  const paneDocked = wide && infoOpen;
   // Always 3 across on tablet/desktop — cards stay readable however wide the pane gets
   const gridClass = "grid grid-cols-2 sm:grid-cols-3 gap-2";
 
@@ -278,8 +278,9 @@ export default function RoomWorkspace({
           </button>
         </div>
 
-        <div className="flex-1 flex min-h-0">
-          {/* LEFT — production cards */}
+        {/* Row on wide screens (side-by-side), column on narrow ones (room info stacked above cards) */}
+        <div className={wide ? "flex-1 flex min-h-0" : "flex-1 flex flex-col min-h-0"}>
+          {/* Production cards — full width beside the pane, the lower half when stacked */}
           <div className="flex-1 flex flex-col min-w-0 min-h-0">
             <div className="flex flex-wrap items-center gap-1.5 px-2 sm:px-3 py-1.5 border-b border-slate-100 flex-shrink-0">
               <Button
@@ -362,43 +363,23 @@ export default function RoomWorkspace({
             </div>
           </div>
 
-          {/* RIGHT — room info docked beside the cards (iPad landscape / desktop) */}
-          {paneDocked && (
-            <aside className="flex flex-col w-[44%] xl:w-[46%] border-l border-slate-200 bg-white min-h-0 overflow-hidden">
+          {/* Room info — a peer pane, never a modal: docked to the right when there is
+              room for both (iPad landscape / desktop), stacked above the cards with its
+              own scroll region when narrower (iPad portrait). Tapping or scrolling the
+              cards never hides it; the top-bar Room Info button collapses it. */}
+          {infoOpen && (
+            <aside
+              className={
+                wide
+                  ? "flex-shrink-0 flex flex-col w-[42%] xl:w-[44%] border-l border-slate-200 bg-white min-h-0 overflow-hidden"
+                  : "order-first flex-shrink-0 flex flex-col border-b border-slate-200 bg-white min-h-0 overflow-hidden"
+              }
+              style={wide ? undefined : { height: "45%" }}
+            >
               {paneContent}
             </aside>
           )}
         </div>
-
-        {/* RIGHT — slide-over drawer when there isn't room for both panes (iPad portrait / small tablets / phone) */}
-        {!wide && infoOpen && (
-          <div className="fixed inset-0 z-[110] flex">
-            <div className="flex-1 bg-slate-900/40" onClick={() => setInfoOpen(false)} />
-            <aside className="w-[92%] max-w-md bg-white shadow-2xl flex flex-col min-h-0 border-l border-slate-200">
-              <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-slate-200 flex-shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setInfoOpen(false)}
-                  className="flex items-center gap-1 h-8 px-2.5 rounded-lg border text-xs font-semibold bg-amber-600 border-amber-600 text-white flex-shrink-0"
-                  title="Hide room info"
-                >
-                  <PanelRightClose className="w-3.5 h-3.5" />
-                  <span className="whitespace-nowrap">Room Info</span>
-                </button>
-                <p className="flex-1 min-w-0 text-sm font-bold text-slate-800 truncate text-right">{activeRoom}</p>
-                <button
-                  type="button"
-                  onClick={() => setInfoOpen(false)}
-                  className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 flex-shrink-0"
-                  title="Hide room info"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="flex-1 min-h-0">{paneContent}</div>
-            </aside>
-          </div>
-        )}
       </div>
 
       <ProductionItemForm
