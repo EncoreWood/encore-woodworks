@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Boxes, Hammer, Clock, MoreVertical } from "lucide-react";
+import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Hammer, Clock, MoreVertical } from "lucide-react";
 import RoomInfoIcon from "@/components/production/RoomInfoIcon";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -110,14 +110,6 @@ export default function ProductionCard({
   // Wood + finish live on the card itself (read from its own PDF) — never inherited from room selections
   const cardSpec = [item.wood_type, item.finish].filter(Boolean).join(" · ");
 
-  const { data: roomFileCount = 0 } = useQuery({
-    queryKey: ["roomFiles", item.project_id, item.room_name],
-    queryFn: () => base44.entities.RoomFile.filter({ project_id: item.project_id }),
-    select: (all) => all.filter(f => f.room_name?.toLowerCase() === item.room_name?.toLowerCase()).length,
-    enabled: !!item.project_id && !!item.room_name,
-    staleTime: 60_000,
-  });
-
   const cardGlbUrl = item.glb_url;
   const cardGlbName = item.glb_name || item.name;
 
@@ -182,18 +174,6 @@ export default function ProductionCard({
               >
                 <Building2 className="w-4 h-4" />
               </Link>
-            )}
-            {item.project_id && item.room_name && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onOpenRoomInfo ? onOpenRoomInfo(item) : setShowRoomFiles(true); }}
-                className="flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 transition-colors shadow-sm"
-                title="Room info — open this room's workspace"
-              >
-                <Boxes className="w-4 h-4" />
-                {roomFileCount > 0 && (
-                  <span className="text-xs font-bold">{roomFileCount}</span>
-                )}
-              </button>
             )}
             {(item.room_name || onOpenRoomInfo) && (
               <button
