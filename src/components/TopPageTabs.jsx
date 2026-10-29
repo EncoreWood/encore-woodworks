@@ -2,15 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
-  LayoutDashboard, Home, Factory, Users, GraduationCap, BookOpen, BarChart3,
+  LayoutDashboard, Home, Users, GraduationCap, BookOpen, BarChart3,
   ChevronDown, Pin, PinOff, Settings, UserCircle, Play, Square, ArrowLeftRight, Columns2,
 } from "lucide-react";
+import ProductionIcon from "@/components/icons/ProductionIcon";
 
 const GROUP_ICONS = {
   dashboard: LayoutDashboard,
   admin: BarChart3,
   projects: Home,
-  operations: Factory,
+  operations: ProductionIcon,
   team: Users,
   lean: GraduationCap,
   education: BookOpen,
@@ -152,8 +153,30 @@ export default function TopPageTabs({
           box-shadow:inset 2px 2px 4px rgba(60,48,38,.5), inset -2px -2px 4px rgba(255,255,255,.25), 0 0 10px rgba(138,117,96,.4);
         }
         .encore-tpt .tpt-tab svg{ width:15px; height:15px; flex:0 0 auto; }
-        .encore-tpt .tpt-caret{ width:12px !important; height:12px !important; opacity:.7; transition:transform .2s ease; }
+        /* Icon-only group tabs: fixed, even footprint so nothing overlaps at iPad widths */
+        .encore-tpt .tpt-tab-icon{
+          justify-content:center; gap:3px;
+          min-width:48px; padding:0 9px;
+        }
+        .encore-tpt .tpt-caret{ width:10px !important; height:10px !important; opacity:.55; transition:transform .2s ease; }
         .encore-tpt .tpt-tab[data-open="true"] .tpt-caret{ transform:rotate(180deg); }
+        /* Hover / keyboard tooltip carrying the tab name */
+        .encore-tpt .tpt-tab[data-label]::before{
+          content:attr(data-label);
+          position:absolute; top:calc(100% + 7px); left:50%;
+          transform:translate(-50%,-3px);
+          padding:4px 8px; border-radius:7px; white-space:nowrap;
+          background:#1e293b; color:#f8fafc;
+          font-size:11px; font-weight:600; letter-spacing:.01em;
+          box-shadow:0 4px 12px -4px rgba(15,23,42,.5);
+          opacity:0; pointer-events:none; z-index:90;
+          transition:opacity .14s ease, transform .14s ease;
+        }
+        .encore-tpt .tpt-tab[data-label]:hover::before,
+        .encore-tpt .tpt-tab[data-label]:focus-visible::before{
+          opacity:1; transform:translate(-50%,0);
+        }
+        .encore-tpt .tpt-tab[data-open="true"]::before{ opacity:0; }
         .encore-tpt .tpt-tab-pinned::after{
           content:""; position:absolute; bottom:4px; right:5px;
           width:5px; height:5px; border-radius:50%; background:#6b5645;
@@ -279,15 +302,17 @@ export default function TopPageTabs({
           <div className="tpt-group" key={g.key}>
             <button
               type="button"
-              className="tpt-tab"
+              className="tpt-tab tpt-tab-icon"
               data-active={activeGroup === g.key}
               data-open={openGroup === g.key}
+              data-label={g.name}
               aria-haspopup="true"
               aria-expanded={openGroup === g.key}
+              aria-label={g.name}
+              title={g.name}
               onClick={() => setOpenGroup((prev) => (prev === g.key ? null : g.key))}
             >
               <g.Icon />
-              <span>{g.name}</span>
               <ChevronDown className="tpt-caret" />
               {badges[g.key] > 0 && (
                 <span className="tpt-badge">{badges[g.key] > 9 ? "9+" : badges[g.key]}</span>
