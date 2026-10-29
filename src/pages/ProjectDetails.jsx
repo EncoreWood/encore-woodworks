@@ -45,6 +45,8 @@ import JobMeasurementsTab from "../components/measurements/JobMeasurementsTab";
 import ProjectTimelineSection from "../components/projects/ProjectTimelineSection";
 import GoogleFolderButton from "../components/projects/GoogleFolderButton";
 import JobPacketsRoomModal from "../components/production/JobPacketsRoomModal";
+import RoomWorkspace from "../components/production/room-workspace/RoomWorkspace";
+import RoomQuickActions from "../components/projects/RoomQuickActions";
 import RoomPickupMissingModal from "../components/pickup/RoomPickupMissingModal";
 import RoomSelectionsButton from "../components/projects/RoomSelectionsButton";
 import ProjectEmailsTab from "../components/projects/ProjectEmailsTab";
@@ -134,6 +136,8 @@ export default function ProjectDetails() {
   const [roomGlbPickerIdx, setRoomGlbPickerIdx] = useState(null);
   // Per-room expand/collapse state (session only — defaults to all collapsed)
   const [expandedRooms, setExpandedRooms] = useState(() => new Set());
+  // Room index whose combined two-pane workspace is open (null = closed)
+  const [workspaceRoomIdx, setWorkspaceRoomIdx] = useState(null);
 
   useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
 
@@ -504,6 +508,8 @@ export default function ProjectDetails() {
                   {project.rooms.map((room, idx) => {
                     const isExpanded = expandedRooms.has(idx);
                     const toggleRoom = () => {
+                      // Expanding a room opens the combined two-pane Room Workspace
+                      if (!expandedRooms.has(idx)) setWorkspaceRoomIdx(idx);
                       setExpandedRooms(prev => {
                         const next = new Set(prev);
                         if (next.has(idx)) next.delete(idx); else next.add(idx);
@@ -545,7 +551,7 @@ export default function ProjectDetails() {
                         <div className="flex-1">
                           <div className="mb-2">
                             <div className="flex items-center gap-2 flex-wrap mb-2">
-                              <button type="button" onClick={toggleRoom} className="text-left">
+                              <button type="button" onClick={() => setWorkspaceRoomIdx(idx)} className="text-left" title="Open room workspace">
                                 <h3 className={cn("font-medium hover:text-amber-700", room.completed ? "text-emerald-700" : "text-slate-900")}>{room.room_name || `Room ${idx + 1}`}</h3>
                               </button>
                               {room.cabinet_count && <Badge variant="outline" className="text-xs">{room.cabinet_count} cabinets</Badge>}
@@ -658,6 +664,27 @@ export default function ProjectDetails() {
                           )}
                         </div>
                       </div>
+
+                      {workspaceRoomIdx === idx && (
+                        <RoomWorkspace
+                          project={project}
+                          roomName={room.room_name || `Room ${idx + 1}`}
+                          items={productionItems}
+                          currentUser={currentUser}
+                          onClose={() => setWorkspaceRoomIdx(null)}
+                          roomActions={
+                            <RoomQuickActions
+                              project={project}
+                              room={room}
+                              idx={idx}
+                              roomName={room.room_name || `Room ${idx + 1}`}
+                              onViewGlb={setViewingRoomGlb}
+                              onAttachGlb={() => setRoomGlbPickerIdx(idx)}
+                              onDelete={() => { setWorkspaceRoomIdx(null); handleDeleteRoom(idx); }}
+                            />
+                          }
+                        />
+                      )}
                     </div>
                     );
                   })}

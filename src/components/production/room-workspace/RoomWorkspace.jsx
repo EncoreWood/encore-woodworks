@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Package, Plus, ArrowRight, X, PanelRightOpen, PanelRightClose, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { Package, Plus, ArrowRight, ArrowLeft, X, PanelRightOpen, PanelRightClose, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
 import TypeGroupedGrid from "@/components/production/TypeGroupedGrid";
 import ProductionItemForm from "@/components/production/ProductionItemForm";
 import RoomCardTile from "./RoomCardTile";
@@ -26,6 +27,7 @@ export default function RoomWorkspace({
   cardProps,           // parent-supplied ProductionCard props (production board context)
   onSendToProduction,  // optional: parent handles the send (e.g. stage picker)
   onAddCard,           // optional: parent handles creating a card
+  roomActions,         // optional: the room's usual action buttons (Pickup/Missing, Selections, 3D…)
 }) {
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState(new Set());
@@ -121,6 +123,8 @@ export default function RoomWorkspace({
     onMoveStage: moveStageHandler,
     onUpdate: updateHandler,
     onInlinePtsChange: inlinePtsHandler,
+    // "Room info" on a card inside the workspace just brings the room pane forward
+    onOpenRoomInfo: () => setRightOpen(true),
   };
 
   const toggleSelect = (id) => {
@@ -184,18 +188,37 @@ export default function RoomWorkspace({
   );
 
   const paneDocked = rightOpen && !narrow;
-  const gridClass = paneDocked
-    ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2"
-    : "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2";
+  // Always 3 across on tablet/desktop — cards stay readable however wide the pane gets
+  const gridClass = "grid grid-cols-2 sm:grid-cols-3 gap-2";
 
-  const paneContent = <RoomInfoPane project={project} roomName={roomName} />;
+  const paneContent = (
+    <div className="h-full flex flex-col min-h-0">
+      {roomActions && (
+        <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 border-b border-slate-200 bg-slate-50 flex-shrink-0">
+          {roomActions}
+        </div>
+      )}
+      <div className="flex-1 min-h-0">
+        <RoomInfoPane project={project} roomName={roomName} />
+      </div>
+    </div>
+  );
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-40 bg-slate-200/80 p-1 sm:p-2">
       <div className="h-full w-full flex flex-col bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
         {/* Top bar */}
         <div className="flex items-center gap-2 px-2 sm:px-3 py-1.5 border-b border-slate-200 bg-slate-50 flex-shrink-0">
-          <Package className="w-4 h-4 text-amber-600 flex-shrink-0" />
+          <Button
+            type="button"
+            onClick={onClose}
+            className="h-9 px-3 gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex-shrink-0"
+            title="Exit room view"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Exit View
+          </Button>
+          <Package className="w-4 h-4 text-amber-600 flex-shrink-0 hidden sm:block" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-slate-900 truncate leading-tight">
               <span className="text-slate-400 font-normal">{project.project_name} /</span> {roomName}
@@ -304,7 +327,7 @@ export default function RoomWorkspace({
 
           {/* RIGHT — room info (desktop / iPad landscape) */}
           {paneDocked && (
-            <aside className="hidden lg:flex lg:flex-col lg:w-[42%] xl:w-[40%] border-l border-slate-200 bg-white min-h-0 overflow-hidden">
+            <aside className="hidden lg:flex lg:flex-col lg:w-[44%] xl:w-[46%] border-l border-slate-200 bg-white min-h-0 overflow-hidden">
               {paneContent}
             </aside>
           )}
@@ -344,6 +367,7 @@ export default function RoomWorkspace({
         rooms={project.rooms || []}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
-    </div>
+    </div>,
+    document.body
   );
 }

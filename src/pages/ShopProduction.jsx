@@ -17,6 +17,7 @@ import GiveComplimentDialog from "../components/production/GiveComplimentDialog"
 import ReportMissingDialog from "../components/production/ReportMissingDialog";
 import EndOfDayDialog from "../components/production/EndOfDayDialog";
 import ProductionItemForm from "../components/production/ProductionItemForm";
+import RoomWorkspace from "../components/production/room-workspace/RoomWorkspace";
 import PDFAnnotator from "../components/production/PDFAnnotator";
 import PickupItemForm from "../components/pickup/PickupItemForm";
 import ProductionCard from "../components/production/ProductionCard";
@@ -66,6 +67,7 @@ export default function ShopProduction() {
   const [editingPts, setEditingPts] = useState(null);
   const [packetsFormContext, setPacketsFormContext] = useState(null); // { project, roomName } for Job Packets add
   const [openFolderContext, setOpenFolderContext] = useState(null); // { project, roomName } to auto-open a folder in Job Packets
+  const [roomWorkspace, setRoomWorkspace] = useState(null); // { project, roomName } opened from a card's Room Info
   const [currentUser, setCurrentUser] = useState(null);
   const [reportingStruggle, setReportingStruggle] = useState(null);
   const [givingCompliment, setGivingCompliment] = useState(false);
@@ -611,6 +613,11 @@ export default function ShopProduction() {
     itemsById,
     missingChildrenByParent,
     onViewMissingCard: (id) => setViewMissingCardId(id),
+    // Opens the combined room workspace for the card's room
+    onOpenRoomInfo: (item) => {
+      const proj = projects.find(p => p.id === item.project_id);
+      if (proj && item.room_name) setRoomWorkspace({ project: proj, roomName: item.room_name });
+    },
   };
 
   // Complete column renders through CompleteStageCards (grouped by completion
@@ -1119,6 +1126,17 @@ export default function ShopProduction() {
             pageNumber={pickupFromHighlight.pageNumber}
             productionItem={pickupFromHighlight.productionItem}
             currentUser={pickupFromHighlight.currentUser}
+          />
+        )}
+
+        {roomWorkspace && (
+          <RoomWorkspace
+            project={roomWorkspace.project}
+            roomName={roomWorkspace.roomName}
+            items={items}
+            currentUser={currentUser}
+            cardProps={sharedCardProps}
+            onClose={() => setRoomWorkspace(null)}
           />
         )}
       </div>

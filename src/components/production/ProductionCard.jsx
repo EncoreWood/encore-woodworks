@@ -91,6 +91,7 @@ export default function ProductionCard({
   itemsById,             // map of all production items (for parent-name lookups)
   missingChildrenByParent, // map of parent card id -> its missing-items cards
   onViewMissingCard,     // called with a card id to open the card viewer dialog
+  onOpenRoomInfo,        // called with item to open the combined room workspace for its room
 }) {
   const [hoveredPdfUrl, setHoveredPdfUrl] = useState(null);
   const [hoveredAnchorEl, setHoveredAnchorEl] = useState(null);
@@ -183,9 +184,9 @@ export default function ProductionCard({
             )}
             {item.project_id && item.room_name && (
               <button
-                onClick={(e) => { e.stopPropagation(); setShowRoomFiles(true); }}
+                onClick={(e) => { e.stopPropagation(); onOpenRoomInfo ? onOpenRoomInfo(item) : setShowRoomFiles(true); }}
                 className="flex items-center gap-1 px-2 py-1 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 transition-colors shadow-sm"
-                title="Room info — files, images & notes"
+                title="Room info — open this room's workspace"
               >
                 <Boxes className="w-4 h-4" />
                 {roomFileCount > 0 && (
