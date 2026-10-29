@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
+import { createPageUrl } from "@/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import RoomNotesTasksPanel from "./RoomNotesTasksPanel";
 import RoomImageGallery from "./RoomImageGallery";
 import RoomSelectionsPanel from "@/components/projects/RoomSelectionsPanel";
 import ProjectFilesList from "@/components/projects/ProjectFilesList";
-import { Loader2, Images, Palette, Paperclip, FileText, ArrowLeft } from "lucide-react";
+import { Loader2, Images, Palette, Paperclip, FileText, ArrowLeft, ChevronDown, Check, ExternalLink } from "lucide-react";
 
 function Section({ icon: Icon, title, count, children }) {
   return (
@@ -25,7 +29,9 @@ function Section({ icon: Icon, title, count, children }) {
  * notes + tasks, images (with annotation editing), saved selections and the
  * project's files. Same data sources as the production Room Info view.
  */
-export default function RoomInfoPane({ project, roomName, onClose }) {
+export default function RoomInfoPane({ project, roomName, onClose, onSelectRoom }) {
+  const navigate = useNavigate();
+  const [roomPickerOpen, setRoomPickerOpen] = useState(false);
   const { data: liveProject } = useQuery({
     queryKey: ["project", project?.id],
     queryFn: () => base44.entities.Project.get(project.id),
@@ -48,26 +54,89 @@ export default function RoomInfoPane({ project, roomName, onClose }) {
   const images = roomFiles.filter(f => f.file_type === "image");
   const documents = roomFiles.filter(f => f.file_type === "pdf");
 
+  // Every room of this project (plus the active one, in case it isn't in the list yet)
+  const roomNames = [];
+  (proj.rooms || []).forEach(r => {
+    const name = (r.room_name || "").trim();
+    if (name && !roomNames.includes(name)) roomNames.push(name);
+  });
+  if (roomName && !roomNames.includes(roomName)) roomNames.push(roomName);
+
+  const openProjectCard = () => {
+    onClose?.();
+    navigate(`${createPageUrl("Kanban")}?project=${proj.id}`);
+  };
+
   return (
     <div className="h-full flex flex-col min-h-0">
-      {/* Pinned pane header — title + Exit View, always visible without scrolling */}
+      {/* Pinned pane header — room switcher + project jump + Exit View */}
       <div className="flex items-start justify-between gap-2 px-3 py-2 border-b border-slate-200 bg-slate-50 flex-shrink-0">
         <div className="min-w-0">
-          <p className="text-sm font-bold text-slate-800 leading-tight truncate">{roomName}</p>
-          <p className="text-[11px] text-slate-400 truncate">{proj.project_name}</p>
+          <Popover open={roomPickerOpen} onOpenChange={setRoomPickerOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="group flex items-center gap-1 -ml-1 px-1.5 min-h-[32px] rounded-lg hover:bg-slate-200/70 active:bg-slate-200 transition-colors max-w-full"
+                title="Switch room"
+                aria-label="Switch room"
+              >
+                <span className="text-sm font-bold text-slate-800 leading-tight truncate">{roomName}</span>
+                <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-700 flex-shrink-0" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-64 p-1 max-h-72 overflow-y-auto">
+              <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Rooms in this project
+              </p>
+              {roomNames.length === 0 ? (
+                <p className="px-2 py-1.5 text-xs text-slate-400">No rooms listed</p>
+              ) : roomNames.map(name => {
+                const active = name === roomName;
+                return (
+                  <button
+                    key={name}
+                    type="button"
+                    onClick={() => {
+                      setRoomPickerOpen(false);
+                      if (!active) onSelectRoom?.(name);
+                    }}
+                    className={`w-full flex items-center gap-2 px-2 py-2 rounded-md text-left text-xs ${
+                      active ? "bg-amber-100 text-amber-900 font-semibold" : "text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span className="flex-1 truncate">{name}</span>
+                    {active && <Check className="w-3.5 h-3.5 flex-shrink-0" />}
+                  </button>
+                );
+              })}
+            </PopoverContent>
+          </Popover>
+          <p className="text-[11px] text-slate-400 truncate pl-0.5">{proj.project_name}</p>
         </div>
-        {onClose && (
+        <div className="flex items-center gap-1 flex-shrink-0">
           <button
             type="button"
-            onClick={onClose}
-            className="flex items-center gap-1 h-8 px-2.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 text-xs font-semibold flex-shrink-0"
-            title="Exit View"
-            aria-label="Exit View"
+            onClick={openProjectCard}
+            className="flex items-center gap-1 h-8 px-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800 text-xs font-semibold"
+            title="View this project on the Projects board"
+            aria-label="View Project"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Exit View
+            <ExternalLink className="w-3.5 h-3.5" />
+            Project
           </button>
-        )}
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex items-center gap-1 h-8 px-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 text-xs font-semibold"
+              title="Exit View"
+              aria-label="Exit View"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Exit
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-4">

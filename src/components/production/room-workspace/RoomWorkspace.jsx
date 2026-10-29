@@ -30,6 +30,9 @@ export default function RoomWorkspace({
   roomActions,         // optional: the room's usual action buttons (Pickup/Missing, Selections, 3D…)
 }) {
   const queryClient = useQueryClient();
+  // The workspace can switch to any other room of the same project without closing
+  const [activeRoom, setActiveRoom] = useState(roomName);
+  useEffect(() => { setActiveRoom(roomName); }, [roomName, project.id]);
   const [selected, setSelected] = useState(new Set());
   const [expanded, setExpanded] = useState(new Set());
   const [rightOpen, setRightOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
@@ -48,7 +51,7 @@ export default function RoomWorkspace({
   const [localEditingPts, setLocalEditingPts] = useState(null);
 
   const roomItems = (items || []).filter(
-    i => i.project_id === project.id && i.room_name === roomName && !i.is_job_info
+    i => i.project_id === project.id && i.room_name === activeRoom && !i.is_job_info
   );
   const stagedItems = roomItems.filter(i => !i.stage);
   const inProductionItems = roomItems.filter(i => i.stage);
@@ -76,11 +79,11 @@ export default function RoomWorkspace({
   });
 
   const handleAddCard = () => {
-    if (onAddCard) { onAddCard(); return; }
+    if (onAddCard && activeRoom === roomName) { onAddCard(); return; }
     setEditingItem({
       project_id: project.id,
       project_name: project.project_name,
-      room_name: roomName,
+      room_name: activeRoom,
       is_job_info: false,
       type: "cabinet",
       stage: null,
@@ -193,13 +196,18 @@ export default function RoomWorkspace({
 
   const paneContent = (
     <div className="h-full flex flex-col min-h-0">
-      {roomActions && (
+      {roomActions && activeRoom === roomName && (
         <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 border-b border-slate-200 bg-slate-50 flex-shrink-0">
           {roomActions}
         </div>
       )}
       <div className="flex-1 min-h-0">
-        <RoomInfoPane project={project} roomName={roomName} onClose={onClose} />
+        <RoomInfoPane
+          project={project}
+          roomName={activeRoom}
+          onSelectRoom={(name) => { setActiveRoom(name); setSelected(new Set()); setExpanded(new Set()); }}
+          onClose={onClose}
+        />
       </div>
     </div>
   );
@@ -221,7 +229,7 @@ export default function RoomWorkspace({
           <Package className="w-4 h-4 text-amber-600 flex-shrink-0 hidden sm:block" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-bold text-slate-900 truncate leading-tight">
-              <span className="text-slate-400 font-normal">{project.project_name} /</span> {roomName}
+              <span className="text-slate-400 font-normal">{project.project_name} /</span> {activeRoom}
             </p>
             <p className="text-[11px] text-slate-500 leading-tight">
               {stagedItems.length} staged{inProductionItems.length > 0 && ` · ${inProductionItems.length} in production`}
@@ -359,7 +367,7 @@ export default function RoomWorkspace({
         open={showForm}
         onOpenChange={(o) => { setShowForm(o); if (!o) setEditingItem(null); }}
         onSubmit={(data) => {
-          const finalData = { ...data, is_job_info: false, project_id: project.id, project_name: project.project_name, room_name: data.room_name || roomName };
+          const finalData = { ...data, is_job_info: false, project_id: project.id, project_name: project.project_name, room_name: data.room_name || activeRoom };
           if (editingItem?.id) updateMutation.mutate({ id: editingItem.id, data: finalData });
           else createMutation.mutate(finalData);
         }}

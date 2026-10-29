@@ -375,7 +375,22 @@ export default function Kanban() {
         }, 2000);
       }, 100);
     }
-  }, [projects]);
+  }, [projects, activeTab]);
+
+  // Deep link (e.g. from a room workspace): open the tab that holds this project
+  useEffect(() => {
+    const projectId = new URLSearchParams(window.location.search).get("project");
+    if (!projectId || !Array.isArray(projects) || projects.length === 0) return;
+    const target = projects.find((p) => p.id === projectId);
+    if (!target) return;
+    const holds = (tab) => (customColumnsByTab[tab] || []).some((c) => c.id === target.status);
+    if (holds(activeTab)) return;
+    const match = ["pre-production", "production", "completed", "side-projects", "archived"].find(holds);
+    if (match) {
+      setActiveTab(match);
+      localStorage.setItem("kanban_active_tab", match);
+    }
+  }, [projects, customColumnsByTab, activeTab]);
 
   if (isLoading) {
     return (
