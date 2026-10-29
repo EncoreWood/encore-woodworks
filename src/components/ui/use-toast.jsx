@@ -134,6 +134,13 @@ function toast({ ...props }) {
     },
   });
 
+  // Auto-dismiss (Radix normally handles this, but toasts render as plain divs)
+  if (props.duration !== Infinity) {
+    setTimeout(() => {
+      dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id });
+    }, props.duration ?? 5000);
+  }
+
   return {
     id,
     dismiss,
