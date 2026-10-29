@@ -130,11 +130,16 @@ export default function RoomCardTile({ item, expanded, onToggleExpand, checked, 
                 if (isPdf) setViewingPdf(firstFile);
                 else window.open(firstFile.url, "_blank", "noopener,noreferrer");
               }}
-              className="flex items-center gap-1 w-full min-w-0 text-amber-700 hover:text-amber-800 hover:underline"
+              className="flex items-center justify-center gap-1 w-full min-w-0 h-6 px-1.5 rounded border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors"
               title={firstFile.name}
             >
-              <FileText className="w-3 h-3 flex-shrink-0 text-red-500" />
-              <span className="text-[10px] truncate">{firstFile.name}</span>
+              <FileText className="w-3 h-3 flex-shrink-0" />
+              <span className="text-[10px] font-bold">Cutlist</span>
+              {(item.files || []).filter(f => f.url).length > 1 && (
+                <span className="text-[9px] font-semibold text-amber-600">
+                  ({(item.files || []).filter(f => f.url).length})
+                </span>
+              )}
             </button>
           )}
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Building2 } from "lucide-react";
 import { getPickupCardStyle } from "@/lib/pickupCardStyle";
-import { createPortal } from "react-dom";
+import CutlistRow from "@/components/production/CutlistRow";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,34 +21,6 @@ import SketchPad from "@/components/production/SketchPad";
 import RoomFilesModal from "@/components/production/RoomFilesModal";
 import PdfFileDialog from "@/components/production/PdfFileDialog";
 import { useQuery } from "@tanstack/react-query";
-
-function PdfPreviewTooltip({ url, anchorEl }) {
-  if (!url || !anchorEl) return null;
-  const rect = anchorEl.getBoundingClientRect();
-  const left = Math.max(8, rect.left - 160 + rect.width / 2);
-  const top = rect.bottom + 8;
-
-  return createPortal(
-    <div
-      className="fixed z-[9999] shadow-2xl border border-slate-200 rounded-lg bg-white overflow-hidden"
-      style={{ top, left, width: 320, pointerEvents: "none" }}
-    >
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border-b border-slate-200">
-        <FileText className="w-3 h-3 text-red-500" />
-        <span className="text-xs text-slate-600 truncate font-medium">PDF Preview</span>
-      </div>
-      <object
-        data={`${url}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
-        type="application/pdf"
-        className="w-full"
-        style={{ height: 420, border: "none", display: "block" }}
-      >
-        <div className="flex items-center justify-center h-full text-xs text-slate-400 p-4">PDF preview unavailable</div>
-      </object>
-    </div>,
-    document.body
-  );
-}
 
 const PRODUCTION_STAGES = [
   { id: "cut", label: "1. Cut" },
@@ -94,8 +66,6 @@ export default function ProductionCard({
   onViewMissingCard,     // called with a card id to open the card viewer dialog
   onOpenRoomInfo,        // called with item to open the combined room workspace for its room
 }) {
-  const [hoveredPdfUrl, setHoveredPdfUrl] = useState(null);
-  const [hoveredAnchorEl, setHoveredAnchorEl] = useState(null);
   const [showGlb, setShowGlb] = useState(false);
   const [showCardGlb, setShowCardGlb] = useState(false);
   const [showSketch, setShowSketch] = useState(false);
@@ -159,30 +129,30 @@ export default function ProductionCard({
         />
       )}
       <Card
-        className={`relative border-0 shadow-sm transition-shadow overflow-hidden ${compact ? "p-2.5" : "p-4"} ${isDragging ? "shadow-lg" : ""}`}
+        className={`relative border-0 shadow-sm transition-shadow overflow-hidden p-2 ${isDragging ? "shadow-lg" : ""}`}
         style={{ backgroundColor: "#ffffff", ...cardStyle, ...sentBackStyle }}
       >
         {/* View project + Room info — top-right corner */}
         {(item.project_id || (item.project_id && item.room_name)) && (
-          <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+          <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1">
             {item.project_id && (
               <Link
                 to={`${createPageUrl("ProjectDetails")}?id=${item.project_id}`}
                 onClick={(e) => e.stopPropagation()}
-                className={`flex items-center justify-center rounded-md bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-800 transition-colors shadow-sm ${compact ? "w-6 h-6" : "w-7 h-7"}`}
+                className="flex items-center justify-center rounded-md bg-slate-100 border border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-slate-800 transition-colors shadow-sm w-6 h-6"
                 title="View project"
               >
-                <Building2 className="w-4 h-4" />
+                <Building2 className="w-3.5 h-3.5" />
               </Link>
             )}
             {(item.room_name || onOpenRoomInfo) && (
               <button
                 onClick={(e) => { e.stopPropagation(); onOpenRoomInfo ? onOpenRoomInfo(item) : setShowRoomFiles(true); }}
-                className={`flex items-center justify-center rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 transition-colors shadow-sm ${compact ? "w-6 h-6" : "w-7 h-7"}`}
+                className="flex items-center justify-center rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 transition-colors shadow-sm w-6 h-6"
                 title="Room Info"
                 aria-label="Room Info"
               >
-                <RoomInfoIcon className="w-4 h-4" />
+                <RoomInfoIcon className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
@@ -190,7 +160,7 @@ export default function ProductionCard({
 
         {/* Header: project/room name */}
         {item.project_name && (
-          <p className={`text-slate-500 font-medium truncate mb-1 ${compact ? "text-[10px] pr-16" : "text-xs pr-28"}`}>
+          <p className="text-slate-500 font-medium truncate mb-0.5 text-[10px] leading-tight pr-12">
             {item.project_name}{item.room_name ? ` · ${item.room_name}` : ""}
           </p>
         )}
@@ -198,7 +168,7 @@ export default function ProductionCard({
         {/* Sent back for a missing item (legacy cards reported before linked missing-items cards) */}
         {item.sent_back_for_missing && (
           <span
-            className="inline-flex items-center gap-1 mb-2 px-2 py-0.5 rounded-full bg-red-100 border border-red-300 text-red-700 text-[10px] font-bold"
+            className="inline-flex items-center gap-1 mb-1 px-1.5 py-0 rounded-full bg-red-100 border border-red-300 text-red-700 text-[9px] font-bold leading-tight"
             title="This card was sent back into production because of a missing-item report"
           >
             ↩ Sent back — missing item
@@ -212,7 +182,7 @@ export default function ProductionCard({
             <button
               key={child.id}
               onClick={(e) => { e.stopPropagation(); onViewMissingCard?.(child.id); }}
-              className="inline-flex items-center gap-1 mr-1 mb-2 px-2 py-0.5 rounded-full bg-green-100 border border-green-300 text-green-700 text-[10px] font-bold hover:bg-green-200 transition-colors"
+              className="inline-flex items-center gap-1 mr-1 mb-1 px-1.5 py-0 rounded-full bg-green-100 border border-green-300 text-green-700 text-[9px] font-bold leading-tight hover:bg-green-200 transition-colors"
               title="Missing items are done — view the card"
             >
               ✓ Missing items ready → {child.name}
@@ -221,7 +191,7 @@ export default function ProductionCard({
             <button
               key={child.id}
               onClick={(e) => { e.stopPropagation(); onViewMissingCard?.(child.id); }}
-              className="inline-flex items-center gap-1 mr-1 mb-2 px-2 py-0.5 rounded-full bg-orange-100 border border-orange-300 text-orange-700 text-[10px] font-bold hover:bg-orange-200 transition-colors"
+              className="inline-flex items-center gap-1 mr-1 mb-1 px-1.5 py-0 rounded-full bg-orange-100 border border-orange-300 text-orange-700 text-[9px] font-bold leading-tight hover:bg-orange-200 transition-colors"
               title="Open this card's linked missing-items card"
             >
               Missing items → {child.name}
@@ -233,7 +203,7 @@ export default function ProductionCard({
         {item.parent_card_id && itemsById?.get(item.parent_card_id) && (
           <button
             onClick={(e) => { e.stopPropagation(); onViewMissingCard?.(item.parent_card_id); }}
-            className="inline-flex items-center gap-1 mb-2 px-2 py-0.5 rounded-full bg-blue-100 border border-blue-300 text-blue-700 text-[10px] font-bold hover:bg-blue-200 transition-colors"
+            className="inline-flex items-center gap-1 mb-1 px-1.5 py-0 rounded-full bg-blue-100 border border-blue-300 text-blue-700 text-[9px] font-bold leading-tight hover:bg-blue-200 transition-colors"
             title="Open the parent card"
           >
             From {itemsById.get(item.parent_card_id).name}
@@ -242,11 +212,11 @@ export default function ProductionCard({
 
         {/* Missing item details carried on a missing-items card face */}
         {(item.missing_details || []).length > 0 && (
-          <div className="mb-2 rounded-lg bg-orange-50 border border-orange-200 px-2.5 py-2">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-orange-700 mb-1">Missing items</p>
+          <div className="mb-1 rounded-md bg-orange-50 border border-orange-200 px-1.5 py-1">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-orange-700 mb-0.5">Missing items</p>
             <div className="space-y-0.5">
               {item.missing_details.map((d, i) => (
-                <p key={i} className="text-xs text-slate-700 leading-snug">
+                <p key={i} className="text-[10px] text-slate-700 leading-tight">
                   {d.qty ? <span className="font-bold text-orange-700 mr-1">{d.qty}@</span> : null}
                   <span>{d.description || "Missing item"}</span>
                   {d.width && d.length ? <span className="text-slate-500"> — {d.width} x {d.length}</span> : null}
@@ -259,7 +229,7 @@ export default function ProductionCard({
 
         {/* Action button row — sits neatly below the project name */}
         {(onOpenRoomFolder || onReturnToFolder || showLinkButton || roomGlbUrl || onReportStruggle || onQuickReportMissing || item.id) && (
-          <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+          <div className="flex items-center gap-1 mb-1 flex-wrap">
             {/* Missing item badge */}
             {item.id && (
               <MissingItemBadge
@@ -373,27 +343,22 @@ export default function ProductionCard({
         )}
 
         {/* Title + actions */}
-        <div className="flex items-start justify-between mb-2">
+        <div className="flex items-start justify-between gap-1 mb-1">
           <div className="flex-1 min-w-0">
             <button
-              className={`font-medium text-slate-900 hover:text-amber-700 hover:underline text-left w-full ${compact ? "text-sm leading-tight" : ""}`}
+              className="font-semibold text-slate-900 hover:text-amber-700 hover:underline text-left w-full text-[13px] leading-tight truncate"
               onClick={(e) => { e.stopPropagation(); if (onAnnotate && item.files?.length > 0) { const pdfIdx = item.files.findIndex(f => f.url?.match(/\.pdf$/i)); if (pdfIdx >= 0) onAnnotate(item, pdfIdx); } }}
               title="Click to annotate first PDF"
             >
               {item.name}
             </button>
             {cardSpec && (
-              <p className={`font-normal text-slate-400 leading-tight ${compact ? "text-[10px]" : "text-[11px]"}`}>
+              <p className="font-normal text-slate-400 leading-tight text-[10px] truncate">
                 {cardSpec}
               </p>
             )}
-            {item.files && item.files.some(f => f.pts) && (
-              <span className="text-xs font-bold text-amber-600">
-                {item.files.reduce((s, f) => s + (parseFloat(f.pts) || 0), 0)} PTS total
-              </span>
-            )}
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-0.5 flex-shrink-0">
             {/* 3D model view/upload in title row */}
             {cardGlbUrl && (
               <Button variant="ghost" size="icon" className="h-6 w-6 text-violet-600 hover:text-violet-800"
@@ -402,13 +367,13 @@ export default function ProductionCard({
                 <Box className="w-3 h-3" />
               </Button>
             )}
-            <Badge variant="outline" className={`${typeBadgeClass} ${compact ? "text-[10px] px-1.5 py-0 h-5" : ""}`}>{typeLabel}</Badge>
+            <Badge variant="outline" className={`${typeBadgeClass} text-[9px] px-1.5 py-0 h-4 leading-none`}>{typeLabel}</Badge>
           </div>
         </div>
 
         {/* Misc sub-items list */}
         {item.type === "misc" && item.misc_items?.length > 0 && (
-          <div className="mb-2 rounded-lg bg-purple-50 border border-purple-100 px-2 py-1.5 space-y-0.5">
+          <div className="mb-1 rounded-md bg-purple-50 border border-purple-100 px-1.5 py-1 space-y-0.5">
             {item.misc_items.map((mi, idx) => {
               const specs = [mi.qty ? `× ${mi.qty}` : "", mi.wood_type, mi.finish].filter(Boolean).join(" · ");
               const rowContent = (
@@ -428,13 +393,13 @@ export default function ProductionCard({
                     e.stopPropagation();
                     setNoteDialog({ title: mi.name, subtitle: specs, body: mi.notes });
                   }}
-                  className="w-full text-left text-[11px] text-purple-900 leading-snug truncate rounded px-0.5 py-0.5 hover:bg-purple-100 active:bg-purple-200 transition-colors"
+                  className="w-full text-left text-[10px] text-purple-900 leading-tight truncate rounded px-0.5 hover:bg-purple-100 active:bg-purple-200 transition-colors"
                   title="Tap to read the full note"
                 >
                   {rowContent}
                 </button>
               ) : (
-                <div key={idx} className="text-[11px] text-purple-900 leading-snug truncate">
+                <div key={idx} className="text-[10px] text-purple-900 leading-tight truncate">
                   {rowContent}
                 </div>
               );
@@ -444,26 +409,22 @@ export default function ProductionCard({
 
         {/* Urgent badge */}
         {item.is_urgent && (
-          <div className="mb-2">
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-200 text-red-800 border border-red-400">
-              🔴 Urgent
-            </span>
-          </div>
+          <span className="inline-block mb-1 px-1.5 py-0 rounded-full bg-red-200 text-red-800 border border-red-400 text-[10px] font-semibold leading-tight">
+            🔴 Urgent
+          </span>
         )}
 
         {/* Working badge */}
         {item.is_being_worked && (
-          <div className="mb-2">
-            <span className={`font-semibold px-2 py-0.5 rounded-full bg-blue-200 text-blue-800 border border-blue-400 ${compact ? "text-[10px]" : "text-xs"}`}>
-              🔨 Working On It
-            </span>
-          </div>
+          <span className="inline-block mb-1 px-1.5 py-0 rounded-full bg-blue-200 text-blue-800 border border-blue-400 text-[10px] font-semibold leading-tight">
+            🔨 Working On It
+          </span>
         )}
 
         {/* Priority badge — only show on pickup cards */}
         {isPickup && item.priority && (
-          <div className="mb-2">
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+          <div className="mb-1">
+            <span className={`text-[10px] font-semibold px-1.5 py-0 rounded-full ${
               item.priority === "high" ? "bg-red-200 text-red-800 border border-red-400" :
               item.priority === "medium" ? "bg-amber-100 text-amber-800 border border-amber-300" :
               "bg-blue-100 text-blue-700 border border-blue-300"
@@ -484,13 +445,13 @@ export default function ProductionCard({
                 body: item.notes,
               });
             }}
-            className="w-full text-left mb-3 -mx-1 px-1 py-1 rounded-md hover:bg-slate-50 active:bg-slate-100 transition-colors"
+            className="w-full text-left mb-1 -mx-0.5 px-0.5 py-0.5 rounded hover:bg-slate-50 active:bg-slate-100 transition-colors"
             title="Tap to read the full note"
           >
-            <p className={`text-slate-600 whitespace-pre-wrap ${compact ? "text-[11px]" : "text-sm"} ${isLongNote ? "line-clamp-2" : ""}`}>{item.notes}</p>
+            <p className="text-slate-600 whitespace-pre-wrap text-[11px] leading-snug line-clamp-2">{item.notes}</p>
             {isLongNote && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 mt-0.5">
-                <FileText className="w-3 h-3" /> Tap to read full note
+              <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-700 leading-none">
+                <FileText className="w-2.5 h-2.5" /> Tap to read full note
               </span>
             )}
           </button>
@@ -498,17 +459,17 @@ export default function ProductionCard({
 
         {/* Sketch thumbnail */}
         {item.sketch_url && (
-          <div className="mb-2">
+          <div className="mb-1">
             <button onClick={(e) => { e.stopPropagation(); setShowSketch(true); }} className="w-full">
-              <img src={item.sketch_url} alt="Sketch" className="w-full rounded-md border border-slate-200 max-h-36 object-contain bg-white hover:opacity-90 transition-opacity" />
+              <img src={item.sketch_url} alt="Sketch" className="w-full rounded border border-slate-200 max-h-24 object-contain bg-white hover:opacity-90 transition-opacity" />
             </button>
-            <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1"><PenLine className="w-3 h-3" /> Sketch (click to view/edit)</p>
+            <p className="text-[9px] text-slate-400 flex items-center gap-1 leading-none mt-0.5"><PenLine className="w-2.5 h-2.5" /> Sketch</p>
           </div>
         )}
 
         {/* CAD files for this room */}
         {roomCadFiles && roomCadFiles.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-1">
+          <div className="mb-1 flex flex-wrap gap-1">
             {roomCadFiles.map((f, i) => {
               const ext = (f.name || "").toLowerCase().split('.').pop();
               const isViewable = ["dxf", "glb", "gltf"].includes(ext);
@@ -516,11 +477,11 @@ export default function ProductionCard({
                 <button
                   key={i}
                   onClick={(e) => { e.stopPropagation(); if (isViewable) setViewingCad(f); else window.open(f.url, "_blank"); }}
-                  className="flex items-center gap-1 text-xs bg-cyan-50 border border-cyan-200 text-cyan-700 rounded px-2 py-0.5 hover:bg-cyan-100 transition-colors"
+                  className="flex items-center gap-1 text-[10px] bg-cyan-50 border border-cyan-200 text-cyan-700 rounded px-1.5 py-0 hover:bg-cyan-100 transition-colors"
                   title={f.name}
                 >
-                  <FileCode2 className="w-3 h-3 flex-shrink-0" />
-                  <span className="truncate max-w-[80px]">{f.name}</span>
+                  <FileCode2 className="w-2.5 h-2.5 flex-shrink-0" />
+                  <span className="truncate max-w-[70px]">{f.name}</span>
                 </button>
               );
             })}
@@ -529,18 +490,18 @@ export default function ProductionCard({
 
         {/* Card-level PTS — shown when there are no files (e.g. pickup items) */}
         {(!item.files || item.files.length === 0) && onInlinePtsChange && (
-          <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-            <span className="text-xs font-semibold text-slate-500">PTS</span>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className="text-[9px] font-bold text-slate-400">PTS</span>
             {isAdmin && editingPts?.itemId === item.id && editingPts?.fileIdx === -1 ? (
               <input type="number" min="0" step="any" defaultValue={item.pts ?? ""} autoFocus
                 onClick={e => e.stopPropagation()}
                 onBlur={(e) => { onInlinePtsChange(item, -1, e.target.value); setEditingPts(null); }}
                 onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, -1, e.target.value); setEditingPts(null); } }}
-                className="w-14 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600 bg-amber-50" placeholder="0" />
+                className="w-12 h-7 text-[11px] border border-amber-300 rounded px-1 text-center font-bold text-amber-600 bg-amber-50" placeholder="0" />
             ) : (
               <button
                 onClick={(e) => { e.stopPropagation(); if (isAdmin) setEditingPts({ itemId: item.id, fileIdx: -1 }); }}
-                className={`h-6 px-2 text-xs border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 min-w-[40px] text-center ${isAdmin ? "hover:bg-amber-100 cursor-pointer" : "cursor-default"}`}
+                className={`h-7 px-1.5 text-[11px] border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 min-w-[42px] text-center ${isAdmin ? "hover:bg-amber-100 cursor-pointer" : "cursor-default"}`}
               >
                 {item.pts ?? "—"}
               </button>
@@ -548,134 +509,23 @@ export default function ProductionCard({
           </div>
         )}
 
-        {/* Files */}
-        {item.files && item.files.length > 0 && (
-          <div className="space-y-2 pt-2 border-t border-slate-100">
-            {item.files.map((file, idx) => {
-              if (!file.url) return null;
-              const isImg = file.url.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-              const isPdf = file.url.match(/\.pdf($|\?)/i);
-
-              if (isImg) return (
-                <div key={idx} className="relative">
-                  <img src={file.url} alt={file.name} className="w-full rounded-md border border-slate-200" />
-                  <div className="absolute top-1 right-1 flex items-center gap-1 bg-white border border-amber-200 rounded px-1.5 py-0.5 shadow">
-                    <span className="text-xs font-semibold text-slate-500">PTS</span>
-                    {isAdmin && editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
-                      <input type="number" min="0" step="any" defaultValue={file.pts ?? ""} autoFocus
-                        onClick={e => e.stopPropagation()}
-                        onBlur={(e) => { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
-                        className="w-10 text-xs text-center font-bold text-amber-600 border-none outline-none bg-transparent" placeholder="0" />
-                    ) : (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); if (isAdmin) setEditingPts({ itemId: item.id, fileIdx: idx }); }}
-                        className={`text-xs font-bold text-amber-600 min-w-[24px] text-center ${isAdmin ? "hover:underline cursor-pointer" : "cursor-default"}`}
-                      >
-                        {file.pts ?? "—"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-
-              if (isPdf) return (
-                <div key={idx} className="rounded-md border border-slate-200 overflow-hidden bg-slate-50">
-                  <div className={`flex items-center gap-2 ${compact ? "p-1.5" : "p-2"}`}>
-                    <span
-                      onMouseEnter={(e) => { setHoveredPdfUrl(file.url); setHoveredAnchorEl(e.currentTarget); }}
-                      onMouseLeave={() => { setHoveredPdfUrl(null); setHoveredAnchorEl(null); }}
-                      className="flex items-center gap-1 flex-1 min-w-0"
-                    >
-                      <FileText className="w-4 h-4 text-red-500 flex-shrink-0" />
-                      {onAnnotate ? (
-                        <button
-                          className="text-amber-600 hover:text-amber-800 underline text-left text-xs truncate font-medium"
-                          onClick={(e) => { e.stopPropagation(); onAnnotate(item, idx); }}
-                          title="Annotate PDF"
-                        >
-                          {file.name}
-                        </button>
-                      ) : (
-                        <button
-                          className="text-amber-600 hover:text-amber-700 underline text-left text-xs truncate"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setHoveredPdfUrl(null);
-                            setHoveredAnchorEl(null);
-                            setViewingPdf(file);
-                          }}
-                          title="Open PDF"
-                        >
-                          {file.name}
-                        </button>
-                      )}
-                    </span>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <span className="text-xs font-semibold text-slate-500">PTS</span>
-                      {isAdmin && editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
-                        <input type="number" min="0" step="any" defaultValue={file.pts ?? ""} autoFocus
-                          onClick={e => e.stopPropagation()}
-                          onBlur={(e) => { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
-                          onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
-                          className="w-12 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600 bg-amber-50" placeholder="0" />
-                      ) : (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); if (isAdmin) setEditingPts({ itemId: item.id, fileIdx: idx }); }}
-                          className={`h-6 px-2 text-xs border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 min-w-[40px] text-center ${isAdmin ? "hover:bg-amber-100 cursor-pointer" : "cursor-default"}`}
-                        >
-                          {file.pts ?? "—"}
-                        </button>
-                      )}
-                    </div>
-                    {file.annotations && file.annotations.length > 0 && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); if (onAnnotate) onAnnotate(item, idx); }}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-full px-2 py-0.5 transition-colors cursor-pointer"
-                        title="View notes"
-                      >
-                        {file.annotations.length} notes
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-
-              return (
-               <div key={idx} className="flex items-center gap-2">
-                 <button onClick={(e) => { e.stopPropagation(); window.open(file.url, "_blank"); }}
-                   className="text-amber-600 hover:text-amber-700 underline text-left flex-1 text-xs">
-                   {file.name}
-                 </button>
-                 <div className="flex items-center gap-1">
-                   <span className="text-xs font-semibold text-slate-500">PTS</span>
-                   {isAdmin && editingPts?.itemId === item.id && editingPts?.fileIdx === idx ? (
-                     <input type="number" min="0" step="any" defaultValue={file.pts ?? ""} autoFocus
-                       onClick={e => e.stopPropagation()}
-                       onBlur={(e) => { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
-                       onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
-                       className="w-12 h-6 text-xs border border-amber-300 rounded px-1 text-center font-bold text-amber-600" placeholder="0" />
-                   ) : (
-                     <button
-                       onClick={(e) => { e.stopPropagation(); if (isAdmin) setEditingPts({ itemId: item.id, fileIdx: idx }); }}
-                       className={`h-6 px-2 text-xs border border-amber-200 rounded font-bold text-amber-600 min-w-[40px] text-center ${isAdmin ? "hover:bg-amber-50 cursor-pointer" : "cursor-default"}`}
-                     >
-                       {file.pts ?? "—"}
-                     </button>
-                   )}
-                 </div>
-               </div>
-              );
-            })}
-          </div>
-        )}
+        {/* Cutlist — one button for the card's attached files, points beside it */}
+        <CutlistRow
+          item={item}
+          isAdmin={isAdmin}
+          editingPts={editingPts}
+          setEditingPts={setEditingPts}
+          onInlinePtsChange={onInlinePtsChange}
+          onAnnotate={onAnnotate}
+          onOpenPdf={setViewingPdf}
+        />
 
         {/* Stage move dropdown — moved below the files row */}
         {item.stage && onMoveStage && (
-          <div className="mt-2" onClick={e => e.stopPropagation()}>
+          <div className="mt-1.5" onClick={e => e.stopPropagation()}>
             <Select value={item.stage} onValueChange={(v) => onMoveStage(item, v)}>
-              <SelectTrigger className={`text-xs border-slate-200 bg-slate-50 focus:ring-0 ${compact ? "h-6" : "h-7"}`}>
-                <ChevronDown className="w-3 h-3 mr-1 text-slate-400" />
+              <SelectTrigger className="h-7 px-2 text-[11px] font-medium text-slate-600 border-slate-200 bg-slate-50 focus:ring-0">
+                <ChevronDown className="w-3 h-3 mr-1 text-slate-400 flex-shrink-0" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -708,7 +558,6 @@ export default function ProductionCard({
       </Dialog>
       <CardMoveHistoryDialog item={item} open={showMoveHistory} onClose={() => setShowMoveHistory(false)} />
       {viewingPdf && <PdfFileDialog file={viewingPdf} onClose={() => setViewingPdf(null)} />}
-      <PdfPreviewTooltip url={hoveredPdfUrl} anchorEl={hoveredAnchorEl} />
       {viewingCad && (() => {
         const ext = (viewingCad.name || "").toLowerCase().split('.').pop();
         if (ext === "glb" || ext === "gltf") return <GlbViewer file={viewingCad} onClose={() => setViewingCad(null)} />;
