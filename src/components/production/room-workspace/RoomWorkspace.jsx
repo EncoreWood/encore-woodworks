@@ -249,10 +249,14 @@ export default function RoomWorkspace({
             <p className="text-sm font-bold text-slate-900 truncate leading-tight">
               <span className="text-slate-400 font-normal">{project.project_name} /</span> {activeRoom}
             </p>
-            <p className="text-[11px] text-slate-500 leading-tight truncate">
-              {stagedItems.length} staged{inProductionItems.length > 0 && ` · ${inProductionItems.length} in production`}
-              <span className="ml-1.5 font-semibold text-amber-700">{roomPts(roomItems)} PTS</span>
-            </p>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <p className="text-[11px] text-slate-500 leading-tight truncate">
+                {stagedItems.length} staged{inProductionItems.length > 0 && ` · ${inProductionItems.length} in production`}
+              </p>
+              <span className="flex-shrink-0 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 whitespace-nowrap">
+                {roomPts(roomItems)} PTS
+              </span>
+            </div>
           </div>
           <button
             type="button"

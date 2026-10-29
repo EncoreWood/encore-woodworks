@@ -38,19 +38,22 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-xl border border-slate-200 bg-white hover:bg-amber-50 hover:border-amber-300 transition-all group shadow-sm"
+        className="flex items-start gap-2 w-full text-left px-3 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-amber-50 hover:border-amber-300 transition-all group shadow-sm"
       >
-        <div className="text-amber-500 group-hover:text-amber-600">
-          {open ? <FolderOpen className="w-5 h-5" /> : <Folder className="w-5 h-5" />}
+        <div className="text-amber-500 group-hover:text-amber-600 flex-shrink-0 mt-0.5">
+          {open ? <FolderOpen className="w-4 h-4" /> : <Folder className="w-4 h-4" />}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-slate-800 truncate">{roomName}</p>
-          <p className="text-xs text-slate-400">{roomItems.length} item{roomItems.length !== 1 ? "s" : ""}</p>
+          <p className="text-[13px] font-medium text-slate-800 truncate leading-tight">{roomName}</p>
+          <p className="text-[11px] text-slate-400 leading-tight whitespace-nowrap">
+            {roomItems.length} item{roomItems.length !== 1 ? "s" : ""}
+          </p>
+          {/* Points sit under the label so they can never cover it on narrow cards */}
+          <span className="inline-block mt-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 whitespace-nowrap">
+            {roomPts(roomItems)} PTS
+          </span>
         </div>
-        <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-0.5 flex-shrink-0">
-          {roomPts(roomItems)} PTS
-        </span>
-        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 flex-shrink-0" />
+        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 flex-shrink-0 mt-0.5" />
       </button>
 
       {open && (

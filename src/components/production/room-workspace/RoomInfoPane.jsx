@@ -88,7 +88,8 @@ export default function RoomInfoPane({ project, roomName, onClose, onSelectRoom 
                 <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-slate-700 flex-shrink-0" />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-64 p-1 max-h-72 overflow-y-auto">
+            {/* z-index must clear the Room Workspace layer (z-100) or the list opens behind it */}
+            <PopoverContent align="start" sideOffset={6} className="z-[130] w-64 p-1 max-h-72 overflow-y-auto">
               <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
                 Rooms in this project
               </p>
