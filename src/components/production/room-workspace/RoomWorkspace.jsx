@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -35,17 +35,36 @@ export default function RoomWorkspace({
   useEffect(() => { setActiveRoom(roomName); }, [roomName, project.id]);
   const [selected, setSelected] = useState(new Set());
   const [expanded, setExpanded] = useState(new Set());
-  const [rightOpen, setRightOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
 
-  // Narrow screens (iPad portrait / phone) show the room info as a slide-over drawer
-  const [narrow, setNarrow] = useState(() => typeof window !== "undefined" && window.innerWidth < 1024);
+  // One source of truth for the layout: width only. >= 1024px docks the Room Info
+  // pane beside the cards (iPad landscape / desktop); below that it is a slide-over.
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 1280
+  );
   useEffect(() => {
-    const mql = window.matchMedia("(max-width: 1023px)");
-    const onChange = () => setNarrow(mql.matches);
-    mql.addEventListener("change", onChange);
-    onChange();
-    return () => mql.removeEventListener("change", onChange);
+    const onResize = () => setViewportWidth(window.innerWidth);
+    onResize();
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("orientationchange", onResize);
+    };
   }, []);
+  const wide = viewportWidth >= 1024;
+
+  // Room info starts docked on wide screens and closed on narrow ones — the toggle
+  // in the top bar is always there, so the pane can never become unreachable.
+  const [infoOpen, setInfoOpen] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 1024 : true
+  );
+  const prevWide = useRef(wide);
+  useEffect(() => {
+    if (prevWide.current !== wide) {
+      prevWide.current = wide;
+      setInfoOpen(wide);
+    }
+  }, [wide]);
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [localEditingPts, setLocalEditingPts] = useState(null);
@@ -127,7 +146,7 @@ export default function RoomWorkspace({
     onUpdate: updateHandler,
     onInlinePtsChange: inlinePtsHandler,
     // "Room info" on a card inside the workspace just brings the room pane forward
-    onOpenRoomInfo: () => setRightOpen(true),
+    onOpenRoomInfo: () => setInfoOpen(true),
   };
 
   const toggleSelect = (id) => {
@@ -190,7 +209,8 @@ export default function RoomWorkspace({
     />
   );
 
-  const paneDocked = rightOpen && !narrow;
+  // Docked side-by-side only when there is room for both panes (iPad landscape and up)
+  const paneDocked = wide && infoOpen;
   // Always 3 across on tablet/desktop — cards stay readable however wide the pane gets
   const gridClass = "grid grid-cols-2 sm:grid-cols-3 gap-2";
 
@@ -213,46 +233,53 @@ export default function RoomWorkspace({
   );
 
   return createPortal(
-    <div className="fixed inset-0 z-40 bg-slate-200/80 p-1 sm:p-2">
+    <div
+      className="fixed left-0 right-0 top-0 z-40 bg-slate-200/80 p-1 sm:p-2 h-screen"
+      style={{
+        height: "100dvh",
+        paddingTop: "calc(env(safe-area-inset-top) + 4px)",
+        paddingBottom: "calc(env(safe-area-inset-bottom) + 4px)",
+      }}
+    >
       <div className="h-full w-full flex flex-col bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
-        {/* Top bar */}
-        <div className="flex items-center gap-2 px-2 sm:px-3 py-1.5 border-b border-slate-200 bg-slate-50 flex-shrink-0">
+        {/* Pinned top bar — Exit View and the Room Info toggle stay visible at every width */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 border-b border-slate-200 bg-slate-50 flex-shrink-0">
           <Button
             type="button"
             onClick={onClose}
-            className="h-9 px-3 gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex-shrink-0"
+            className="h-9 px-2.5 sm:px-3 gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex-shrink-0"
             title="Exit room view"
           >
             <ArrowLeft className="w-4 h-4" />
-            Exit View
+            <span className="whitespace-nowrap">Exit View</span>
           </Button>
-          <Package className="w-4 h-4 text-amber-600 flex-shrink-0 hidden sm:block" />
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 basis-32">
             <p className="text-sm font-bold text-slate-900 truncate leading-tight">
               <span className="text-slate-400 font-normal">{project.project_name} /</span> {activeRoom}
             </p>
-            <p className="text-[11px] text-slate-500 leading-tight">
+            <p className="text-[11px] text-slate-500 leading-tight truncate">
               {stagedItems.length} staged{inProductionItems.length > 0 && ` · ${inProductionItems.length} in production`}
               <span className="ml-1.5 font-semibold text-amber-700">{roomPts(roomItems)} PTS</span>
             </p>
           </div>
           <button
             type="button"
-            onClick={() => setRightOpen(o => !o)}
-            className={`flex items-center gap-1 flex-shrink-0 h-7 px-2 rounded-lg border text-xs font-medium transition-colors ${
-              rightOpen
+            onClick={() => setInfoOpen(o => !o)}
+            className={`flex items-center gap-1 flex-shrink-0 h-8 px-2.5 rounded-lg border text-xs font-semibold transition-colors ${
+              infoOpen
                 ? "bg-amber-600 border-amber-600 text-white"
-                : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
+                : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100"
             }`}
-            title={rightOpen ? "Hide room info" : "Show room info"}
+            title={infoOpen ? "Hide room info" : "Show room info"}
+            aria-pressed={infoOpen}
           >
-            {rightOpen ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
-            <span className="hidden sm:inline">Room Info</span>
+            {infoOpen ? <PanelRightClose className="w-3.5 h-3.5" /> : <PanelRightOpen className="w-3.5 h-3.5" />}
+            <span className="whitespace-nowrap">Room Info</span>
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="flex items-center justify-center w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800 flex-shrink-0"
+            className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-500 hover:bg-slate-100 hover:text-slate-800 flex-shrink-0"
             title="Close"
           >
             <X className="w-4 h-4" />
@@ -306,7 +333,8 @@ export default function RoomWorkspace({
                   title="Send all staged cards to production"
                 >
                   <ArrowRight className="w-3.5 h-3.5" />
-                  Send All to Production
+                  <span className="hidden md:inline">Send All to Production</span>
+                  <span className="md:hidden">Send All</span>
                 </Button>
               )}
               <Button
@@ -333,25 +361,34 @@ export default function RoomWorkspace({
             </div>
           </div>
 
-          {/* RIGHT — room info (desktop / iPad landscape) */}
+          {/* RIGHT — room info docked beside the cards (iPad landscape / desktop) */}
           {paneDocked && (
-            <aside className="hidden lg:flex lg:flex-col lg:w-[44%] xl:w-[46%] border-l border-slate-200 bg-white min-h-0 overflow-hidden">
+            <aside className="flex flex-col w-[44%] xl:w-[46%] border-l border-slate-200 bg-white min-h-0 overflow-hidden">
               {paneContent}
             </aside>
           )}
         </div>
 
-        {/* RIGHT — slide-over drawer on narrow screens */}
-        {rightOpen && narrow && (
-          <div className="fixed inset-0 z-50 flex">
-            <div className="flex-1 bg-slate-900/40" onClick={() => setRightOpen(false)} />
+        {/* RIGHT — slide-over drawer when there isn't room for both panes (iPad portrait / small tablets / phone) */}
+        {!wide && infoOpen && (
+          <div className="fixed inset-0 z-[60] flex">
+            <div className="flex-1 bg-slate-900/40" onClick={() => setInfoOpen(false)} />
             <aside className="w-[92%] max-w-md bg-white shadow-2xl flex flex-col min-h-0 border-l border-slate-200">
-              <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 flex-shrink-0">
-                <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Room Info</p>
+              <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-slate-200 flex-shrink-0">
                 <button
                   type="button"
-                  onClick={() => setRightOpen(false)}
-                  className="flex items-center justify-center w-7 h-7 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  onClick={() => setInfoOpen(false)}
+                  className="flex items-center gap-1 h-8 px-2.5 rounded-lg border text-xs font-semibold bg-amber-600 border-amber-600 text-white flex-shrink-0"
+                  title="Hide room info"
+                >
+                  <PanelRightClose className="w-3.5 h-3.5" />
+                  <span className="whitespace-nowrap">Room Info</span>
+                </button>
+                <p className="flex-1 min-w-0 text-sm font-bold text-slate-800 truncate text-right">{activeRoom}</p>
+                <button
+                  type="button"
+                  onClick={() => setInfoOpen(false)}
+                  className="flex items-center justify-center w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 flex-shrink-0"
                   title="Hide room info"
                 >
                   <X className="w-4 h-4" />
