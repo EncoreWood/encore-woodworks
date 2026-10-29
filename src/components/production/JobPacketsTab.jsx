@@ -10,6 +10,9 @@ import RoomWorkspace from "./room-workspace/RoomWorkspace";
 import SendToProductionDialog from "./SendToProductionDialog";
 import { roomPts } from "@/lib/roomPts";
 
+// Job Packet group order: In Production → Ready → Installing → Production Prep → everything else
+const STAGE_PRIORITY = ["in_production", "ready_for_install", "ready", "installing", "production_prep"];
+
 // A single room folder within a project — clicking it opens the combined Room Workspace
 function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, sharedCardProps, autoOpen, onAutoOpened }) {
   const [open, setOpen] = useState(false);
@@ -155,12 +158,14 @@ export default function JobPacketsTab({ projects, items, openFolderContext, onFo
       ) : (
       <div className="space-y-8">
       {(() => {
-        // Projects with cards actively in production float to the top
-        const inProductionProjectIds = new Set(
-          items.filter(i => i.project_id && i.stage && !i.is_job_info).map(i => i.project_id)
-        );
+        // Group order follows the project's production-board stage, then job name
+        const stageRank = (p) => {
+          const idx = STAGE_PRIORITY.indexOf((p.status || "").toLowerCase());
+          return idx === -1 ? STAGE_PRIORITY.length : idx;
+        };
         return [...projects].sort((a, b) =>
-          (inProductionProjectIds.has(b.id) ? 1 : 0) - (inProductionProjectIds.has(a.id) ? 1 : 0)
+          stageRank(a) - stageRank(b) ||
+          (a.project_name || "").localeCompare(b.project_name || "")
         );
       })().map(project => {
         const rooms = project.rooms?.map(r => r.room_name).filter(Boolean) || [];
