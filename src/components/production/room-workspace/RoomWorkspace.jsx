@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
@@ -53,18 +53,10 @@ export default function RoomWorkspace({
   }, []);
   const wide = viewportWidth >= 1024;
 
-  // Room info starts docked on wide screens and closed on narrow ones — the toggle
-  // in the top bar is always there, so the pane can never become unreachable.
-  const [infoOpen, setInfoOpen] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth >= 1024 : true
-  );
-  const prevWide = useRef(wide);
-  useEffect(() => {
-    if (prevWide.current !== wide) {
-      prevWide.current = wide;
-      setInfoOpen(wide);
-    }
-  }, [wide]);
+  // Room info is ALWAYS open on first paint — tapping a card's Room Info icon must
+  // surface room info in that same tap: docked beside the cards when wide enough,
+  // as a slide-over drawer over the cards when narrow. The top-bar toggle closes it.
+  const [infoOpen, setInfoOpen] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [localEditingPts, setLocalEditingPts] = useState(null);
