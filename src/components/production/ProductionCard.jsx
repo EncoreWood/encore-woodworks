@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Boxes, Hammer, Clock, MoreVertical } from "lucide-react";
+import RoomInfoIcon from "@/components/production/RoomInfoIcon";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CardMoveHistoryDialog from "@/components/production/CardMoveHistoryDialog";
@@ -192,6 +193,16 @@ export default function ProductionCard({
                 {roomFileCount > 0 && (
                   <span className="text-xs font-bold">{roomFileCount}</span>
                 )}
+              </button>
+            )}
+            {(item.room_name || onOpenRoomInfo) && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onOpenRoomInfo ? onOpenRoomInfo(item) : setShowRoomFiles(true); }}
+                className={`flex items-center justify-center rounded-md bg-indigo-50 border border-indigo-200 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 transition-colors shadow-sm ${compact ? "w-6 h-6" : "w-7 h-7"}`}
+                title="Room Info"
+                aria-label="Room Info"
+              >
+                <RoomInfoIcon className="w-4 h-4" />
               </button>
             )}
           </div>

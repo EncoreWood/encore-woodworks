@@ -4,7 +4,7 @@ import RoomNotesTasksPanel from "./RoomNotesTasksPanel";
 import RoomImageGallery from "./RoomImageGallery";
 import RoomSelectionsPanel from "@/components/projects/RoomSelectionsPanel";
 import ProjectFilesList from "@/components/projects/ProjectFilesList";
-import { Loader2, Images, Palette, Paperclip, FileText } from "lucide-react";
+import { Loader2, Images, Palette, Paperclip, FileText, ArrowLeft } from "lucide-react";
 
 function Section({ icon: Icon, title, count, children }) {
   return (
@@ -25,7 +25,7 @@ function Section({ icon: Icon, title, count, children }) {
  * notes + tasks, images (with annotation editing), saved selections and the
  * project's files. Same data sources as the production Room Info view.
  */
-export default function RoomInfoPane({ project, roomName }) {
+export default function RoomInfoPane({ project, roomName, onClose }) {
   const { data: liveProject } = useQuery({
     queryKey: ["project", project?.id],
     queryFn: () => base44.entities.Project.get(project.id),
@@ -49,55 +49,72 @@ export default function RoomInfoPane({ project, roomName }) {
   const documents = roomFiles.filter(f => f.file_type === "pdf");
 
   return (
-    <div className="h-full overflow-y-auto px-3 py-3 space-y-4">
-      <div>
-        <p className="text-sm font-bold text-slate-800 leading-tight">{roomName}</p>
-        <p className="text-[11px] text-slate-400">{proj.project_name}</p>
+    <div className="h-full flex flex-col min-h-0">
+      {/* Pinned pane header — title + Exit View, always visible without scrolling */}
+      <div className="flex items-start justify-between gap-2 px-3 py-2 border-b border-slate-200 bg-slate-50 flex-shrink-0">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-slate-800 leading-tight truncate">{roomName}</p>
+          <p className="text-[11px] text-slate-400 truncate">{proj.project_name}</p>
+        </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-1 h-8 px-2.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 text-xs font-semibold flex-shrink-0"
+            title="Exit View"
+            aria-label="Exit View"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Exit View
+          </button>
+        )}
       </div>
 
-      <Section icon={Paperclip} title="Room Notes & Tasks">
-        <RoomNotesTasksPanel project={proj} roomName={roomName} />
-      </Section>
-
-      <Section icon={Images} title="Images" count={images.length}>
-        {isLoading ? (
-          <div className="py-4 flex items-center justify-center text-slate-400">
-            <Loader2 className="w-4 h-4 animate-spin" />
-          </div>
-        ) : images.length === 0 ? (
-          <p className="text-xs text-slate-400">No images for this room yet.</p>
-        ) : (
-          <RoomImageGallery projectId={proj.id} roomName={roomName} images={images} />
-        )}
-      </Section>
-
-      {documents.length > 0 && (
-        <Section icon={FileText} title="Documents" count={documents.length}>
-          <div className="space-y-1">
-            {documents.map(f => (
-              <a
-                key={f.id}
-                href={f.file_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-amber-50 px-2 py-1.5 text-xs text-slate-700"
-                title={f.file_name}
-              >
-                <FileText className="w-3 h-3 flex-shrink-0 text-red-500" />
-                <span className="truncate">{f.label || f.file_name}</span>
-              </a>
-            ))}
-          </div>
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-4">
+        <Section icon={Paperclip} title="Room Notes & Tasks">
+          <RoomNotesTasksPanel project={proj} roomName={roomName} />
         </Section>
-      )}
 
-      <Section icon={Palette} title="Room Selections">
-        <RoomSelectionsPanel room={room} />
-      </Section>
+        <Section icon={Images} title="Images" count={images.length}>
+          {isLoading ? (
+            <div className="py-4 flex items-center justify-center text-slate-400">
+              <Loader2 className="w-4 h-4 animate-spin" />
+            </div>
+          ) : images.length === 0 ? (
+            <p className="text-xs text-slate-400">No images for this room yet.</p>
+          ) : (
+            <RoomImageGallery projectId={proj.id} roomName={roomName} images={images} />
+          )}
+        </Section>
 
-      <Section icon={Paperclip} title="Project Files">
-        <ProjectFilesList files={proj.files || []} dark={false} />
-      </Section>
+        {documents.length > 0 && (
+          <Section icon={FileText} title="Documents" count={documents.length}>
+            <div className="space-y-1">
+              {documents.map(f => (
+                <a
+                  key={f.id}
+                  href={f.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-amber-50 px-2 py-1.5 text-xs text-slate-700"
+                  title={f.file_name}
+                >
+                  <FileText className="w-3 h-3 flex-shrink-0 text-red-500" />
+                  <span className="truncate">{f.label || f.file_name}</span>
+                </a>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        <Section icon={Palette} title="Room Selections">
+          <RoomSelectionsPanel room={room} />
+        </Section>
+
+        <Section icon={Paperclip} title="Project Files">
+          <ProjectFilesList files={proj.files || []} dark={false} />
+        </Section>
+      </div>
     </div>
   );
 }

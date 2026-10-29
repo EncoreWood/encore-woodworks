@@ -3,6 +3,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, ChevronUp, ArrowRight, FileText } from "lucide-react";
 import ProductionCard from "@/components/production/ProductionCard";
 import PdfFileDialog from "@/components/production/PdfFileDialog";
+import RoomInfoIcon from "@/components/production/RoomInfoIcon";
 import { cardPts } from "@/lib/roomPts";
 import { cn } from "@/lib/utils";
 
@@ -70,6 +71,17 @@ export default function RoomCardTile({ item, expanded, onToggleExpand, checked, 
             title="Send to Production"
           >
             <ArrowRight className="w-3 h-3" />
+          </button>
+        )}
+        {cardProps?.onOpenRoomInfo && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); cardProps.onOpenRoomInfo(item); }}
+            className="flex items-center justify-center w-5 h-5 rounded border border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 flex-shrink-0"
+            title="Room Info"
+            aria-label="Room Info"
+          >
+            <RoomInfoIcon className="w-3.5 h-3.5" />
           </button>
         )}
         <button

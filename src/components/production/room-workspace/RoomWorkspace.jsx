@@ -199,7 +199,7 @@ export default function RoomWorkspace({
         </div>
       )}
       <div className="flex-1 min-h-0">
-        <RoomInfoPane project={project} roomName={roomName} />
+        <RoomInfoPane project={project} roomName={roomName} onClose={onClose} />
       </div>
     </div>
   );
