@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTabStripBottom } from "@/hooks/useTabStripBottom";
+import { useToast } from "@/components/ui/use-toast";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -54,6 +55,8 @@ export default function RoomWorkspace({
     };
   }, []);
   const wide = viewportWidth >= 1024;
+  const stripTop = useTabStripBottom();
+  const { toast } = useToast();
 
   // Room info is ALWAYS open on first paint — tapping a card's Room Info icon must
   // surface room info in that same tap: docked beside the cards when wide enough,
@@ -176,17 +179,35 @@ export default function RoomWorkspace({
       setSelected(new Set());
       return;
     }
-    for (const item of list) {
-      await base44.entities.ProductionItem.update(item.id, { ...item, is_job_info: false, stage: item.stage || "cut" });
+    const goingToProduction = list.filter(i => !i.stage);
+    try {
+      for (const item of list) {
+        if (item.stage) continue;
+        await base44.entities.ProductionItem.update(item.id, {
+          stage: "cut",
+          is_job_info: false,
+        });
+      }
+      invalidate();
+      if (goingToProduction.length > 0) {
+        toast({
+          title: "Sent to production",
+          description: `${goingToProduction.length} card${goingToProduction.length !== 1 ? "s" : ""} moved to Cut.`,
+        });
+      }
+    } catch (e) {
+      console.error("Failed to send cards to production:", e);
+      toast({
+        title: "Could not send cards",
+        description: e?.message || "Please try again.",
+        variant: "destructive",
+      });
     }
-    invalidate();
     setSelected(new Set());
   };
 
   const handleSendAll = () => {
     if (stagedItems.length === 0) return;
-    if (onSendToProduction) { sendItems(stagedItems); return; }
-    if (!window.confirm(`Send ${stagedItems.length} card${stagedItems.length !== 1 ? "s" : ""} to production?`)) return;
     sendItems(stagedItems);
   };
 
@@ -224,12 +245,11 @@ export default function RoomWorkspace({
     </div>
   );
 
-  return createPortal(
+  return (
     <div
-      className="fixed left-0 right-0 top-0 z-[100] bg-slate-200/80 p-1 sm:p-2 h-screen"
+      className="fixed left-0 right-0 bottom-0 z-30 bg-slate-200/80 p-1 sm:p-2"
       style={{
-        height: "100dvh",
-        paddingTop: "calc(env(safe-area-inset-top) + 4px)",
+        top: stripTop,
         paddingBottom: "calc(env(safe-area-inset-bottom) + 4px)",
       }}
     >
@@ -398,7 +418,6 @@ export default function RoomWorkspace({
         rooms={project.rooms || []}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
-    </div>,
-    document.body
+    </div>
   );
 }

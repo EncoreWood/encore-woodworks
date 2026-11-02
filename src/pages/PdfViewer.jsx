@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { FileText, ExternalLink, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { resolveSignedUrl } from "@/components/production/SignedFileViews";
+import PdfDocumentViewer from "@/components/PdfViewer";
 
 // Read the tab's own query once, on mount: the tab keeps this PDF even while
 // another tab is in front (the browser URL then points at that other tab).
@@ -62,7 +63,9 @@ export default function PdfViewer() {
       </div>
       <div className="flex-1 min-h-0">
         {src ? (
-          <iframe src={src} title={name} className="w-full h-full border-0 bg-white" />
+          <div className="w-full h-full bg-slate-100 overflow-hidden">
+            <PdfDocumentViewer url={src} continuous className="h-full" />
+          </div>
         ) : error ? (
           <div className="h-full flex items-center justify-center text-sm text-slate-500">{error}</div>
         ) : (
