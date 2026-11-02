@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ChevronLeft } from "lucide-react";
 import { SHOP_AREAS, SECTIONS } from "@/components/shop-areas/shopAreaConfig";
 import AreaSection from "@/components/shop-areas/AreaSection";
+import SopSection from "@/components/shop-areas/SopSection";
 
 export default function ShopAreaDetail({ area }) {
   const config = SHOP_AREAS.find((a) => a.name === area) || SHOP_AREAS[0];
@@ -28,9 +29,13 @@ export default function ShopAreaDetail({ area }) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-          {SECTIONS.map((section) => (
-            <AreaSection key={section.key} area={config.name} section={section} />
-          ))}
+          {SECTIONS.map((section) =>
+            section.key === "sop" ? (
+              <SopSection key={section.key} area={config.name} section={section} />
+            ) : (
+              <AreaSection key={section.key} area={config.name} section={section} />
+            )
+          )}
         </div>
       </div>
     </div>
