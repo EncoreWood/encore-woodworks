@@ -150,6 +150,20 @@ export default function ProjectDetails() {
     staleTime: 30_000,
   });
 
+  const { data: meetings = [] } = useQuery({
+    queryKey: ["portalMeetings", projectId],
+    queryFn: () => base44.entities.PortalMeeting.filter({ project_id: projectId }),
+    enabled: !!projectId,
+    staleTime: 30000,
+  });
+
+  const { data: project, isLoading } = useQuery({
+    queryKey: ["project", projectId],
+    queryFn: () => base44.entities.Project.filter({ id: projectId }).then((res) => res[0]),
+    enabled: !!projectId,
+    staleTime: 30000
+  });
+
   // Per-room production progress, so every room row shows its own bar.
   // Same filtering + mapping as the Room Workspace header bar.
   const roomProgressList = useMemo(() => {
@@ -168,20 +182,6 @@ export default function ProjectDetails() {
   const overallRoomPct = startedRooms.length
     ? Math.round(startedRooms.reduce((s, r) => s + r.pct, 0) / startedRooms.length)
     : 0;
-
-  const { data: meetings = [] } = useQuery({
-    queryKey: ["portalMeetings", projectId],
-    queryFn: () => base44.entities.PortalMeeting.filter({ project_id: projectId }),
-    enabled: !!projectId,
-    staleTime: 30000,
-  });
-
-  const { data: project, isLoading } = useQuery({
-    queryKey: ["project", projectId],
-    queryFn: () => base44.entities.Project.filter({ id: projectId }).then((res) => res[0]),
-    enabled: !!projectId,
-    staleTime: 30000
-  });
 
   const { data: proposal } = useQuery({
     queryKey: ["proposal", projectId],
