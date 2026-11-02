@@ -6,6 +6,7 @@ import SopSection from "@/components/shop-areas/SopSection";
 import InventorySection from "@/components/shop-areas/InventorySection";
 import TrainingSection from "@/components/shop-areas/TrainingSection";
 import FlowSection from "@/components/shop-areas/FlowSection";
+import LeanSection from "@/components/shop-areas/LeanSection";
 
 export default function ShopAreaDetail({ area }) {
   const config = SHOP_AREAS.find((a) => a.name === area) || SHOP_AREAS[0];
@@ -44,6 +45,9 @@ export default function ShopAreaDetail({ area }) {
             }
             if (section.key === "flow") {
               return <FlowSection key={section.key} area={config.name} section={section} />;
+            }
+            if (section.key === "lean") {
+              return <LeanSection key={section.key} area={config.name} section={section} />;
             }
             return <AreaSection key={section.key} area={config.name} section={section} />;
           })}

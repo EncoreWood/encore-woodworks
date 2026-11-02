@@ -25,15 +25,15 @@
     },
     "description": {
       "type": "string",
-      "description": "Details, steps or notes"
+      "description": "Details, steps or notes. For lean projects this is the project overview."
     },
     "owner": {
       "type": "string",
-      "description": "Person responsible for this record"
+      "description": "Person responsible for this record / assigned to the lean project"
     },
     "status": {
       "type": "string",
-      "description": "Status for the section (e.g. Active, In Progress, In Stock, Done, Scheduled)"
+      "description": "Status for the section (e.g. Active, In Progress, In Stock, Done, Scheduled). Lean projects use Idea, Planned, In Progress, Complete."
     },
     "quantity": {
       "type": "number",
@@ -51,6 +51,14 @@
       "type": "string",
       "format": "date",
       "description": "Relevant date (completed, due, last performed, logged)"
+    },
+    "estimated_time_saved": {
+      "type": "string",
+      "description": "Lean projects: estimated time saved by the improvement (e.g. '2 hrs / week')"
+    },
+    "project_cost": {
+      "type": "number",
+      "description": "Lean projects: cost to implement the improvement"
     },
     "checklist": {
       "type": "array",

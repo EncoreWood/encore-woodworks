@@ -56,8 +56,8 @@ export const SECTIONS = [
     key: "lean",
     label: "Lean",
     icon: Target,
-    fields: ["description", "owner", "status", "date"],
-    statuses: ["Idea", "Testing", "Standard Work", "Complete"],
+    fields: ["description", "owner", "status", "estimated_time_saved", "project_cost", "images"],
+    statuses: ["Idea", "Planned", "In Progress", "Complete"],
   },
   {
     key: "inventory",
