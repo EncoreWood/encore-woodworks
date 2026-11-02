@@ -658,49 +658,69 @@ export default function ShopProduction() {
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div className="px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Shop Production</h1>
             <p className="text-slate-500 mt-1">Track projects through production stages</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <Button
               onClick={() => setShowEndOfDay(true)}
               variant="outline"
-              className="border-amber-300 text-amber-700 hover:bg-amber-50"
+              size="icon"
+              title="End of Day"
+              aria-label="End of Day"
+              className="h-8 w-8 border-amber-300 text-amber-700 hover:bg-amber-50"
             >
-              <Sunset className="w-4 h-4 mr-2" /> End of Day
+              <Sunset className="w-4 h-4" />
             </Button>
             <Button
               onClick={() => setReportingMissing(true)}
               variant="outline"
-              className="border-orange-300 text-orange-600 hover:bg-orange-50"
+              size="icon"
+              title="Report Missing"
+              aria-label="Report Missing"
+              className="h-8 w-8 border-orange-300 text-orange-600 hover:bg-orange-50"
             >
-              <PackageX className="w-4 h-4 mr-2" /> Report Missing
+              <PackageX className="w-4 h-4" />
             </Button>
             <Button
               onClick={() => setReportingStruggle(true)}
               variant="outline"
-              className="border-red-300 text-red-600 hover:bg-red-50"
+              size="icon"
+              title="Report Struggle"
+              aria-label="Report Struggle"
+              className="h-8 w-8 border-red-300 text-red-600 hover:bg-red-50"
             >
-              <AlertTriangle className="w-4 h-4 mr-2" /> Report Struggle
+              <AlertTriangle className="w-4 h-4" />
             </Button>
             <Button
               onClick={() => setGivingCompliment(true)}
               variant="outline"
-              className="border-amber-300 text-amber-600 hover:bg-amber-50"
+              size="icon"
+              title="Well Done"
+              aria-label="Well Done"
+              className="h-8 w-8 border-amber-300 text-amber-600 hover:bg-amber-50"
             >
-              🎉 Well Done
+              <span className="text-sm leading-none">🎉</span>
             </Button>
             <Button
               onClick={() => navigate("/MistakeReport")}
               variant="outline"
-              className="border-red-300 text-red-600 hover:bg-red-50"
+              size="icon"
+              title="Report Mistake"
+              aria-label="Report Mistake"
+              className="h-8 w-8 border-red-300 text-red-600 hover:bg-red-50"
             >
-              <AlertTriangle className="w-4 h-4 mr-2" /> Report Mistake
+              <AlertTriangle className="w-4 h-4" />
             </Button>
-            <Button onClick={() => { setShowForm(true); }} className="bg-amber-600 hover:bg-amber-700">
-              <Plus className="w-4 h-4 mr-2" /> Add Item
+            <Button
+              onClick={() => { setShowForm(true); }}
+              size="sm"
+              title="Add Item"
+              className="h-8 bg-amber-600 hover:bg-amber-700 px-2.5"
+            >
+              <Plus className="w-4 h-4 sm:mr-1" /> Add Item
             </Button>
           </div>
         </div>
