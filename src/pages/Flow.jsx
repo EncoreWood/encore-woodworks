@@ -16,7 +16,7 @@ import { DEFAULT_ZONES, CANVAS_INCHES, FLOW_COLORS, DEFAULT_ZONE_TYPES } from "@
 import ZoneSopViewer from "@/components/flow/ZoneSopViewer";
 import ZoneTypesManager from "@/components/flow/ZoneTypesManager";
 
-export default function Flow() {
+export default function Flow({ embedded = false }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [selectedZoneId, setSelectedZoneId] = useState(null);
@@ -619,14 +619,14 @@ export default function Flow() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] sm:h-screen bg-slate-50 overflow-hidden">
+    <div className={`flex flex-col ${embedded ? "h-full" : "h-[calc(100vh-3.5rem)] sm:h-screen"} bg-slate-50 overflow-hidden`}>
       {/* TEMP DEBUG BANNER — visible proof of seed/save success/failure */}
       <div style={{ padding: "8px 16px", background: "#fef3c7", fontSize: "12px", fontFamily: "monospace", borderBottom: "1px solid #fcd34d" }}>
         DEBUG: {debugStatus}
       </div>
 
       {/* Header */}
-      <div className="flex items-center justify-between p-3 bg-white border-b border-slate-200 flex-shrink-0">
+      <div className="flex items-center justify-between gap-2 flex-wrap p-3 bg-white border-b border-slate-200 flex-shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <h1 className="text-xl font-bold text-slate-900 truncate">Shop Flow</h1>
         </div>

@@ -5,6 +5,7 @@ import AreaSection from "@/components/shop-areas/AreaSection";
 import SopSection from "@/components/shop-areas/SopSection";
 import InventorySection from "@/components/shop-areas/InventorySection";
 import TrainingSection from "@/components/shop-areas/TrainingSection";
+import FlowSection from "@/components/shop-areas/FlowSection";
 
 export default function ShopAreaDetail({ area }) {
   const config = SHOP_AREAS.find((a) => a.name === area) || SHOP_AREAS[0];
@@ -40,6 +41,9 @@ export default function ShopAreaDetail({ area }) {
             }
             if (section.key === "training") {
               return <TrainingSection key={section.key} area={config.name} section={section} />;
+            }
+            if (section.key === "flow") {
+              return <FlowSection key={section.key} area={config.name} section={section} />;
             }
             return <AreaSection key={section.key} area={config.name} section={section} />;
           })}

@@ -1,6 +1,6 @@
 import {
   Scissors, Frame, SprayCan, Hammer, Truck, HardHat, Sparkles, BookOpen, Building2,
-  ClipboardList, GraduationCap, Package, Wrench, History, Target,
+  ClipboardList, GraduationCap, Package, Wrench, History, Target, Workflow,
 } from "lucide-react";
 
 // The nine shop areas shown on the landing page and in the navigation group.
@@ -22,6 +22,7 @@ export const SHOP_AREA_NAMES = SHOP_AREAS.map((a) => a.name);
 export const SECTION_TINTS = {
   sop: "bg-indigo-50 text-indigo-600 border-indigo-200",
   training: "bg-blue-50 text-blue-600 border-blue-200",
+  flow: "bg-sky-50 text-sky-600 border-sky-200",
   lean: "bg-emerald-50 text-emerald-600 border-emerald-200",
   inventory: "bg-amber-50 text-amber-600 border-amber-200",
   cleaning: "bg-teal-50 text-teal-600 border-teal-200",
@@ -45,6 +46,11 @@ export const SECTIONS = [
     icon: GraduationCap,
     fields: ["description", "owner", "status", "date"],
     statuses: ["Not Started", "In Progress", "Complete"],
+  },
+  {
+    key: "flow",
+    label: "Shop Flow",
+    icon: Workflow,
   },
   {
     key: "lean",

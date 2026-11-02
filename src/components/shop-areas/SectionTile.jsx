@@ -4,7 +4,7 @@ import { SECTION_TINTS } from "./shopAreaConfig";
 /**
  * Compact collapsed section tile. Clicking it opens the section's full list.
  */
-export default function SectionTile({ sectionKey, icon: Icon, label, count, loading, onClick }) {
+export default function SectionTile({ sectionKey, icon: Icon, label, count, countLabel, loading, onClick }) {
   const tint = SECTION_TINTS[sectionKey] || "bg-amber-50 text-amber-600 border-amber-200";
 
   return (
@@ -25,7 +25,7 @@ export default function SectionTile({ sectionKey, icon: Icon, label, count, load
           {loading ? (
             <Loader2 className="w-3 h-3 animate-spin" />
           ) : (
-            `${count} item${count === 1 ? "" : "s"}`
+            countLabel ?? `${count} item${count === 1 ? "" : "s"}`
           )}
         </p>
       </div>
