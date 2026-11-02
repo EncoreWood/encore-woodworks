@@ -21,7 +21,11 @@ export default function TabBar({ navGroups = {} }) {
   }, [navGroups]);
 
   const labelFor = (path) => {
-    const page = path.split("?")[0].replace(/^\//, "");
+    const [pathname, search = ""] = path.split("?");
+    const page = pathname.replace(/^\//, "");
+    // Some tabs carry their own label (e.g. an open PDF uses the file name).
+    const tabLabel = new URLSearchParams(search).get("name");
+    if (tabLabel) return tabLabel;
     if (!page) return "Home";
     return labels[page] || prettify(page);
   };

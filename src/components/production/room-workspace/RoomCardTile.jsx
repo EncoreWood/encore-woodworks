@@ -1,8 +1,7 @@
-import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, ChevronUp, ArrowRight, FileText } from "lucide-react";
 import ProductionCard from "@/components/production/ProductionCard";
-import PdfFileDialog from "@/components/production/PdfFileDialog";
+import { useOpenPdfTab } from "@/hooks/useOpenPdfTab";
 import RoomInfoIcon from "@/components/production/RoomInfoIcon";
 import { cardPts } from "@/lib/roomPts";
 import { cn } from "@/lib/utils";
@@ -31,7 +30,7 @@ const STAGE_LABELS = {
  * (compact variant) so every per-card action keeps working.
  */
 export default function RoomCardTile({ item, expanded, onToggleExpand, checked, onToggleCheck, onSend, cardProps }) {
-  const [viewingPdf, setViewingPdf] = useState(null);
+  const openPdfTab = useOpenPdfTab();
 
   const staged = !item.stage;
   const pts = cardPts(item);
@@ -127,7 +126,7 @@ export default function RoomCardTile({ item, expanded, onToggleExpand, checked, 
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                if (isPdf) setViewingPdf(firstFile);
+                if (isPdf) openPdfTab(firstFile);
                 else window.open(firstFile.url, "_blank", "noopener,noreferrer");
               }}
               className="flex items-center justify-center gap-1 w-full min-w-0 h-6 px-1.5 rounded border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors"
@@ -149,7 +148,6 @@ export default function RoomCardTile({ item, expanded, onToggleExpand, checked, 
         </div>
       )}
 
-      {viewingPdf && <PdfFileDialog file={viewingPdf} onClose={() => setViewingPdf(null)} />}
     </div>
   );
 }

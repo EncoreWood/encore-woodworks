@@ -19,7 +19,7 @@ import { base44 } from "@/api/base44Client";
 import { createPageUrl } from "@/utils";
 import SketchPad from "@/components/production/SketchPad";
 import RoomFilesModal from "@/components/production/RoomFilesModal";
-import PdfFileDialog from "@/components/production/PdfFileDialog";
+import { useOpenPdfTab } from "@/hooks/useOpenPdfTab";
 import { useQuery } from "@tanstack/react-query";
 
 const PRODUCTION_STAGES = [
@@ -75,7 +75,7 @@ export default function ProductionCard({
   const [showRoomFiles, setShowRoomFiles] = useState(false);
   const [showMoveHistory, setShowMoveHistory] = useState(false);
   const isAdmin = currentUser?.role === "admin";
-  const [viewingPdf, setViewingPdf] = useState(null);
+  const openPdfTab = useOpenPdfTab();
 
   // Wood + finish live on the card itself (read from its own PDF) — never inherited from room selections
   const cardSpec = [item.wood_type, item.finish].filter(Boolean).join(" · ");
@@ -517,7 +517,7 @@ export default function ProductionCard({
           setEditingPts={setEditingPts}
           onInlinePtsChange={onInlinePtsChange}
           onAnnotate={onAnnotate}
-          onOpenPdf={setViewingPdf}
+          onOpenPdf={openPdfTab}
         />
 
         {/* Stage move dropdown — moved below the files row */}
@@ -557,7 +557,6 @@ export default function ProductionCard({
         </DialogContent>
       </Dialog>
       <CardMoveHistoryDialog item={item} open={showMoveHistory} onClose={() => setShowMoveHistory(false)} />
-      {viewingPdf && <PdfFileDialog file={viewingPdf} onClose={() => setViewingPdf(null)} />}
       {viewingCad && (() => {
         const ext = (viewingCad.name || "").toLowerCase().split('.').pop();
         if (ext === "glb" || ext === "gltf") return <GlbViewer file={viewingCad} onClose={() => setViewingCad(null)} />;

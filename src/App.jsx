@@ -45,6 +45,7 @@ import Education from './pages/Education';
 import ShopAreas from './pages/ShopAreas';
 import ShopAreaDetail from './pages/ShopAreaDetail';
 import MyProfile from './pages/MyProfile';
+import PdfViewer from './pages/PdfViewer';
 import TabShell from './components/tabs/TabShell';
 
 
@@ -75,6 +76,7 @@ const TabRouteView = ({ location }) => (
     <Route path="/InventoryScan" element={<InventoryScan />} />
     <Route path="/ClientPortal" element={<ClientPortal />} />
     <Route path="/MyProfile" element={<MyProfile />} />
+    <Route path="/PdfViewer" element={<PdfViewer />} />
     <Route path="/MyAssignments" element={<MyAssignments />} />
     <Route path="/Trainings" element={<Trainings />} />
     <Route path="/Flow" element={<Flow />} />
