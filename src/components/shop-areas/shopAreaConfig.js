@@ -1,6 +1,6 @@
 import {
   Scissors, Frame, SprayCan, Hammer, Truck, HardHat, Sparkles, BookOpen, Building2,
-  FileText, GraduationCap, Package, ClipboardCheck, Wrench, History, Target,
+  ClipboardList, GraduationCap, Package, Wrench, History, Target,
 } from "lucide-react";
 
 // The nine shop areas shown on the landing page and in the navigation group.
@@ -24,7 +24,7 @@ export const SECTIONS = [
   {
     key: "sop",
     label: "SOPs",
-    icon: FileText,
+    icon: ClipboardList,
     fields: ["description", "owner", "status", "date"],
     statuses: ["Draft", "Active", "Archived"],
   },
@@ -52,7 +52,7 @@ export const SECTIONS = [
   {
     key: "cleaning",
     label: "Cleaning Checklist",
-    icon: ClipboardCheck,
+    icon: Sparkles,
     fields: ["frequency", "owner", "status", "date", "description"],
     statuses: ["Pending", "Done"],
   },

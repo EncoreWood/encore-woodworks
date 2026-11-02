@@ -6,6 +6,7 @@ import {
   ChevronDown, Pin, PinOff, Settings, UserCircle, Play, Square, ArrowLeftRight, Columns2,
 } from "lucide-react";
 import ProductionIcon from "@/components/icons/ProductionIcon";
+import ShopAreasIcon from "@/components/icons/ShopAreasIcon";
 
 const GROUP_ICONS = {
   dashboard: LayoutDashboard,
@@ -14,7 +15,7 @@ const GROUP_ICONS = {
   operations: ProductionIcon,
   team: Users,
   lean: GraduationCap,
-  shop_areas: BookOpen,
+  shop_areas: ShopAreasIcon,
   education: BookOpen,
 };
 
