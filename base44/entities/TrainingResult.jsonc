@@ -1,0 +1,110 @@
+{
+  "name": "TrainingResult",
+  "type": "object",
+  "properties": {
+    "training_id": {
+      "type": "string",
+      "description": "Reference to the Training record"
+    },
+    "training_name": {
+      "type": "string",
+      "description": "Training title at the time the quiz was taken"
+    },
+    "quiz_scope": {
+      "type": "string",
+      "description": "Which quiz this result is for: 'Main quiz' or the section title"
+    },
+    "employee_id": {
+      "type": "string",
+      "description": "Employee record linked to the person who took the quiz"
+    },
+    "employee_name": {
+      "type": "string",
+      "description": "Full name of the person who took the quiz"
+    },
+    "employee_email": {
+      "type": "string",
+      "description": "Email of the person who took the quiz"
+    },
+    "correct_count": {
+      "type": "number",
+      "description": "Number of questions answered correctly"
+    },
+    "total_questions": {
+      "type": "number",
+      "description": "Number of questions in the quiz"
+    },
+    "percentage": {
+      "type": "number",
+      "description": "Score percentage"
+    },
+    "passing_score": {
+      "type": "number",
+      "description": "Passing percentage required at the time of the attempt"
+    },
+    "passed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this attempt met the passing score"
+    },
+    "answers": {
+      "type": "array",
+      "description": "Per-question breakdown of the attempt",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          },
+          "chosen_text": {
+            "type": "string",
+            "description": "Answer the employee picked"
+          },
+          "correct_text": {
+            "type": "string",
+            "description": "The correct answer"
+          },
+          "is_correct": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "taken_at": {
+      "type": "string",
+      "description": "ISO timestamp of when the quiz was submitted"
+    }
+  },
+  "required": [
+    "training_name",
+    "employee_name",
+    "taken_at"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

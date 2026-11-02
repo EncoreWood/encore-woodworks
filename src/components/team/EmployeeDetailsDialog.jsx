@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import EmployeeReviewViewer from "./EmployeeReviewViewer";
 import EmployeePtoDialog from "./EmployeePtoDialog";
+import TrainingResultDetailDialog from "@/components/trainings/TrainingResultDetailDialog";
 
 const SKILL_AREAS = ["Office", "Cut", "Face Frame", "Spray", "Build", "Install", "Custom"];
 const SKILL_LABELS = ["No experience", "Beginner", "Basic", "Competent", "Advanced", "Expert"];
@@ -26,6 +27,7 @@ export default function EmployeeDetailsDialog({ open, onOpenChange, employee, ta
   const [skills, setSkills] = useState([]);
   const [skillsEditing, setSkillsEditing] = useState(false);
   const [viewingReview, setViewingReview] = useState(null);
+  const [viewingResult, setViewingResult] = useState(null);
   const [showPto, setShowPto] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -60,6 +62,18 @@ export default function EmployeeDetailsDialog({ open, onOpenChange, employee, ta
     queryKey: ["reviewQuestions"],
     queryFn: () => base44.entities.ReviewQuestion.list(),
     enabled: open
+  });
+
+  const { data: trainingResults = [] } = useQuery({
+    queryKey: ["employeeTrainingResults", employee?.id],
+    queryFn: async () => {
+      let rows = await base44.entities.TrainingResult.filter({ employee_id: employee.id });
+      if (!rows.length && employee.email) {
+        rows = await base44.entities.TrainingResult.filter({ employee_email: employee.email });
+      }
+      return [...rows].sort((a, b) => (b.taken_at || "").localeCompare(a.taken_at || ""));
+    },
+    enabled: open && !!employee
   });
 
   const updateMutation = useMutation({
@@ -423,6 +437,41 @@ export default function EmployeeDetailsDialog({ open, onOpenChange, employee, ta
               )}
             </div>
 
+            {/* Training Quiz Results */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                <Award className="w-4 h-4 text-slate-400" /> Training Quiz Results
+              </h4>
+              {trainingResults.length === 0 ? (
+                <p className="text-sm text-slate-400">No quizzes taken yet.</p>
+              ) : (
+                <div className="space-y-2">
+                  {trainingResults.map((result) => (
+                    <button
+                      key={result.id}
+                      onClick={() => setViewingResult(result)}
+                      className="w-full flex items-center gap-2 p-2 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors text-left"
+                    >
+                      <Badge className={`border-0 ${result.passed ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                        {result.percentage}%
+                      </Badge>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-800 truncate">{result.training_name}</p>
+                        {result.quiz_scope && result.quiz_scope !== "Main quiz" && (
+                          <p className="text-xs text-slate-500 truncate">{result.quiz_scope}</p>
+                        )}
+                      </div>
+                      {result.taken_at && (
+                        <span className="text-xs text-slate-500 flex-shrink-0">
+                          {format(new Date(result.taken_at), "MMM d, yyyy")}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Assigned Tasks */}
             {(() => {
               const employeeTasks = tasks.filter(task => task.assignee === employee.full_name);
@@ -569,6 +618,12 @@ export default function EmployeeDetailsDialog({ open, onOpenChange, employee, ta
         open={showPto}
         onOpenChange={setShowPto}
         employee={employee}
+      />
+
+      <TrainingResultDetailDialog
+        result={viewingResult}
+        open={!!viewingResult}
+        onOpenChange={(o) => { if (!o) setViewingResult(null); }}
       />
     </>
   );

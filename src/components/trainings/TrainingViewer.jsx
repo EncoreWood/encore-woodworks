@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Play, CheckCircle2, XCircle, RotateCcw, Award, Video, Clock, FileText, Layers } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { saveTrainingResult } from "./saveTrainingResult";
 
 function getVideoEmbed(url) {
   if (!url) return null;
@@ -13,7 +14,7 @@ function getVideoEmbed(url) {
   return { type: "video", src: url };
 }
 
-function SectionBlock({ section, idx, passingScore }) {
+function SectionBlock({ section, idx, passingScore, training, currentUser, employee }) {
   const [answers, setAnswers] = useState({});
   const [score, setScore] = useState(null);
 
@@ -27,10 +28,19 @@ function SectionBlock({ section, idx, passingScore }) {
   const hasQuiz = quiz.length > 0;
   const allAnswered = quiz.every((_, i) => answers[i] !== undefined);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const correct = quiz.filter((q, i) => answers[i] === q.correct_answer).length;
     const pct = Math.round((correct / quiz.length) * 100);
     setScore({ correct, total: quiz.length, pct, passed: pct >= passingScore });
+    await saveTrainingResult({
+      training,
+      quizScope: section.title || `Section ${idx + 1}`,
+      quiz,
+      answers,
+      passingScore,
+      employee,
+      user: currentUser,
+    });
   };
 
   return (
@@ -111,15 +121,17 @@ function SectionBlock({ section, idx, passingScore }) {
   );
 }
 
-export default function TrainingViewer({ open, onOpenChange, training }) {
+export default function TrainingViewer({ open, onOpenChange, training, currentUser, employee }) {
   const [phase, setPhase] = useState("info");
   const [answers, setAnswers] = useState({});
   const [score, setScore] = useState(null);
+  const [savedTo, setSavedTo] = useState(null);
 
   useEffect(() => {
     setPhase("info");
     setAnswers({});
     setScore(null);
+    setSavedTo(null);
   }, [training?.id, open]);
 
   if (!training) return null;
@@ -129,12 +141,22 @@ export default function TrainingViewer({ open, onOpenChange, training }) {
   const passingScore = training.passing_score ?? 80;
   const hasQuiz = quiz.length > 0;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const correct = quiz.filter((q, i) => answers[i] === q.correct_answer).length;
     const pct = Math.round((correct / quiz.length) * 100);
     const passed = pct >= passingScore;
     setScore({ correct, total: quiz.length, pct, passed });
     setPhase("results");
+    const saved = await saveTrainingResult({
+      training,
+      quizScope: "Main quiz",
+      quiz,
+      answers,
+      passingScore,
+      employee,
+      user: currentUser,
+    });
+    if (saved) setSavedTo(saved.employee_name);
   };
 
   const allAnswered = quiz.every((_, i) => answers[i] !== undefined);
@@ -182,7 +204,15 @@ export default function TrainingViewer({ open, onOpenChange, training }) {
               <div className="space-y-3">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide flex items-center gap-1"><Layers className="w-3 h-3" /> Sections</p>
                 {training.sections.map((section, sIdx) => (
-                  <SectionBlock key={section.id || sIdx} section={section} idx={sIdx} passingScore={passingScore} />
+                  <SectionBlock
+                    key={section.id || sIdx}
+                    section={section}
+                    idx={sIdx}
+                    passingScore={passingScore}
+                    training={training}
+                    currentUser={currentUser}
+                    employee={employee}
+                  />
                 ))}
               </div>
             )}
@@ -262,6 +292,9 @@ export default function TrainingViewer({ open, onOpenChange, training }) {
               <p className="text-sm text-slate-600 mt-1">
                 Score: {score.correct}/{score.total} ({score.pct}%)
               </p>
+              {savedTo && (
+                <p className="text-xs text-slate-500 mt-1">Result saved to {savedTo}'s profile</p>
+              )}
             </div>
 
             <div className="space-y-2">

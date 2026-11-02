@@ -9,7 +9,9 @@ import { cn } from "@/lib/utils";
 import TrainingForm from "@/components/trainings/TrainingForm";
 import TrainingViewer from "@/components/trainings/TrainingViewer";
 import TrainingCategoryManager from "@/components/trainings/TrainingCategoryManager";
+import TrainingResultsTab from "@/components/trainings/TrainingResultsTab";
 import LeanTrainingSection from "@/components/lean-training/LeanTrainingSection";
+import { findMyEmployee } from "@/lib/findMyEmployee";
 
 const CATEGORY_COLORS = [
   "bg-blue-100 text-blue-700",
@@ -58,6 +60,7 @@ export default function Trainings() {
   });
 
   const isAdmin = currentUser?.role === "admin";
+  const myEmployee = findMyEmployee(employees, currentUser?.email);
 
   const getCategoryStyle = (name) => {
     const idx = categories.findIndex(c => c.name === name);
@@ -123,9 +126,10 @@ export default function Trainings() {
         </div>
 
         <Tabs defaultValue="general" className="mb-6">
-          <TabsList className="grid grid-cols-2 w-full max-w-xs">
+          <TabsList className={cn("w-full", isAdmin ? "grid grid-cols-3 max-w-sm" : "grid grid-cols-2 max-w-xs")}>
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="lean">Lean Training</TabsTrigger>
+            {isAdmin && <TabsTrigger value="results">Quiz Results</TabsTrigger>}
           </TabsList>
 
           <TabsContent value="general" className="space-y-4 mt-4">
@@ -204,11 +208,23 @@ export default function Trainings() {
           <TabsContent value="lean" className="mt-4">
             <LeanTrainingSection currentUser={currentUser} />
           </TabsContent>
+
+          {isAdmin && (
+            <TabsContent value="results" className="mt-4">
+              <TrainingResultsTab trainings={trainings} />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
       <TrainingForm open={showForm} onOpenChange={setShowForm} editingTraining={editingTraining} employees={employees} categories={categories} onSave={handleSave} />
-      <TrainingViewer open={!!viewingTraining} onOpenChange={(open) => { if (!open) setViewingTraining(null); }} training={viewingTraining} />
+      <TrainingViewer
+        open={!!viewingTraining}
+        onOpenChange={(open) => { if (!open) setViewingTraining(null); }}
+        training={viewingTraining}
+        currentUser={currentUser}
+        employee={myEmployee}
+      />
       <TrainingCategoryManager open={showCategoryManager} onOpenChange={setShowCategoryManager} />
     </div>
   );
