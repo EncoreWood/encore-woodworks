@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Loader2, Inbox, Package } from "lucide-react";
+import { Plus, Pencil, Loader2, Inbox, Package, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import InventoryForm from "@/components/inventory/InventoryForm";
 
@@ -26,6 +26,7 @@ const STATUS_STYLE = {
 export default function InventorySection({ area, section }) {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [expanded, setExpanded] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: items = [], isLoading } = useQuery({
@@ -63,17 +64,29 @@ export default function InventorySection({ area, section }) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100">
-        <Icon className="w-4 h-4 text-amber-700 flex-shrink-0" />
-        <h2 className="text-sm font-bold text-slate-900 flex-1 min-w-0 truncate">{section.label}</h2>
-        {!isLoading && items.length > 0 && (
-          <span className="text-[11px] font-semibold text-slate-500">{items.length}</span>
-        )}
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-2 flex-1 min-w-0 text-left"
+          title={expanded ? "Collapse" : "View all items"}
+        >
+          <ChevronRight
+            className={`w-3.5 h-3.5 text-slate-400 flex-shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
+          />
+          <Icon className="w-4 h-4 text-amber-700 flex-shrink-0" />
+          <h2 className="text-sm font-bold text-slate-900 min-w-0 truncate">{section.label}</h2>
+          {!isLoading && (
+            <span className="text-[11px] font-semibold text-slate-500 whitespace-nowrap flex-shrink-0">
+              {items.length} item{items.length === 1 ? "" : "s"}
+            </span>
+          )}
+        </button>
         <Button onClick={openNew} size="sm" className="h-7 px-2 bg-amber-600 hover:bg-amber-700 text-xs">
           <Plus className="w-3.5 h-3.5" /> Add
         </Button>
       </div>
 
-      {isLoading ? (
+      {!expanded ? null : isLoading ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
         </div>
@@ -83,7 +96,7 @@ export default function InventorySection({ area, section }) {
           <p className="text-xs text-slate-400">No inventory in {area}</p>
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 max-h-[340px] overflow-y-auto">
+        <ul className="divide-y divide-slate-100">
           {items.map((item) => {
             const status = item.status || "in_stock";
             const low =
