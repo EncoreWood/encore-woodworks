@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Pencil, Loader2, Inbox, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import SectionSheet from "./SectionSheet";
 import ZoneSopEditor from "@/components/flow/ZoneSopEditor";
 import ZoneSopViewer from "@/components/flow/ZoneSopViewer";
 import SectionTile from "./SectionTile";
@@ -57,19 +57,19 @@ export default function SopSection({ area, section }) {
         onClick={() => setOpen(true)}
       />
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg w-[calc(100vw-2rem)] p-0 gap-0 flex flex-col max-h-[85vh]">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100 pr-10">
-            <section.icon className="w-4 h-4 text-amber-700 flex-shrink-0" />
-            <DialogTitle className="text-sm font-bold text-slate-900 flex-1 min-w-0 truncate">
-              {section.label}
-            </DialogTitle>
-            <Button onClick={openNew} size="sm" className="h-7 px-2 bg-amber-600 hover:bg-amber-700 text-xs">
-              <Plus className="w-3.5 h-3.5" /> Add
-            </Button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
+      <SectionSheet
+        open={open}
+        onOpenChange={setOpen}
+        icon={section.icon}
+        title={section.label}
+        subtitle={`${area} · ${sops.length} SOP${sops.length === 1 ? "" : "s"}`}
+        actions={
+          <Button onClick={openNew} size="sm" className="h-9 px-3 bg-amber-600 hover:bg-amber-700 text-xs">
+            <Plus className="w-4 h-4" /> Add
+          </Button>
+        }
+      >
+          <div>
             {isLoading ? (
               <div className="flex items-center justify-center py-10">
                 <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
@@ -120,8 +120,7 @@ export default function SopSection({ area, section }) {
               </ul>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+      </SectionSheet>
 
       <ZoneSopViewer
         open={!!viewing}
