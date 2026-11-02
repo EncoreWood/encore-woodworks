@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Plus, Pencil, Loader2, Inbox, ListChecks } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ZoneSopEditor from "@/components/flow/ZoneSopEditor";
+import ZoneSopViewer from "@/components/flow/ZoneSopViewer";
 
 const stepCount = (sop) => (sop.steps || []).length;
 
@@ -15,6 +16,7 @@ const stepCount = (sop) => (sop.steps || []).length;
 export default function SopSection({ area, section }) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [viewing, setViewing] = useState(null);
 
   const { data: sops = [], isLoading } = useQuery({
     queryKey: ["shopZoneSops", area],
@@ -69,7 +71,7 @@ export default function SopSection({ area, section }) {
               <div className="flex items-start gap-2">
                 <button
                   type="button"
-                  onClick={() => openEdit(sop)}
+                  onClick={() => setViewing(sop)}
                   className="flex-1 min-w-0 text-left"
                 >
                   <p className="text-xs font-semibold text-slate-900 break-words">{sop.title}</p>
@@ -102,6 +104,18 @@ export default function SopSection({ area, section }) {
           ))}
         </ul>
       )}
+
+      <ZoneSopViewer
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        zone={viewing ? { id: viewing.zone_id || viewing.id, name: viewing.zone_name || area, icon: "📋" } : null}
+        sop={viewing}
+        onExitToEdit={() => {
+          const sop = viewing;
+          setViewing(null);
+          if (sop) openEdit(sop);
+        }}
+      />
 
       <ZoneSopEditor
         open={editorOpen}
