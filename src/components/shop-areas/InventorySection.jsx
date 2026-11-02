@@ -67,6 +67,7 @@ export default function InventorySection({ area, section }) {
   return (
     <>
       <SectionTile
+        sectionKey={section.key}
         icon={Icon}
         label={section.label}
         count={items.length}

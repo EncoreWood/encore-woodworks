@@ -82,6 +82,7 @@ export default function AreaSection({ area, section }) {
   return (
     <>
       <SectionTile
+        sectionKey={section.key}
         icon={Icon}
         label={section.label}
         count={records.length}

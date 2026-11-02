@@ -18,7 +18,18 @@ export const SHOP_AREAS = [
 
 export const SHOP_AREA_NAMES = SHOP_AREAS.map((a) => a.name);
 
-// The six sections on every area page. `fields` decides what the form shows;
+// Each section gets its own color so the tile grid reads at a glance.
+export const SECTION_TINTS = {
+  sop: "bg-indigo-50 text-indigo-600 border-indigo-200",
+  training: "bg-blue-50 text-blue-600 border-blue-200",
+  lean: "bg-emerald-50 text-emerald-600 border-emerald-200",
+  inventory: "bg-amber-50 text-amber-600 border-amber-200",
+  cleaning: "bg-teal-50 text-teal-600 border-teal-200",
+  maintenance: "bg-orange-50 text-orange-600 border-orange-200",
+  history: "bg-violet-50 text-violet-600 border-violet-200",
+};
+
+// The sections on every area page. `fields` decides what the form shows;
 // statuses drives the status dropdown (omit for sections without one).
 export const SECTIONS = [
   {

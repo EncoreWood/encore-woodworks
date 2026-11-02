@@ -49,6 +49,7 @@ export default function SopSection({ area, section }) {
   return (
     <>
       <SectionTile
+        sectionKey={section.key}
         icon={section.icon}
         label={section.label}
         count={sops.length}
