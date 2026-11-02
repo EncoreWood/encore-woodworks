@@ -517,7 +517,7 @@ export default function ProductionCard({
           setEditingPts={setEditingPts}
           onInlinePtsChange={onInlinePtsChange}
           onAnnotate={onAnnotate}
-          onOpenPdf={openPdfTab}
+          onOpenPdf={(file) => openPdfTab(file, item)}
         />
 
         {/* Stage move dropdown — moved below the files row */}

@@ -126,7 +126,7 @@ export default function RoomCardTile({ item, expanded, onToggleExpand, checked, 
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                if (isPdf) openPdfTab(firstFile);
+                if (isPdf) openPdfTab(firstFile, item);
                 else window.open(firstFile.url, "_blank", "noopener,noreferrer");
               }}
               className="flex items-center justify-center gap-1 w-full min-w-0 h-6 px-1.5 rounded border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors"
