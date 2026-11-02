@@ -10,6 +10,10 @@
       "type": "string",
       "description": "What this training covers"
     },
+    "area": {
+      "type": "string",
+      "description": "Shop area this training belongs to (Cut, Face Frame, Spray, Build, Delivery, Install, Specialty, General, Office). Empty when the training isn't tied to an area."
+    },
     "category": {
       "type": "string",
       "description": "Training category (managed via TrainingCategory entity)"
