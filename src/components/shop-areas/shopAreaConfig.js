@@ -64,7 +64,7 @@ export const SECTIONS = [
     key: "cleaning",
     label: "Cleaning Checklist",
     icon: Sparkles,
-    fields: ["frequency", "owner", "status", "date", "description"],
+    fields: ["frequency", "owner", "status", "date", "checklist", "images", "description"],
     statuses: ["Pending", "Done"],
   },
   {

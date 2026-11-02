@@ -51,6 +51,44 @@
       "type": "string",
       "format": "date",
       "description": "Relevant date (completed, due, last performed, logged)"
+    },
+    "checklist": {
+      "type": "array",
+      "description": "Checklist steps with a done flag (used by cleaning / maintenance checklists)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "description": "Step description"
+          },
+          "done": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this step is checked off"
+          }
+        }
+      }
+    },
+    "images": {
+      "type": "array",
+      "description": "Reference photos for this record, stored in private storage",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "File name"
+          },
+          "uri": {
+            "type": "string",
+            "description": "Private file uri (resolved with a signed URL for display)"
+          }
+        }
+      }
     }
   },
   "required": [

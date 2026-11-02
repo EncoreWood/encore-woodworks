@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import ChecklistEditor from "./ChecklistEditor";
+import ImagesField from "./ImagesField";
 
 const EMPTY = {
   title: "",
@@ -14,6 +16,8 @@ const EMPTY = {
   unit: "",
   frequency: "",
   date: "",
+  checklist: [],
+  images: [],
 };
 
 /**
@@ -42,6 +46,8 @@ export default function ShopAreaRecordForm({ open, onOpenChange, section, editin
     (section?.fields || []).forEach((field) => {
       if (field === "quantity") {
         payload.quantity = form.quantity === "" || form.quantity === null ? null : Number(form.quantity);
+      } else if (field === "checklist" || field === "images") {
+        payload[field] = Array.isArray(form[field]) ? form[field] : [];
       } else {
         payload[field] = form[field] || "";
       }
@@ -82,6 +88,26 @@ export default function ShopAreaRecordForm({ open, onOpenChange, section, editin
                 onChange={(e) => set("description", e.target.value)}
                 rows={3}
                 placeholder="Steps, specs or notes"
+              />
+            </div>
+          )}
+
+          {has("checklist") && (
+            <div>
+              <Label>Checklist</Label>
+              <ChecklistEditor
+                value={form.checklist || []}
+                onChange={(items) => set("checklist", items)}
+              />
+            </div>
+          )}
+
+          {has("images") && (
+            <div>
+              <Label>Photos</Label>
+              <ImagesField
+                value={form.images || []}
+                onChange={(items) => set("images", items)}
               />
             </div>
           )}

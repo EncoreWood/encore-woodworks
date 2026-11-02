@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import ShopAreaRecordForm from "./ShopAreaRecordForm";
 import SectionTile from "./SectionTile";
+import PrivateThumb from "./PrivateThumb";
 
 const STATUS_STYLES = {
   Active: "bg-green-50 text-green-700 border-green-200",
@@ -145,7 +146,33 @@ export default function AreaSection({ area, section }) {
                           {record.owner && <span>{record.owner}</span>}
                           {record.frequency && <span>{record.frequency}</span>}
                           {record.date && <span>{record.date}</span>}
+                          {record.checklist?.length > 0 && (
+                            <span className="font-medium text-teal-700">
+                              {record.checklist.filter((i) => i.done).length}/{record.checklist.length} steps
+                            </span>
+                          )}
                         </div>
+                        {record.images?.length > 0 && (
+                          <div className="flex items-center gap-1 mt-1">
+                            {record.images.slice(0, 4).map((img) => (
+                              <button
+                                key={img.uri}
+                                type="button"
+                                onClick={() => openEdit(record)}
+                                title={img.name}
+                              >
+                                <PrivateThumb
+                                  uri={img.uri}
+                                  alt={img.name || "Checklist photo"}
+                                  className="w-7 h-7 object-cover rounded border border-slate-200"
+                                />
+                              </button>
+                            ))}
+                            {record.images.length > 4 && (
+                              <span className="text-[10px] text-slate-500">+{record.images.length - 4}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-0.5 flex-shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                         <button
