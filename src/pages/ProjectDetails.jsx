@@ -60,6 +60,7 @@ import { useProjectNotifications, countsFor } from "@/hooks/useProjectNotificati
 import UnreadBadge from "@/components/projects/UnreadBadge";
 import RoomProgressBar from "@/components/production/RoomProgressBar";
 import { roomProgress } from "@/lib/roomProgress";
+import { progressBand } from "@/lib/stagePalette";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -503,7 +504,12 @@ export default function ProjectDetails() {
                       title={`${completeRoomCount} of ${project.rooms.length} room${project.rooms.length !== 1 ? "s" : ""} finished production · ${overallRoomPct}% overall`}
                     >
                       <span className="text-sm text-slate-500">{completeRoomCount}/{project.rooms.length} complete</span>
-                      <Progress value={overallRoomPct} className="w-24 h-2 bg-slate-100" />
+                      <div className="w-24 h-2 rounded-full bg-slate-100 overflow-hidden">
+                        <div
+                          className={cn("h-full rounded-full transition-[width] duration-300 ease-out", progressBand(overallRoomPct).fill)}
+                          style={{ width: `${overallRoomPct}%` }}
+                        />
+                      </div>
                     </div>
                   )}
                   {project.rooms?.length > 0 && (

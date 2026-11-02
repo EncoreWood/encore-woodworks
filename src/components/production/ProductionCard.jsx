@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Hammer, Clock, MoreVertical } from "lucide-react";
 import RoomInfoIcon from "@/components/production/RoomInfoIcon";
+import StageChip from "@/components/production/StageChip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import CardMoveHistoryDialog from "@/components/production/CardMoveHistoryDialog";
@@ -367,6 +368,7 @@ export default function ProductionCard({
                 <Box className="w-3 h-3" />
               </Button>
             )}
+            <StageChip item={item} />
             <Badge variant="outline" className={`${typeBadgeClass} text-[9px] px-1.5 py-0 h-4 leading-none`}>{typeLabel}</Badge>
           </div>
         </div>

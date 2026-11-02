@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, ArrowRight, FileText } from "lucide-react";
 import ProductionCard from "@/components/production/ProductionCard";
 import { useOpenPdfTab } from "@/hooks/useOpenPdfTab";
 import RoomInfoIcon from "@/components/production/RoomInfoIcon";
+import StageChip from "@/components/production/StageChip";
 import { cardPts } from "@/lib/roomPts";
 import { cn } from "@/lib/utils";
 
@@ -12,15 +13,6 @@ const TYPE_LABELS = {
   misc: "Misc",
   pickup: "Pick up",
   end_panel: "End Panel",
-};
-
-const STAGE_LABELS = {
-  cut: "Cut",
-  face_frame: "Face Frame",
-  spray: "Spray",
-  build: "Build",
-  complete: "Complete",
-  on_hold: "On Hold",
 };
 
 /**
@@ -106,14 +98,7 @@ export default function RoomCardTile({ item, expanded, onToggleExpand, checked, 
             <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
               {pts || 0} PTS
             </span>
-            <span className={cn(
-              "text-[10px] font-semibold px-1.5 py-0.5 rounded-full border",
-              staged
-                ? "bg-slate-100 text-slate-500 border-slate-200"
-                : "bg-blue-50 text-blue-700 border-blue-200"
-            )}>
-              {staged ? (item.completed_date ? "Complete" : "Staged") : STAGE_LABELS[item.stage] || item.stage}
-            </span>
+            <StageChip item={item} />
             {item.is_urgent && (
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
                 Urgent
