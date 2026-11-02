@@ -726,17 +726,17 @@ export default function ShopProduction() {
         </div>
 
         {/* Per-column PTS stats */}
-        <div className="mb-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
           {STAT_STAGES.map(stage => {
             const s = colStats[stage];
             return (
-              <div key={stage} className="bg-white border border-slate-200 rounded-xl px-4 py-3 shadow-sm">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">{STAT_LABELS[stage]}</p>
-                <div className="flex gap-3">
-                  {[{ label: "Day", val: s.day }, { label: "Week", val: s.week }, { label: "Month", val: s.month }].map(({ label, val }) => (
-                    <div key={label} className="text-center flex-1">
-                      <p className="text-xs text-slate-400">{label}</p>
-                      <p className="text-base font-bold text-green-700">{val}<span className="text-xs font-medium opacity-60 ml-0.5">p</span></p>
+              <div key={stage} className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm flex items-center justify-between gap-2 min-w-0">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide truncate">{STAT_LABELS[stage]}</p>
+                <div className="flex gap-2 flex-shrink-0">
+                  {[{ label: "D", val: s.day }, { label: "W", val: s.week }, { label: "M", val: s.month }].map(({ label, val }) => (
+                    <div key={label} className="text-center leading-none" title={label === "D" ? "Day" : label === "W" ? "Week" : "Month"}>
+                      <p className="text-[9px] text-slate-400">{label}</p>
+                      <p className="text-xs font-bold text-green-700 mt-0.5">{val}<span className="text-[9px] font-medium opacity-60">p</span></p>
                     </div>
                   ))}
                 </div>
