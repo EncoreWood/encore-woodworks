@@ -3,10 +3,11 @@ import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import {
   LayoutDashboard, Home, Users, GraduationCap, BookOpen, BarChart3,
-  ChevronDown, Pin, PinOff, Settings, UserCircle, Play, Square, ArrowLeftRight, Columns2, BellRing,
+  ChevronDown, Pin, PinOff, Settings, UserCircle, Play, Square, ArrowLeftRight, Columns2,
 } from "lucide-react";
 import ProductionIcon from "@/components/icons/ProductionIcon";
 import ShopAreasIcon from "@/components/icons/ShopAreasIcon";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 const GROUP_ICONS = {
   dashboard: LayoutDashboard,
@@ -40,7 +41,7 @@ export default function TopPageTabs({
   pinnedPages = [],
   onTogglePin,
   pendingTaskCount = 0,
-  inventoryRequestCount = 0,
+  notifications = [],
   clockInTime,
   elapsedTime,
   onClockIn,
@@ -365,17 +366,8 @@ export default function TopPageTabs({
       </div>
 
       <div className="tpt-right">
-        {currentUser?.role === "admin" && inventoryRequestCount > 0 && (
-          <Link
-            to={createPageUrl("Inventory")}
-            className="tpt-icon-btn"
-            style={{ position: "relative", color: "#fff", background: "linear-gradient(145deg,#c2410c,#9a3412)" }}
-            title={`${inventoryRequestCount} inventory order request${inventoryRequestCount === 1 ? "" : "s"}`}
-            aria-label={`${inventoryRequestCount} inventory order requests`}
-          >
-            <BellRing />
-            <span className="tpt-badge">{inventoryRequestCount > 9 ? "9+" : inventoryRequestCount}</span>
-          </Link>
+        {currentUser?.role === "admin" && (
+          <NotificationBell notifications={notifications} triggerClassName="tpt-icon-btn" />
         )}
         {currentUser?.role === "user" && (
           clockInTime ? (

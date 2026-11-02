@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, BellRing, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square,   Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon, ArrowLeftRight, ArchiveX, ShoppingCart as ShoppingCartIcon, ListTodo, GraduationCap, Scissors, Frame, SprayCan, HardHat, Sparkles, BookOpen, Workflow, Pin, PinOff } from "lucide-react";
+import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square,   Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon, ArrowLeftRight, ArchiveX, ShoppingCart as ShoppingCartIcon, ListTodo, GraduationCap, Scissors, Frame, SprayCan, HardHat, Sparkles, BookOpen, Workflow, Pin, PinOff } from "lucide-react";
 import MobileTabBar from "@/components/MobileTabBar";
 import TopPageTabs from "@/components/TopPageTabs";
 import ClockInModal from "@/components/timesheet/ClockInModal";
@@ -17,7 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { findMyEmployee } from "@/lib/findMyEmployee";
 import { usePendingTimeEditRequests } from "@/hooks/usePendingTimeEditRequests";
-import { usePendingInventoryRequests } from "@/hooks/usePendingInventoryRequests";
+import { useAdminNotifications } from "@/hooks/useAdminNotifications";
+import NotificationBell from "@/components/notifications/NotificationBell";
 import { usePinnedPages } from "@/hooks/usePinnedPages";
 import { useSplitView, useIsDesktop } from "@/hooks/useSplitView";
 import SplitView from "@/components/split/SplitView";
@@ -65,7 +66,7 @@ export default function Layout({ children, currentPageName }) {
   const [todayCompletedHours, setTodayCompletedHours] = useState(0);
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
   const pendingEditRequests = usePendingTimeEditRequests(currentUser?.role === "admin");
-  const pendingInventoryRequests = usePendingInventoryRequests(currentUser?.role === "admin");
+  const adminNotifications = useAdminNotifications(currentUser?.role === "admin");
   const { pinnedPages, togglePin, isPinned } = usePinnedPages();
   const { split, updateSplit } = useSplitView();
   const isDesktop = useIsDesktop();
@@ -717,7 +718,7 @@ export default function Layout({ children, currentPageName }) {
         pinnedPages={pinnedPages}
         onTogglePin={togglePin}
         pendingTaskCount={pendingTaskCount}
-        inventoryRequestCount={pendingInventoryRequests.length}
+        notifications={adminNotifications}
         clockInTime={clockInTime}
         elapsedTime={elapsedTime}
         onClockIn={handleClockIn}
@@ -749,17 +750,11 @@ export default function Layout({ children, currentPageName }) {
               </button>
             ) : null}
             <span className={`font-semibold text-slate-900 text-sm flex-1 ${!isRoot ? "ml-1" : ""}`}>{displayName}</span>
-            {currentUser?.role === "admin" && pendingInventoryRequests.length > 0 && (
-              <Link
-                to={createPageUrl("Inventory")}
-                className="relative flex items-center justify-center touch-manipulation select-none active:opacity-60 min-w-[44px] min-h-[44px] text-slate-800"
-                aria-label="Inventory order requests"
-              >
-                <BellRing className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold">
-                  {pendingInventoryRequests.length > 9 ? "9+" : pendingInventoryRequests.length}
-                </span>
-              </Link>
+            {currentUser?.role === "admin" && (
+              <NotificationBell
+                notifications={adminNotifications}
+                triggerClassName="flex items-center justify-center touch-manipulation select-none active:opacity-60 min-w-[44px] min-h-[44px] text-slate-800"
+              />
             )}
             <button
               type="button"
