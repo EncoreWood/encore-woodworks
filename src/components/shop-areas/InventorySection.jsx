@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Loader2, Inbox, Package, Minus, BellRing } from "lucide-react";
+import { Plus, Pencil, Loader2, Inbox, Package, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import SectionSheet from "./SectionSheet";
 import InventoryForm from "@/components/inventory/InventoryForm";
+import QuantityStepper from "@/components/inventory/QuantityStepper";
 import RequestOrderDialog from "./RequestOrderDialog";
 import SectionTile from "./SectionTile";
 
@@ -61,9 +62,10 @@ export default function InventorySection({ area, section }) {
     },
   });
 
-  // Quick count correction straight from the row.
-  const adjustQuantity = (item, delta) => {
-    const next = Math.max((item.quantity ?? 0) + delta, 0);
+  // Quick count correction straight from the row (typed or −/+).
+  const adjustQuantity = (item, next) => {
+    next = Math.max(next, 0);
+    if (next === (item.quantity ?? 0)) return;
     queryClient.setQueryData(["inventory", "area", area], (prev = []) =>
       prev.map((row) => (row.id === item.id ? { ...row, quantity: next, status: recalcStatus(next, row.min_quantity) } : row))
     );
@@ -132,6 +134,20 @@ export default function InventorySection({ area, section }) {
                   return (
                     <li key={item.id} className="px-4 py-2.5 hover:bg-slate-50 transition-colors">
                       <div className="flex items-start gap-2">
+                        {item.image_url ? (
+                          <button
+                            type="button"
+                            onClick={() => openEdit(item)}
+                            className="flex-shrink-0"
+                            title="View item"
+                          >
+                            <img
+                              src={item.image_url}
+                              alt={item.name || "Inventory item"}
+                              className="w-10 h-10 rounded-md object-cover border border-slate-200 bg-slate-50"
+                            />
+                          </button>
+                        ) : null}
                         <button type="button" onClick={() => openEdit(item)} className="flex-1 min-w-0 text-left">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <p className="text-xs font-semibold text-slate-900 break-words">{item.name}</p>
@@ -163,30 +179,12 @@ export default function InventorySection({ area, section }) {
 
                       {/* Quick count + request order */}
                       <div className="flex items-center gap-1.5 mt-1.5">
-                        <button
-                          type="button"
-                          onClick={() => adjustQuantity(item, -1)}
-                          className="w-7 h-7 rounded-md border border-slate-200 bg-white text-slate-700 flex items-center justify-center active:bg-slate-100 touch-manipulation"
-                          title="Take one out"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span
-                          className={`min-w-[3rem] text-center text-xs font-bold font-mono ${
-                            low ? "text-red-600" : "text-slate-800"
-                          }`}
-                        >
-                          {item.quantity ?? 0}
-                          {item.unit ? <span className="text-[10px] font-normal text-slate-400 ml-0.5">{item.unit}</span> : null}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => adjustQuantity(item, 1)}
-                          className="w-7 h-7 rounded-md border border-slate-200 bg-white text-slate-700 flex items-center justify-center active:bg-slate-100 touch-manipulation"
-                          title="Add one"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
+                        <QuantityStepper
+                          value={item.quantity ?? 0}
+                          unit={item.unit}
+                          low={low}
+                          onChange={(next) => adjustQuantity(item, next)}
+                        />
                         <button
                           type="button"
                           onClick={() => setRequesting(item)}
