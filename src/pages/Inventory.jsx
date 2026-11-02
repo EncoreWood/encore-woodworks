@@ -33,7 +33,7 @@ const statusLabel = {
   discontinued: "Discontinued",
 };
 const catLabel = (cat) => cat ? cat.charAt(0).toUpperCase() + cat.slice(1) : "";
-const LOCATIONS = ["all", "Cut", "Face Frame", "Spray", "Build", "Install", "Office"];
+const LOCATIONS = ["all", "Cut", "Face Frame", "Spray", "Build", "Install", "Office", "Delivery", "Specialty", "General"];
 
 const getItemSuppliers = (item) => {
   if (Array.isArray(item.suppliers) && item.suppliers.length) return item.suppliers;

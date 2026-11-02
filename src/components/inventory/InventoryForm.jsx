@@ -9,7 +9,9 @@ import { ImagePlus, Loader2, X, Settings2 } from "lucide-react";
 import CategoryManager from "@/components/inventory/CategoryManager";
 import SupplierEditor from "@/components/inventory/SupplierEditor";
 
-export default function InventoryForm({ open, onOpenChange, editingItem, onSave }) {
+export const INVENTORY_LOCATIONS = ["Cut", "Face Frame", "Spray", "Build", "Install", "Office", "Delivery", "Specialty", "General"];
+
+export default function InventoryForm({ open, onOpenChange, editingItem, onSave, defaultLocation }) {
   const [form, setForm] = useState({
     name: "", item_sku: "", category: "", quantity: "", unit: "", min_quantity: "",
     price_per_unit: "", suppliers: [], location: "", notes: "", status: "in_stock", image_url: "",
@@ -58,9 +60,9 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
         image_url: editingItem.image_url || "",
       });
     } else {
-      setForm({ name: "", item_sku: "", category: categories[0]?.name || "", quantity: "", unit: "", min_quantity: "", price_per_unit: "", suppliers: [], location: "", notes: "", status: "in_stock", image_url: "" });
+      setForm({ name: "", item_sku: "", category: categories[0]?.name || "", quantity: "", unit: "", min_quantity: "", price_per_unit: "", suppliers: [], location: defaultLocation || "", notes: "", status: "in_stock", image_url: "" });
     }
-  }, [editingItem, open, categories]);
+  }, [editingItem, open, categories, defaultLocation]);
 
   const handleSave = async () => {
     if (!form.name || !form.category || form.quantity === "") return;
@@ -148,12 +150,9 @@ export default function InventoryForm({ open, onOpenChange, editingItem, onSave 
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select location" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="Cut">Cut</SelectItem>
-                  <SelectItem value="Face Frame">Face Frame</SelectItem>
-                  <SelectItem value="Spray">Spray</SelectItem>
-                  <SelectItem value="Build">Build</SelectItem>
-                  <SelectItem value="Install">Install</SelectItem>
-                  <SelectItem value="Office">Office</SelectItem>
+                  {INVENTORY_LOCATIONS.map((loc) => (
+                    <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
