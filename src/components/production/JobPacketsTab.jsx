@@ -9,6 +9,7 @@ import ProductionCard from "./ProductionCard";
 import RoomWorkspace from "./room-workspace/RoomWorkspace";
 import SendToProductionDialog from "./SendToProductionDialog";
 import { roomPts } from "@/lib/roomPts";
+import RoomProgressBar from "./RoomProgressBar";
 
 // Job Packet group order: In Production → Ready → Installing → Production Prep → everything else
 const STAGE_PRIORITY = ["in_production", "ready_for_install", "ready", "installing", "production_prep"];
@@ -52,6 +53,8 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
           <span className="inline-block mt-1 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 whitespace-nowrap">
             {roomPts(roomItems)} PTS
           </span>
+          {/* At-a-glance room progress, same bar as the Room Workspace header */}
+          <RoomProgressBar items={roomItems} className="mt-1.5" />
         </div>
         <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-amber-500 flex-shrink-0 mt-0.5" />
       </button>

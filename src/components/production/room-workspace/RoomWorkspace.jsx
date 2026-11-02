@@ -10,6 +10,7 @@ import TypeGroupedGrid from "@/components/production/TypeGroupedGrid";
 import ProductionItemForm from "@/components/production/ProductionItemForm";
 import RoomCardTile from "./RoomCardTile";
 import RoomInfoPane from "./RoomInfoPane";
+import RoomProgressBar from "@/components/production/RoomProgressBar";
 import { roomPts } from "@/lib/roomPts";
 
 /**
@@ -277,6 +278,8 @@ export default function RoomWorkspace({
                 {roomPts(roomItems)} PTS
               </span>
             </div>
+            {/* Room-level production progress — average stage of this room's cards */}
+            <RoomProgressBar items={roomItems} className="mt-1 max-w-[220px]" />
           </div>
           <button
             type="button"
