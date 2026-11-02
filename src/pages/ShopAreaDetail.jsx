@@ -29,7 +29,7 @@ export default function ShopAreaDetail({ area }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 items-start">
           {SECTIONS.map((section) => {
             if (section.key === "sop") {
               return <SopSection key={section.key} area={config.name} section={section} />;

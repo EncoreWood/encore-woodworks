@@ -11,6 +11,7 @@
       "enum": [
         "sop",
         "training",
+        "lean",
         "inventory",
         "cleaning",
         "maintenance",
