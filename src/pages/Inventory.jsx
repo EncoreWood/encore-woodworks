@@ -13,6 +13,7 @@ import PrintAllLabels from "@/components/inventory/PrintAllLabels";
 import InventoryHistory from "@/components/inventory/InventoryHistory";
 import CategoryManager from "@/components/inventory/CategoryManager";
 import ReorderTab from "@/components/inventory/ReorderTab";
+import InventoryRequestsPanel from "@/components/inventory/InventoryRequestsPanel";
 
 function recalcStatus(quantity, min_quantity) {
   if (quantity <= 0) return "needs_ordered";
@@ -216,6 +217,8 @@ export default function Inventory() {
             </Button>
           </div>
         </div>
+
+        <InventoryRequestsPanel />
 
         <Tabs defaultValue="items">
           <TabsList className="bg-white border border-slate-200">

@@ -1,0 +1,69 @@
+{
+  "name": "InventoryRequest",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "description": "Inventory item this request is for"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Item name at the time of the request"
+    },
+    "item_sku": {
+      "type": "string",
+      "description": "Item ID / SKU at the time of the request"
+    },
+    "location": {
+      "type": "string",
+      "description": "Shop area the item lives in"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unit of measure"
+    },
+    "current_quantity": {
+      "type": "number",
+      "description": "Quantity on hand when the request was sent"
+    },
+    "requested_quantity": {
+      "type": "number",
+      "description": "How many the employee asked to order"
+    },
+    "note": {
+      "type": "string",
+      "description": "Note from the employee"
+    },
+    "requested_by": {
+      "type": "string",
+      "description": "Name of the employee who sent the request"
+    },
+    "requested_by_email": {
+      "type": "string",
+      "description": "Email of the employee who sent the request"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "ordered",
+        "dismissed"
+      ],
+      "default": "pending",
+      "description": "pending = waiting on the office; ordered = purchased; dismissed = handled without an order"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "description": "Name of the person who cleared the request"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "description": "ISO timestamp of when the request was cleared"
+    }
+  },
+  "required": [
+    "item_id",
+    "item_name",
+    "requested_by"
+  ]
+}

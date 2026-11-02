@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Loader2, Inbox, Package } from "lucide-react";
+import { Plus, Pencil, Loader2, Inbox, Package, Minus, BellRing } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import InventoryForm from "@/components/inventory/InventoryForm";
+import RequestOrderDialog from "./RequestOrderDialog";
 import SectionTile from "./SectionTile";
 
 const STATUS_LABEL = {
@@ -21,15 +22,23 @@ const STATUS_STYLE = {
   discontinued: "bg-slate-100 text-slate-500 border-slate-200",
 };
 
+function recalcStatus(quantity, min_quantity) {
+  if ((quantity ?? 0) <= 0) return "needs_ordered";
+  if (min_quantity && quantity < min_quantity) return "low_stock";
+  return "in_stock";
+}
+
 /**
  * Inventory for one shop area. Reads and writes the real Inventory board items
  * filtered by their location (the area), so the two always stay in sync.
- * Collapsed to a compact tile; clicking it opens the full item list.
+ * Employees can bump the count with −/+ or send an order request straight
+ * from the row.
  */
 export default function InventorySection({ area, section }) {
   const [open, setOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [requesting, setRequesting] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: items = [], isLoading } = useQuery({
@@ -51,6 +60,23 @@ export default function InventorySection({ area, section }) {
       setEditing(null);
     },
   });
+
+  // Quick count correction straight from the row.
+  const adjustQuantity = (item, delta) => {
+    const next = Math.max((item.quantity ?? 0) + delta, 0);
+    queryClient.setQueryData(["inventory", "area", area], (prev = []) =>
+      prev.map((row) => (row.id === item.id ? { ...row, quantity: next, status: recalcStatus(next, row.min_quantity) } : row))
+    );
+    base44.entities.Inventory.update(item.id, {
+      quantity: next,
+      status: recalcStatus(next, item.min_quantity),
+    })
+      .then(() => queryClient.invalidateQueries({ queryKey: ["inventory"] }))
+      .catch((err) => {
+        console.error("Quantity update failed:", err);
+        queryClient.invalidateQueries({ queryKey: ["inventory", "area", area] });
+      });
+  };
 
   const openNew = () => {
     setEditing(null);
@@ -104,7 +130,7 @@ export default function InventorySection({ area, section }) {
                   const low =
                     item.min_quantity != null && item.quantity != null && item.quantity <= item.min_quantity;
                   return (
-                    <li key={item.id} className="px-4 py-2.5 hover:bg-slate-50 transition-colors group">
+                    <li key={item.id} className="px-4 py-2.5 hover:bg-slate-50 transition-colors">
                       <div className="flex items-start gap-2">
                         <button type="button" onClick={() => openEdit(item)} className="flex-1 min-w-0 text-left">
                           <div className="flex items-center gap-1.5 flex-wrap">
@@ -118,10 +144,8 @@ export default function InventorySection({ area, section }) {
                             </span>
                           </div>
                           <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 text-[10px] text-slate-500 mt-0.5">
-                            <span className={`font-medium ${low ? "text-red-600" : "text-slate-700"}`}>
-                              {item.quantity ?? 0}
-                              {item.unit ? ` ${item.unit}` : ""}
-                              {item.min_quantity != null ? ` · min ${item.min_quantity}` : ""}
+                            <span className={low ? "text-red-600 font-medium" : ""}>
+                              {item.min_quantity != null ? `min ${item.min_quantity}` : ""}
                             </span>
                             {item.category && <span>{item.category}</span>}
                             {item.item_sku && <span className="font-mono">{item.item_sku}</span>}
@@ -134,6 +158,42 @@ export default function InventorySection({ area, section }) {
                           title="Edit item"
                         >
                           <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Quick count + request order */}
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <button
+                          type="button"
+                          onClick={() => adjustQuantity(item, -1)}
+                          className="w-7 h-7 rounded-md border border-slate-200 bg-white text-slate-700 flex items-center justify-center active:bg-slate-100 touch-manipulation"
+                          title="Take one out"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span
+                          className={`min-w-[3rem] text-center text-xs font-bold font-mono ${
+                            low ? "text-red-600" : "text-slate-800"
+                          }`}
+                        >
+                          {item.quantity ?? 0}
+                          {item.unit ? <span className="text-[10px] font-normal text-slate-400 ml-0.5">{item.unit}</span> : null}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => adjustQuantity(item, 1)}
+                          className="w-7 h-7 rounded-md border border-slate-200 bg-white text-slate-700 flex items-center justify-center active:bg-slate-100 touch-manipulation"
+                          title="Add one"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRequesting(item)}
+                          className="ml-auto flex items-center gap-1 h-7 px-2 rounded-md border border-red-200 bg-red-50 text-red-700 text-[11px] font-semibold hover:bg-red-100 transition-colors touch-manipulation"
+                          title="Send an order request to the office"
+                        >
+                          <BellRing className="w-3 h-3" /> Request Order
                         </button>
                       </div>
                     </li>
@@ -154,6 +214,18 @@ export default function InventorySection({ area, section }) {
         editingItem={editing}
         defaultLocation={area}
         onSave={(values) => saveMutation.mutate(values)}
+      />
+
+      <RequestOrderDialog
+        item={requesting}
+        open={!!requesting}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setRequesting(null);
+        }}
+        onSubmitted={() => {
+          queryClient.invalidateQueries({ queryKey: ["inventory"] });
+          queryClient.invalidateQueries({ queryKey: ["inventoryRequests"] });
+        }}
       />
     </>
   );
