@@ -14,6 +14,7 @@ const GROUP_ICONS = {
   operations: ProductionIcon,
   team: Users,
   lean: GraduationCap,
+  shop_areas: BookOpen,
   education: BookOpen,
 };
 
@@ -86,7 +87,7 @@ export default function TopPageTabs({
       .filter(Boolean);
 
   const groups = [
-    ...buildGroups(["dashboard", "projects", "operations", "team", "lean", "education"]),
+    ...buildGroups(["dashboard", "projects", "operations", "team", "lean", "shop_areas"]),
     ...buildGroups(["admin"]),
   ];
 

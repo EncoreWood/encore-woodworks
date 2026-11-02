@@ -42,6 +42,8 @@ import MyAssignments from './pages/MyAssignments';
 import Trainings from './pages/Trainings';
 import Flow from './pages/Flow';
 import Education from './pages/Education';
+import ShopAreas from './pages/ShopAreas';
+import ShopAreaDetail from './pages/ShopAreaDetail';
 import MyProfile from './pages/MyProfile';
 
 
@@ -113,6 +115,16 @@ const AuthenticatedApp = () => {
       <Route path="/EducationInstall" element={<LayoutWrapper currentPageName="EducationInstall"><Education folder="Install" /></LayoutWrapper>} />
       <Route path="/EducationSpecialty" element={<LayoutWrapper currentPageName="EducationSpecialty"><Education folder="Specialty" /></LayoutWrapper>} />
       <Route path="/EducationGeneral" element={<LayoutWrapper currentPageName="EducationGeneral"><Education folder="General" /></LayoutWrapper>} />
+      <Route path="/ShopAreas" element={<LayoutWrapper currentPageName="ShopAreas"><ShopAreas /></LayoutWrapper>} />
+      <Route path="/ShopAreaCut" element={<LayoutWrapper currentPageName="ShopAreaCut"><ShopAreaDetail area="Cut" /></LayoutWrapper>} />
+      <Route path="/ShopAreaFaceFrame" element={<LayoutWrapper currentPageName="ShopAreaFaceFrame"><ShopAreaDetail area="Face Frame" /></LayoutWrapper>} />
+      <Route path="/ShopAreaSpray" element={<LayoutWrapper currentPageName="ShopAreaSpray"><ShopAreaDetail area="Spray" /></LayoutWrapper>} />
+      <Route path="/ShopAreaBuild" element={<LayoutWrapper currentPageName="ShopAreaBuild"><ShopAreaDetail area="Build" /></LayoutWrapper>} />
+      <Route path="/ShopAreaDelivery" element={<LayoutWrapper currentPageName="ShopAreaDelivery"><ShopAreaDetail area="Delivery" /></LayoutWrapper>} />
+      <Route path="/ShopAreaInstall" element={<LayoutWrapper currentPageName="ShopAreaInstall"><ShopAreaDetail area="Install" /></LayoutWrapper>} />
+      <Route path="/ShopAreaSpecialty" element={<LayoutWrapper currentPageName="ShopAreaSpecialty"><ShopAreaDetail area="Specialty" /></LayoutWrapper>} />
+      <Route path="/ShopAreaGeneral" element={<LayoutWrapper currentPageName="ShopAreaGeneral"><ShopAreaDetail area="General" /></LayoutWrapper>} />
+      <Route path="/ShopAreaOffice" element={<LayoutWrapper currentPageName="ShopAreaOffice"><ShopAreaDetail area="Office" /></LayoutWrapper>} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

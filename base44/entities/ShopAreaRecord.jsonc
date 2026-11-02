@@ -1,0 +1,60 @@
+{
+  "name": "ShopAreaRecord",
+  "type": "object",
+  "properties": {
+    "area": {
+      "type": "string",
+      "description": "Shop area this record belongs to: Cut, Face Frame, Spray, Build, Delivery, Install, Specialty, General, Office"
+    },
+    "section": {
+      "type": "string",
+      "enum": [
+        "sop",
+        "training",
+        "inventory",
+        "cleaning",
+        "maintenance",
+        "history"
+      ],
+      "description": "Section of the shop area this record belongs to"
+    },
+    "title": {
+      "type": "string",
+      "description": "Record title / name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Details, steps or notes"
+    },
+    "owner": {
+      "type": "string",
+      "description": "Person responsible for this record"
+    },
+    "status": {
+      "type": "string",
+      "description": "Status for the section (e.g. Active, In Progress, In Stock, Done, Scheduled)"
+    },
+    "quantity": {
+      "type": "number",
+      "description": "Quantity on hand (inventory records)"
+    },
+    "unit": {
+      "type": "string",
+      "description": "Unit of measure (ea, bd ft, box, etc.)"
+    },
+    "frequency": {
+      "type": "string",
+      "description": "Recurrence for cleaning and maintenance records (Daily, Weekly, Monthly, Quarterly)"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Relevant date (completed, due, last performed, logged)"
+    }
+  },
+  "required": [
+    "area",
+    "section",
+    "title"
+  ]
+}

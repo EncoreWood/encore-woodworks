@@ -48,7 +48,7 @@ export default function Layout({ children, currentPageName }) {
     operations: true,
     team: true,
     lean: true,
-    education: true
+    shop_areas: true
   });
   const [currentUser, setCurrentUser] = useState(null);
   const [clockInTime, setClockInTime] = useState(null);
@@ -151,17 +151,19 @@ export default function Layout({ children, currentPageName }) {
         { name: "Individual Lean", icon: Users, iconName: "Users", page: "IndividualLean" }
       ]
     },
-    education: {
-      name: "Education",
+    shop_areas: {
+      name: "Shop Areas",
       items: [
-        { name: "Cut", icon: Scissors, iconName: "Scissors", page: "EducationCut" },
-        { name: "Face Frame", icon: Frame, iconName: "Frame", page: "EducationFaceFrame" },
-        { name: "Spray", icon: SprayCan, iconName: "SprayCan", page: "EducationSpray" },
-        { name: "Build", icon: Hammer, iconName: "Hammer", page: "EducationBuild" },
-        { name: "Delivery", icon: Truck, iconName: "Truck", page: "EducationDelivery" },
-        { name: "Install", icon: HardHat, iconName: "HardHat", page: "EducationInstall" },
-        { name: "Specialty", icon: Sparkles, iconName: "Sparkles", page: "EducationSpecialty" },
-        { name: "General", icon: BookOpen, iconName: "BookOpen", page: "EducationGeneral" }
+        { name: "All Shop Areas", icon: LayoutDashboard, iconName: "LayoutDashboard", page: "ShopAreas" },
+        { name: "Cut", icon: Scissors, iconName: "Scissors", page: "ShopAreaCut" },
+        { name: "Face Frame", icon: Frame, iconName: "Frame", page: "ShopAreaFaceFrame" },
+        { name: "Spray", icon: SprayCan, iconName: "SprayCan", page: "ShopAreaSpray" },
+        { name: "Build", icon: Hammer, iconName: "Hammer", page: "ShopAreaBuild" },
+        { name: "Delivery", icon: Truck, iconName: "Truck", page: "ShopAreaDelivery" },
+        { name: "Install", icon: HardHat, iconName: "HardHat", page: "ShopAreaInstall" },
+        { name: "Specialty", icon: Sparkles, iconName: "Sparkles", page: "ShopAreaSpecialty" },
+        { name: "General", icon: BookOpen, iconName: "BookOpen", page: "ShopAreaGeneral" },
+        { name: "Office", icon: Building2, iconName: "Building2", page: "ShopAreaOffice" }
       ]
     }
   };
