@@ -1,5 +1,5 @@
 const ICON_URL =
-  "https://base44.app/api/apps/6984bc8fae105e5a06a39d65/files/mp/public/6984bc8fae105e5a06a39d65/8bf1f83c9_shop-area-icon.png";
+  "https://base44.app/api/apps/6984bc8fae105e5a06a39d65/files/mp/public/6984bc8fae105e5a06a39d65/8f0951ebc_shop-area-icon.png";
 
 /**
  * Custom Shop Areas mark. Used wherever the old book icon appeared so the
