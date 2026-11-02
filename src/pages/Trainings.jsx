@@ -106,7 +106,10 @@ export default function Trainings() {
     setShowForm(true);
   };
 
-  const filtered = trainings.filter(t => {
+  // Employees only see published trainings — drafts stay in the admin's view.
+  const visibleTrainings = isAdmin ? trainings : trainings.filter(t => t.status !== "draft");
+
+  const filtered = visibleTrainings.filter(t => {
     const matchesSearch = !searchQuery ||
       t.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -134,10 +137,14 @@ export default function Trainings() {
 
           <TabsContent value="general" className="space-y-4 mt-4">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-slate-500">Training materials for areas, machines, custom builds, and more</p>
+              <p className="text-sm text-slate-500">
+                {isAdmin
+                  ? "Add a name, a video, and a quiz — employees can take it as soon as it's created."
+                  : "Watch the videos and take the quizzes whenever you're ready."}
+              </p>
               {isAdmin && (
                 <Button onClick={handleNew} className="bg-indigo-600 hover:bg-indigo-700 flex-shrink-0" size="sm">
-                  <Plus className="w-4 h-4" /> <span className="hidden sm:inline">New Training</span>
+                  <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add Training</span>
                 </Button>
               )}
             </div>
@@ -166,6 +173,9 @@ export default function Trainings() {
               <div className="text-center py-16 text-slate-400">
                 <GraduationCap className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="font-medium">No trainings found</p>
+                <p className="text-sm">
+                  {isAdmin ? "Use Add Training to create one with a video and a quiz." : "Trainings will show up here once they're added."}
+                </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
