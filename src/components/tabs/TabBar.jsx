@@ -32,6 +32,7 @@ export default function TabBar({ navGroups = {} }) {
 
   return (
     <div
+      data-app-tabbar
       className="hidden sm:flex items-center gap-1.5 pl-2 pr-2 h-9 flex-shrink-0 border-b border-slate-400"
       style={{ backgroundColor: "#c7ccd3" }}
     >

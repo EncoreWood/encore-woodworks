@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/production/InlineDialog";
 import { Pencil, Eraser, Download, Trash2, ZoomIn, ZoomOut, RotateCw, Undo2, Type, ArrowRight, Minus, Highlighter, Hand, ClipboardCheck, ClipboardList, FolderOpen, MessageSquare, ImagePlus, X } from "lucide-react";
 import RoomFilesModal from "@/components/production/RoomFilesModal";
 import AnnotatorImageLayer from "@/components/production/AnnotatorImageLayer";
