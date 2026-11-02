@@ -26,6 +26,7 @@ import ProductionMissingItemsTab from "../components/production/ProductionMissin
 import ProductionChatTab from "../components/production/ProductionChatTab";
 import MoveHistoryTab from "../components/production/MoveHistoryTab";
 import MobileCompactCard from "../components/production/MobileCompactCard";
+import { computeStagePoints, formatStagePoints } from "@/lib/stagePoints";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProductionChatUnread } from "../components/production/useProductionChatUnread";
 import QuickReportMissingDialog from "../components/production/QuickReportMissingDialog";
@@ -447,6 +448,15 @@ export default function ShopProduction() {
 
   const colStats = Object.fromEntries([...new Set([...STAT_STAGES, ...productionColumns.map(c => c.id)])].map(s => [s, getColStats(s)]));
 
+  // Per-stage accumulated points — derived from where each card currently sits,
+  // over the same card set the column counts use (real board cards, and only the
+  // recently-completed cards the Complete column actually shows).
+  const completeCutoff = format(subDays(new Date(), 6), "yyyy-MM-dd");
+  const pointsBaseItems = items.filter(i =>
+    !i.is_job_info && (i.stage !== "complete" || !i.completed_date || i.completed_date >= completeCutoff)
+  );
+  const stagePoints = computeStagePoints(pointsBaseItems);
+
   const returnToFolder = async (item) => {
     const files = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
     await base44.entities.ProductionItem.update(item.id, { ...item, files, is_job_info: false, stage: null });
@@ -791,13 +801,11 @@ export default function ShopProduction() {
                     .filter(i => i.stage === column.id && !i.is_job_info)
                     .sort(sortColumnItems);
                   const workingCount = columnItems.filter(i => i.is_being_worked).length;
-                  // Header badge: points completed by this stage today — points on cards
-                  // moved OUT of the stage today; for Complete, points of cards that
-                  // arrived there today
-                  const colPts = (colStats[column.id]?.day) || 0;
+                  // Header badge: total value of cards that have MOVED PAST this stage
+                  const colPts = stagePoints[column.id] || 0;
                   // Complete column: cards older than a week are hidden from the board view
                   const completeVisibleCount = column.id === "complete"
-                    ? columnItems.filter(i => !i.completed_date || i.completed_date >= format(subDays(new Date(), 6), "yyyy-MM-dd")).length
+                    ? columnItems.filter(i => !i.completed_date || i.completed_date >= completeCutoff).length
                     : columnItems.length;
 
                   return (
@@ -814,8 +822,8 @@ export default function ShopProduction() {
                           ) : (
                             <>
                               <h2 className="font-semibold text-slate-700">{column.label}</h2>
-                              {colPts > 0 && (
-                                <span className="text-xs font-bold text-green-700 bg-green-100 border border-green-200 rounded-full px-2 py-0.5">{colPts} PTS</span>
+                              {column.id !== "on_hold" && (
+                                <span className="text-xs font-bold text-green-700 bg-green-100 border border-green-200 rounded-full px-2 py-0.5">{formatStagePoints(colPts)} PTS</span>
                               )}
                             </>
                           )}
