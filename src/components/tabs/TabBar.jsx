@@ -1,39 +1,24 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useTabs } from "./TabContext";
-
-const ALWAYS_ALLOWED = new Set([
-  "AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet", "MyProfile",
-]);
 
 const prettify = (page) => page.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/_/g, " ");
 
 /**
- * Tab strip under the top bar: switch between open pages, open a new one,
- * or close the ones no longer needed.
+ * Tab strip under the top bar: switch between open pages, open a fresh tab on
+ * the main page, or close the ones no longer needed.
  */
-export default function TabBar({ navGroups = {}, currentUser, allowedPages }) {
+export default function TabBar({ navGroups = {} }) {
   const { tabs, activeId, activateTab, openTab, closeTab } = useTabs();
-  const [pickerOpen, setPickerOpen] = useState(false);
 
-  const { labels, groups } = useMemo(() => {
+  const labels = useMemo(() => {
     const labelsMap = {};
-    const groupsList = [];
-    Object.entries(navGroups).forEach(([key, group]) => {
-      if (key === "admin" && currentUser?.role !== "admin") return;
-      const items = (group.items || []).filter(
-        (item) =>
-          currentUser?.role === "admin" ||
-          allowedPages?.has(item.page) ||
-          ALWAYS_ALLOWED.has(item.page)
-      );
-      items.forEach((item) => { labelsMap[item.page] = item.name; });
-      if (items.length > 0) groupsList.push({ key, name: group.name, items });
+    Object.values(navGroups).forEach((group) => {
+      (group.items || []).forEach((item) => { labelsMap[item.page] = item.name; });
     });
-    return { labels: labelsMap, groups: groupsList };
-  }, [navGroups, currentUser, allowedPages]);
+    return labelsMap;
+  }, [navGroups]);
 
   const labelFor = (path) => {
     const page = path.split("?")[0].replace(/^\//, "");
@@ -92,42 +77,14 @@ export default function TabBar({ navGroups = {}, currentUser, allowedPages }) {
         })}
       </div>
 
-      <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className="w-7 h-7 rounded-md flex items-center justify-center text-slate-700 hover:bg-white/70 flex-shrink-0 touch-manipulation"
-            title="Open a page in a new tab"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="w-64 p-0 max-h-[70vh] overflow-y-auto">
-          <div className="p-2 space-y-2">
-            {groups.map((group) => (
-              <div key={group.key}>
-                <p className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {group.name}
-                </p>
-                {group.items.map((item) => (
-                  <button
-                    key={item.page}
-                    type="button"
-                    onClick={() => {
-                      openTab(`/${item.page}`);
-                      setPickerOpen(false);
-                    }}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-slate-700 hover:bg-amber-50 hover:text-amber-800 text-left"
-                  >
-                    {item.icon && <item.icon className="w-3.5 h-3.5 flex-shrink-0 text-slate-500" />}
-                    <span className="truncate">{item.name}</span>
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
-        </PopoverContent>
-      </Popover>
+      <button
+        type="button"
+        onClick={() => openTab("/")}
+        className="w-7 h-7 rounded-md flex items-center justify-center text-slate-700 hover:bg-white/70 flex-shrink-0 touch-manipulation"
+        title="Open a new tab"
+      >
+        <Plus className="w-4 h-4" />
+      </button>
     </div>
   );
 }
