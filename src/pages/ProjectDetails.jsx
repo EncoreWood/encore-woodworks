@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -58,6 +58,8 @@ import ProjectOverviewCards from "../components/projects/ProjectOverviewCards";
 import ProjectMeetingsTab from "../components/projects/ProjectMeetingsTab";
 import { useProjectNotifications, countsFor } from "@/hooks/useProjectNotifications";
 import UnreadBadge from "@/components/projects/UnreadBadge";
+import RoomProgressBar from "@/components/production/RoomProgressBar";
+import { roomProgress } from "@/lib/roomProgress";
 
 const statusConfig = {
   inquiry: { label: "Inquiry", color: "bg-slate-100 text-slate-700" },
@@ -147,6 +149,25 @@ export default function ProjectDetails() {
     enabled: !!projectId,
     staleTime: 30_000,
   });
+
+  // Per-room production progress, so every room row shows its own bar.
+  // Same filtering + mapping as the Room Workspace header bar.
+  const roomProgressList = useMemo(() => {
+    const rooms = project?.rooms || [];
+    return rooms.map((room, idx) => {
+      const name = room.room_name || `Room ${idx + 1}`;
+      const roomItems = (productionItems || []).filter(
+        (i) => i.project_id === project.id && i.room_name === name && !i.is_job_info
+      );
+      return roomProgress(roomItems);
+    });
+  }, [project?.rooms, project?.id, productionItems]);
+
+  const startedRooms = roomProgressList.filter((r) => r.cardCount > 0);
+  const completeRoomCount = startedRooms.filter((r) => r.pct === 100).length;
+  const overallRoomPct = startedRooms.length
+    ? Math.round(startedRooms.reduce((s, r) => s + r.pct, 0) / startedRooms.length)
+    : 0;
 
   const { data: meetings = [] } = useQuery({
     queryKey: ["portalMeetings", projectId],
@@ -477,10 +498,13 @@ export default function ProjectDetails() {
                 <h2 className="text-lg font-semibold text-slate-900">Rooms ({project.rooms?.length || 0})</h2>
                 <div className="flex items-center gap-3">
                   {project.rooms?.length > 0 && (
-                    <>
-                      <span className="text-sm text-slate-500">{project.rooms.filter(r => r.completed).length}/{project.rooms.length} complete</span>
-                      <Progress value={(project.rooms.filter(r => r.completed).length / project.rooms.length) * 100} className="w-24 h-2 bg-slate-100" />
-                    </>
+                    <div
+                      className="flex items-center gap-2"
+                      title={`${completeRoomCount} of ${project.rooms.length} room${project.rooms.length !== 1 ? "s" : ""} finished production · ${overallRoomPct}% overall`}
+                    >
+                      <span className="text-sm text-slate-500">{completeRoomCount}/{project.rooms.length} complete</span>
+                      <Progress value={overallRoomPct} className="w-24 h-2 bg-slate-100" />
+                    </div>
                   )}
                   {project.rooms?.length > 0 && (
                     <Button
@@ -564,6 +588,14 @@ export default function ProjectDetails() {
                               >
                                 <Edit className="w-3 h-3" />
                               </Button>
+                              {/* This room's production progress — matches the Room Workspace bar */}
+                              <RoomProgressBar
+                                items={(productionItems || []).filter(
+                                  (i) => i.project_id === project.id && i.room_name === (room.room_name || `Room ${idx + 1}`) && !i.is_job_info
+                                )}
+                                label=""
+                                className="ml-auto w-[104px]"
+                              />
                             </div>
                             <div className="flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                               <JobPacketsRoomModal
