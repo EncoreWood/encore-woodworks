@@ -45,6 +45,7 @@ import Education from './pages/Education';
 import ShopAreas from './pages/ShopAreas';
 import ShopAreaDetail from './pages/ShopAreaDetail';
 import MyProfile from './pages/MyProfile';
+import TabShell from './components/tabs/TabShell';
 
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -54,6 +55,50 @@ const MainPage = mainPageKey ? Pages[mainPageKey] : <></>;
 const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   <Layout currentPageName={currentPageName}>{children}</Layout>
   : <>{children}</>;
+
+// The app's route tree. Each open tab renders it at its own location, so every
+// tab keeps its own page mounted independently of the browser URL.
+const TabRouteView = ({ location }) => (
+  <Routes location={location}>
+    <Route path="/" element={<RoleBasedHome />} />
+    {Object.entries(Pages).map(([path, Page]) => (
+      <Route key={path} path={`/${path}`} element={<Page />} />
+    ))}
+    <Route path="/Admin" element={<Admin />} />
+    <Route path="/BillingTracker" element={<BillingTracker />} />
+    <Route path="/GroupLean" element={<GroupLean />} />
+    <Route path="/IndividualLean" element={<IndividualLean />} />
+    <Route path="/ArchivedProjects" element={<ArchivedProjects />} />
+    <Route path="/StrugglesSolutions" element={<StrugglesSolutions />} />
+    <Route path="/ProductionPlanning" element={<ProductionPlanning />} />
+    <Route path="/MistakeReport" element={<MistakeReport />} />
+    <Route path="/InventoryScan" element={<InventoryScan />} />
+    <Route path="/ClientPortal" element={<ClientPortal />} />
+    <Route path="/MyProfile" element={<MyProfile />} />
+    <Route path="/MyAssignments" element={<MyAssignments />} />
+    <Route path="/Trainings" element={<Trainings />} />
+    <Route path="/Flow" element={<Flow />} />
+    <Route path="/EducationCut" element={<Education folder="Cut" />} />
+    <Route path="/EducationFaceFrame" element={<Education folder="Face Frame" />} />
+    <Route path="/EducationSpray" element={<Education folder="Spray" />} />
+    <Route path="/EducationBuild" element={<Education folder="Build" />} />
+    <Route path="/EducationDelivery" element={<Education folder="Delivery" />} />
+    <Route path="/EducationInstall" element={<Education folder="Install" />} />
+    <Route path="/EducationSpecialty" element={<Education folder="Specialty" />} />
+    <Route path="/EducationGeneral" element={<Education folder="General" />} />
+    <Route path="/ShopAreas" element={<ShopAreas />} />
+    <Route path="/ShopAreaCut" element={<ShopAreaDetail area="Cut" />} />
+    <Route path="/ShopAreaFaceFrame" element={<ShopAreaDetail area="Face Frame" />} />
+    <Route path="/ShopAreaSpray" element={<ShopAreaDetail area="Spray" />} />
+    <Route path="/ShopAreaBuild" element={<ShopAreaDetail area="Build" />} />
+    <Route path="/ShopAreaDelivery" element={<ShopAreaDetail area="Delivery" />} />
+    <Route path="/ShopAreaInstall" element={<ShopAreaDetail area="Install" />} />
+    <Route path="/ShopAreaSpecialty" element={<ShopAreaDetail area="Specialty" />} />
+    <Route path="/ShopAreaGeneral" element={<ShopAreaDetail area="General" />} />
+    <Route path="/ShopAreaOffice" element={<ShopAreaDetail area="Office" />} />
+    <Route path="*" element={<PageNotFound />} />
+  </Routes>
+);
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -78,56 +123,8 @@ const AuthenticatedApp = () => {
     }
   }
 
-  // Render the main app
-  return (
-    <Routes>
-      <Route path="/" element={<RoleBasedHome />} />
-      {Object.entries(Pages).map(([path, Page]) => (
-        <Route
-          key={path}
-          path={`/${path}`}
-          element={
-            <LayoutWrapper currentPageName={path}>
-              <Page />
-            </LayoutWrapper>
-          }
-        />
-      ))}
-      <Route path="/Admin" element={<LayoutWrapper currentPageName="Admin"><Admin /></LayoutWrapper>} />
-      <Route path="/BillingTracker" element={<LayoutWrapper currentPageName="BillingTracker"><BillingTracker /></LayoutWrapper>} />
-      <Route path="/GroupLean" element={<LayoutWrapper currentPageName="GroupLean"><GroupLean /></LayoutWrapper>} />
-      <Route path="/IndividualLean" element={<LayoutWrapper currentPageName="IndividualLean"><IndividualLean /></LayoutWrapper>} />
-      <Route path="/ArchivedProjects" element={<LayoutWrapper currentPageName="ArchivedProjects"><ArchivedProjects /></LayoutWrapper>} />
-      <Route path="/StrugglesSolutions" element={<LayoutWrapper currentPageName="StrugglesSolutions"><StrugglesSolutions /></LayoutWrapper>} />
-      <Route path="/ProductionPlanning" element={<LayoutWrapper currentPageName="ProductionPlanning"><ProductionPlanning /></LayoutWrapper>} />
-      <Route path="/MistakeReport" element={<LayoutWrapper currentPageName="MistakeReport"><MistakeReport /></LayoutWrapper>} />
-      <Route path="/InventoryScan" element={<InventoryScan />} />
-      <Route path="/ClientPortal" element={<ClientPortal />} />
-      <Route path="/MyProfile" element={<LayoutWrapper currentPageName="MyProfile"><MyProfile /></LayoutWrapper>} />
-      <Route path="/MyAssignments" element={<LayoutWrapper currentPageName="MyAssignments"><MyAssignments /></LayoutWrapper>} />
-      <Route path="/Trainings" element={<LayoutWrapper currentPageName="Trainings"><Trainings /></LayoutWrapper>} />
-      <Route path="/Flow" element={<LayoutWrapper currentPageName="Flow"><Flow /></LayoutWrapper>} />
-      <Route path="/EducationCut" element={<LayoutWrapper currentPageName="EducationCut"><Education folder="Cut" /></LayoutWrapper>} />
-      <Route path="/EducationFaceFrame" element={<LayoutWrapper currentPageName="EducationFaceFrame"><Education folder="Face Frame" /></LayoutWrapper>} />
-      <Route path="/EducationSpray" element={<LayoutWrapper currentPageName="EducationSpray"><Education folder="Spray" /></LayoutWrapper>} />
-      <Route path="/EducationBuild" element={<LayoutWrapper currentPageName="EducationBuild"><Education folder="Build" /></LayoutWrapper>} />
-      <Route path="/EducationDelivery" element={<LayoutWrapper currentPageName="EducationDelivery"><Education folder="Delivery" /></LayoutWrapper>} />
-      <Route path="/EducationInstall" element={<LayoutWrapper currentPageName="EducationInstall"><Education folder="Install" /></LayoutWrapper>} />
-      <Route path="/EducationSpecialty" element={<LayoutWrapper currentPageName="EducationSpecialty"><Education folder="Specialty" /></LayoutWrapper>} />
-      <Route path="/EducationGeneral" element={<LayoutWrapper currentPageName="EducationGeneral"><Education folder="General" /></LayoutWrapper>} />
-      <Route path="/ShopAreas" element={<LayoutWrapper currentPageName="ShopAreas"><ShopAreas /></LayoutWrapper>} />
-      <Route path="/ShopAreaCut" element={<LayoutWrapper currentPageName="ShopAreaCut"><ShopAreaDetail area="Cut" /></LayoutWrapper>} />
-      <Route path="/ShopAreaFaceFrame" element={<LayoutWrapper currentPageName="ShopAreaFaceFrame"><ShopAreaDetail area="Face Frame" /></LayoutWrapper>} />
-      <Route path="/ShopAreaSpray" element={<LayoutWrapper currentPageName="ShopAreaSpray"><ShopAreaDetail area="Spray" /></LayoutWrapper>} />
-      <Route path="/ShopAreaBuild" element={<LayoutWrapper currentPageName="ShopAreaBuild"><ShopAreaDetail area="Build" /></LayoutWrapper>} />
-      <Route path="/ShopAreaDelivery" element={<LayoutWrapper currentPageName="ShopAreaDelivery"><ShopAreaDetail area="Delivery" /></LayoutWrapper>} />
-      <Route path="/ShopAreaInstall" element={<LayoutWrapper currentPageName="ShopAreaInstall"><ShopAreaDetail area="Install" /></LayoutWrapper>} />
-      <Route path="/ShopAreaSpecialty" element={<LayoutWrapper currentPageName="ShopAreaSpecialty"><ShopAreaDetail area="Specialty" /></LayoutWrapper>} />
-      <Route path="/ShopAreaGeneral" element={<LayoutWrapper currentPageName="ShopAreaGeneral"><ShopAreaDetail area="General" /></LayoutWrapper>} />
-      <Route path="/ShopAreaOffice" element={<LayoutWrapper currentPageName="ShopAreaOffice"><ShopAreaDetail area="Office" /></LayoutWrapper>} />
-      <Route path="*" element={<PageNotFound />} />
-    </Routes>
-  );
+  // Render the app inside browser-style tabs
+  return <TabShell RouteView={TabRouteView} LayoutWrapper={LayoutWrapper} />;
 };
 
 

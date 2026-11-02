@@ -19,6 +19,7 @@ import { findMyEmployee } from "@/lib/findMyEmployee";
 import { usePendingTimeEditRequests } from "@/hooks/usePendingTimeEditRequests";
 import { useAdminNotifications } from "@/hooks/useAdminNotifications";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import TabBar from "@/components/tabs/TabBar";
 import { usePinnedPages } from "@/hooks/usePinnedPages";
 import { useSplitView, useIsDesktop } from "@/hooks/useSplitView";
 import SplitView from "@/components/split/SplitView";
@@ -729,6 +730,13 @@ export default function Layout({ children, currentPageName }) {
         onToggleSplit={() => updateSplit({ enabled: !split.enabled })}
       />
 
+      {/* Browser-style tabs for the pages you have open */}
+      <TabBar
+        navGroups={navGroups}
+        currentUser={currentUser}
+        allowedPages={employeeAllowedPages}
+      />
+
       {/* Mobile Header */}
       {(() => {
         const rootTabs = ["Dashboard", "Kanban", "ShopProduction", "ChatBoard"];
@@ -769,7 +777,7 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Page Content */}
       <main
-        className={splitActive ? "flex-1 min-h-0 overflow-hidden" : "flex-1 min-h-0 overflow-auto"}
+        className="flex-1 min-h-0 overflow-hidden"
         style={{
           paddingTop: "env(safe-area-inset-top)",
           paddingBottom: "env(safe-area-inset-bottom)",
@@ -790,12 +798,13 @@ export default function Layout({ children, currentPageName }) {
             {children}
           </SplitView>
         ) : (
-          <>
-            <div className="sm:hidden h-11" style={{ paddingTop: "env(safe-area-inset-top)" }} />
-            {children}
+          <div className="h-full flex flex-col">
+            <div className="sm:hidden h-11 flex-shrink-0" style={{ paddingTop: "env(safe-area-inset-top)" }} />
+            {/* Open tabs stack: every tab stays mounted, only the active one is visible */}
+            <div className="flex-1 min-h-0 relative">{children}</div>
             {/* Bottom spacer for mobile tab bar */}
-            <div className="sm:hidden h-16" />
-          </>
+            <div className="sm:hidden h-16 flex-shrink-0" />
+          </div>
         )}
       </main>
 
