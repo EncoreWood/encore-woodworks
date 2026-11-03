@@ -13,7 +13,7 @@ import PhotosTasksTab from "@/components/projects/room-tabs/PhotosTasksTab";
 import ShopFilesTab from "@/components/projects/room-tabs/ShopFilesTab";
 import { cn } from "@/lib/utils";
 import { zipLegacySelections } from "@/components/projects/room-tabs/SpeciesFinishCard";
-import { totalPointsPatch } from "@/lib/cardPoints";
+import { totalPointsPatch, computeTotalPoints } from "@/lib/cardPoints";
 
 const TABS = [
   { id: "selections", label: "🎨 Selections" },
@@ -92,7 +92,10 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
   });
 
   const createProductionItemMutation = useMutation({
-    mutationFn: (data) => base44.entities.ProductionItem.create(data),
+    mutationFn: (data) => base44.entities.ProductionItem.create({
+      ...data,
+      total_points: computeTotalPoints({ files: data.files, pts: data.pts }),
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["productionItems"] });
       toast.success("File sent to production board");

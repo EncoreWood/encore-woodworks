@@ -106,7 +106,9 @@ export default function EstimatesProposalTab({ project }) {
               : <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">Current</span>}
           </p>
           <p className="text-xs text-slate-400">
-            {bid.rooms?.length || 0} rooms · {bid.total_lf ? `${bid.total_lf} LF` : "—"}
+            {bid.template === "room_based"
+              ? `${(bid.proposal_rooms || []).filter(r => !r.is_optional).length} rooms · Room-based`
+              : `${bid.rooms?.length || 0} rooms · ${bid.total_lf ? `${bid.total_lf} LF` : "—"}`}
             {bid.updated_date && ` · ${format(new Date(bid.updated_date), "MMM d, yyyy")}`}
           </p>
         </div>

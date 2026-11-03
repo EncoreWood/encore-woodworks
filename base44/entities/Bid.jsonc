@@ -15,6 +15,19 @@
       "type": "string",
       "description": "Linked Project ID"
     },
+    "template": {
+      "type": "string",
+      "enum": [
+        "item",
+        "room_based"
+      ],
+      "default": "item",
+      "description": "Which estimate template this record uses: 'item' = the linear-foot / item-catalog estimate, 'room_based' = the room-priced proposal (rooms + options, no LF or catalog items)."
+    },
+    "cabinet_style": {
+      "type": "string",
+      "description": "Free-text cabinet style shown in the room-based proposal's job fields (the item template uses bid_type instead)"
+    },
     "bid_type": {
       "type": "string",
       "enum": [
@@ -207,6 +220,103 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "proposal_rooms": {
+      "type": "array",
+      "description": "Room-based proposals only: one priced row per room (no LF, no catalog items). Optional rooms live here with is_optional=true so they are excluded from the Standard Total.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "room_name": {
+            "type": "string",
+            "description": "Room name, e.g. Kitchen"
+          },
+          "finish": {
+            "type": "string",
+            "description": "Wood type / finish shown in the Finish column, e.g. 'Paint Grade Perimeter / White Oak Island'"
+          },
+          "items_of_recognition": {
+            "type": "string",
+            "description": "Free-text description of what is included in this room (the proposal's Items of Recognition column)"
+          },
+          "price": {
+            "type": "number",
+            "description": "Room price. For optional rooms this is the price of adding the room."
+          },
+          "is_optional": {
+            "type": "boolean",
+            "default": false,
+            "description": "True when this room is itself optional \u2014 listed under Options and excluded from the Standard Total"
+          },
+          "selected": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether an optional room is currently selected on the proposal"
+          },
+          "sort_order": {
+            "type": "number",
+            "description": "Display order within the Standard table / Options list"
+          }
+        }
+      }
+    },
+    "proposal_options": {
+      "type": "array",
+      "description": "Room-based proposals only: upgrades and add-ons. An option may belong to a room (parent_room_id) and may be priced as a delta on that room or as an absolute amount.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "description": "Option title, e.g. 'Upgrade to soft-close undermount drawers'"
+          },
+          "description": {
+            "type": "string",
+            "description": "What this option includes"
+          },
+          "price": {
+            "type": "number",
+            "description": "Option price"
+          },
+          "price_mode": {
+            "type": "string",
+            "enum": [
+              "delta",
+              "absolute"
+            ],
+            "default": "delta",
+            "description": "delta = added on top of the room/job price (+$1,250); absolute = the option's own price"
+          },
+          "parent_room_id": {
+            "type": "string",
+            "description": "ID of the proposal_rooms row this option upgrades. Empty for job-level options."
+          },
+          "parent_room_name": {
+            "type": "string",
+            "description": "Room name snapshot, so the option still reads correctly if the room is renamed or removed"
+          },
+          "default_selected": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this option starts out selected on the proposal (usually no)"
+          },
+          "selected": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this option is currently selected on the proposal"
+          },
+          "sort_order": {
+            "type": "number",
+            "description": "Display order within the Options section"
           }
         }
       }

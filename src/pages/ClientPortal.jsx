@@ -12,6 +12,7 @@ import RoomFileGallery from "@/components/projects/RoomFileGallery";
 import GlbViewer from "@/components/cad/GlbViewer";
 import ClientTasksMeetingsCard from "@/components/projects/ClientTasksMeetingsCard";
 import BidClientView from "@/components/bidding/BidClientView";
+import RoomBasedClientView from "@/components/bidding/roombased/RoomBasedClientView";
 import ClientFinancials from "@/components/projects/ClientFinancials";
 import PortalTabBar from "@/components/portal/PortalTabBar";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -591,8 +592,12 @@ function ClientProposalSection({ projectId }) {
                   <FileText className="w-4 h-4 text-amber-600" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800 truncate">{bid.project_name}{bid.bid_type && ` · ${bid.bid_type}`}</p>
-                  <p className="text-xs text-slate-400">{bid.rooms?.length || 0} rooms{bid.total_lf ? ` · ${bid.total_lf} LF` : ""}</p>
+                  <p className="text-sm font-semibold text-slate-800 truncate">{bid.project_name}{bid.template !== "room_based" && bid.bid_type && ` · ${bid.bid_type}`}</p>
+                  <p className="text-xs text-slate-400">
+                    {bid.template === "room_based"
+                      ? `${(bid.proposal_rooms || []).filter(r => !r.is_optional).length} rooms · ${(bid.proposal_options || []).length + (bid.proposal_rooms || []).filter(r => r.is_optional).length} options`
+                      : `${bid.rooms?.length || 0} rooms${bid.total_lf ? ` · ${bid.total_lf} LF` : ""}`}
+                  </p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-sm font-bold text-slate-800">${(bid.total || 0).toLocaleString()}</p>
@@ -604,7 +609,19 @@ function ClientProposalSection({ projectId }) {
         </Section>
       )}
 
-      {previewBid && (
+      {previewBid && previewBid.template === "room_based" && (
+        <RoomBasedClientView
+          open
+          onClose={() => setPreviewBid(null)}
+          bid={previewBid}
+          onSelectionSaved={async ({ proposal_rooms, proposal_options }) => {
+            await base44.entities.Bid.update(previewBid.id, { proposal_rooms, proposal_options });
+            setPreviewBid(prev => ({ ...prev, proposal_rooms, proposal_options }));
+          }}
+        />
+      )}
+
+      {previewBid && previewBid.template !== "room_based" && (
         <BidClientView
           open
           onClose={() => setPreviewBid(null)}

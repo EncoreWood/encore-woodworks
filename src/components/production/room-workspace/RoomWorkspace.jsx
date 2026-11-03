@@ -85,7 +85,10 @@ export default function RoomWorkspace({
   };
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.ProductionItem.create(data),
+    mutationFn: (data) => base44.entities.ProductionItem.create({
+      ...data,
+      total_points: computeTotalPoints({ files: data.files, pts: data.pts }),
+    }),
     onSuccess: () => { invalidate(); setShowForm(false); setEditingItem(null); },
   });
   const updateMutation = useMutation({

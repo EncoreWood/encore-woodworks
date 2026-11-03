@@ -10,6 +10,8 @@ import { usePaneSearch } from "@/lib/paneSearch";
 import BidWorkspace from "@/components/bidding/BidWorkspace";
 import OnsiteBidWorkspace from "@/components/bidding/OnsiteBidWorkspace";
 import BidPricingTab from "@/components/bidding/BidPricingTab";
+import EstimateTemplatePicker from "@/components/bidding/roombased/EstimateTemplatePicker";
+import RoomBasedEstimateWorkspace from "@/components/bidding/roombased/RoomBasedEstimateWorkspace";
 
 export default function PlanBidding() {
   const urlParams = new URLSearchParams(usePaneSearch());
@@ -19,7 +21,10 @@ export default function PlanBidding() {
 
   const [activeTab, setActiveTab] = useState(urlTab === "pricing" ? "pricing" : "bids");
   const [activeBidId, setActiveBidId] = useState(urlBidId || null);
-  const [isCreating, setIsCreating] = useState(!!urlProjectId);
+  const [isCreating, setIsCreating] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(!!urlProjectId);
+  const [isCreatingRoomBased, setIsCreatingRoomBased] = useState(false);
+  const [activeRoomBasedBidId, setActiveRoomBasedBidId] = useState(null);
   const [isCreatingOnsite, setIsCreatingOnsite] = useState(false);
   const [activeOnsiteBidId, setActiveOnsiteBidId] = useState(null);
   const queryClient = useQueryClient();
@@ -42,6 +47,17 @@ export default function PlanBidding() {
   };
 
   const handleSaved = () => queryClient.invalidateQueries({ queryKey: ["bids"] });
+
+  if (activeRoomBasedBidId || isCreatingRoomBased) {
+    return (
+      <RoomBasedEstimateWorkspace
+        bidId={activeRoomBasedBidId}
+        project={!activeRoomBasedBidId ? linkedProjectData : undefined}
+        onClose={() => { setActiveRoomBasedBidId(null); setIsCreatingRoomBased(false); }}
+        onSaved={handleSaved}
+      />
+    );
+  }
 
   if (activeBidId || isCreating) {
     return (
@@ -85,8 +101,8 @@ export default function PlanBidding() {
             <Button onClick={() => setIsCreatingOnsite(true)} variant="outline" className="border-green-300 text-green-700 hover:bg-green-50">
               <MapPin className="w-4 h-4 mr-1" /> New Onsite Bid
             </Button>
-            <Button onClick={() => setIsCreating(true)} className="bg-amber-600 hover:bg-amber-700">
-              <Plus className="w-4 h-4 mr-1" /> New Plan Bid
+            <Button onClick={() => setShowTemplatePicker(true)} className="bg-amber-600 hover:bg-amber-700">
+              <Plus className="w-4 h-4 mr-1" /> New Estimate
             </Button>
           </div>
         )}
@@ -123,8 +139,8 @@ export default function PlanBidding() {
               <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p className="font-semibold text-slate-500">No bids yet</p>
               <p className="text-sm mt-1">Upload house plans to generate your first bid</p>
-              <Button onClick={() => setIsCreating(true)} className="mt-4 bg-amber-600 hover:bg-amber-700">
-                <Plus className="w-4 h-4 mr-1" /> Create Bid
+              <Button onClick={() => setShowTemplatePicker(true)} className="mt-4 bg-amber-600 hover:bg-amber-700">
+                <Plus className="w-4 h-4 mr-1" /> Create Estimate
               </Button>
             </div>
           ) : (
@@ -133,7 +149,11 @@ export default function PlanBidding() {
                 <Card
                   key={bid.id}
                   className="p-4 hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => bid.bid_mode === "onsite" ? setActiveOnsiteBidId(bid.id) : setActiveBidId(bid.id)}
+                  onClick={() => {
+                    if (bid.bid_mode === "onsite") setActiveOnsiteBidId(bid.id);
+                    else if (bid.template === "room_based") setActiveRoomBasedBidId(bid.id);
+                    else setActiveBidId(bid.id);
+                  }}
                 >
                   <div className="flex items-center gap-4">
                     <FileText className="w-9 h-9 text-amber-600 flex-shrink-0" />
@@ -141,10 +161,16 @@ export default function PlanBidding() {
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-slate-900">{bid.project_name}</span>
                         {bid.bid_mode === "onsite" && <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded-full">ONSITE</span>}
+                        {bid.template === "room_based" && <span className="text-xs font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">ROOM-BASED</span>}
                       </div>
                       <div className="text-sm text-slate-500 truncate">{bid.client_name || bid.address || "No details"}</div>
                       <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
-                        <span>{bid.rooms?.length || 0} cabinet areas · {bid.total_lf ? `${bid.total_lf} LF · ` : ""}{format(new Date(bid.created_date), "MMM d, yyyy")}</span>
+                        <span>
+                          {bid.template === "room_based"
+                            ? `${(bid.proposal_rooms || []).filter(r => !r.is_optional).length} rooms · ${(bid.proposal_options || []).length + (bid.proposal_rooms || []).filter(r => r.is_optional).length} options`
+                            : `${bid.rooms?.length || 0} cabinet areas${bid.total_lf ? ` · ${bid.total_lf} LF` : ""}`}
+                          {" · "}{format(new Date(bid.created_date), "MMM d, yyyy")}
+                        </span>
                         {bid.project_id && (
                           <a href={createPageUrl("ProjectDetails") + "?id=" + bid.project_id} onClick={e => e.stopPropagation()} className="inline-flex items-center gap-1 text-amber-600 hover:text-amber-700 font-medium">
                             <Link2 className="w-3 h-3" /> Project
@@ -175,6 +201,16 @@ export default function PlanBidding() {
 
       {/* ── Pricing Tab ── */}
       {activeTab === "pricing" && <BidPricingTab />}
+
+      <EstimateTemplatePicker
+        open={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+        onPick={(template) => {
+          setShowTemplatePicker(false);
+          if (template === "room_based") setIsCreatingRoomBased(true);
+          else setIsCreating(true);
+        }}
+      />
     </div>
   );
 }

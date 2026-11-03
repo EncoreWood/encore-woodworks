@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import PickupItemForm from "./PickupItemForm";
+import { computeTotalPoints } from "@/lib/cardPoints";
 
 // Unified stage vocabulary for the combined Pickup + Missing list.
 // "Missing" is a stage an item can be in — not a separate dataset.
@@ -114,6 +115,7 @@ export default function RoomPickupMissingModal({ project, roomName }) {
       files: item.files || [],
       sketch_url: item.sketch_url || null,
       pts: item.pts || undefined,
+      total_points: computeTotalPoints({ files: item.files, pts: item.pts }),
     });
     if (item._source === "missing") {
       await base44.entities.MissingItem.update(item.id, { production_item_id: prod.id, production_stage: "cut" });
@@ -257,6 +259,7 @@ export default function RoomPickupMissingModal({ project, roomName }) {
                 room_name: roomName, notes: payload.notes || "", priority: payload.priority || "medium",
                 files: payload.files || [], sketch_url: payload.sketch_url || null,
                 pts: payload.pts || undefined, pickup_item_id: created.id,
+                total_points: computeTotalPoints({ files: payload.files, pts: payload.pts }),
               });
               await base44.entities.PickupItem.update(created.id, { production_item_id: prod.id, production_stage: productionStage || "cut" });
             }

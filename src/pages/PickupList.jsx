@@ -11,6 +11,7 @@ import { createPageUrl } from "@/utils";
 import PickupItemForm from "../components/pickup/PickupItemForm";
 import { cn } from "@/lib/utils";
 import { getPickupCardStyle } from "@/lib/pickupCardStyle";
+import { computeTotalPoints } from "@/lib/cardPoints";
 
 // Bridge MissingItem.status <-> the unified stage vocabulary so missing-item
 // reports (created from the production board) appear in this single list as
@@ -157,6 +158,7 @@ export default function PickupList() {
           room_name: itemData.room_name || "",
           notes: itemData.notes || "",
           pts: itemData.pts || undefined,
+          total_points: computeTotalPoints({ files: itemData.files, pts: itemData.pts }),
           priority: itemData.priority || "medium",
           files: itemData.files || [],
           sketch_url: itemData.sketch_url || null,
@@ -248,6 +250,7 @@ export default function PickupList() {
         files: item.files || [],
         sketch_url: item.sketch_url || null,
         pts: item.pts || undefined,
+        total_points: computeTotalPoints({ files: item.files, pts: item.pts }),
       });
       if (item._source === "missing") {
         await base44.entities.MissingItem.update(item.id, { production_item_id: prod.id, production_stage: "cut" });

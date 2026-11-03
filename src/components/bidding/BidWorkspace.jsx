@@ -18,6 +18,7 @@ import { recomputePlanMarkRoom, syncCustomItems, syncCatalogHighlights, liveSync
 import { useToast } from "@/components/ui/use-toast";
 import { mergeDuplicateItems, combineNotes } from "./catalogPricing";
 import { demoteOtherEstimates } from "./estimateStatus";
+import RoomBasedEstimateWorkspace from "./roombased/RoomBasedEstimateWorkspace";
 
 const BID_STYLES = [
   { key: "basic_euro",          label: "Tier 1 Euro" },
@@ -741,6 +742,11 @@ Return ONLY rooms with their items, quantities, and categories. Do NOT return co
     onSaved?.();
     setTimeout(() => setSaved(false), 2500);
   };
+
+  // Room-based estimates share this record type but have their own editor.
+  if (bidData?.[0]?.template === "room_based") {
+    return <RoomBasedEstimateWorkspace bidId={bidId} onClose={onClose} onSaved={onSaved} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
