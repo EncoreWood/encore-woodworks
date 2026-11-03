@@ -1,8 +1,12 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.54";
-import { todayPointFlow, denverDay, addMoveLogPoints, listDenverDays } from "../../shared/productionTodayPoints.js";
+import { denverDay, getStageDayPoints, listDenverDays } from "../../shared/productionTodayPoints.js";
 
 const isDate = (value) =>
   typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(new Date(`${value}T00:00:00.000Z`).getTime());
+
+// Every card that can earn points: merged cut children are gone from the board and
+// job-info cards never enter production.
+const inProduction = item => item && item.is_merged !== true && item.is_job_info !== true;
 
 export default async function(req) {
   try {
@@ -20,23 +24,20 @@ export default async function(req) {
     const date = requested || denverDay();
     const days = (window ? listDenverDays(window.from, window.to) : [date]).slice(0, 62);
     if (!days.length) days.push(date);
-    // A broad UTC window contains every requested Denver day, including DST changes.
-    // The calculation then checks every move's own timestamp against the exact Denver day.
-    // One row per departure, so a stage is credited only for cards that actually left it
-    // on that day, at the points the move itself awarded.
-    const start = new Date(`${days[0]}T00:00:00.000Z`);
-    const end = new Date(new Date(`${days[days.length - 1]}T00:00:00.000Z`).getTime() + 36 * 60 * 60 * 1000);
-    const query = { moved_at: { $gte: start.toISOString(), $lt: end.toISOString() } };
-    const points = Object.fromEntries(todayPointFlow.map(stage => [stage, 0]));
+
+    // The points live on the cards: stage + stage_move_log + total_points. Moving a card
+    // is what changes a stage total, so the cards themselves are the only source read.
+    const items = [];
     let cursor;
     do {
-      const page = await base44.entities.ColumnMoveLog.filter(query, {
+      const page = await base44.entities.ProductionItem.filter({}, {
         sort: "id", limit: 250, ...(cursor ? { cursor } : {})
       });
-      addMoveLogPoints(points, page.items, days);
+      items.push(...page.items.filter(inProduction));
       cursor = page.has_more ? page.next_cursor : null;
     } while (cursor);
-    for (const stage of todayPointFlow) points[stage] = Math.round(Math.max(0, points[stage]) * 100) / 100;
+
+    const points = getStageDayPoints(items, days[0], days[days.length - 1]);
     return Response.json({
       date: window ? window.to : date,
       from: window ? window.from : null,
