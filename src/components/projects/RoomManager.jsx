@@ -13,6 +13,7 @@ import PhotosTasksTab from "@/components/projects/room-tabs/PhotosTasksTab";
 import ShopFilesTab from "@/components/projects/room-tabs/ShopFilesTab";
 import { cn } from "@/lib/utils";
 import { zipLegacySelections } from "@/components/projects/room-tabs/SpeciesFinishCard";
+import { totalPointsPatch } from "@/lib/cardPoints";
 
 const TABS = [
   { id: "selections", label: "🎨 Selections" },
@@ -158,7 +159,10 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
         return match ? { ...pf, pts: match.pts } : pf;
       });
       if (JSON.stringify(updatedPiFiles) !== JSON.stringify(pi.files)) {
-        await base44.entities.ProductionItem.update(pi.id, { files: updatedPiFiles });
+        await base44.entities.ProductionItem.update(pi.id, {
+          files: updatedPiFiles,
+          ...totalPointsPatch(pi, { files: updatedPiFiles }),
+        });
       }
     }
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });

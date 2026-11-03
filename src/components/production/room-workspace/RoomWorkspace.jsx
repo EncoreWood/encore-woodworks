@@ -12,7 +12,7 @@ import RoomCardTile from "./RoomCardTile";
 import RoomInfoPane from "./RoomInfoPane";
 import RoomProgressBar from "@/components/production/RoomProgressBar";
 import { roomPts } from "@/lib/roomPts";
-import { computeTotalPoints } from "@/lib/cardPoints";
+import { computeTotalPoints, totalPointsPatch } from "@/lib/cardPoints";
 import persistProductionMove, { productionMovePatch } from "@/lib/productionMoves";
 import { holdUpdates } from "@/lib/updateGuards";
 
@@ -98,7 +98,8 @@ export default function RoomWorkspace({
         const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
         await persistProductionMove(item, productionMovePatch(item, safeData.stage, movedBy, safeData));
       } else {
-        await base44.entities.ProductionItem.update(id, safeData);
+        // Keep the card's authoritative point total in step with this save
+        await base44.entities.ProductionItem.update(id, { ...safeData, ...totalPointsPatch(item, safeData) });
       }
       } finally {
         release();
