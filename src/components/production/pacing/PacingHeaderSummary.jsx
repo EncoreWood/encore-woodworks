@@ -29,7 +29,7 @@ export default function PacingHeaderSummary({ points, series, onOpen, loading })
       type="button"
       onClick={onOpen}
       title={`Pacing — target ${DAILY_TARGET} pts, minimum ${DAILY_MINIMUM} pts by ${formatClock(DAY_END)}`}
-      className={`flex h-9 min-w-0 flex-shrink items-center gap-2 rounded-lg border bg-white px-2 shadow-sm transition-colors hover:bg-slate-50 ${tone.border}`}
+      className={`flex h-8 min-w-0 flex-shrink items-center gap-2 rounded-lg border bg-white px-2 shadow-sm transition-colors hover:bg-slate-50 ${tone.border}`}
     >
       {/* Sparkline: desktop only */}
       <span className="hidden xl:inline-flex">
@@ -46,7 +46,7 @@ export default function PacingHeaderSummary({ points, series, onOpen, loading })
         </span>
       </span>
 
-      <span className="hidden md:inline text-[10px] font-semibold whitespace-nowrap text-slate-400">
+      <span className="hidden lg:inline text-[10px] font-semibold whitespace-nowrap text-slate-400">
         {projected == null ? "" : `proj ${formatStagePoints(projected)}`}
       </span>
     </button>

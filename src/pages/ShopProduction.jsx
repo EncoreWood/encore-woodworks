@@ -8,8 +8,8 @@ import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset, MessageSquare, X, Hammer, History, LineChart as LineChartIcon } from "lucide-react";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { X, Hammer } from "lucide-react";
 import { usePaneNavigate } from "@/lib/paneSearch";
 import { useToast } from "@/components/ui/use-toast";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
@@ -40,7 +40,9 @@ import SendToCutDialog from "../components/production/SendToCutDialog";
 import { createCutChildCard, isCutChild, mergeCutChildIntoParent } from "../components/production/cutCardHelper";
 import PickupFromHighlightDialog from "../components/production/PickupFromHighlightDialog";
 import PacingView from "../components/production/pacing/PacingView";
-import PacingHeaderSummary from "../components/production/pacing/PacingHeaderSummary";
+import ProductionHeader from "../components/production/ProductionHeader";
+import ProductionTabStrip from "../components/production/ProductionTabStrip";
+import StageDetailCards from "../components/production/StageDetailCards";
 
 const productionColumns = [
   { id: "cut", label: "1. Cut", color: "bg-orange-50" },
@@ -737,128 +739,23 @@ export default function ShopProduction() {
   return (
     <div className="min-h-screen bg-slate-50">
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
-      <div className="px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Shop Production</h1>
-            <p className="text-slate-500 mt-1">Track projects through production stages</p>
-          </div>
-          <div className="flex min-w-0 items-center gap-1.5 flex-shrink-0">
-            {/* Pacing chip: shrinks first when the header runs tight, buttons never do */}
-            <PacingHeaderSummary
-              points={todayPoints?.points}
-              series={todayPoints?.series}
-              loading={!todayPoints && !todayPointsError}
-              onOpen={() => setActiveTab("pacing")}
-            />
-            <Button
-              onClick={() => setShowEndOfDay(true)}
-              variant="outline"
-              size="icon"
-              title="End of Day"
-              aria-label="End of Day"
-              className="h-8 w-8 border-amber-300 text-amber-700 hover:bg-amber-50"
-            >
-              <Sunset className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={() => setReportingMissing(true)}
-              variant="outline"
-              size="icon"
-              title="Report Missing"
-              aria-label="Report Missing"
-              className="h-8 w-8 border-orange-300 text-orange-600 hover:bg-orange-50"
-            >
-              <PackageX className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={() => setReportingStruggle(true)}
-              variant="outline"
-              size="icon"
-              title="Report Struggle"
-              aria-label="Report Struggle"
-              className="h-8 w-8 border-red-300 text-red-600 hover:bg-red-50"
-            >
-              <AlertTriangle className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={() => setGivingCompliment(true)}
-              variant="outline"
-              size="icon"
-              title="Well Done"
-              aria-label="Well Done"
-              className="h-8 w-8 border-amber-300 text-amber-600 hover:bg-amber-50"
-            >
-              <span className="text-sm leading-none">🎉</span>
-            </Button>
-            <Button
-              onClick={() => navigate("/MistakeReport")}
-              variant="outline"
-              size="icon"
-              title="Report Mistake"
-              aria-label="Report Mistake"
-              className="h-8 w-8 border-red-300 text-red-600 hover:bg-red-50"
-            >
-              <AlertTriangle className="w-4 h-4" />
-            </Button>
-            <Button
-              onClick={() => { setShowForm(true); }}
-              size="sm"
-              title="Add Item"
-              className="h-8 bg-amber-600 hover:bg-amber-700 px-2.5"
-            >
-              <Plus className="w-4 h-4 sm:mr-1" /> <span className="hidden sm:inline">Add Item</span>
-            </Button>
-          </div>
-        </div>
-
-        {/* Per-column PTS stats */}
-        <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {STAT_STAGES.map(stage => {
-            const s = colStats[stage];
-            return (
-              <div key={stage} className="bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 shadow-sm flex items-center justify-between gap-2 min-w-0">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide truncate">{STAT_LABELS[stage]}</p>
-                <div className="flex gap-2 flex-shrink-0">
-                  {[{ label: "D", val: s.day }, { label: "W", val: s.week }, { label: "M", val: s.month }].map(({ label, val }) => (
-                    <div key={label} className="text-center leading-none" title={label === "D" ? "Day" : label === "W" ? "Week" : "Month"}>
-                      <p className="text-[9px] text-slate-400">{label}</p>
-                      <p className="text-xs font-bold text-green-700 mt-0.5">{val}<span className="text-[9px] font-medium opacity-60">p</span></p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
+        <ProductionHeader
+          points={todayPoints?.points}
+          series={todayPoints?.series}
+          loading={!todayPoints && !todayPointsError}
+          error={todayPointsError}
+          onOpenPacing={() => setActiveTab("pacing")}
+          onEndOfDay={() => setShowEndOfDay(true)}
+          onReportMissing={() => setReportingMissing(true)}
+          onReportStruggle={() => setReportingStruggle(true)}
+          onWellDone={() => setGivingCompliment(true)}
+          onMistake={() => navigate("/MistakeReport")}
+          onAddItem={() => setShowForm(true)}
+        />
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 flex-wrap h-auto">
-            <TabsTrigger value="production" className="flex items-center gap-2">
-              <Factory className="w-4 h-4" /> Production
-            </TabsTrigger>
-            <TabsTrigger value="pacing" className="flex items-center gap-2">
-              <LineChartIcon className="w-4 h-4" /> Pacing
-            </TabsTrigger>
-            <TabsTrigger value="job_packets" className="flex items-center gap-2">
-              <Package className="w-4 h-4" /> Job Packets
-            </TabsTrigger>
-            <TabsTrigger value="missing_items" className="flex items-center gap-2">
-              <PackageX className="w-4 h-4" /> Missing Items
-            </TabsTrigger>
-            <TabsTrigger value="production_chat" className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" /> Production Chat
-              {activeTab !== "production_chat" && chatUnread > 0 && (
-                <span className="ml-1 min-w-[18px] h-[18px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
-                  {chatUnread > 9 ? "9+" : chatUnread}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="move_history" className="flex items-center gap-2">
-              <History className="w-4 h-4" /> Move History
-            </TabsTrigger>
-          </TabsList>
+          <ProductionTabStrip activeTab={activeTab} chatUnread={chatUnread} />
 
           {/* ── PRODUCTION TAB ── */}
           <TabsContent value="production" className="mt-0">
@@ -1094,7 +991,8 @@ export default function ShopProduction() {
           </TabsContent>
 
           {/* ── PACING TAB ── */}
-          <TabsContent value="pacing" className="mt-0">
+          <TabsContent value="pacing" className="mt-0 space-y-3">
+            <StageDetailCards stages={STAT_STAGES} labels={STAT_LABELS} stats={colStats} />
             <PacingView
               points={todayPoints?.points}
               series={todayPoints?.series}
