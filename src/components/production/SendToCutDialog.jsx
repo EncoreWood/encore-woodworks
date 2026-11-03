@@ -7,11 +7,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Scissors, Loader2 } from "lucide-react";
 
 // Small form that splits a cut child card off a production card.
-export default function SendToCutDialog({ item, parentPts = 0, onClose, onCreate }) {
-  const [form, setForm] = useState({ description: "", qty: 1, material: "", finish: "", pts: 1, notes: "" });
+export default function SendToCutDialog({ item, onClose, onCreate }) {
+  // Cut cards never inherit the parent card's points — the field starts blank and
+  // only carries a value the user types in for the cut work itself.
+  const [form, setForm] = useState({ description: "", qty: 1, material: "", finish: "", pts: "", notes: "" });
   const [saving, setSaving] = useState(false);
 
-  // Prefill from the parent card whenever a different card opens the dialog
+  // Prefill material/finish from the parent card whenever a different card opens the dialog
   useEffect(() => {
     if (!item) return;
     setForm({
@@ -19,7 +21,7 @@ export default function SendToCutDialog({ item, parentPts = 0, onClose, onCreate
       qty: 1,
       material: item.wood_type || "",
       finish: item.finish || "",
-      pts: Number(parentPts) > 0 ? Number(parentPts) : 1,
+      pts: "",
       notes: "",
     });
   }, [item?.id]);
@@ -83,8 +85,12 @@ export default function SendToCutDialog({ item, parentPts = 0, onClose, onCreate
                   step="0.1"
                   value={form.pts}
                   onChange={(e) => set("pts", e.target.value === "" ? "" : Number(e.target.value))}
+                  placeholder="0"
                   className="h-9 text-sm"
                 />
+                <p className="text-[10px] text-slate-400 leading-tight">
+                  Separate from the main card's points.
+                </p>
               </div>
             </div>
 

@@ -57,7 +57,8 @@ export async function createCutChildCard({ parent, cut }) {
 export async function mergeCutChildIntoParent({ child, parent, user }) {
   const stamp = new Date().toISOString();
   const who = user?.full_name || user?.email || "Unknown";
-  const day = stamp.slice(0, 10);
+  // Shop-local date (Denver), not the UTC date
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Denver" }).format(new Date());
 
   await base44.entities.ProductionItem.update(child.id, {
     is_merged: true,

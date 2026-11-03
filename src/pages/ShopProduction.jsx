@@ -36,7 +36,6 @@ import QuickReportMissingDialog from "../components/production/QuickReportMissin
 import MissingItemCardViewerDialog from "../components/production/MissingItemCardViewerDialog";
 import SendToCutDialog from "../components/production/SendToCutDialog";
 import { createCutChildCard, isCutChild, mergeCutChildIntoParent } from "../components/production/cutCardHelper";
-import { cardPts } from "@/lib/roomPts";
 import PickupFromHighlightDialog from "../components/production/PickupFromHighlightDialog";
 
 const productionColumns = [
@@ -1192,7 +1191,6 @@ export default function ShopProduction() {
 
         <SendToCutDialog
           item={sendToCutItem}
-          parentPts={sendToCutItem ? cardPts(sendToCutItem) : 0}
           onClose={() => setSendToCutItem(null)}
           onCreate={handleCreateCutCard}
         />
