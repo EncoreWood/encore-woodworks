@@ -133,6 +133,38 @@
         }
       }
     },
+    "cut_plan_reference": {
+      "type": "object",
+      "description": "Where on the plan this cut card came from \u2014 set when the cut was created from the plan viewer with 'Cut Parts'",
+      "properties": {
+        "page_number": {
+          "type": "number",
+          "description": "PDF page of the plan the cut was spotted on"
+        },
+        "rect": {
+          "type": "object",
+          "description": "Marked area on that page, normalized 0\u20131 against the page size",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "w": {
+              "type": "number"
+            },
+            "h": {
+              "type": "number"
+            }
+          }
+        },
+        "image_url": {
+          "type": "string",
+          "description": "Cropped snapshot of the marked plan area, so the shop can see exactly what to cut"
+        }
+      }
+    },
     "is_merged": {
       "type": "boolean",
       "default": false,

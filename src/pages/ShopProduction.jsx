@@ -80,6 +80,8 @@ export default function ShopProduction() {
   const [reportingMissing, setReportingMissing] = useState(null);
   const [viewMissingCardId, setViewMissingCardId] = useState(null);
   const [sendToCutItem, setSendToCutItem] = useState(null);
+  // Cut Parts from the plan viewer: { parentItem, plan } while the cut form is open
+  const [cutFromPlan, setCutFromPlan] = useState(null);
   const [quickReportItem, setQuickReportItem] = useState(null);
   const [showEndOfDay, setShowEndOfDay] = useState(false);
   const [scrollToProjectId, setScrollToProjectId] = useState(null);
@@ -103,7 +105,7 @@ export default function ShopProduction() {
   }, []);
 
   // Pause background polling when any modal/form is open — prevents refresh interrupting edits
-  const anyModalOpen = showForm || !!pickupItem || !!reportingStruggle || givingCompliment || !!reportingMissing || !!quickReportItem || showEndOfDay || !!annotatingPdf || !!sendToCutItem;
+  const anyModalOpen = showForm || !!pickupItem || !!reportingStruggle || givingCompliment || !!reportingMissing || !!quickReportItem || showEndOfDay || !!annotatingPdf || !!sendToCutItem || !!cutFromPlan;
 
   const { data: items = [] } = useQuery({
     queryKey: ["productionItems"],
@@ -204,10 +206,12 @@ export default function ShopProduction() {
 
   // Send to Cut → a linked cut card in the Cut column; the parent stays put
   const handleCreateCutCard = async (cut) => {
-    if (!sendToCutItem) return;
+    const parent = items.find(i => i.id === cut.parentCardId) || sendToCutItem || cutFromPlan?.parentItem;
+    if (!parent) return;
     try {
-      const child = await createCutChildCard({ parent: sendToCutItem, cut });
+      const child = await createCutChildCard({ parent, cut, plan: cut.plan });
       setSendToCutItem(null);
+      setCutFromPlan(null);
       queryClient.invalidateQueries({ queryKey: ["productionItems"] });
       toast({ title: `${child.name} added to Cut`, description: cut.description });
     } catch (error) {
@@ -1190,8 +1194,9 @@ export default function ShopProduction() {
         <MissingItemCardViewerDialog cardId={viewMissingCardId} onClose={() => setViewMissingCardId(null)} />
 
         <SendToCutDialog
-          item={sendToCutItem}
-          onClose={() => setSendToCutItem(null)}
+          item={sendToCutItem || cutFromPlan?.parentItem || null}
+          plan={cutFromPlan?.plan || null}
+          onClose={() => { setSendToCutItem(null); setCutFromPlan(null); }}
           onCreate={handleCreateCutCard}
         />
 
@@ -1221,6 +1226,7 @@ export default function ShopProduction() {
               setPickupFromHighlight({ crops, pageDataUrl, pageNumber, productionItem: annotatingPdf.item, currentUser });
             }}
             onQuickReportMissing={() => setQuickReportItem(annotatingPdf.item)}
+            onCutParts={(plan) => setCutFromPlan({ parentItem: annotatingPdf.item, plan })}
           />
         )}
 

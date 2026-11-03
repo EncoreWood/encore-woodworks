@@ -13,7 +13,23 @@ const cutChildName = (parent, existingCount) => {
   return existingCount ? `${base} — Cut ${existingCount + 1}` : `${base} — Cut`;
 };
 
-export async function createCutChildCard({ parent, cut }) {
+// Plan snapshots are cropped on the client; store the image (not base64) on the card.
+async function uploadPlanSnapshot(dataUrl) {
+  if (!dataUrl) return null;
+  try {
+    const blob = await (await fetch(dataUrl)).blob();
+    const file = new File([blob], `cut-plan-${Date.now()}.jpg`, { type: blob.type || "image/jpeg" });
+    const { file_url } = await base44.integrations.Core.UploadPublicFile({ file });
+    return file_url || null;
+  } catch (error) {
+    console.error("Failed to store the cut plan snapshot:", error);
+    return null;
+  }
+}
+
+// plan (optional): { page_number, rect, cropDataUrl } — set when the cut was
+// spotted on the plan, so the shop can jump back to the exact area.
+export async function createCutChildCard({ parent, cut, plan = null }) {
   const siblings = await base44.entities.ProductionItem.filter({ parent_card_id: parent.id });
   const cutSiblings = siblings.filter(isCutChild);
 
@@ -22,6 +38,15 @@ export async function createCutChildCard({ parent, cut }) {
   const maxSort = Math.max(-1, ...cutStage.filter(i => !i.is_job_info && !i.is_merged).map(i => i.sort_order ?? -1));
 
   const points = Number(cut.pts) || 0;
+  // Plan context: the page the cut was spotted on, the marked area and a snapshot
+  const planImageUrl = plan?.cropDataUrl ? await uploadPlanSnapshot(plan.cropDataUrl) : null;
+  const cutPlanReference = plan
+    ? {
+        page_number: plan.page_number ?? null,
+        rect: plan.rect || null,
+        image_url: planImageUrl || null,
+      }
+    : null;
 
   return base44.entities.ProductionItem.create({
     name: cutChildName(parent, cutSiblings.length),
@@ -39,6 +64,7 @@ export async function createCutChildCard({ parent, cut }) {
       material: cut.material || "",
       finish: cut.finish || "",
     },
+    ...(cutPlanReference ? { cut_plan_reference: cutPlanReference } : {}),
     wood_type: cut.material || parent.wood_type || "",
     finish: cut.finish || parent.finish || "",
     // Total points drive the Cut daily points when the card leaves Cut — awarded once.

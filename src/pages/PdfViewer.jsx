@@ -5,8 +5,11 @@ import { useToast } from "@/components/ui/use-toast";
 import { resolveSignedUrl } from "@/components/production/SignedFileViews";
 import PdfDocumentViewer from "@/components/PdfViewer";
 import PDFAnnotator from "@/components/production/PDFAnnotator";
+import SendToCutDialog from "@/components/production/SendToCutDialog";
+import { createCutChildCard } from "@/components/production/cutCardHelper";
 import { TabsContext } from "@/components/tabs/TabContext";
 import { base44 } from "@/api/base44Client";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Read the tab's own query once, on mount: the tab keeps this PDF even while
 // another tab is in front (the browser URL then points at that other tab).
@@ -36,6 +39,8 @@ export default function PdfViewer() {
   const [cardChecked, setCardChecked] = useState(!itemId);
   const [userName, setUserName] = useState("");
   const [annotatorOpen, setAnnotatorOpen] = useState(true);
+  const [cutPlan, setCutPlan] = useState(null);          // plan context while the Cut Parts form is open
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!source || /^https?:/i.test(source)) return;
@@ -97,6 +102,21 @@ export default function PdfViewer() {
     }
   };
 
+  // Cut Parts → the same cut-card form the board uses, linked to this card
+  const handleCreateCutCard = async (cut) => {
+    const parent = card?.item || null;
+    if (!parent) return;
+    try {
+      const child = await createCutChildCard({ parent, cut, plan: cut.plan });
+      setCutPlan(null);
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+      toast({ title: `${child.name} added to Cut`, description: cut.description });
+    } catch (error) {
+      console.error("Failed to create the cut card:", error);
+      toast({ title: "Could not create the cut card", description: error.message, variant: "destructive" });
+    }
+  };
+
   if (!source) {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-2 text-slate-500 text-sm">
@@ -109,20 +129,29 @@ export default function PdfViewer() {
   // The card's own annotator: same tools, comments and saving as on the card
   if (card && annotatorOpen) {
     return (
-      <PDFAnnotator
-        open
-        onOpenChange={(open) => { if (!open) closeTab(); }}
-        pdfUrl={src || source}
-        annotations={card.item.files?.[card.index]?.annotations || []}
-        onSave={handleSaveAnnotations}
-        initialMode="annotate"
-        currentUserName={userName}
-        roomInfo={{
-          projectId: card.item.project_id,
-          projectName: card.item.project_name,
-          roomName: card.item.room_name,
-        }}
-      />
+      <>
+        <PDFAnnotator
+          open
+          onOpenChange={(open) => { if (!open) closeTab(); }}
+          pdfUrl={src || source}
+          annotations={card.item.files?.[card.index]?.annotations || []}
+          onSave={handleSaveAnnotations}
+          initialMode="annotate"
+          currentUserName={userName}
+          roomInfo={{
+            projectId: card.item.project_id,
+            projectName: card.item.project_name,
+            roomName: card.item.room_name,
+          }}
+          onCutParts={(plan) => setCutPlan(plan)}
+        />
+        <SendToCutDialog
+          item={card.item}
+          plan={cutPlan}
+          onClose={() => setCutPlan(null)}
+          onCreate={handleCreateCutCard}
+        />
+      </>
     );
   }
 

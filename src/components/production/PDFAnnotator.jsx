@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/production/InlineDialog";
-import { Pencil, Eraser, Download, Trash2, ZoomIn, ZoomOut, RotateCw, Undo2, Type, ArrowRight, Minus, Highlighter, Hand, ClipboardCheck, ClipboardList, FolderOpen, MessageSquare, ImagePlus, X } from "lucide-react";
+import { Pencil, Eraser, Download, Trash2, ZoomIn, ZoomOut, RotateCw, Undo2, Type, ArrowRight, Minus, Highlighter, Hand, ClipboardCheck, ClipboardList, FolderOpen, MessageSquare, ImagePlus, X, Scissors } from "lucide-react";
 import RoomFilesModal from "@/components/production/RoomFilesModal";
 import AnnotatorImageLayer from "@/components/production/AnnotatorImageLayer";
 import { base44 } from "@/api/base44Client";
@@ -27,7 +27,7 @@ const HIGHLIGHT_COLORS = [
 
 const DEFAULT_SIZE = { width: 595, height: 842 };
 
-export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", hideDownload = false, onRequestPickup, onRequestMissing, onQuickReportMissing, roomInfo = null, initialMode = "view", currentUserName = "" }) {
+export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", hideDownload = false, onRequestPickup, onRequestMissing, onQuickReportMissing, onCutParts, roomInfo = null, initialMode = "view", currentUserName = "" }) {
   // An open annotation session is mid-work: never reload the app out from under it.
   useUpdateGuard(open);
   const [numPages, setNumPages] = useState(null);
@@ -248,7 +248,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   const handlePointerDown = (e, page) => {
     // Finger touches scroll natively; allow them for comment/missing tools so
     // iPad users can pin comments and report missing items without a stylus
-    if (e.pointerType === "touch" && tool !== "comment" && tool !== "missing") return;
+    if (e.pointerType === "touch" && tool !== "comment" && tool !== "missing" && tool !== "cut") return;
 
     setSelectedAnn(null);
     const canvas = e.currentTarget;
@@ -274,7 +274,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     } else if (tool === "eraser") {
       setIsPointerDown(true);
       eraseAt(pos, page);
-    } else if (tool === "arrow" || tool === "line" || tool === "highlight" || tool === "missing") {
+    } else if (tool === "arrow" || tool === "line" || tool === "highlight" || tool === "missing" || tool === "cut") {
       setIsPointerDown(true);
       setCurrentLine({ start: npos, end: npos });
     } else if (tool === "text") {
@@ -287,7 +287,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
   };
 
   const handlePointerMove = (e) => {
-    if (e.pointerType === "touch" && tool !== "comment" && tool !== "missing") return;
+    if (e.pointerType === "touch" && tool !== "comment" && tool !== "missing" && tool !== "cut") return;
 
     // Pan
     if (tool === "pan" && panStartRef.current) {
@@ -309,13 +309,13 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
       setCurrentPath(prev => [...prev, npos]);
     } else if (tool === "eraser") {
       eraseAt(pos, page);
-    } else if (tool === "arrow" || tool === "line" || tool === "highlight" || tool === "missing") {
+    } else if (tool === "arrow" || tool === "line" || tool === "highlight" || tool === "missing" || tool === "cut") {
       setCurrentLine(prev => prev ? { ...prev, end: npos } : null);
     }
   };
 
   const handlePointerUp = (e) => {
-    if (e.pointerType === "touch" && tool !== "comment" && tool !== "missing") return;
+    if (e.pointerType === "touch" && tool !== "comment" && tool !== "missing" && tool !== "cut") return;
     if (tool === "pan") { panStartRef.current = null; return; }
     e.preventDefault();
 
@@ -356,6 +356,19 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         setPendingHighlights(prev => ({ ...prev, [page]: [...(prev[page] || []), hl] }));
       }
       setCurrentLine(null);
+    } else if (tool === "cut" && currentLine) {
+      // Marking the area to cut opens the cut-card form straight away with a crop of it
+      const rw = Math.abs(npos.x - currentLine.start.x);
+      const rh = Math.abs(npos.y - currentLine.start.y);
+      setCurrentLine(null);
+      if (rw > 0.01 && rh > 0.01) {
+        openCutParts(page, {
+          x: Math.min(currentLine.start.x, npos.x),
+          y: Math.min(currentLine.start.y, npos.y),
+          w: rw,
+          h: rh,
+        });
+      }
     } else if (tool === "missing" && currentLine) {
       const rw = Math.abs(npos.x - currentLine.start.x);
       const rh = Math.abs(npos.y - currentLine.start.y);
@@ -732,6 +745,19 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     setLastHighlight(prev => ({ ...prev, [page]: null }));
   };
 
+  // "Cut Parts" from the plan viewer: hand the page, the marked area and a crop of it
+  // up to the board, which opens the shared cut-card form.
+  const openCutParts = (page, rect) => {
+    if (!onCutParts) return;
+    const data = rect ? captureCrops([rect], page) : null;
+    onCutParts({
+      page_number: page,
+      rect: rect || null,
+      cropDataUrl: data?.crops?.[0]?.cropDataUrl || null,
+    });
+    setTool(annotateMode ? "pen" : "pan");
+  };
+
   const handleReportMissing = (page) => {
     const rects = missingRects[page];
     if (!rects?.length || !onRequestMissing) return;
@@ -844,8 +870,8 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
         );
       }
 
-      if (currentLine && (tool === "highlight" || tool === "missing")) {
-        const lc = tool === "missing" ? "#dc2626" : highlightColor;
+      if (currentLine && (tool === "highlight" || tool === "missing" || tool === "cut")) {
+        const lc = tool === "missing" ? "#dc2626" : tool === "cut" ? "#ea580c" : highlightColor;
         const r = parseInt(lc.slice(1,3),16);
         const g = parseInt(lc.slice(3,5),16);
         const b = parseInt(lc.slice(5,7),16);
@@ -872,7 +898,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
     { key: "eraser",    label: "Eraser",    icon: Eraser,     activeClass: "bg-slate-600 hover:bg-slate-700" },
   ];
 
-  const cursorStyle = tool === "pan" ? (panStartRef.current ? "grabbing" : "grab") : tool === "text" ? "text" : tool === "comment" ? "pointer" : (tool === "highlight" || tool === "missing") ? "cell" : "crosshair";
+  const cursorStyle = tool === "pan" ? (panStartRef.current ? "grabbing" : "grab") : tool === "text" ? "text" : tool === "comment" ? "pointer" : (tool === "highlight" || tool === "missing" || tool === "cut") ? "cell" : "crosshair";
 
   if (!pdfUrl) return null;
 
@@ -975,6 +1001,28 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                 <Button variant="outline" size="sm" onClick={() => setTool(annotateMode ? "pen" : "pan")}>
                   Done
                 </Button>
+              )}
+            </>
+          )}
+
+          {/* Cut Parts — spot something that needs cutting and split a cut card off this card */}
+          {onCutParts && (
+            <>
+              <Button
+                variant={tool === "cut" ? "default" : "outline"}
+                size="sm"
+                onClick={() => { setTool(tool === "cut" ? (annotateMode ? "pen" : "pan") : "cut"); setTextInput(null); }}
+                className={tool === "cut" ? "bg-orange-600 hover:bg-orange-700" : "text-orange-600 hover:text-orange-700"}
+              >
+                <Scissors className="w-4 h-4 mr-1" /> Cut Parts
+              </Button>
+              {tool === "cut" && (
+                <>
+                  <span className="text-xs font-medium text-orange-700">Drag a box on the plan to mark the cut</span>
+                  <Button variant="outline" size="sm" className="text-orange-700" onClick={() => openCutParts(pageNumber, null)}>
+                    Use page only
+                  </Button>
+                </>
               )}
             </>
           )}
@@ -1138,7 +1186,7 @@ export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations =
                         cursor: cursorStyle,
                         touchAction: "none",
                         // Capture input only in annotate/missing/comment modes; fingers still scroll natively
-                        pointerEvents: annotateMode || tool === "missing" || tool === "comment" ? "auto" : "none",
+                        pointerEvents: annotateMode || tool === "missing" || tool === "comment" || tool === "cut" ? "auto" : "none",
                       }}
                       width={size.width}
                       height={size.height}
