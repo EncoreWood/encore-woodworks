@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import ProjectForm from "../components/projects/ProjectForm";
 import ProductionStatsPanel from "../components/dashboard/ProductionStatsPanel";
 import PtsOverviewCard from "../components/dashboard/PtsOverviewCard";
+import { cardPoints } from "@/lib/cardPoints";
 import TodayPanel from "../components/dashboard/TodayPanel";
 import WeatherWidget from "../components/dashboard/WeatherWidget";
 import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
@@ -128,11 +129,8 @@ export default function Dashboard() {
   const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh);
 
   // PTS calculations — only from items in the "complete" stage, keyed by completed_date
-  const getPtsFromItems = (items) => {
-    return items.reduce((sum, item) => {
-      return sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
-    }, 0);
-  };
+  const getPtsFromItems = (items) =>
+    items.reduce((sum, item) => sum + cardPoints(item), 0);
 
   const todayStr = format(now, "yyyy-MM-dd");
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });

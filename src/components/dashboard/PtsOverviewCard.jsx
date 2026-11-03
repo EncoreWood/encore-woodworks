@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { base44 } from "@/api/base44Client";
 import { format, startOfWeek, addDays, subMonths } from "date-fns";
+import { cardPoints } from "@/lib/cardPoints";
 
 function ProgressBar({ value, goal, label }) {
   const pct = goal > 0 ? Math.min((value / goal) * 100, 100) : 0;
@@ -102,8 +103,7 @@ export default function PtsOverviewCard({ dayPts, weekPts, monthPts, quarterlyPt
       .filter(item => item.pts_logged_date === dateStr)
       .reduce((sum, item) => {
         if (item.pts_logged != null) return sum + item.pts_logged;
-        if (item.pts != null) return sum + item.pts;
-        return sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
+        return sum + cardPoints(item);
       }, 0);
     return { day: format(d, "EEE"), pts, isToday: dateStr === todayStr };
   });

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import ProjectForm from "../components/projects/ProjectForm";
 import ProductionStatsPanel from "../components/dashboard/ProductionStatsPanel";
+import { cardPoints } from "@/lib/cardPoints";
 import WeatherWidget from "../components/dashboard/WeatherWidget";
 import TodayPanel from "../components/dashboard/TodayPanel";
 import ProjectOrdersPanel from "@/components/dashboard/ProjectOrdersPanel";
@@ -63,8 +64,7 @@ export default function EmployeeDashboard() {
     items.reduce((sum, item) => {
       if (item.pts_logged != null) return sum + item.pts_logged;
       // Fallback for older items without pts_logged
-      if (item.pts != null) return sum + item.pts;
-      return sum + (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
+      return sum + cardPoints(item);
     }, 0);
 
   const todayStr = format(now, "yyyy-MM-dd");
