@@ -12,6 +12,7 @@ import RoomCardTile from "./RoomCardTile";
 import RoomInfoPane from "./RoomInfoPane";
 import RoomProgressBar from "@/components/production/RoomProgressBar";
 import { roomPts } from "@/lib/roomPts";
+import { computeTotalPoints } from "@/lib/cardPoints";
 import persistProductionMove, { productionMovePatch } from "@/lib/productionMoves";
 import { holdUpdates } from "@/lib/updateGuards";
 
@@ -150,12 +151,18 @@ export default function RoomWorkspace({
   const inlinePtsHandler = cardProps?.onInlinePtsChange || (async (item, fileIndex, newPts) => {
     const val = newPts === "" || newPts === undefined || newPts === null ? undefined : Number(newPts);
     if (fileIndex === -1) {
-      await base44.entities.ProductionItem.update(item.id, { pts: val });
+      await base44.entities.ProductionItem.update(item.id, {
+        pts: val,
+        total_points: computeTotalPoints({ files: item.files, pts: val }),
+      });
     } else {
       const files = (item.files || [])
         .map((f, i) => i === fileIndex ? { ...f, pts: val } : f)
         .map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
-      await base44.entities.ProductionItem.update(item.id, { files });
+      await base44.entities.ProductionItem.update(item.id, {
+        files,
+        total_points: computeTotalPoints({ files, pts: item.pts }),
+      });
     }
     invalidate();
   });

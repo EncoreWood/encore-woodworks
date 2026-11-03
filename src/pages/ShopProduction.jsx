@@ -233,6 +233,8 @@ export default function ShopProduction() {
       try {
       const safeData = { ...data, files: (data.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations })) };
       const item = items.find(candidate => candidate.id === id);
+      // total_points follows whatever this save did to the card's files or manual PTS
+      safeData.total_points = totalPointsPatch(item, safeData).total_points;
       if (item && "stage" in safeData && safeData.stage !== item.stage) {
         const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
         await persistProductionMove(item, productionMovePatch(item, safeData.stage, movedBy, safeData));
@@ -322,10 +324,8 @@ export default function ShopProduction() {
 
     const localDateStr = format(new Date(new Date().toLocaleString("en-US", { timeZone: "America/Denver" })), "yyyy-MM-dd");
 
-    // Calculate total pts for this item (file pts + card-level pts)
-    const filePts = safeFiles.reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
-    const cardPts = parseFloat(item.pts) || 0;
-    const totalPts = filePts + cardPts;
+    // The card's own point value is what it earns crossing a stage
+    const totalPts = computeTotalPoints({ files: safeFiles, pts: item.pts });
 
     // Preserve the existing exit-visit tracking, without changing total_points.
     const FORWARD_EXITS = {
@@ -356,6 +356,8 @@ export default function ShopProduction() {
       name: item.name, type: item.type,
       project_id: item.project_id, project_name: item.project_name, room_name: item.room_name,
       notes: item.notes, files: safeFiles, pts: item.pts,
+      // A move also repairs a card whose stored total_points was left behind
+      total_points: totalPts,
       columns_visited: JSON.stringify(visited),
       // Stage moves must not multiply the card's stored total_points value.
       pts_logged: ptsLogged,
@@ -436,7 +438,9 @@ export default function ShopProduction() {
     const updatedFiles = (item.files || [])
       .map((f, i) => i === fileIndex ? { ...f, pts: val } : f)
       .map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
-    const patch = isCardLevel ? { pts: val } : { files: updatedFiles };
+    const patch = isCardLevel
+      ? { pts: val, total_points: computeTotalPoints({ files: item.files, pts: val }) }
+      : { files: updatedFiles, total_points: computeTotalPoints({ files: updatedFiles, pts: item.pts }) };
 
     queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, ...patch } : i));
     await base44.entities.ProductionItem.update(item.id, patch);

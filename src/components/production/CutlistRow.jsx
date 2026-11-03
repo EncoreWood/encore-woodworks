@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FileText } from "lucide-react";
 import CutlistFilesDialog from "@/components/production/CutlistFilesDialog";
+import { cardPoints } from "@/lib/cardPoints";
 
 /**
  * Compact stand-in for a card's stacked file rows: one Cutlist button, the PTS
@@ -25,8 +26,8 @@ export default function CutlistRow({
   if (files.length === 0) return null;
 
   const noteCount = files.reduce((sum, { file }) => sum + (file.annotations?.length || 0), 0);
-  const totalPts = files.reduce((sum, { file }) => sum + (parseFloat(file.pts) || 0), 0);
-  const hasPts = files.some(({ file }) => file.pts !== undefined && file.pts !== null && file.pts !== "");
+  // The card's own total_points is what the face shows — never a separate file sum
+  const totalPts = cardPoints(item);
   const single = files.length === 1;
   const editing = isAdmin && editingPts?.itemId === item.id && editingPts?.fileIdx === (single ? files[0].idx : -2);
 
@@ -85,7 +86,7 @@ export default function CutlistRow({
               className={`h-7 px-1.5 text-[11px] border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 min-w-[42px] text-center ${isAdmin ? "hover:bg-amber-100" : "cursor-default"}`}
               title={isAdmin ? "Edit points" : "Points"}
             >
-              {files[0].file.pts ?? "—"}
+              {totalPts || "—"}
             </button>
           )}
         </div>
@@ -97,7 +98,7 @@ export default function CutlistRow({
           title="Total points — tap to edit per file"
         >
           <span className="text-[9px] font-bold text-slate-400">PTS</span>
-          <span className="text-[11px] font-bold min-w-[22px] text-center">{hasPts ? totalPts : "—"}</span>
+          <span className="text-[11px] font-bold min-w-[22px] text-center">{totalPts || "—"}</span>
         </button>
       )}
 

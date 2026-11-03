@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FileText, ClipboardList } from "lucide-react";
 import { createPortal } from "react-dom";
+import { cardPoints } from "@/lib/cardPoints";
 
 function PdfPreviewTooltip({ url, visible, anchorRef }) {
   if (!visible || !anchorRef.current) return null;
@@ -38,7 +39,7 @@ function JobPacket({ item, index, getProjectColor, onPickup }) {
 
   const color = getProjectColor(item.project_id);
   const pdfFiles = (item.files || []).filter(f => f.url?.match(/\.pdf$/i));
-  const totalPts = (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0);
+  const totalPts = cardPoints(item);
 
   const getOrCreateRef = (idx) => {
     if (!anchorRefs[idx]) anchorRefs[idx] = { current: null };

@@ -22,6 +22,7 @@ import { createPageUrl } from "@/utils";
 import SketchPad from "@/components/production/SketchPad";
 import RoomFilesModal from "@/components/production/RoomFilesModal";
 import { useOpenPdfTab } from "@/hooks/useOpenPdfTab";
+import { cardPoints } from "@/lib/cardPoints";
 import { useQuery } from "@tanstack/react-query";
 
 const PRODUCTION_STAGES = [
@@ -530,7 +531,7 @@ export default function ProductionCard({
                 onClick={(e) => { e.stopPropagation(); if (isAdmin) setEditingPts({ itemId: item.id, fileIdx: -1 }); }}
                 className={`h-7 px-1.5 text-[11px] border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 min-w-[42px] text-center ${isAdmin ? "hover:bg-amber-100 cursor-pointer" : "cursor-default"}`}
               >
-                {item.pts ?? "—"}
+                {cardPoints(item) || "—"}
               </button>
             )}
           </div>
