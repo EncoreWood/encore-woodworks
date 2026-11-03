@@ -146,7 +146,7 @@ export default function PdfViewer() {
           onCutParts={(plan) => setCutPlan(plan)}
         />
         <SendToCutDialog
-          item={card.item}
+          item={cutPlan ? card.item : null}
           plan={cutPlan}
           onClose={() => setCutPlan(null)}
           onCreate={handleCreateCutCard}
