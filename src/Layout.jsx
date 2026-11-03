@@ -747,7 +747,7 @@ export default function Layout({ children, currentPageName }) {
           if (found) displayName = found.name;
         });
         return (
-          <div className="sm:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-2 px-3 h-11 border-b border-slate-400 shadow-sm" style={{ backgroundColor: "#9ca3af", paddingTop: "env(safe-area-inset-top)" }}>
+          <div data-app-topbar className="sm:hidden fixed top-0 left-0 right-0 z-40 flex items-center gap-2 px-3 h-11 border-b border-slate-400 shadow-sm" style={{ backgroundColor: "#9ca3af", paddingTop: "env(safe-area-inset-top)" }}>
             {!isRoot ? (
               <button
                 type="button"

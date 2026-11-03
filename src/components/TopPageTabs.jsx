@@ -106,7 +106,7 @@ export default function TopPageTabs({
   const activeGroup = groups.find((g) => g.items.some((it) => it.page === currentPageName))?.key;
 
   return (
-    <header className="encore-tpt hidden sm:flex items-center shrink-0" ref={navRef}>
+    <header data-app-topbar className="encore-tpt hidden sm:flex items-center shrink-0" ref={navRef}>
       <style>{`
         .encore-tpt{
           --tpt-light:rgba(255,255,255,.45);

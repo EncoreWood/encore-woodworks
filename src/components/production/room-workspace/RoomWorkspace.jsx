@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTabStripBottom } from "@/hooks/useTabStripBottom";
 import { useToast } from "@/components/ui/use-toast";
@@ -286,7 +287,9 @@ export default function RoomWorkspace({
     </div>
   );
 
-  return (
+  // Rendered into the body so no page wrapper can capture the fixed positioning:
+  // the panel always starts just below the app's top bars, keeping Exit View reachable.
+  return createPortal(
     <div
       className="fixed left-0 right-0 bottom-0 z-30 bg-slate-200/80 p-1 sm:p-2"
       style={{
@@ -461,6 +464,7 @@ export default function RoomWorkspace({
         rooms={project.rooms || []}
         isLoading={createMutation.isPending || updateMutation.isPending}
       />
-    </div>
+    </div>,
+    document.body
   );
 }
