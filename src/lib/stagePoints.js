@@ -65,10 +65,6 @@ export function computeStagePoints(logs, inWindow, inboundStages = ["complete"])
   return { points, activeDays };
 }
 
-// Today's board pills: net points that moved out of each stage on the shop's local day.
-export const computeTodayStagePoints = (logs, todayStr) =>
-  computeStagePoints(logs, dayWindow(todayStr)).points;
-
 // Display helper: 15.25 → "15.25", 6 → "6"
 export function formatStagePoints(value) {
   return String(round2(Number(value) || 0));

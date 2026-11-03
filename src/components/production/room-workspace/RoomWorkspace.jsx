@@ -12,6 +12,7 @@ import RoomCardTile from "./RoomCardTile";
 import RoomInfoPane from "./RoomInfoPane";
 import RoomProgressBar from "@/components/production/RoomProgressBar";
 import { roomPts } from "@/lib/roomPts";
+import persistProductionMove, { productionMovePatch } from "@/lib/productionMoves";
 
 /**
  * Combined Room Workspace — production cards (left) and room info (right) in one
@@ -77,6 +78,8 @@ export default function RoomWorkspace({
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
     queryClient.invalidateQueries({ queryKey: ["productionItems", project.id] });
+    queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
+    queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] });
   };
 
   const createMutation = useMutation({
@@ -86,9 +89,20 @@ export default function RoomWorkspace({
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
       const safeData = { ...data, files: (data.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations })) };
-      await base44.entities.ProductionItem.update(id, safeData);
+      const item = items.find(candidate => candidate.id === id);
+      if (item && "stage" in safeData && safeData.stage !== item.stage) {
+        const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
+        await persistProductionMove(item, productionMovePatch(item, safeData.stage, movedBy, safeData));
+      } else {
+        await base44.entities.ProductionItem.update(id, safeData);
+      }
     },
     onSuccess: () => { invalidate(); setShowForm(false); setEditingItem(null); },
+    onError: (error) => {
+      console.error("Failed to update production card:", error);
+      toast({ title: "Could not save the card or its move history", description: error.message, variant: "destructive" });
+      invalidate();
+    },
   });
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.ProductionItem.delete(id),
@@ -112,8 +126,16 @@ export default function RoomWorkspace({
   const editHandler = cardProps?.onEdit || ((item) => { setEditingItem(item); setShowForm(true); });
   const deleteHandler = cardProps?.onDelete || ((id) => deleteMutation.mutate(id));
   const moveStageHandler = cardProps?.onMoveStage || (async (item, newStage) => {
-    await base44.entities.ProductionItem.update(item.id, { stage: newStage });
-    invalidate();
+    if (item.stage === newStage) return;
+    try {
+      const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
+      await persistProductionMove(item, productionMovePatch(item, newStage, movedBy));
+    } catch (error) {
+      console.error("Failed to save production move:", error);
+      toast({ title: "Could not save the move or its history", description: error.message, variant: "destructive" });
+    } finally {
+      invalidate();
+    }
   });
   const updateHandler = cardProps?.onUpdate || (async (id, fields) => {
     await base44.entities.ProductionItem.update(id, fields);
@@ -176,7 +198,7 @@ export default function RoomWorkspace({
   const sendItems = async (list) => {
     if (!list || list.length === 0) return;
     if (onSendToProduction) {
-      onSendToProduction(list);
+      await onSendToProduction(list);
       setSelected(new Set());
       return;
     }
@@ -184,10 +206,10 @@ export default function RoomWorkspace({
     try {
       for (const item of list) {
         if (item.stage) continue;
-        await base44.entities.ProductionItem.update(item.id, {
-          stage: "cut",
+        const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
+        await persistProductionMove(item, productionMovePatch(item, "cut", movedBy, {
           is_job_info: false,
-        });
+        }));
       }
       invalidate();
       if (goingToProduction.length > 0) {
@@ -203,6 +225,7 @@ export default function RoomWorkspace({
         description: e?.message || "Please try again.",
         variant: "destructive",
       });
+      invalidate();
     }
     setSelected(new Set());
   };

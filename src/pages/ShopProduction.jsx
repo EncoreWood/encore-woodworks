@@ -26,7 +26,9 @@ import ProductionMissingItemsTab from "../components/production/ProductionMissin
 import ProductionChatTab from "../components/production/ProductionChatTab";
 import MoveHistoryTab from "../components/production/MoveHistoryTab";
 import MobileCompactCard from "../components/production/MobileCompactCard";
-import { computeTodayStagePoints, computeStagePoints, sinceWindow, formatStagePoints } from "@/lib/stagePoints";
+import { computeStagePoints, sinceWindow, formatStagePoints } from "@/lib/stagePoints";
+import persistProductionMove, { productionMovePatch } from "@/lib/productionMoves";
+import useProductionTodayPoints from "@/hooks/useProductionTodayPoints";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProductionChatUnread } from "../components/production/useProductionChatUnread";
 import QuickReportMissingDialog from "../components/production/QuickReportMissingDialog";
@@ -141,6 +143,7 @@ export default function ShopProduction() {
         if (event.type === "delete") return old.filter(i => i.id !== event.id);
         return old;
       });
+      queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] });
     });
     const unsubLogs = base44.entities.ColumnMoveLog.subscribe((event) => {
       queryClient.setQueryData(["columnMoveLogs"], (old = []) => {
@@ -171,7 +174,15 @@ export default function ShopProduction() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data, syncToProject }) => {
       const safeData = { ...data, files: (data.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations })) };
-      await base44.entities.ProductionItem.update(id, safeData);
+      const item = items.find(candidate => candidate.id === id);
+      if (item && "stage" in safeData && safeData.stage !== item.stage) {
+        const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
+        await persistProductionMove(item, productionMovePatch(item, safeData.stage, movedBy, safeData));
+        queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
+      } else {
+        await base44.entities.ProductionItem.update(id, safeData);
+      }
+      queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] });
       if (syncToProject && safeData.files && syncToProject.project_id && syncToProject.room_name) {
         const projList = await base44.entities.Project.filter({ id: syncToProject.project_id });
         const proj = projList[0];
@@ -185,7 +196,13 @@ export default function ShopProduction() {
         }
       }
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["productionItems"] }); setShowForm(false); setEditingItem(null); setPacketsFormContext(null); }
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["productionItems"] }); setShowForm(false); setEditingItem(null); setPacketsFormContext(null); },
+    onError: (error) => {
+      console.error("Failed to update production card:", error);
+      toast({ title: "Could not save the card or its move history", description: error.message, variant: "destructive" });
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+      queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] });
+    }
   });
 
   const deleteMutation = useMutation({
@@ -200,7 +217,7 @@ export default function ShopProduction() {
 
   const handleDragEnd = async (result, extraUpdates) => {
     if (!result.destination) return;
-    if (result.destination.droppableId === result.source.droppableId && result.destination.index === result.source.index) return;
+    if (result.destination.droppableId === result.source?.droppableId && result.destination.index === result.source?.index) return;
 
     const itemId = result.draggableId;
     const newStage = result.destination.droppableId;
@@ -241,12 +258,7 @@ export default function ShopProduction() {
     const cardPts = parseFloat(item.pts) || 0;
     const totalPts = filePts + cardPts;
 
-    // Forward flow: points are earned when LEAVING a column along the forward path.
-    // Valid forward exits: face_frame→(spray|build|complete), spray→(build|complete), build→complete, cut→(face_frame|complete)
-    // Backward moves (e.g. complete→build, build→spray, anything→cut) earn zero points.
-    // Points are only awarded when a card exits a column toward "complete".
-    // Moving anything INTO build (without going to complete) does NOT award points.
-    // Build's only valid point-earning exit is "complete".
+    // Preserve the existing exit-visit tracking, without changing total_points.
     const FORWARD_EXITS = {
       cut:        ["face_frame", "complete"],
       face_frame: ["spray", "complete"],
@@ -255,11 +267,9 @@ export default function ShopProduction() {
     };
     const isForwardMove = (FORWARD_EXITS[oldStage] || []).includes(newStage);
 
-    // columns_visited tracks which source columns have already had their points counted.
-    // Only grows; prevents double-counting if a card is moved forward, back, then forward again.
+    // Keep source-column visits for legacy history; the card's point value is not a running multiplier.
     const visited = JSON.parse(item.columns_visited || "[]");
     const alreadyExited = visited.includes(oldStage);
-    const pointsToAdd = (isForwardMove && !alreadyExited) ? totalPts : 0;
     if (isForwardMove && !alreadyExited) visited.push(oldStage);
 
     // Set completed_date when moving INTO complete (once only)
@@ -272,26 +282,16 @@ export default function ShopProduction() {
     const ptsLogged = newStage === "complete" && !item.pts_logged ? totalPts : item.pts_logged;
     const ptsLoggedDate = newStage === "complete" && !item.pts_logged_date ? localDateStr : item.pts_logged_date;
 
-    // Stage move log — always record who moved it and when; prune entries older than 14 days
-    const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-    const prunedLog = (item.stage_move_log || []).filter(e => e.timestamp && new Date(e.timestamp) >= cutoff);
-    const stageMoveLog = [...prunedLog, {
-      from_stage: oldStage || null,
-      to_stage: newStage,
-      moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
-      timestamp: new Date().toISOString(),
-    }];
-
-    const updatePayload = {
-      name: item.name, type: item.type, stage: newStage,
+    const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
+    const updatePayload = productionMovePatch(item, newStage, movedBy, {
+      name: item.name, type: item.type,
       project_id: item.project_id, project_name: item.project_name, room_name: item.room_name,
       notes: item.notes, files: safeFiles, pts: item.pts,
       columns_visited: JSON.stringify(visited),
-      total_points: (item.total_points || 0) + pointsToAdd,
+      // Stage moves must not multiply the card's stored total_points value.
       pts_logged: ptsLogged,
       pts_logged_date: ptsLoggedDate,
       completed_date: completedDate,
-      stage_move_log: stageMoveLog,
       // "Sent back for missing item" badge flag: set on send-back, cleared when the card completes
       sent_back_for_missing: newStage === "complete"
         ? false
@@ -301,32 +301,24 @@ export default function ShopProduction() {
       sort_order: Math.max(-1, ...items.filter(i => i.stage === newStage && !i.is_job_info && i.id !== itemId).map(i => i.sort_order ?? -1)) + 1,
       // Moving to another stage ends "Currently Working On"
       is_being_worked: false,
-    };
+    });
 
     // Optimistic update immediately so UI feels instant
     queryClient.setQueryData(["productionItems"], (old = []) =>
       old.map(i => i.id === itemId ? { ...i, ...updatePayload } : i)
     );
 
-    // Persist item update and create move log entry in parallel.
-    // points_awarded always carries the card's own points value at the moment of the
-    // move (also on reversals) — stage totals net departures against arrivals.
-    await Promise.all([
-      base44.entities.ProductionItem.update(itemId, updatePayload),
-      base44.entities.ColumnMoveLog.create({
-        item_id: itemId,
-        item_name: item.name,
-        project_name: item.project_name || null,
-        from_column: oldStage || null,
-        to_column: newStage,
-        points_awarded: totalPts,
-        moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
-        moved_at: new Date().toISOString(),
-      }),
-    ]);
-
-    queryClient.invalidateQueries({ queryKey: ["productionItems"] });
-    queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
+    try {
+      await persistProductionMove(item, updatePayload, !!extraUpdates?.sent_back_for_missing);
+    } catch (error) {
+      console.error("Failed to save production move:", error);
+      toast({ title: "Could not save the move or its history", description: error.message, variant: "destructive" });
+      throw error;
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+      queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
+      queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] });
+    }
 
     if (item?.pickup_item_id) {
       try { await base44.entities.PickupItem.update(item.pickup_item_id, { production_stage: newStage }); queryClient.invalidateQueries({ queryKey: ["pickupItems"] }); } catch (e) {}
@@ -421,8 +413,8 @@ export default function ShopProduction() {
   };
 
   // PTS stats — per-stage totals derived from ColumnMoveLog within time windows
+  const { data: todayPoints, isError: todayPointsError, date: todayStr } = useProductionTodayPoints(!!currentUser);
   const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Denver" }));
-  const todayStr = format(nowLocal, "yyyy-MM-dd");
   const weekStart = startOfWeek(nowLocal, { weekStartsOn: 1 });
   const monthStart = startOfMonth(nowLocal);
 
@@ -443,23 +435,30 @@ export default function ShopProduction() {
     }])
   );
 
-  // Per-stage points pills — TODAY ONLY: the net value of cards that moved out of
-  // each stage today, read from ColumnMoveLog and recalculated on every move.
+  // Today pills use only ProductionItem.total_points, current stage and move timestamps.
+  // Calculate on the server over all matching cards, independent of board/list limits.
   const completeCutoff = format(subDays(new Date(), 6), "yyyy-MM-dd");
-  const stagePoints = useMemo(
-    () => computeTodayStagePoints(columnMoveLogs, todayStr),
-    [columnMoveLogs, todayStr]
-  );
+  const stagePoints = todayPoints?.date === todayStr ? todayPoints.points : null;
 
   const returnToFolder = async (item) => {
     const files = (item.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
-    await base44.entities.ProductionItem.update(item.id, { ...item, files, is_job_info: false, stage: null });
-    queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+    const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
+    try {
+      await persistProductionMove(item, productionMovePatch(item, null, movedBy, { files, is_job_info: false }));
+    } catch (error) {
+      console.error("Failed to return card to its packet:", error);
+      toast({ title: "Could not return the card or save its history", description: error.message, variant: "destructive" });
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+      queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
+      queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] });
+    }
   };
 
   const handleRefresh = useCallback(async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["productionItems"] }),
+      queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] }),
       queryClient.invalidateQueries({ queryKey: ["projects"] }),
     ]);
   }, [queryClient]);
@@ -796,7 +795,7 @@ export default function ShopProduction() {
                     .sort(sortColumnItems);
                   const workingCount = columnItems.filter(i => i.is_being_worked).length;
                   // Header badge: total value of cards that have MOVED PAST this stage
-                  const colPts = stagePoints[column.id] || 0;
+                  const colPts = stagePoints?.[column.id];
                   // Complete column: cards older than a week are hidden from the board view
                   const completeVisibleCount = column.id === "complete"
                     ? columnItems.filter(i => !i.completed_date || i.completed_date >= completeCutoff).length
@@ -818,11 +817,13 @@ export default function ShopProduction() {
                               <h2 className="font-semibold text-slate-700">{column.label}</h2>
                               {column.id !== "on_hold" && (
                                 <span
-                                  title="Points moved out of this stage today"
+                                  title={`Points crossed today in America/Denver (${todayStr})`}
+                                  data-today-stage={column.id}
+                                  aria-busy={!stagePoints && !todayPointsError}
                                   className="flex flex-col items-center leading-none text-green-700 bg-green-100 border border-green-200 rounded-full px-2 py-0.5"
                                 >
                                   <span className="text-[8px] font-semibold uppercase tracking-wide opacity-70">Today</span>
-                                  <span className="text-xs font-bold mt-0.5">{formatStagePoints(colPts)} PTS</span>
+                                  <span className="text-xs font-bold mt-0.5">{todayPointsError ? "Unavailable" : colPts == null ? "…" : `${formatStagePoints(colPts)} PTS`}</span>
                                 </span>
                               )}
                             </>
@@ -1039,31 +1040,25 @@ export default function ShopProduction() {
             onSendToProduction={async (selectedItems, stage = "cut") => {
               // New arrivals land at the bottom of the destination column
               let nextSort = Math.max(-1, ...items.filter(i => i.stage === stage && !i.is_job_info).map(i => i.sort_order ?? -1)) + 1;
-              const movedAt = new Date().toISOString();
               const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
-              for (const item of selectedItems) {
-                await base44.entities.ProductionItem.update(item.id, {
-                  ...item,
-                  is_job_info: false,
-                  stage: stage,
-                  sort_order: nextSort++,
-                  is_being_worked: false
-                });
-                // Log the stage change with the card's points value, like every other move
-                await base44.entities.ColumnMoveLog.create({
-                  item_id: item.id,
-                  item_name: item.name,
-                  project_name: item.project_name || null,
-                  from_column: item.stage || null,
-                  to_column: stage,
-                  points_awarded: (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0) + (parseFloat(item.pts) || 0),
-                  moved_by: movedBy,
-                  moved_at: movedAt,
-                });
+              try {
+                for (const item of selectedItems) {
+                  if (item.stage === stage) continue;
+                  await persistProductionMove(item, productionMovePatch(item, stage, movedBy, {
+                    is_job_info: false,
+                    sort_order: nextSort++,
+                    is_being_worked: false
+                  }));
+                }
+                setActiveTab("production");
+              } catch (error) {
+                console.error("Failed to send cards to production:", error);
+                toast({ title: "Could not send all cards", description: error.message, variant: "destructive" });
+              } finally {
+                queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+                queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
+                queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] });
               }
-              queryClient.invalidateQueries({ queryKey: ["productionItems"] });
-              queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
-              setActiveTab("production");
             }}
             sharedCardProps={sharedCardProps}
             />

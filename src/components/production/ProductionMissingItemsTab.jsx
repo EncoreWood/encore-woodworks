@@ -9,7 +9,7 @@ import MissingItemsGroupedList from "./MissingItemsGroupedList";
 import MissingItemCardViewerDialog from "./MissingItemCardViewerDialog";
 import ActionQueueList from "./ActionQueueList";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
-import { cardPts } from "@/lib/roomPts";
+import persistProductionMove, { productionMovePatch } from "@/lib/productionMoves";
 import { format } from "date-fns";
 
 export default function ProductionMissingItemsTab({ currentUser }) {
@@ -145,28 +145,17 @@ export default function ProductionMissingItemsTab({ currentUser }) {
       const targetCardId = item.missing_card_id || item.production_item_id;
       if (targetCardId) {
         try {
-          const card = cardById.get(targetCardId);
-          const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-          const prunedLog = (card?.stage_move_log || []).filter(e => e.timestamp && new Date(e.timestamp) >= cutoff);
-          await base44.entities.ProductionItem.update(targetCardId, {
-            stage: "on_hold",
-            stage_move_log: [...prunedLog, { from_stage: card?.stage || null, to_stage: "on_hold", moved_by: currentUser?.full_name || currentUser?.email || "Unknown", timestamp: new Date().toISOString() }]
-          });
-          await base44.entities.ColumnMoveLog.create({
-            item_id: targetCardId,
-            item_name: card?.name || item.production_item_name,
-            project_name: card?.project_name || item.project_name || null,
-            from_column: card?.stage || null,
-            to_column: "on_hold",
-            points_awarded: cardPts(card),
-            moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
-            moved_at: new Date().toISOString(),
-            sent_back: false
-          });
+          const card = cardById.get(targetCardId) || await base44.entities.ProductionItem.get(targetCardId);
+          const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
+          if (card.stage !== "on_hold") {
+            await persistProductionMove(card, productionMovePatch(card, "on_hold", movedBy));
+          }
           queryClient.invalidateQueries({ queryKey: ["productionItems"] });
           queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
+          queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] });
         } catch (err) {
           console.error("Failed to move card out of production:", err);
+          throw err;
         }
       }
       toast.success("Sent back to Open ✓");
@@ -190,27 +179,15 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     const targetStage = stage || "cut";
     setSending(item.id);
     try {
-      const card = cardById.get(targetCardId);
-      const cutoff = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-      const prunedLog = (card?.stage_move_log || []).filter(e => e.timestamp && new Date(e.timestamp) >= cutoff);
-      await base44.entities.ProductionItem.update(targetCardId, {
-        stage: targetStage,
-        stage_move_log: [...prunedLog, { from_stage: card?.stage || null, to_stage: targetStage, moved_by: currentUser?.full_name || currentUser?.email || "Unknown", timestamp: new Date().toISOString() }]
-      });
-      await base44.entities.ColumnMoveLog.create({
-        item_id: targetCardId,
-        item_name: card?.name || item.production_item_name,
-        project_name: card?.project_name || item.project_name || null,
-        from_column: card?.stage || null,
-        to_column: targetStage,
-        points_awarded: cardPts(card),
-        moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
-        moved_at: new Date().toISOString(),
-        sent_back: false
-      });
+      const card = cardById.get(targetCardId) || await base44.entities.ProductionItem.get(targetCardId);
+      const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
+      if (card.stage !== targetStage) {
+        await persistProductionMove(card, productionMovePatch(card, targetStage, movedBy));
+      }
       toast.success(`Card sent to production (${targetStage.replace(/_/g, " ")}) ✓`);
       queryClient.invalidateQueries({ queryKey: ["productionItems"] });
       queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
+      queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] });
     } catch (err) {
       console.error("Failed to send card to production:", err);
       toast.error("Failed to send card to production");
