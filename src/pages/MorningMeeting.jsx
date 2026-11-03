@@ -22,6 +22,7 @@ import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidge
 import WeeklyTopicPopup from "@/components/meeting/WeeklyTopicPopup";
 import TodaysScheduleDropdown from "@/components/meeting/TodaysScheduleDropdown";
 import { format, addDays, subDays } from "date-fns";
+import { computeStagePoints, dayWindow, STAGE_FLOW } from "@/lib/stagePoints";
 
 const motivationalQuotes = [
   "Excellence is not a skill, it's an attitude.",
@@ -616,15 +617,9 @@ export default function MorningMeeting() {
                 { id: "complete",   label: "Complete",   color: "bg-green-100 text-green-800 border-green-200" },
                 { id: "on_hold",    label: "On Hold",    color: "bg-red-100 text-red-800 border-red-200" },
               ];
-              const stagePts = {};
-              for (const log of columnMoveLogs) {
-                if (!log.moved_at) continue;
-                const logDate = format(new Date(log.moved_at), "yyyy-MM-dd");
-                if (logDate !== yesterday) continue;
-                const pts = parseFloat(log.points_awarded) || 0;
-                if (pts === 0) continue;
-                stagePts[log.to_column] = (stagePts[log.to_column] || 0) + pts;
-              }
+              // Points produced by stage = cards that ARRIVED in each stage yesterday,
+              // netted against any reversal on the same card and stage that day.
+              const stagePts = computeStagePoints(columnMoveLogs, dayWindow(yesterday), STAGE_FLOW).points;
               const totalPts = Object.values(stagePts).reduce((s, v) => s + v, 0);
               const hasAnyData = yesterdayReviews.length > 0 || totalPts > 0;
 

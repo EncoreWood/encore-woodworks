@@ -1,10 +1,11 @@
-import { format, startOfWeek, startOfMonth, differenceInCalendarDays } from "date-fns";
+import { format, startOfWeek, startOfMonth } from "date-fns";
 import { Factory } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
+import { computeStagePoints, sinceWindow } from "@/lib/stagePoints";
 
 const STAT_STAGES = ["face_frame", "spray", "build", "complete"];
 const STAT_LABELS = { face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete" };
@@ -27,30 +28,22 @@ export default function ProductionStatsPanel() {
   const weekStart = startOfWeek(nowLocal, { weekStartsOn: 1 });
   const monthStart = startOfMonth(nowLocal);
 
-  const getColStats = (stage) => {
-    let day = 0, week = 0, month = 0;
-    const activeDaysInMonth = new Set();
-    for (const log of columnMoveLogs) {
-      const matchCol = stage === "complete" ? log.to_column : log.from_column;
-      if (matchCol !== stage) continue;
-      const pts = parseFloat(log.points_awarded) || 0;
-      if (pts === 0) continue;
-      const movedAt = new Date(log.moved_at);
-      const movedLocal = new Date(movedAt.toLocaleString("en-US", { timeZone: "America/Denver" }));
-      const dateStr = format(movedLocal, "yyyy-MM-dd");
-      if (dateStr === todayStr) day += pts;
-      if (movedLocal >= weekStart) week += pts;
-      if (movedLocal >= monthStart) {
-        month += pts;
-        activeDaysInMonth.add(dateStr);
-      }
-    }
-    const daysWithActivity = activeDaysInMonth.size || 1;
-    const avgPerDay = Math.round((month / daysWithActivity) * 10) / 10;
-    return { day, week, month, avgPerDay };
-  };
+  // Stage totals come from the move log: Complete is credited on arrival, every other
+  // stage on departure, so a card counts once per stage per window (reversals net out).
+  const dayTotals = computeStagePoints(columnMoveLogs, sinceWindow(todayStr));
+  const weekTotals = computeStagePoints(columnMoveLogs, sinceWindow(format(weekStart, "yyyy-MM-dd")));
+  const monthTotals = computeStagePoints(columnMoveLogs, sinceWindow(format(monthStart, "yyyy-MM-dd")));
 
-  const colStats = Object.fromEntries(STAT_STAGES.map(s => [s, getColStats(s)]));
+  const colStats = Object.fromEntries(STAT_STAGES.map(s => {
+    const month = monthTotals.points[s] || 0;
+    const daysWithActivity = monthTotals.activeDays[s] || 1;
+    return [s, {
+      day: dayTotals.points[s] || 0,
+      week: weekTotals.points[s] || 0,
+      month,
+      avgPerDay: Math.round((month / daysWithActivity) * 10) / 10,
+    }];
+  }));
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-5">

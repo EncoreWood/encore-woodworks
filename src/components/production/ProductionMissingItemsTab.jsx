@@ -9,6 +9,7 @@ import MissingItemsGroupedList from "./MissingItemsGroupedList";
 import MissingItemCardViewerDialog from "./MissingItemCardViewerDialog";
 import ActionQueueList from "./ActionQueueList";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
+import { cardPts } from "@/lib/roomPts";
 import { format } from "date-fns";
 
 export default function ProductionMissingItemsTab({ currentUser }) {
@@ -157,7 +158,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
             project_name: card?.project_name || item.project_name || null,
             from_column: card?.stage || null,
             to_column: "on_hold",
-            points_awarded: 0,
+            points_awarded: cardPts(card),
             moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
             moved_at: new Date().toISOString(),
             sent_back: false
@@ -202,7 +203,7 @@ export default function ProductionMissingItemsTab({ currentUser }) {
         project_name: card?.project_name || item.project_name || null,
         from_column: card?.stage || null,
         to_column: targetStage,
-        points_awarded: 0,
+        points_awarded: cardPts(card),
         moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
         moved_at: new Date().toISOString(),
         sent_back: false

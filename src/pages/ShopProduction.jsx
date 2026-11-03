@@ -26,7 +26,7 @@ import ProductionMissingItemsTab from "../components/production/ProductionMissin
 import ProductionChatTab from "../components/production/ProductionChatTab";
 import MoveHistoryTab from "../components/production/MoveHistoryTab";
 import MobileCompactCard from "../components/production/MobileCompactCard";
-import { computeTodayStagePoints, formatStagePoints } from "@/lib/stagePoints";
+import { computeTodayStagePoints, computeStagePoints, sinceWindow, formatStagePoints } from "@/lib/stagePoints";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProductionChatUnread } from "../components/production/useProductionChatUnread";
 import QuickReportMissingDialog from "../components/production/QuickReportMissingDialog";
@@ -308,7 +308,9 @@ export default function ShopProduction() {
       old.map(i => i.id === itemId ? { ...i, ...updatePayload } : i)
     );
 
-    // Persist item update and create move log entry in parallel
+    // Persist item update and create move log entry in parallel.
+    // points_awarded always carries the card's own points value at the moment of the
+    // move (also on reversals) — stage totals net departures against arrivals.
     await Promise.all([
       base44.entities.ProductionItem.update(itemId, updatePayload),
       base44.entities.ColumnMoveLog.create({
@@ -317,7 +319,7 @@ export default function ShopProduction() {
         project_name: item.project_name || null,
         from_column: oldStage || null,
         to_column: newStage,
-        points_awarded: pointsToAdd,
+        points_awarded: totalPts,
         moved_by: currentUser?.full_name || currentUser?.email || "Unknown",
         moved_at: new Date().toISOString(),
       }),
@@ -418,7 +420,7 @@ export default function ShopProduction() {
     else setCurrentAnnotations(annotations);
   };
 
-  // PTS stats — read from ColumnMoveLog, summing points_awarded by to_column within time windows
+  // PTS stats — per-stage totals derived from ColumnMoveLog within time windows
   const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Denver" }));
   const todayStr = format(nowLocal, "yyyy-MM-dd");
   const weekStart = startOfWeek(nowLocal, { weekStartsOn: 1 });
@@ -427,37 +429,26 @@ export default function ShopProduction() {
   const STAT_STAGES = ["face_frame", "spray", "build", "complete"];
   const STAT_LABELS = { face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete" };
 
-  const getColStats = (stage) => {
-    let day = 0, week = 0, month = 0;
-    for (const log of columnMoveLogs) {
-      // Points are earned when leaving a column (from_column), not when arriving.
-      // "complete" is the final destination so we count arrivals there (to_column).
-      const matchCol = stage === "complete" ? log.to_column : log.from_column;
-      if (matchCol !== stage) continue;
-      const pts = parseFloat(log.points_awarded) || 0;
-      if (pts === 0) continue;
-      const movedAt = new Date(log.moved_at);
-      const movedLocal = new Date(movedAt.toLocaleString("en-US", { timeZone: "America/Denver" }));
-      const dateStr = format(movedLocal, "yyyy-MM-dd");
-      if (dateStr === todayStr) day += pts;
-      if (movedLocal >= weekStart) week += pts;
-      if (movedLocal >= monthStart) month += pts;
-    }
-    return { day, week, month };
-  };
+  // D/W/M per-stage totals — Complete is credited on arrival, every other stage on
+  // departure, so a card counts once per stage per window (reversals net out).
+  const dayTotals = computeStagePoints(columnMoveLogs, sinceWindow(todayStr));
+  const weekTotals = computeStagePoints(columnMoveLogs, sinceWindow(format(weekStart, "yyyy-MM-dd")));
+  const monthTotals = computeStagePoints(columnMoveLogs, sinceWindow(format(monthStart, "yyyy-MM-dd")));
 
-  const colStats = Object.fromEntries([...new Set([...STAT_STAGES, ...productionColumns.map(c => c.id)])].map(s => [s, getColStats(s)]));
+  const colStats = Object.fromEntries(
+    [...new Set([...STAT_STAGES, ...productionColumns.map(c => c.id)])].map(s => [s, {
+      day: dayTotals.points[s] || 0,
+      week: weekTotals.points[s] || 0,
+      month: monthTotals.points[s] || 0,
+    }])
+  );
 
   // Per-stage points pills — TODAY ONLY: the net value of cards that moved out of
-  // each stage today, read from ColumnMoveLog. Scoped to the same board cards the
-  // column counts use, and recalculated on every card move / log update.
+  // each stage today, read from ColumnMoveLog and recalculated on every move.
   const completeCutoff = format(subDays(new Date(), 6), "yyyy-MM-dd");
-  const pointsBaseItems = items.filter(i =>
-    !i.is_job_info && (i.stage !== "complete" || !i.completed_date || i.completed_date >= completeCutoff)
-  );
   const stagePoints = useMemo(
-    () => computeTodayStagePoints(pointsBaseItems, columnMoveLogs, todayStr),
-    [pointsBaseItems, columnMoveLogs, todayStr]
+    () => computeTodayStagePoints(columnMoveLogs, todayStr),
+    [columnMoveLogs, todayStr]
   );
 
   const returnToFolder = async (item) => {
@@ -1048,6 +1039,8 @@ export default function ShopProduction() {
             onSendToProduction={async (selectedItems, stage = "cut") => {
               // New arrivals land at the bottom of the destination column
               let nextSort = Math.max(-1, ...items.filter(i => i.stage === stage && !i.is_job_info).map(i => i.sort_order ?? -1)) + 1;
+              const movedAt = new Date().toISOString();
+              const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
               for (const item of selectedItems) {
                 await base44.entities.ProductionItem.update(item.id, {
                   ...item,
@@ -1056,8 +1049,20 @@ export default function ShopProduction() {
                   sort_order: nextSort++,
                   is_being_worked: false
                 });
+                // Log the stage change with the card's points value, like every other move
+                await base44.entities.ColumnMoveLog.create({
+                  item_id: item.id,
+                  item_name: item.name,
+                  project_name: item.project_name || null,
+                  from_column: item.stage || null,
+                  to_column: stage,
+                  points_awarded: (item.files || []).reduce((s, f) => s + (parseFloat(f.pts) || 0), 0) + (parseFloat(item.pts) || 0),
+                  moved_by: movedBy,
+                  moved_at: movedAt,
+                });
               }
               queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+              queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
               setActiveTab("production");
             }}
             sharedCardProps={sharedCardProps}
