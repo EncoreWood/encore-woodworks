@@ -61,30 +61,22 @@ export function listDenverDays(from, to) {
   return days;
 }
 
-// Only ProductionItem fields participate; a stored zero stays zero.
-export function addTodayCardPoints(totals, items, day) {
-  for (const item of items) {
-    const points = Number(item.total_points);
-    if (!Number.isFinite(points)) continue;
-
-    const trail = genuineStageMoves(item);
-    // A card parked on hold is still in the last stage it genuinely reached.
-    const direct = stageIndex(item.stage);
-    const currentIndex = direct >= 0
-      ? direct
-      : (trail.length ? stageIndex(trail[trail.length - 1].to_stage) : -1);
-    if (currentIndex < 0) continue;
-
-    let minimumIndex = Infinity;
-    for (const move of trail) {
-      if (denverDay(move.timestamp) !== day) continue;
-      for (const stage of [move.from_stage, move.to_stage]) {
-        const index = stageIndex(stage);
-        if (index >= 0) minimumIndex = Math.min(minimumIndex, index);
-      }
-    }
-    for (let index = minimumIndex; index < currentIndex; index++) {
-      totals[todayPointFlow[index]] += points;
-    }
+/**
+ * Points a stage earned on the given Denver days: one logged move per departure, each
+ * carrying the points awarded at the moment the card left that stage.
+ *
+ * Every day is read from that day's own rows — no card history is walked forward to its
+ * present stage — so a week or month total is exactly the sum of its days and one stage's
+ * points can never land in another stage's bucket.
+ */
+export function addMoveLogPoints(totals, rows, days) {
+  const wanted = new Set(days);
+  for (const row of rows) {
+    const day = denverDay(row.moved_at);
+    if (!day || !wanted.has(day)) continue;
+    const points = Number(row.points_awarded);
+    if (!Number.isFinite(points) || points <= 0) continue;
+    if (!(row.from_column in totals)) continue; // staged/cut-entry and on_hold earn nothing here
+    totals[row.from_column] += points;
   }
 }
