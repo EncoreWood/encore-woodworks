@@ -6,14 +6,12 @@ import PullToRefreshIndicator from "@/components/PullToRefreshIndicator";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import ProjectForm from "../components/projects/ProjectForm";
-import ProductionStatsPanel from "../components/dashboard/ProductionStatsPanel";
-import { cardPoints } from "@/lib/cardPoints";
 import WeatherWidget from "../components/dashboard/WeatherWidget";
 import TodayPanel from "../components/dashboard/TodayPanel";
 import ProjectOrdersPanel from "@/components/dashboard/ProjectOrdersPanel";
-import PtsOverviewCard from "@/components/dashboard/PtsOverviewCard";
+import PacingPanel from "@/components/dashboard/PacingPanel";
 import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
-import { format, startOfWeek, startOfMonth, subMonths } from "date-fns";
+import { format } from "date-fns";
 import { findMyEmployee } from "@/lib/findMyEmployee";
 import { Clock } from "lucide-react";
 
@@ -31,18 +29,6 @@ export default function EmployeeDashboard() {
     queryFn: () => base44.entities.Project.list("-created_date")
   });
 
-  // Its own cache key: a 200-card subset under the board's key would replace the
-  // board's full card list with a partial one.
-  const { data: productionItems = [] } = useQuery({
-    queryKey: ["productionItems", "recent"],
-    queryFn: () => base44.entities.ProductionItem.list("-updated_date", 200)
-  });
-
-  const { data: dashboardSettings = [] } = useQuery({
-    queryKey: ["dashboardSettings"],
-    queryFn: () => base44.entities.DashboardSettings.list()
-  });
-
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Project.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["projects"] }); setShowForm(false); }
@@ -56,33 +42,13 @@ export default function EmployeeDashboard() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["projects"] }),
       queryClient.invalidateQueries({ queryKey: ["productionItems"] }),
+      queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] }),
     ]);
   }, [queryClient]);
 
   const { pullDistance, isRefreshing } = usePullToRefresh(handleRefresh);
 
-  // Use pts_logged (permanently recorded on first completion) for accurate tallies
-  const getPtsFromItems = (items) =>
-    items.reduce((sum, item) => {
-      if (item.pts_logged != null) return sum + item.pts_logged;
-      // Fallback for older items without pts_logged
-      return sum + cardPoints(item);
-    }, 0);
-
   const todayStr = format(now, "yyyy-MM-dd");
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-  const monthStart = startOfMonth(now);
-  // Quarterly = rolling 4-month window (resets every 4 months from Jan: Jan-Apr, May-Aug, Sep-Dec)
-  const currentMonth = now.getMonth(); // 0-indexed
-  const quarterlyStartMonth = Math.floor(currentMonth / 4) * 4;
-  const quarterlyStart = new Date(now.getFullYear(), quarterlyStartMonth, 1);
-
-  const loggedItems = productionItems.filter(i => i.pts_logged_date != null);
-  const dayPts = getPtsFromItems(loggedItems.filter(i => i.pts_logged_date === todayStr));
-  const weekPts = getPtsFromItems(loggedItems.filter(i => i.pts_logged_date && new Date(i.pts_logged_date) >= weekStart));
-  const monthPts = getPtsFromItems(loggedItems.filter(i => i.pts_logged_date && new Date(i.pts_logged_date) >= monthStart));
-  const quarterlyPts = getPtsFromItems(loggedItems.filter(i => i.pts_logged_date && new Date(i.pts_logged_date) >= quarterlyStart));
-
   const inProductionProjects = projects.filter(p => p.status === "in_production");
 
   // Today's hours for current user
@@ -134,24 +100,11 @@ export default function EmployeeDashboard() {
           </div>
         </div>
 
-        {/* Top Row: Today Panel + PTS Overview */}
+        {/* Top Row: Today Panel + PTS Pacing */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
           <TodayPanel inProductionProjects={inProductionProjects} />
-
-          <PtsOverviewCard
-            dayPts={dayPts}
-            weekPts={weekPts}
-            monthPts={monthPts}
-            quarterlyPts={quarterlyPts}
-            productionItems={productionItems}
-            dashboardSettings={dashboardSettings}
-            currentUser={currentUser}
-            onSettingsUpdated={() => queryClient.invalidateQueries({ queryKey: ["dashboardSettings"] })}
-          />
+          <PacingPanel />
         </div>
-
-        {/* Production Stage Breakdown */}
-        <ProductionStatsPanel />
 
         {/* Project Orders Status */}
         <ProjectOrdersPanel inProductionProjects={inProductionProjects} />

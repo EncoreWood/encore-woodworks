@@ -128,17 +128,19 @@ function readCard(item) {
  * Historical windows stop at their own midnight, not the card's live stage today.
  * Only ProductionItem.total_points supplies point values. On Hold stays parking.
  */
-export function getStageDayPoints(items, from, to) {
-  const totals = Object.fromEntries(todayPointFlow.map(stage => [stage, 0]));
-  const days = listDenverDays(from, to);
-  if (!days.length) return totals;
-
-  const today = denverDay();
+function buildCards(items) {
   const cards = [];
   for (const item of Array.isArray(items) ? items : []) {
     const card = readCard(item);
     if (card) cards.push(card);
   }
+  return cards;
+}
+
+// Every stage figure for `days`, from cards that were read once.
+function totalsForCards(cards, days) {
+  const totals = Object.fromEntries(todayPointFlow.map(stage => [stage, 0]));
+  const today = denverDay();
 
   // Complete counts arrivals, not departures. Evaluate the entire D/W/M window
   // together so repeated completion/rework cycles never count a card twice.
@@ -190,7 +192,30 @@ export function getStageDayPoints(items, from, to) {
     }
   }
 
-  for (const stage of todayPointFlow) totals[stage] = Math.round(totals[stage] * 100) / 100;
+  return totals;
+}
+
+/**
+ * The same day rules, one row per day. The week and month pacing charts sum these,
+ * and the cards are read once for every day in the list.
+ */
+export function getPointsByDay(items, days) {
+  const cards = buildCards(items);
+  return (Array.isArray(days) ? days : []).map(day => {
+    const raw = totalsForCards(cards, [day]);
+    return {
+      date: day,
+      points: Object.fromEntries(todayPointFlow.map(stage => [stage, Math.round(raw[stage] * 100) / 100]))
+    };
+  });
+}
+
+export function getStageDayPoints(items, from, to) {
+  const totals = Object.fromEntries(todayPointFlow.map(stage => [stage, 0]));
+  const days = listDenverDays(from, to);
+  if (!days.length) return totals;
+  const raw = totalsForCards(buildCards(items), days);
+  for (const stage of todayPointFlow) totals[stage] = Math.round(raw[stage] * 100) / 100;
   return totals;
 }
 

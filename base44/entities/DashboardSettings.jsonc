@@ -9,9 +9,18 @@
         "projects",
         "google_sheet",
         "book_of_month",
-        "portal_url"
+        "portal_url",
+        "today_projects"
       ],
-      "description": "Dashboard section name"
+      "enumColors": [
+        "gray",
+        "gray",
+        "gray",
+        "blue",
+        "gray",
+        "purple"
+      ],
+      "description": "Dashboard section name. today_projects holds a per-day project selection: {\"date\":\"YYYY-MM-DD\",\"ids\":[...]} so tomorrow starts fresh."
     },
     "visible_to_users": {
       "type": "boolean",

@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
-import { User, Droplets, CalendarCheck, Briefcase, CheckSquare, BookOpen, Pencil, Check, X } from "lucide-react";
+import { Briefcase, BookOpen, CalendarCheck, CheckSquare, Droplets, Pencil, User } from "lucide-react";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
+import { denverDateStr } from "@/lib/stagePoints";
+import TodayEditForm from "./TodayEditForm";
 
-const todayStr = format(new Date(), "yyyy-MM-dd");
+const todayStr = denverDateStr(new Date());
 
 function Row({ icon: Icon, label, children, color = "text-slate-500" }) {
   return (
@@ -25,14 +27,7 @@ function None() {
 }
 
 export default function TodayPanel({ inProductionProjects }) {
-  const queryClient = useQueryClient();
-  const [editingBook, setEditingBook] = useState(false);
-  const [bookDraft, setBookDraft] = useState("");
-  const [currentUser, setCurrentUser] = useState(null);
-
-  useState(() => {
-    base44.auth.me().then(setCurrentUser);
-  }, []);
+  const [editing, setEditing] = useState(false);
 
   const { data: presenters = [] } = useQuery({
     queryKey: ["meetingPresenters", todayStr],
@@ -60,124 +55,116 @@ export default function TodayPanel({ inProductionProjects }) {
   });
 
   const bookSetting = dashboardSettings.find(s => s.section === "book_of_month");
+  const projectSetting = dashboardSettings.find(s => s.section === "today_projects");
 
-  const saveMutation = useMutation({
-    mutationFn: async (value) => {
-      if (bookSetting) {
-        return base44.entities.DashboardSettings.update(bookSetting.id, { value });
-      } else {
-        return base44.entities.DashboardSettings.create({ section: "book_of_month", value });
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboardSettings"] });
-      setEditingBook(false);
-    }
-  });
+  // A per-day project override: only today's choice is remembered.
+  let selectedProjectIds = null;
+  try {
+    const parsed = JSON.parse(projectSetting?.value || "null");
+    if (parsed?.date === todayStr && Array.isArray(parsed.ids)) selectedProjectIds = parsed.ids;
+  } catch (_) { /* unreadable override falls back to every project */ }
 
-  const startEdit = () => {
-    setBookDraft(bookSetting?.value || "");
-    setEditingBook(true);
-  };
+  const visibleProjects = selectedProjectIds
+    ? inProductionProjects.filter(project => selectedProjectIds.includes(project.id))
+    : inProductionProjects;
+  const effectiveProjectIds = selectedProjectIds || inProductionProjects.map(project => project.id);
 
-  const cleaningNames = cleanings.flatMap(c => c.assigned_to || []).join(", ");
+  const cleaningNames = Array.from(new Set(cleanings.flatMap(row => row.assigned_to || []))).join(", ");
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col">
-      <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">
-        Today — {format(new Date(), "EEEE, MMM d")}
-      </h3>
-
-      <Row icon={Briefcase} label="Active Projects" color="text-green-500">
-        {inProductionProjects.length > 0
-          ? <div className="space-y-0.5 max-h-32 overflow-y-auto pr-1">
-              {inProductionProjects.map(p => (
-                <Link key={p.id} to={createPageUrl("ProjectDetails") + "?id=" + p.id}>
-                  <p className="text-sm font-medium hover:text-amber-600 transition-colors"
-                     style={p.card_color ? { color: p.card_color } : { color: "#1e293b" }}>
-                    {p.project_name}
-                    {p.client_name ? <span className="text-slate-400 font-normal"> — {p.client_name}</span> : ""}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          : <None />}
-      </Row>
-
-      <Row icon={User} label="Morning Presenter" color="text-violet-500">
-        {presenters.length > 0
-          ? <p className="text-sm font-medium text-slate-800">{presenters.map(p => p.presenter_name).join(", ")}</p>
-          : <None />}
-      </Row>
-
-      <Row icon={Droplets} label="Bathroom Cleaning" color="text-blue-400">
-        {cleaningNames
-          ? <p className="text-sm font-medium text-slate-800">{cleaningNames}</p>
-          : <None />}
-      </Row>
-
-      <Row icon={CalendarCheck} label="Design Meetings" color="text-amber-500">
-        {meetings.length > 0
-          ? <div className="space-y-0.5">
-              {meetings.map((m, i) => (
-                <p key={i} className="text-sm font-medium text-slate-800">
-                  {m.client_name}{m.project_name ? <span className="text-slate-400 font-normal"> — {m.project_name}</span> : ""}
-                  {m.time ? <span className="text-slate-400 font-normal"> @ {m.time}</span> : ""}
-                </p>
-              ))}
-            </div>
-          : <None />}
-      </Row>
-
-      <Row icon={CheckSquare} label="Tasks Due Today" color="text-red-400">
-        {tasks.length > 0
-          ? <div className="space-y-0.5">
-              {tasks.map((t, i) => (
-                <p key={i} className="text-sm font-medium text-slate-800">
-                  {t.title}
-                  {t.assigned_to ? <span className="text-slate-400 font-normal"> — {t.assigned_to}</span> : ""}
-                </p>
-              ))}
-            </div>
-          : <None />}
-      </Row>
-
-      {/* Book of the Month */}
-      <div className="flex items-start gap-3 py-2">
-        <BookOpen className="w-4 h-4 mt-0.5 flex-shrink-0 text-emerald-500" />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between mb-0.5">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Book of the Month</p>
-            {!editingBook && (
-              <button onClick={startEdit} className="text-slate-300 hover:text-slate-500 transition-colors">
-                <Pencil className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-          {editingBook ? (
-            <div className="flex items-center gap-1 mt-1">
-              <input
-                autoFocus
-                value={bookDraft}
-                onChange={e => setBookDraft(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") saveMutation.mutate(bookDraft); if (e.key === "Escape") setEditingBook(false); }}
-                className="flex-1 text-sm border border-slate-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                placeholder="Enter book title..."
-              />
-              <button onClick={() => saveMutation.mutate(bookDraft)} className="text-green-500 hover:text-green-700">
-                <Check className="w-4 h-4" />
-              </button>
-              <button onClick={() => setEditingBook(false)} className="text-red-400 hover:text-red-600">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            bookSetting?.value
-              ? <p className="text-sm font-medium text-slate-800 italic">"{bookSetting.value}"</p>
-              : <p className="text-sm text-slate-300 italic">Not set</p>
-          )}
-        </div>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
+          Today — {format(new Date(`${todayStr}T12:00:00`), "EEEE, MMM d")}
+        </h3>
+        {!editing && (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="text-slate-400 hover:text-slate-700 p-1 rounded"
+            title="Edit today"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
+
+      {editing ? (
+        <TodayEditForm
+          todayStr={todayStr}
+          projects={inProductionProjects}
+          selectedProjectIds={effectiveProjectIds}
+          presenters={presenters}
+          cleanings={cleanings}
+          meetings={meetings}
+          tasks={tasks}
+          bookSetting={bookSetting}
+          projectSetting={projectSetting}
+          onClose={() => setEditing(false)}
+        />
+      ) : (
+        <>
+          <Row icon={Briefcase} label="Active Projects" color="text-green-500">
+            {visibleProjects.length > 0
+              ? <div className="space-y-0.5 max-h-32 overflow-y-auto pr-1">
+                  {visibleProjects.map(p => (
+                    <Link key={p.id} to={createPageUrl("ProjectDetails") + "?id=" + p.id}>
+                      <p className="text-sm font-medium hover:text-amber-600 transition-colors"
+                         style={p.card_color ? { color: p.card_color } : { color: "#1e293b" }}>
+                        {p.project_name}
+                        {p.client_name ? <span className="text-slate-400 font-normal"> — {p.client_name}</span> : ""}
+                      </p>
+                    </Link>
+                  ))}
+                </div>
+              : <None />}
+          </Row>
+
+          <Row icon={User} label="Morning Presenter" color="text-violet-500">
+            {presenters.some(p => p.presenter_name)
+              ? <p className="text-sm font-medium text-slate-800">{presenters.map(p => p.presenter_name).filter(Boolean).join(", ")}</p>
+              : <None />}
+          </Row>
+
+          <Row icon={Droplets} label="Bathroom Cleaning" color="text-blue-400">
+            {cleaningNames
+              ? <p className="text-sm font-medium text-slate-800">{cleaningNames}</p>
+              : <None />}
+          </Row>
+
+          <Row icon={CalendarCheck} label="Design Meetings" color="text-amber-500">
+            {meetings.length > 0
+              ? <div className="space-y-0.5">
+                  {meetings.map((m, i) => (
+                    <p key={i} className="text-sm font-medium text-slate-800">
+                      {m.client_name}{m.project_name ? <span className="text-slate-400 font-normal"> — {m.project_name}</span> : ""}
+                      {m.time ? <span className="text-slate-400 font-normal"> @ {m.time}</span> : ""}
+                    </p>
+                  ))}
+                </div>
+              : <None />}
+          </Row>
+
+          <Row icon={CheckSquare} label="Tasks Due Today" color="text-red-400">
+            {tasks.length > 0
+              ? <div className="space-y-0.5">
+                  {tasks.map((t, i) => (
+                    <p key={i} className="text-sm font-medium text-slate-800">
+                      {t.title}
+                      {t.assigned_to ? <span className="text-slate-400 font-normal"> — {t.assigned_to}</span> : ""}
+                    </p>
+                  ))}
+                </div>
+              : <None />}
+          </Row>
+
+          <Row icon={BookOpen} label="Book of the Month" color="text-emerald-500">
+            {bookSetting?.value
+              ? <p className="text-sm font-medium text-slate-800 italic">"{bookSetting.value}"</p>
+              : <None />}
+          </Row>
+        </>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.54";
-import { denverDay, getStageDayPoints, getStageDaySeries, listDenverDays } from "../../shared/productionTodayPoints.js";
+import { denverDay, getStageDayPoints, getStageDaySeries, getPointsByDay, listDenverDays } from "../../shared/productionTodayPoints.js";
 
 const isDate = (value) =>
   typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(new Date(`${value}T00:00:00.000Z`).getTime());
@@ -25,17 +25,17 @@ async function readCards(base44) {
   return items;
 }
 
-// At most 62 days per window, so one request can never ask for years of days.
-function clampWindow(from, to) {
-  const days = listDenverDays(from, to).slice(0, 62);
+// A request can never ask for years of days: a window is capped at its own length.
+function clampWindow(from, to, maxDays = 62) {
+  const days = listDenverDays(from, to).slice(0, maxDays);
   if (!days.length) return null;
   return { from: days[0], to: days[days.length - 1] };
 }
 
-const readWindow = value => {
+const readWindow = (value, maxDays = 62) => {
   const from = isDate(value?.from) ? value.from : null;
   const to = isDate(value?.to) ? value.to : null;
-  return from && to && from <= to ? clampWindow(from, to) : null;
+  return from && to && from <= to ? clampWindow(from, to, maxDays) : null;
 };
 
 export default async function(req) {
@@ -51,6 +51,7 @@ export default async function(req) {
     const single = readWindow({ from: body?.from, to: body?.to });
     const week = readWindow(body?.windows?.week);
     const month = readWindow(body?.windows?.month);
+    const quarter = readWindow(body?.windows?.quarter, 200);
 
     const items = await readCards(base44);
 
@@ -76,9 +77,17 @@ export default async function(req) {
       // same module, so the chart ends exactly on the stage totals above.
       series: getStageDaySeries(items, date),
     };
+    // Week and month also answer per day, so their pacing charts draw a cumulative
+    // line from the same read — never a second calculation.
+    const withDays = win => ({
+      ...win,
+      points: getStageDayPoints(items, win.from, win.to),
+      days: getPointsByDay(items, listDenverDays(win.from, win.to)),
+    });
     const windows = {};
-    if (week) windows.week = { ...week, points: getStageDayPoints(items, week.from, week.to) };
-    if (month) windows.month = { ...month, points: getStageDayPoints(items, month.from, month.to) };
+    if (week) windows.week = withDays(week);
+    if (month) windows.month = withDays(month);
+    if (quarter) windows.quarter = { ...quarter, points: getStageDayPoints(items, quarter.from, quarter.to) };
     if (Object.keys(windows).length) payload.windows = windows;
 
     return Response.json(payload);

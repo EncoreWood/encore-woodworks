@@ -6,7 +6,7 @@ import { denverDateStr } from "@/lib/stagePoints";
 // One call serves the day, the week and the month. The server reads the board's cards
 // once and derives all three from that read — three separate calls per screen is what
 // exhausted the app's entity-read limit and stalled the board.
-export default function useProductionBoardPoints({ enabled, weekFrom, monthFrom }) {
+export default function useProductionBoardPoints({ enabled, weekFrom, monthFrom, quarterFrom }) {
   const [date, setDate] = useState(() => denverDateStr(new Date()));
 
   useEffect(() => {
@@ -22,12 +22,13 @@ export default function useProductionBoardPoints({ enabled, weekFrom, monthFrom 
 
   const query = useQuery({
     // Keeps the existing key prefix, so every invalidation after a card move still lands.
-    queryKey: ["productionTodayPoints", "board", date, weekFrom || "", monthFrom || ""],
+    queryKey: ["productionTodayPoints", "board", date, weekFrom || "", monthFrom || "", quarterFrom || ""],
     queryFn: async () => (await base44.functions.invoke("getProductionTodayPoints", {
       date,
       windows: {
         week: { from: weekFrom, to: date },
         month: { from: monthFrom, to: date },
+        ...(quarterFrom ? { quarter: { from: quarterFrom, to: date } } : {}),
       },
     })).data,
     enabled: !!enabled && !!weekFrom && !!monthFrom,
