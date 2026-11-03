@@ -36,9 +36,9 @@ const MISC_ITEM_OPTIONS = ["Base", "Crown", "Toe Kick", "Skin", "1/4'' Scribe", 
 // jobInfoProjects: if provided, form is in "Job Info" mode — shows project dropdown instead of type, hides stage
 export default function ProductionItemForm({ open, onOpenChange, onSubmit, initialData, isLoading, jobInfoProjects, rooms }) {
   const [formData, setFormData] = useState(initialFormState);
-  const [uploadingGlb, setUploadingGlb] = useState(false);
   // Most recent explicit point edit, shown under the PTS field
   const lastPointChange = (initialData?.points_audit_log || []).slice(-1)[0] || null;
+  const [uploadingGlb, setUploadingGlb] = useState(false);
 
   // Draft protection: everything typed (and the raw sketch) is mirrored to local
   // storage so a crash, refresh, or accidental close can never blank this form.
