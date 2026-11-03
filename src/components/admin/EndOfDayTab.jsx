@@ -18,6 +18,9 @@ const RATING_CONFIG = {
 
 const RATING_ORDER = ["great", "good", "fuck_alright", "okay", "bad", "terrible"];
 
+// Reviews submitted without a rating show as not rated instead of a wrong mood
+const NOT_RATED = { label: "Not rated", icon: Meh, color: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-300" };
+
 function StatCard({ label, value, sub, accent }) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 px-5 py-4 shadow-sm">
@@ -46,7 +49,7 @@ function RatingBar({ label, count, total, config }) {
 }
 
 function ReviewCard({ review, onDelete, onArchive }) {
-  const cfg = RATING_CONFIG[review.day_rating] || RATING_CONFIG.okay;
+  const cfg = (review.day_rating && RATING_CONFIG[review.day_rating]) || NOT_RATED;
   const Icon = cfg.icon;
   const localTime = review.submitted_at ? format(new Date(review.submitted_at), "h:mm a") : "";
 

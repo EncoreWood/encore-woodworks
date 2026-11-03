@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { findMyEmployee } from "@/lib/findMyEmployee";
 import { usePendingTimeEditRequests } from "@/hooks/usePendingTimeEditRequests";
 import { useAdminNotifications } from "@/hooks/useAdminNotifications";
+import { useMyNotifications } from "@/hooks/useMyNotifications";
 import NotificationBell from "@/components/notifications/NotificationBell";
 import TabBar from "@/components/tabs/TabBar";
 import { usePinnedPages } from "@/hooks/usePinnedPages";
@@ -68,6 +69,9 @@ export default function Layout({ children, currentPageName }) {
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
   const pendingEditRequests = usePendingTimeEditRequests(currentUser?.role === "admin");
   const adminNotifications = useAdminNotifications(currentUser?.role === "admin");
+  // Personal notices (bell) — e.g. the 5:25 PM End of Day Review reminder
+  const myNotifications = useMyNotifications(currentUser?.email);
+  const allNotifications = [...myNotifications, ...adminNotifications];
   const { pinnedPages, togglePin, isPinned } = usePinnedPages();
   const { split, updateSplit } = useSplitView();
   const isDesktop = useIsDesktop();
@@ -719,7 +723,7 @@ export default function Layout({ children, currentPageName }) {
         pinnedPages={pinnedPages}
         onTogglePin={togglePin}
         pendingTaskCount={pendingTaskCount}
-        notifications={adminNotifications}
+        notifications={allNotifications}
         clockInTime={clockInTime}
         elapsedTime={elapsedTime}
         onClockIn={handleClockIn}
@@ -758,9 +762,9 @@ export default function Layout({ children, currentPageName }) {
               </button>
             ) : null}
             <span className={`font-semibold text-slate-900 text-sm flex-1 ${!isRoot ? "ml-1" : ""}`}>{displayName}</span>
-            {currentUser?.role === "admin" && (
+            {currentUser && (
               <NotificationBell
-                notifications={adminNotifications}
+                notifications={allNotifications}
                 triggerClassName="flex items-center justify-center touch-manipulation select-none active:opacity-60 min-w-[44px] min-h-[44px] text-slate-800"
               />
             )}

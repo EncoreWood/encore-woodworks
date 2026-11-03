@@ -1,0 +1,47 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the app user this notification belongs to"
+    },
+    "title": {
+      "type": "string",
+      "description": "Short headline shown in the bell"
+    },
+    "message": {
+      "type": "string",
+      "description": "Supporting line shown under the title"
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "end_of_day"
+      ],
+      "description": "Notification type \u2014 drives the icon and the action it opens"
+    },
+    "page": {
+      "type": "string",
+      "description": "Page the notification opens (nav page key)"
+    },
+    "action": {
+      "type": "string",
+      "description": "Action the app performs when the notification is clicked (e.g. end_of_day opens the End of Day Review)"
+    },
+    "read": {
+      "type": "boolean",
+      "default": false,
+      "description": "True once the recipient has opened it \u2014 cleared from the bell"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Shop-local date (YYYY-MM-DD) this notification is keyed to. Used as the once-per-day send guard."
+    }
+  },
+  "required": [
+    "user_email",
+    "title"
+  ]
+}

@@ -6,6 +6,23 @@
       "type": "string",
       "description": "Name of employee who submitted"
     },
+    "submitted_by_email": {
+      "type": "string",
+      "description": "Email of employee who submitted"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the mistake was reported"
+    },
+    "end_of_day_review_id": {
+      "type": "string",
+      "description": "End of Day Review this mistake was reported from, when it came from the review dialog"
+    },
+    "description": {
+      "type": "string",
+      "description": "What happened \u2014 free text from a quick report"
+    },
     "project_name": {
       "type": "string",
       "description": "Optional project name"
@@ -95,9 +112,6 @@
     }
   },
   "required": [
-    "submitted_by",
-    "mistake_of",
-    "mistake_type",
-    "stem_of_mistake"
+    "submitted_by"
   ]
 }

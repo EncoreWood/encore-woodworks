@@ -56,6 +56,10 @@
         }
       }
     },
+    "action": {
+      "type": "string",
+      "description": "Optional in-app action the message carries \u2014 'end_of_day' renders an Open End of Day Review button"
+    },
     "task_id": {
       "type": "string",
       "description": "ID of the Task created from this message"

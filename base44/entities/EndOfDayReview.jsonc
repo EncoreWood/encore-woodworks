@@ -29,7 +29,7 @@
         "bad",
         "terrible"
       ],
-      "description": "Overall day rating"
+      "description": "Overall day rating. Null when the employee skipped the rating."
     },
     "reason": {
       "type": "string",
@@ -37,7 +37,7 @@
     },
     "last_cabinet": {
       "type": "string",
-      "description": "Which cabinet did you end on?"
+      "description": "Legacy: which cabinet did you end on? No longer asked \u2014 card move history tracks this."
     },
     "area_clean": {
       "type": "boolean",
@@ -48,9 +48,38 @@
       "type": "string",
       "description": "Notes about cleanliness if not clean"
     },
+    "comments": {
+      "type": "string",
+      "description": "General free-text comments from the employee"
+    },
     "accomplishments": {
       "type": "string",
-      "description": "What was accomplished today?"
+      "description": "Legacy: what was accomplished today? No longer asked \u2014 production points track this."
+    },
+    "report_links": {
+      "type": "array",
+      "description": "Struggles, well dones and mistakes reported with this review \u2014 the link back to each source record",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "struggle",
+              "compliment",
+              "mistake"
+            ]
+          },
+          "id": {
+            "type": "string",
+            "description": "ID of the created record"
+          },
+          "text": {
+            "type": "string",
+            "description": "Snapshot of what was reported"
+          }
+        }
+      }
     },
     "blockers": {
       "type": "string",
@@ -64,7 +93,6 @@
   "required": [
     "submitted_by",
     "submitted_at",
-    "date",
-    "day_rating"
+    "date"
   ]
 }

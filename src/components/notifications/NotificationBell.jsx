@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { Bell, Package, Clock, CalendarDays, CheckCircle2 } from "lucide-react";
+import { Bell, Package, Clock, CalendarDays, CheckCircle2, Sun } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { createPageUrl } from "@/utils";
+import { base44 } from "@/api/base44Client";
 
 const KIND_STYLE = {
   inventory: { Icon: Package, chip: "bg-amber-100 text-amber-700" },
   time_edit: { Icon: Clock, chip: "bg-blue-100 text-blue-700" },
   time_off: { Icon: CalendarDays, chip: "bg-violet-100 text-violet-700" },
+  end_of_day: { Icon: Sun, chip: "bg-amber-100 text-amber-600" },
 };
 
 /**
@@ -18,6 +20,18 @@ export default function NotificationBell({ notifications = [], triggerClassName 
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const count = notifications.length;
+
+  // Per-user notices (e.g. the End of Day reminder) carry an action the app
+  // performs when opened; opening one also clears it from the bell.
+  const handleOpen = (item) => {
+    setOpen(false);
+    if (item.action === "end_of_day") {
+      window.dispatchEvent(new CustomEvent("encore:open-end-of-day"));
+    }
+    if (item.notificationId) {
+      base44.entities.Notification.update(item.notificationId, { read: true }).catch(() => {});
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -78,7 +92,7 @@ export default function NotificationBell({ notifications = [], triggerClassName 
                   <li key={item.id}>
                     <Link
                       to={createPageUrl(item.page)}
-                      onClick={() => setOpen(false)}
+                      onClick={() => handleOpen(item)}
                       className="flex items-start gap-2.5 px-3 py-2.5 hover:bg-slate-50 transition-colors"
                     >
                       <span className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${style.chip}`}>

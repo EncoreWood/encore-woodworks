@@ -3,7 +3,7 @@ import { base44 } from "@/api/base44Client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { toast } from "sonner";
-import { Send, MessageSquare, Paperclip, X, ListTodo } from "lucide-react";
+import { Send, MessageSquare, Paperclip, X, ListTodo, Sunset } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PRODUCTION_CHAT_MESSAGES_KEY } from "./useProductionChatUnread";
 import ChatTaskDialog from "./ChatTaskDialog";
@@ -205,6 +205,21 @@ export default function ProductionChatTab({ currentUser }) {
                     <p className="text-sm whitespace-pre-wrap break-words">
                       {renderMessage(m.message, m.mentions, mine ? "font-bold underline" : "font-bold text-amber-700 underline")}
                     </p>
+                  )}
+
+                  {m.action === "end_of_day" && (
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new CustomEvent("encore:open-end-of-day"))}
+                      className={`mt-2 flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                        mine
+                          ? "border-white/40 bg-white/15 text-white hover:bg-white/25"
+                          : "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"
+                      }`}
+                    >
+                      <Sunset className="w-3.5 h-3.5" />
+                      Open End of Day Review
+                    </button>
                   )}
 
                   {/* Attachments */}

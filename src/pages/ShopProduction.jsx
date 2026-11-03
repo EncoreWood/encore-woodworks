@@ -90,6 +90,13 @@ export default function ShopProduction() {
   const [cutFromPlan, setCutFromPlan] = useState(null);
   const [quickReportItem, setQuickReportItem] = useState(null);
   const [showEndOfDay, setShowEndOfDay] = useState(false);
+
+  // Opened from the 5:25 PM reminder (bell notification or Production Chat button)
+  useEffect(() => {
+    const openReview = () => setShowEndOfDay(true);
+    window.addEventListener("encore:open-end-of-day", openReview);
+    return () => window.removeEventListener("encore:open-end-of-day", openReview);
+  }, []);
   const [scrollToProjectId, setScrollToProjectId] = useState(null);
   const [pickupFromHighlight, setPickupFromHighlight] = useState(null);
   const [focusStage, setFocusStage] = useState(null); // stage id when viewing a single stage

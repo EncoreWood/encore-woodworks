@@ -366,7 +366,7 @@ export default function TopPageTabs({
       </div>
 
       <div className="tpt-right">
-        {currentUser?.role === "admin" && (
+        {currentUser && (
           <NotificationBell notifications={notifications} triggerClassName="tpt-icon-btn" />
         )}
         {currentUser?.role === "user" && (

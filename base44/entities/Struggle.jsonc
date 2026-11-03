@@ -14,6 +14,19 @@
       "type": "string",
       "description": "Name of the person who reported the struggle"
     },
+    "reported_by_email": {
+      "type": "string",
+      "description": "Email of the person who reported the struggle"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the struggle was reported"
+    },
+    "end_of_day_review_id": {
+      "type": "string",
+      "description": "End of Day Review this struggle was reported from, when it came from the review dialog"
+    },
     "production_item_name": {
       "type": "string",
       "description": "Name of the production item this struggle is linked to (if any)"

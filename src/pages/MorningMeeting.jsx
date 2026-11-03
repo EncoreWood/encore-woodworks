@@ -564,8 +564,10 @@ export default function MorningMeeting() {
               const RATING_LABELS = { great: "Great 🌟", good: "Good 😊", fuck_alright: "F*** Alright 😤", okay: "Okay 😐", bad: "Bad 😟", terrible: "Terrible 😣" };
               const RATING_SCORES = { great: 4, good: 3, fuck_alright: 2.5, okay: 2, bad: 1, terrible: 0 };
               const yesterdayReviews = endOfDayReviews.filter(r => r.date === yesterday);
-              const avgScore = yesterdayReviews.length > 0
-                ? yesterdayReviews.reduce((sum, r) => sum + (RATING_SCORES[r.day_rating] ?? 2), 0) / yesterdayReviews.length
+              // Ratings are optional now — unrated reviews are left out of the average
+              const ratedReviews = yesterdayReviews.filter(r => RATING_SCORES[r.day_rating] != null);
+              const avgScore = ratedReviews.length > 0
+                ? ratedReviews.reduce((sum, r) => sum + RATING_SCORES[r.day_rating], 0) / ratedReviews.length
                 : null;
               const dominantRating = avgScore !== null
                 ? RATING_ORDER[Math.max(0, Math.round(4 - avgScore))]
@@ -642,7 +644,7 @@ export default function MorningMeeting() {
                           const ratingColors = { great: "bg-green-100 text-green-800", good: "bg-emerald-100 text-emerald-800", okay: "bg-yellow-100 text-yellow-800", bad: "bg-orange-100 text-orange-800", terrible: "bg-red-100 text-red-800" };
                           return (
                             <div key={r.id} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${ratingColors[r.day_rating] || "bg-slate-100 text-slate-600"}`}>
-                              {r.submitted_by} — {RATING_LABELS[r.day_rating]}
+                              {r.submitted_by} — {RATING_LABELS[r.day_rating] || "No rating"}
                               {r.area_clean === false && <span className="ml-1 text-orange-500">⚠ Area</span>}
                             </div>
                           );

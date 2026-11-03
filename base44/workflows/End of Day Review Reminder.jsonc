@@ -1,0 +1,45 @@
+{
+  "name": "End of Day Review Reminder",
+  "description": "Checks every 10 minutes and, when shop time (America/Denver) falls in the 5:25 PM window on a weekday, reminds employees who are clocked in and haven't submitted their End of Day Review \u2014 bell notification plus a Production Chat mention that opens the review. Sending is DST-safe and once per person per day.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "*/10 * * * *",
+      "one_time_date": null,
+      "timezone": "America/Denver",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "end_of_day_review_reminder",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "send_reminders": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "sendEodReminders",
+            "args": {}
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Send end of day reminders",
+            "description": "Only clocked-in, not-yet-submitted employees"
+          }
+        }
+      }
+    ]
+  }
+}

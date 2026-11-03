@@ -6,9 +6,13 @@
       "type": "string",
       "description": "Who is giving the compliment"
     },
+    "from_email": {
+      "type": "string",
+      "description": "Email of the person giving the compliment"
+    },
     "to": {
       "type": "string",
-      "description": "Who the compliment is for"
+      "description": "Who the compliment is for (optional)"
     },
     "message": {
       "type": "string",
@@ -22,6 +26,10 @@
     "submitted_at": {
       "type": "string",
       "description": "ISO timestamp of submission"
+    },
+    "end_of_day_review_id": {
+      "type": "string",
+      "description": "End of Day Review this well done was reported from, when it came from the review dialog"
     },
     "share_in_meeting": {
       "type": "boolean",
@@ -40,7 +48,6 @@
   },
   "required": [
     "from",
-    "to",
     "message",
     "date"
   ]
