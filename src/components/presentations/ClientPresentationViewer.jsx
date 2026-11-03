@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Expand, X, Download, Loader2, Printer } from "lucide-react";
 import CoverSlide from "@/components/presentations/CoverSlide";
 import { parseSpecs, SPEC_FIELDS, isCoverSlide, parseImagesLayout } from "@/components/presentations/slideHelpers";
+import { useTabStripBottom } from "@/hooks/useTabStripBottom";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -75,6 +76,7 @@ function SlideView({ slide }) {
 }
 
 export default function ClientPresentationViewer({ presentationId, projectName }) {
+  const stripTop = useTabStripBottom();
   const [slides, setSlides] = useState([]);
   const [idx, setIdx] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -203,7 +205,7 @@ export default function ClientPresentationViewer({ presentationId, projectName }
 
       {/* Fullscreen lightbox */}
       {fullscreen && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex flex-col" role="dialog" aria-modal="true">
+        <div className="fixed inset-x-0 bottom-0 z-50 bg-black/90 flex flex-col" style={{ top: stripTop }} role="dialog" aria-modal="true">
           <div className="flex items-center justify-between px-4 py-3">
             <p className="text-sm font-semibold text-white truncate">{projectName} · Slide {idx + 1} of {slides.length}</p>
             <button onClick={() => setFullscreen(false)} className="text-white/80 hover:text-white flex items-center gap-1.5 text-sm font-medium">

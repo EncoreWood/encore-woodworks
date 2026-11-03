@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import BidWorkspace from "@/components/bidding/BidWorkspace";
 import OnsiteBidWorkspace from "@/components/bidding/OnsiteBidWorkspace";
 import RoomBasedEstimateWorkspace from "@/components/bidding/roombased/RoomBasedEstimateWorkspace";
+import { useTabStripBottom } from "@/hooks/useTabStripBottom";
 
 /**
  * Opens an estimate editor in place, on top of the page it was launched from
@@ -12,6 +13,7 @@ import RoomBasedEstimateWorkspace from "@/components/bidding/roombased/RoomBased
  * project state (scroll, expanded sections, active tab).
  */
 export default function ProjectEstimateOverlay({ project, template, bidId, onClose, onSaved }) {
+  const stripTop = useTabStripBottom();
   // Keep the project card underneath exactly where it is (scroll position holds).
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -53,8 +55,8 @@ export default function ProjectEstimateOverlay({ project, template, bidId, onClo
   if (typeof document === "undefined") return workspace;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 bg-slate-900/50 sm:p-4 flex items-stretch sm:items-center justify-center">
-      <div className="w-full sm:max-w-[1500px] h-full sm:h-[calc(100vh-2rem)] overflow-y-auto bg-slate-50 sm:rounded-xl shadow-2xl">
+    <div className="fixed inset-x-0 bottom-0 z-50 bg-slate-900/50 sm:p-4 flex items-stretch sm:items-center justify-center" style={{ top: stripTop }}>
+      <div className="w-full sm:max-w-[1500px] h-full sm:h-[calc(100%-1rem)] overflow-y-auto bg-slate-50 sm:rounded-xl shadow-2xl">
         {workspace}
       </div>
     </div>,

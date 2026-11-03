@@ -5,6 +5,7 @@ import { cva } from "class-variance-authority";
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useTabStripBottom } from "@/hooks/useTabStripBottom"
 
 const Sheet = SheetPrimitive.Root
 

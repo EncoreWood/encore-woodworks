@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useTabStripBottom } from "@/hooks/useTabStripBottom";
 import { BookOpen, Sparkles, X, Link2, Upload, ChevronRight, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 
 export default function WeeklyTopicPopup({ topic, selectedDate, onClose, onArchive, onSaveNotes, isSaving }) {
+  const stripTop = useTabStripBottom();
   const [notesDraft, setNotesDraft] = useState(topic.notes || "");
   const [saved, setSaved] = useState(false);
 
@@ -19,7 +21,7 @@ export default function WeeklyTopicPopup({ topic, selectedDate, onClose, onArchi
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}>
+    <div className="fixed inset-x-0 bottom-0 z-50 flex flex-col" style={{ top: stripTop, backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}>
       <div className="flex-1 flex flex-col max-h-screen overflow-hidden bg-white">
 
         {/* Header */}

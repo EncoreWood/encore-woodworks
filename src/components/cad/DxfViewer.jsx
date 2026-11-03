@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import DxfParser from "dxf-parser";
 import { Button } from "@/components/ui/button";
 import { X, Maximize2, Eye, EyeOff, ZoomIn, ZoomOut } from "lucide-react";
+import { useTabStripBottom } from "@/hooks/useTabStripBottom";
 
 // Colors from AutoCAD color index (ACI) - adjusted for dark background
 const ACI_COLORS = {
@@ -291,6 +292,7 @@ function fitTransform(bounds, canvasW, canvasH) {
 }
 
 export default function DxfViewer({ file, onClose }) {
+  const stripTop = useTabStripBottom();
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [dxf, setDxf] = useState(null);
@@ -441,7 +443,7 @@ export default function DxfViewer({ file, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex bg-[#1a1a2e]">
+    <div className="fixed inset-x-0 bottom-0 z-[9999] flex bg-[#1a1a2e]" style={{ top: stripTop }}>
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-2.5 bg-[#0f0f1a]/90 backdrop-blur border-b border-white/10">
         <div className="flex items-center gap-3">

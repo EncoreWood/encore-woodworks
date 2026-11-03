@@ -1,9 +1,11 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { X, Pencil, Type, Eraser, Undo2, Check, ZoomIn, ZoomOut } from "lucide-react";
+import { useTabStripBottom } from "@/hooks/useTabStripBottom";
 
 const COLORS = ["#ef4444", "#f59e0b", "#22c55e", "#3b82f6", "#ffffff", "#1e1e1e"];
 
 export default function PhotoAnnotator({ photo, onSave, onClose }) {
+  const stripTop = useTabStripBottom();
   const canvasRef = useRef(null);
   const imgRef = useRef(null);
   const [tool, setTool] = useState("pen"); // pen | text | eraser
@@ -140,7 +142,7 @@ export default function PhotoAnnotator({ photo, onSave, onClose }) {
   );
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4">
+    <div className="fixed inset-x-0 bottom-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4" style={{ top: stripTop }}>
       <div className="bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{ maxWidth: MAX_W + 40, width: "100%" }}>
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3 bg-slate-800 text-white">

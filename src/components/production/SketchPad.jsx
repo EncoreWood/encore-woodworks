@@ -10,6 +10,7 @@ import { Canvas, IText, Rect, Ellipse, Line, Image as FabricImage, PencilBrush }
 import { base44 } from "@/api/base44Client";
 import { useUpdateGuard } from "@/lib/updateGuards";
 import { validSketchJson } from "@/lib/productionItemDraft";
+import { useTabStripBottom } from "@/hooks/useTabStripBottom";
 
 // Simple modal that doesn't conflict with Radix parent dialogs
 function SimpleModal({ open, onClose, title, children }) {
@@ -39,6 +40,7 @@ const SIZES = [2, 4, 8, 14, 22];
 
 export default function SketchPad({ onClose, onSave, existingImageUrl, initialSketchJson, onDraftJson }) {
   useUpdateGuard(); // unsaved drawing in progress
+  const stripTop = useTabStripBottom();
   const canvasElRef = useRef(null);
   const fabricCanvasRef = useRef(null);
   const padRootRef = useRef(null);
@@ -473,7 +475,7 @@ export default function SketchPad({ onClose, onSave, existingImageUrl, initialSk
   ];
 
   return createPortal(
-    <div ref={padRootRef} className="fixed inset-0 z-[9999] flex flex-col bg-gray-200" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+    <div ref={padRootRef} className="fixed inset-x-0 bottom-0 z-[9999] flex flex-col bg-gray-200" style={{ top: stripTop, paddingTop: "env(safe-area-inset-top)" }}>
       {/* Toolbar */}
       <div className="flex items-center gap-1 px-3 py-2 bg-gray-300 border-b border-gray-400 flex-wrap shrink-0">
         {/* Tools */}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Pencil, ArrowRight, Type, Undo2, Trash2, Check, Minus, Plus } from "lucide-react";
+import { useTabStripBottom } from "@/hooks/useTabStripBottom";
 
 // Load Fabric.js from CDN once
 let fabricPromise = null;
@@ -20,6 +21,7 @@ function loadFabric() {
 const COLORS = ["#ef4444", "#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7", "#000000", "#ffffff"];
 
 export default function ImageAnnotator({ imageUrl, onSave, onClose }) {
+  const stripTop = useTabStripBottom();
   const canvasRef = useRef(null);
   const fabricRef = useRef(null);
   const imgRef = useRef(null);
@@ -211,7 +213,7 @@ export default function ImageAnnotator({ imageUrl, onSave, onClose }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4">
+    <div className="fixed inset-x-0 bottom-0 z-50 bg-black/80 flex flex-col items-center justify-center p-4" style={{ top: stripTop }}>
       {/* Toolbar */}
       <div className="bg-white rounded-xl shadow-2xl px-4 py-2 mb-3 flex items-center gap-3 flex-wrap">
         {/* Tool buttons */}

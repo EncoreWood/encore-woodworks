@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ScanLine, X, Package } from "lucide-react";
+import { useTabStripBottom } from "@/hooks/useTabStripBottom";
 
 /**
  * Native browser QR scanner using getUserMedia + BarcodeDetector API.
  * No external packages required. Works on Chrome/Edge Android and Safari iOS 15.4+.
  */
 export default function QRScanner({ onScan, onClose }) {
+  const stripTop = useTabStripBottom();
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const rafRef = useRef(null);
@@ -97,7 +99,7 @@ export default function QRScanner({ onScan, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+    <div className="fixed inset-x-0 bottom-0 z-50 bg-black flex flex-col" style={{ top: stripTop }}>
       {/* Camera feed */}
       <div className="relative flex-1 overflow-hidden">
         {supported && (

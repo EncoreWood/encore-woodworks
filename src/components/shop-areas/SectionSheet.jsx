@@ -1,15 +1,16 @@
 import { X } from "lucide-react";
+import AppOverlay from "@/components/layout/AppOverlay";
 
 /**
  * Full-screen section view used by every shop-area section tile.
- * Replaces the old popup dialog: it covers the app, scrolls its own content,
- * and leaves through the Exit button in the header.
+ * Replaces the old popup dialog: it covers the app below the header bars,
+ * scrolls its own content, and leaves through the Exit button in the header.
  */
 export default function SectionSheet({ open, onOpenChange, icon: Icon, title, subtitle, actions, children }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-slate-100">
+    <AppOverlay className="z-[60] flex flex-col bg-slate-100">
       <header
         className="flex items-center gap-2 px-3 sm:px-4 h-14 bg-slate-900 text-white flex-shrink-0"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
@@ -32,6 +33,6 @@ export default function SectionSheet({ open, onOpenChange, icon: Icon, title, su
       <div className="flex-1 overflow-y-auto" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         <div className="max-w-3xl mx-auto bg-white min-h-full shadow-sm">{children}</div>
       </div>
-    </div>
+    </AppOverlay>
   );
 }

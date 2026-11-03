@@ -9,8 +9,10 @@ import ProjectFilesList from "@/components/projects/ProjectFilesList";
 import RoomNotesTasksEditor from "@/components/production/RoomNotesTasksEditor";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
+import { useTabStripBottom } from "@/hooks/useTabStripBottom";
 
 export default function RoomFilesModal({ projectId, projectName, roomName, onClose }) {
+  const stripTop = useTabStripBottom();
   const [currentIdx, setCurrentIdx] = useState(0);
   const [annotating, setAnnotating] = useState(false);
   const queryClient = useQueryClient();
@@ -68,7 +70,7 @@ export default function RoomFilesModal({ projectId, projectName, roomName, onClo
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/95 flex flex-col" onClick={onClose}>
+    <div className="fixed inset-x-0 bottom-0 z-[9999] bg-black/95 flex flex-col" style={{ top: stripTop }} onClick={onClose}>
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 bg-black/80 border-b border-white/10 flex-shrink-0" onClick={e => e.stopPropagation()}>
         <div>
