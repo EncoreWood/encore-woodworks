@@ -615,7 +615,7 @@ export default function MorningMeeting() {
                 { id: "spray",      label: "Spray",      color: "bg-purple-100 text-purple-800 border-purple-200" },
                 { id: "build",      label: "Build",      color: "bg-amber-100 text-amber-800 border-amber-200" },
                 { id: "complete",   label: "Complete",   color: "bg-green-100 text-green-800 border-green-200" },
-                { id: "on_hold",    label: "On Hold",    color: "bg-red-100 text-red-800 border-red-200" },
+                // On Hold is a parking status, not a stage — it never earns points.
               ];
               // Points produced by stage = cards that ARRIVED in each stage yesterday,
               // netted against any reversal on the same card and stage that day.
@@ -633,7 +633,7 @@ export default function MorningMeeting() {
                   {totalPts > 0 && (
                     <div>
                       <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">📦 Points Produced by Stage</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         {STAGE_CONFIG.map(({ id, label, color }) => {
                           const pts = stagePts[id] || 0;
                           return (

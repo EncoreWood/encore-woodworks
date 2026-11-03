@@ -14,10 +14,16 @@ export function productionMovePatch(item, stage, movedBy, changes = {}) {
   };
 }
 
+// On Hold is a parking status, not a production stage: a card moved into it stays
+// where it was, so that move earns no points. (Leaving parking is still a genuine
+// departure from the stage it was parked in, so it keeps the card's value.)
+const PARKING = ["on_hold"];
+
 // Shared by every stage-move control. Never derive history points from files,
 // pts, visit counts, or whether the move is forward/backward.
 export default async function persistProductionMove(item, patch, sentBack = false) {
   const move = patch.stage_move_log[patch.stage_move_log.length - 1];
+  const intoParking = PARKING.includes(move.to_stage);
   // An app reload must never interrupt a card move mid-write.
   const release = holdUpdates();
   let updated;
@@ -29,7 +35,8 @@ export default async function persistProductionMove(item, patch, sentBack = fals
       project_name: item.project_name || null,
       from_column: move.from_stage,
       to_column: move.to_stage,
-      points_awarded: Number(item.total_points) || 0,
+      // Parking a card earns nothing, so its log row carries zero.
+      points_awarded: intoParking ? 0 : Number(item.total_points) || 0,
       moved_by: move.moved_by,
       moved_at: move.timestamp,
       sent_back: sentBack
