@@ -9,7 +9,7 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset, MessageSquare, X, Hammer, History } from "lucide-react";
+import { Plus, Factory, Package, AlertTriangle, PackageX, Sunset, MessageSquare, X, Hammer, History, LineChart as LineChartIcon } from "lucide-react";
 import { usePaneNavigate } from "@/lib/paneSearch";
 import { useToast } from "@/components/ui/use-toast";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
@@ -39,6 +39,8 @@ import MissingItemCardViewerDialog from "../components/production/MissingItemCar
 import SendToCutDialog from "../components/production/SendToCutDialog";
 import { createCutChildCard, isCutChild, mergeCutChildIntoParent } from "../components/production/cutCardHelper";
 import PickupFromHighlightDialog from "../components/production/PickupFromHighlightDialog";
+import PacingView from "../components/production/pacing/PacingView";
+import PacingHeaderSummary from "../components/production/pacing/PacingHeaderSummary";
 
 const productionColumns = [
   { id: "cut", label: "1. Cut", color: "bg-orange-50" },
@@ -742,7 +744,14 @@ export default function ShopProduction() {
             <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Shop Production</h1>
             <p className="text-slate-500 mt-1">Track projects through production stages</p>
           </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="flex min-w-0 items-center gap-1.5 flex-shrink-0">
+            {/* Pacing chip: shrinks first when the header runs tight, buttons never do */}
+            <PacingHeaderSummary
+              points={todayPoints?.points}
+              series={todayPoints?.series}
+              loading={!todayPoints && !todayPointsError}
+              onOpen={() => setActiveTab("pacing")}
+            />
             <Button
               onClick={() => setShowEndOfDay(true)}
               variant="outline"
@@ -799,7 +808,7 @@ export default function ShopProduction() {
               title="Add Item"
               className="h-8 bg-amber-600 hover:bg-amber-700 px-2.5"
             >
-              <Plus className="w-4 h-4 sm:mr-1" /> Add Item
+              <Plus className="w-4 h-4 sm:mr-1" /> <span className="hidden sm:inline">Add Item</span>
             </Button>
           </div>
         </div>
@@ -825,9 +834,12 @@ export default function ShopProduction() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 flex-wrap h-auto">
             <TabsTrigger value="production" className="flex items-center gap-2">
               <Factory className="w-4 h-4" /> Production
+            </TabsTrigger>
+            <TabsTrigger value="pacing" className="flex items-center gap-2">
+              <LineChartIcon className="w-4 h-4" /> Pacing
             </TabsTrigger>
             <TabsTrigger value="job_packets" className="flex items-center gap-2">
               <Package className="w-4 h-4" /> Job Packets
@@ -1079,6 +1091,16 @@ export default function ShopProduction() {
                 })}
               </div>
             </DragDropContext>
+          </TabsContent>
+
+          {/* ── PACING TAB ── */}
+          <TabsContent value="pacing" className="mt-0">
+            <PacingView
+              points={todayPoints?.points}
+              series={todayPoints?.series}
+              loading={!todayPoints}
+              error={todayPointsError}
+            />
           </TabsContent>
 
           {/* ── MISSING ITEMS TAB ── */}

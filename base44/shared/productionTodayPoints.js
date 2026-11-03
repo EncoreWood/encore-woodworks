@@ -149,3 +149,68 @@ export function getStageDayPoints(items, from, to) {
   for (const stage of todayPointFlow) totals[stage] = Math.round(totals[stage] * 100) / 100;
   return totals;
 }
+
+/**
+ * The same day rules as getStageDayPoints, expressed as a running timeline so the
+ * pacing chart can draw the line the stage totals end on. Each stage returns
+ * [minuteOfDenverDay, cumulativePoints] steps; the final value equals that stage's
+ * getStageDayPoints figure for the day. Production stages step on the first departure
+ * they were credited for; Complete steps up on arrival and back down on send-back.
+ */
+export function getStageDaySeries(items, day) {
+  const series = Object.fromEntries(todayPointFlow.map(stage => [stage, []]));
+  const start = denverDayStart(day);
+  if (!start) return series;
+  const startMs = start.getTime();
+  const endMs = denverDayStart(nextDenverDay(day)).getTime();
+  const minuteOf = ms => Math.round((ms - startMs) / 60000);
+  const today = denverDay();
+  const completeIndex = stageIndex("complete");
+  const deltas = Object.fromEntries(todayPointFlow.map(stage => [stage, []]));
+
+  for (const item of (items || [])) {
+    const points = Number(item.total_points);
+    if (!Number.isFinite(points) || points <= 0) continue;
+    const moves = genuineStageMoves(item).map(move => ({
+      at: new Date(move.timestamp).getTime(),
+      fromIdx: stageIndex(move.from_stage),
+      toIdx: stageIndex(move.to_stage)
+    }));
+    const todaysMoves = moves.filter(move => move.at >= startMs && move.at < endMs);
+    if (!todaysMoves.length) continue;
+
+    let stageAtEnd = -1;
+    for (const move of moves) if (move.at < endMs && move.toIdx >= 0) stageAtEnd = move.toIdx;
+    // The running day reads the card's live stage, exactly like the totals do.
+    const finalIndex = day >= today ? stageIndex(item.stage) : stageAtEnd;
+
+    const credited = new Set();
+    for (const move of todaysMoves) {
+      if (move.fromIdx < 0 || credited.has(move.fromIdx) || move.fromIdx >= finalIndex) continue;
+      credited.add(move.fromIdx);
+      deltas[todayPointFlow[move.fromIdx]].push([minuteOf(move.at), points]);
+    }
+
+    let counted = false;
+    for (const move of todaysMoves) {
+      if (move.toIdx === completeIndex && !counted) {
+        counted = true;
+        deltas.complete.push([minuteOf(move.at), points]);
+      } else if (move.fromIdx === completeIndex && counted) {
+        counted = false;
+        deltas.complete.push([minuteOf(move.at), -points]);
+      }
+    }
+  }
+
+  for (const stage of todayPointFlow) {
+    let running = 0;
+    series[stage] = deltas[stage]
+      .sort((a, b) => a[0] - b[0])
+      .map(([minute, delta]) => {
+        running += delta;
+        return [minute, Math.round(running * 100) / 100];
+      });
+  }
+  return series;
+}

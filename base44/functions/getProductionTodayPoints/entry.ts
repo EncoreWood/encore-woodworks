@@ -1,5 +1,5 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.54";
-import { denverDay, getStageDayPoints, listDenverDays } from "../../shared/productionTodayPoints.js";
+import { denverDay, getStageDayPoints, getStageDaySeries, listDenverDays } from "../../shared/productionTodayPoints.js";
 
 const isDate = (value) =>
   typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(new Date(`${value}T00:00:00.000Z`).getTime());
@@ -38,12 +38,16 @@ export default async function(req) {
     } while (cursor);
 
     const points = getStageDayPoints(items, days[0], days[days.length - 1]);
+    // A single day also carries its running timeline for the pacing chart — built by
+    // the same module, so the chart ends exactly on the stage totals above.
+    const series = window ? null : getStageDaySeries(items, date);
     return Response.json({
       date: window ? window.to : date,
       from: window ? window.from : null,
       to: window ? window.to : null,
       timeZone: "America/Denver",
       points,
+      series,
     });
   } catch (error) {
     console.error("Failed to calculate today's production points:", error);
