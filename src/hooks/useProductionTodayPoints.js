@@ -17,7 +17,7 @@ export default function useProductionTodayPoints(enabled) {
   }, []);
   const query = useQuery({
     queryKey: ["productionTodayPoints", date],
-    queryFn: async () => (await base44.functions.invoke("getProductionTodayPoints", {})).data,
+    queryFn: async () => (await base44.functions.invoke("getProductionTodayPoints", { date })).data,
     enabled,
     staleTime: 30_000,
   });

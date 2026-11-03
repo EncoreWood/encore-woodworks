@@ -870,7 +870,7 @@ export default function ShopProduction() {
                     .filter(i => i.stage === column.id && !i.is_job_info && !i.is_merged)
                     .sort(sortColumnItems);
                   const workingCount = columnItems.filter(i => i.is_being_worked).length;
-                  // Header badge: total value of cards that have MOVED PAST this stage
+                  // Stage departures, except Complete: net arrivals in the window.
                   const colPts = stagePoints?.[column.id];
                   // Complete column: cards older than a week are hidden from the board view
                   const completeVisibleCount = column.id === "complete"
@@ -893,7 +893,7 @@ export default function ShopProduction() {
                               <h2 className="font-semibold text-slate-700">{column.label}</h2>
                               {column.id !== "on_hold" && (
                                 <span
-                                  title={`Points crossed today in America/Denver (${todayStr})`}
+                                  title={`${column.id === "complete" ? "Net points arrived in Complete" : "Points crossed"} today in America/Denver (${todayStr})`}
                                   data-today-stage={column.id}
                                   aria-busy={!stagePoints && !todayPointsError}
                                   className="flex flex-col items-center leading-none text-green-700 bg-green-100 border border-green-200 rounded-full px-2 py-0.5"

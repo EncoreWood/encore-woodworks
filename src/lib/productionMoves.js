@@ -3,12 +3,12 @@ import { holdUpdates } from "@/lib/updateGuards";
 
 export function productionMovePatch(item, stage, movedBy, changes = {}) {
   const timestamp = new Date().toISOString();
-  const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000;
   return {
     ...changes,
     stage,
     stage_move_log: [
-      ...(item.stage_move_log || []).filter(move => move.timestamp && new Date(move.timestamp).getTime() >= cutoff),
+      // Month totals need the full trail, not just the last fourteen days.
+      ...(item.stage_move_log || []),
       { from_stage: item.stage || "staged", to_stage: stage || "staged", moved_by: movedBy, timestamp }
     ]
   };

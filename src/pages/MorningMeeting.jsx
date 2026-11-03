@@ -127,7 +127,7 @@ export default function MorningMeeting() {
   // Previous day's points by stage — the exact same calculation the Shop Production
   // daily stage pills use (getProductionTodayPoints), so the two can never disagree.
   const { data: reviewDayPoints } = useQuery({
-    queryKey: ["productionStagePoints", reviewDateStr],
+    queryKey: ["productionTodayPoints", reviewDateStr],
     queryFn: async () => (await base44.functions.invoke("getProductionTodayPoints", { date: reviewDateStr })).data,
     staleTime: 30_000,
     enabled: Boolean(reviewDateStr),
@@ -583,9 +583,8 @@ export default function MorningMeeting() {
                 { id: "complete",   label: "Complete",   color: "bg-green-100 text-green-800 border-green-200" },
                 // On Hold is a parking status, not a stage — it never earns points.
               ];
-              // Points PRODUCED by each stage = the points of the cards that moved OUT of
-              // it that day — the same calculation the Shop Production daily stage pills
-              // use, read from getProductionTodayPoints on America/Denver day boundaries.
+              // Same Denver-day figures as the board: production-stage departures,
+              // but net arrivals for Complete.
               const stagePts = reviewDayPoints?.points || {};
               const totalPts = Math.round(STAGE_CONFIG.reduce((s, { id }) => s + (stagePts[id] || 0), 0) * 100) / 100;
               const hasAnyData = yesterdayReviews.length > 0 || totalPts > 0;
@@ -614,7 +613,7 @@ export default function MorningMeeting() {
                         })}
                       </div>
                       <p className="text-right text-xs text-slate-400 mt-1">Total: <strong className="text-slate-700">{totalPts} pts</strong></p>
-                      <p className="text-[10px] text-slate-400 text-right">Points produced (moved out) on {format(subDays(selectedDate, 1), "EEEE, MMM d")}</p>
+                      <p className="text-[10px] text-slate-400 text-right">Stage departures; Complete counts net arrivals on {format(subDays(selectedDate, 1), "EEEE, MMM d")}</p>
                     </div>
                   )}
 

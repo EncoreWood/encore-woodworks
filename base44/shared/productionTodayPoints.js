@@ -80,24 +80,12 @@ export function listDenverDays(from, to) {
 }
 
 /**
- * THE points calculation. Per stage, per day, from the cards themselves.
- *
- * A card credits every stage it crossed that day: from the lowest stage it touched
- * (minIdx) up to, but not including, the stage it ended the day in (curIdx). That one
- * rule gets three things right that per-move accumulation cannot:
- *   - a card sent back (build → spray) nets to zero for the stage it was sent back out of,
- *     because its current stage is read as the one it actually sits in;
- *   - a card that only passed through Build for three minutes before being sent back to
- *     Spray contributes nothing to Build;
- *   - a card that reached Complete today has still not left Complete, so Complete earns 0.
- * The card's own `total_points` is the value used — never a per-move `points_awarded`,
- * which can be 0 for a move that really happened. On Hold is parking, so it is excluded
- * from the flow entirely.
- *
- * @param {Array} items ProductionItem records (stage, stage_move_log, total_points)
- * @param {string} from Denver day "YYYY-MM-DD"
- * @param {string} to   Denver day "YYYY-MM-DD"
- * @returns {Object} points per stage, e.g. { staged: 0, cut: 0, face_frame: 3, ... }
+ * Production stages keep their existing per-day departure/stage-crossing rule.
+ * Complete is the exception: credit each card that arrived during the requested
+ * Denver window and remained finished at its end, once per card. A later departure
+ * within that window cancels the arrival; completing it again restores one credit.
+ * Historical windows stop at their own midnight, not the card's live stage today.
+ * Only ProductionItem.total_points supplies point values. On Hold stays parking.
  */
 export function getStageDayPoints(items, from, to) {
   const totals = Object.fromEntries(todayPointFlow.map(stage => [stage, 0]));
@@ -117,6 +105,22 @@ export function getStageDayPoints(items, from, to) {
       }))
     };
   });
+
+  // Complete counts arrivals, not departures. Evaluate the entire D/W/M window
+  // together so repeated completion/rework cycles never count a card twice.
+  const windowStart = denverDayStart(days[0]).getTime();
+  const windowEnd = denverDayStart(nextDenverDay(days[days.length - 1])).getTime();
+  const completeIndex = stageIndex("complete");
+  for (const card of cards) {
+    let arrived = false;
+    let finished = false;
+    for (const move of card.moves) {
+      if (move.at < windowStart || move.at >= windowEnd || move.fromIdx === move.toIdx) continue;
+      if (move.toIdx === completeIndex) arrived = true;
+      finished = move.toIdx === completeIndex;
+    }
+    if (arrived && finished) totals.complete += card.points;
+  }
 
   for (const day of days) {
     const start = denverDayStart(day).getTime();

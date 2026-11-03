@@ -25,8 +25,8 @@ export default async function(req) {
     const days = (window ? listDenverDays(window.from, window.to) : [date]).slice(0, 62);
     if (!days.length) days.push(date);
 
-    // The points live on the cards: stage + stage_move_log + total_points. Moving a card
-    // is what changes a stage total, so the cards themselves are the only source read.
+    // Cards are the only source: total_points + stage_move_log. Complete uses net
+    // arrivals for the window; the other stages keep their existing crossing rule.
     const items = [];
     let cursor;
     do {
