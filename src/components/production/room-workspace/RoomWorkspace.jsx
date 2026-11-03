@@ -13,7 +13,7 @@ import RoomCardTile from "./RoomCardTile";
 import RoomInfoPane from "./RoomInfoPane";
 import RoomProgressBar from "@/components/production/RoomProgressBar";
 import { roomPts } from "@/lib/roomPts";
-import { computeTotalPoints, totalPointsPatch } from "@/lib/cardPoints";
+import { computeTotalPoints, pointsAuditEntry } from "@/lib/cardPoints";
 import persistProductionMove, { productionMovePatch } from "@/lib/productionMoves";
 import { holdUpdates } from "@/lib/updateGuards";
 
@@ -72,7 +72,6 @@ export default function RoomWorkspace({
   useEffect(() => { setShowAllCards(false); }, [activeRoom]);
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [localEditingPts, setLocalEditingPts] = useState(null);
 
   const roomItems = (items || []).filter(
     i => i.project_id === project.id && i.room_name === activeRoom && !i.is_job_info && !i.is_merged
@@ -96,17 +95,27 @@ export default function RoomWorkspace({
     onSuccess: () => { invalidate(); setShowForm(false); setEditingItem(null); },
   });
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }) => {
+    mutationFn: async ({ id, data, pointsEdited }) => {
       const release = holdUpdates(); // a save in flight must survive an update reload
       try {
       const safeData = { ...data, files: (data.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations })) };
       const item = items.find(candidate => candidate.id === id);
+      // This modal is the one place a card's points change; every other save leaves them alone
+      if (pointsEdited && item) {
+        let files = safeData.files || [];
+        if ("pts" in safeData && files.length === 1) {
+          files = [{ ...files[0], pts: safeData.pts }];
+          safeData.files = files;
+        }
+        safeData.total_points = computeTotalPoints({ files, pts: "pts" in safeData ? safeData.pts : item.pts });
+        const audit = pointsAuditEntry(item, safeData.total_points, currentUser);
+        if (audit) safeData.points_audit_log = [...(item.points_audit_log || []), audit];
+      }
       if (item && "stage" in safeData && safeData.stage !== item.stage) {
         const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
         await persistProductionMove(item, productionMovePatch(item, safeData.stage, movedBy, safeData));
       } else {
-        // Keep the card's authoritative point total in step with this save
-        await base44.entities.ProductionItem.update(id, { ...safeData, ...totalPointsPatch(item, safeData) });
+        await base44.entities.ProductionItem.update(id, safeData);
       }
       } finally {
         release();
@@ -156,28 +165,7 @@ export default function RoomWorkspace({
     await base44.entities.ProductionItem.update(id, fields);
     invalidate();
   });
-  const inlinePtsHandler = cardProps?.onInlinePtsChange || (async (item, fileIndex, newPts) => {
-    const val = newPts === "" || newPts === undefined || newPts === null ? undefined : Number(newPts);
-    if (fileIndex === -1) {
-      await base44.entities.ProductionItem.update(item.id, {
-        pts: val,
-        total_points: computeTotalPoints({ files: item.files, pts: val }),
-      });
-    } else {
-      const files = (item.files || [])
-        .map((f, i) => i === fileIndex ? { ...f, pts: val } : f)
-        .map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
-      await base44.entities.ProductionItem.update(item.id, {
-        files,
-        total_points: computeTotalPoints({ files, pts: item.pts }),
-      });
-    }
-    invalidate();
-  });
-
   const cardPropsForCard = {
-    editingPts: cardProps?.editingPts ?? localEditingPts,
-    setEditingPts: cardProps?.setEditingPts ?? setLocalEditingPts,
     currentUser,
     getProjectColor: cardProps?.getProjectColor || (() => project.card_color || null),
     ...cardProps,
@@ -185,7 +173,6 @@ export default function RoomWorkspace({
     onDelete: deleteHandler,
     onMoveStage: moveStageHandler,
     onUpdate: updateHandler,
-    onInlinePtsChange: inlinePtsHandler,
     // "Room info" on a card inside the workspace just brings the room pane forward
     onOpenRoomInfo: () => setInfoOpen(true),
   };
@@ -506,7 +493,7 @@ export default function RoomWorkspace({
         onOpenChange={(o) => { setShowForm(o); if (!o) setEditingItem(null); }}
         onSubmit={(data) => {
           const finalData = { ...data, is_job_info: false, project_id: project.id, project_name: project.project_name, room_name: data.room_name || activeRoom };
-          if (editingItem?.id) updateMutation.mutate({ id: editingItem.id, data: finalData });
+          if (editingItem?.id) updateMutation.mutate({ id: editingItem.id, data: finalData, pointsEdited: true });
           else createMutation.mutate(finalData);
         }}
         initialData={editingItem ? { ...editingItem } : null}

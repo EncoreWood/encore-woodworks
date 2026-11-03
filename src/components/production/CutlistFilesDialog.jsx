@@ -4,16 +4,12 @@ import { FileText, Image as ImageIcon, ExternalLink } from "lucide-react";
 /**
  * Picker for a card's cutlist files. Only appears when a card carries more than
  * one attached file — a single file is opened directly from the Cutlist button.
- * Per-file PTS stays editable for admins here, so the card face can show one
- * compact total instead of a stack of rows.
+ * Points shown here are read-only: they are only ever changed from the Edit
+ * Production Item modal.
  */
 export default function CutlistFilesDialog({
   item,
   files,
-  isAdmin,
-  editingPts,
-  setEditingPts,
-  onInlinePtsChange,
   onOpenFile,
   onClose,
 }) {
@@ -28,7 +24,6 @@ export default function CutlistFilesDialog({
             const isPdf = /\.pdf($|\?)/i.test(file.url);
             const isImg = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.url);
             const notes = file.annotations?.length || 0;
-            const editing = isAdmin && editingPts?.itemId === item.id && editingPts?.fileIdx === idx;
 
             return (
               <div key={idx} className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5">
@@ -50,30 +45,11 @@ export default function CutlistFilesDialog({
                   {!isPdf && !isImg && <ExternalLink className="w-3 h-3 text-slate-400 flex-shrink-0" />}
                 </button>
 
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1 flex-shrink-0" title="Points — change them in the Edit card modal">
                   <span className="text-[9px] font-bold text-slate-400">PTS</span>
-                  {editing ? (
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      defaultValue={file.pts ?? ""}
-                      autoFocus
-                      onClick={(e) => e.stopPropagation()}
-                      onBlur={(e) => { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); }}
-                      onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, idx, e.target.value); setEditingPts(null); } }}
-                      className="w-14 h-6 text-[11px] border border-amber-300 rounded px-1 text-center font-bold text-amber-600 bg-amber-50"
-                      placeholder="0"
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => { if (isAdmin) setEditingPts({ itemId: item.id, fileIdx: idx }); }}
-                      className={`h-6 px-1.5 text-[11px] border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 min-w-[40px] text-center ${isAdmin ? "hover:bg-amber-100" : "cursor-default"}`}
-                    >
-                      {file.pts ?? "—"}
-                    </button>
-                  )}
+                  <span className="h-6 px-1.5 text-[11px] border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 min-w-[40px] flex items-center justify-center select-none">
+                    {file.pts ?? "—"}
+                  </span>
                 </div>
               </div>
             );

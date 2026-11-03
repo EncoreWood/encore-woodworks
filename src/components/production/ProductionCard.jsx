@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Hammer, Clock, MoreVertical, Scissors } from "lucide-react";
+import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, Flag, Star, Hammer, Clock, MoreVertical, Scissors } from "lucide-react";
 import CutPartsBadge from "@/components/production/CutPartsBadge";
 import RoomInfoIcon from "@/components/production/RoomInfoIcon";
 import StageChip from "@/components/production/StageChip";
@@ -23,7 +23,6 @@ import SketchPad from "@/components/production/SketchPad";
 import RoomFilesModal from "@/components/production/RoomFilesModal";
 import { useOpenPdfTab } from "@/hooks/useOpenPdfTab";
 import { cardPoints } from "@/lib/cardPoints";
-import { useQuery } from "@tanstack/react-query";
 
 const PRODUCTION_STAGES = [
   { id: "cut", label: "1. Cut" },
@@ -37,12 +36,9 @@ const PRODUCTION_STAGES = [
 export default function ProductionCard({
   item,
   compact,               // tighter card used in the single-stage grid view
-  editingPts,
-  setEditingPts,
   onEdit,
   onDelete,
   onPickup,
-  onInlinePtsChange,
   onAnnotate,
   getProjectColor,
   isDragging,
@@ -79,7 +75,6 @@ export default function ProductionCard({
   const [viewingCad, setViewingCad] = useState(null);
   const [showRoomFiles, setShowRoomFiles] = useState(false);
   const [showMoveHistory, setShowMoveHistory] = useState(false);
-  const isAdmin = currentUser?.role === "admin";
   const openPdfTab = useOpenPdfTab();
 
   // Wood + finish live on the card itself (read from its own PDF) — never inherited from room selections
@@ -516,34 +511,20 @@ export default function ProductionCard({
           </div>
         )}
 
-        {/* Card-level PTS — shown when there are no files (e.g. pickup items) */}
-        {(!item.files || item.files.length === 0) && onInlinePtsChange && (
+        {/* Card-level PTS — read-only on the card face. Points are only ever changed
+            from the Edit Production Item modal. */}
+        {(!item.files || item.files.length === 0) && (
           <div className="flex items-center gap-1.5 mt-1.5">
             <span className="text-[9px] font-bold text-slate-400">PTS</span>
-            {isAdmin && editingPts?.itemId === item.id && editingPts?.fileIdx === -1 ? (
-              <input type="number" min="0" step="any" defaultValue={item.pts ?? ""} autoFocus
-                onClick={e => e.stopPropagation()}
-                onBlur={(e) => { onInlinePtsChange(item, -1, e.target.value); setEditingPts(null); }}
-                onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, -1, e.target.value); setEditingPts(null); } }}
-                className="w-12 h-7 text-[11px] border border-amber-300 rounded px-1 text-center font-bold text-amber-600 bg-amber-50" placeholder="0" />
-            ) : (
-              <button
-                onClick={(e) => { e.stopPropagation(); if (isAdmin) setEditingPts({ itemId: item.id, fileIdx: -1 }); }}
-                className={`h-7 px-1.5 text-[11px] border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 min-w-[42px] text-center ${isAdmin ? "hover:bg-amber-100 cursor-pointer" : "cursor-default"}`}
-              >
-                {cardPoints(item) || "—"}
-              </button>
-            )}
+            <span className="h-7 px-1.5 text-[11px] border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 min-w-[42px] flex items-center justify-center select-none">
+              {cardPoints(item) || "—"}
+            </span>
           </div>
         )}
 
         {/* Cutlist — one button for the card's attached files, points beside it */}
         <CutlistRow
           item={item}
-          isAdmin={isAdmin}
-          editingPts={editingPts}
-          setEditingPts={setEditingPts}
-          onInlinePtsChange={onInlinePtsChange}
           onAnnotate={onAnnotate}
           onOpenPdf={(file) => openPdfTab(file, item)}
         />

@@ -27,7 +27,7 @@ import ProductionChatTab from "../components/production/ProductionChatTab";
 import MoveHistoryTab from "../components/production/MoveHistoryTab";
 import MobileCompactCard from "../components/production/MobileCompactCard";
 import { formatStagePoints } from "@/lib/stagePoints";
-import { computeTotalPoints, totalPointsPatch } from "@/lib/cardPoints";
+import { computeTotalPoints, pointsAuditEntry } from "@/lib/cardPoints";
 import persistProductionMove, { productionMovePatch } from "@/lib/productionMoves";
 import useProductionTodayPoints from "@/hooks/useProductionTodayPoints";
 import useProductionStageWindowPoints from "@/hooks/useProductionStageWindowPoints";
@@ -76,7 +76,7 @@ export default function ShopProduction() {
   const [currentPdfUrl, setCurrentPdfUrl] = useState(null);
   const [currentAnnotations, setCurrentAnnotations] = useState([]);
   const [pickupItem, setPickupItem] = useState(null);
-  const [editingPts, setEditingPts] = useState(null);
+
   const [packetsFormContext, setPacketsFormContext] = useState(null); // { project, roomName } for Job Packets add
   const [openFolderContext, setOpenFolderContext] = useState(null); // { project, roomName } to auto-open a folder in Job Packets
   const [roomWorkspace, setRoomWorkspace] = useState(null); // { project, roomName } opened from a card's Room Info
@@ -238,14 +238,25 @@ export default function ShopProduction() {
   };
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data, syncToProject }) => {
+    mutationFn: async ({ id, data, syncToProject, pointsEdited }) => {
       // A save in flight must survive an update-triggered reload.
       const release = holdUpdates();
       try {
       const safeData = { ...data, files: (data.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations })) };
       const item = items.find(candidate => candidate.id === id);
-      // total_points follows whatever this save did to the card's files or manual PTS
-      safeData.total_points = totalPointsPatch(item, safeData).total_points;
+      // The Edit Production Item modal is the only place a card's points change.
+      // Every other save leaves total_points exactly as it is.
+      if (pointsEdited && item) {
+        let files = safeData.files || [];
+        // Card PTS is authoritative: a single-file card keeps that file's PTS equal to it
+        if ("pts" in safeData && files.length === 1) {
+          files = [{ ...files[0], pts: safeData.pts }];
+          safeData.files = files;
+        }
+        safeData.total_points = computeTotalPoints({ files, pts: "pts" in safeData ? safeData.pts : item.pts });
+        const audit = pointsAuditEntry(item, safeData.total_points, currentUser);
+        if (audit) safeData.points_audit_log = [...(item.points_audit_log || []), audit];
+      }
       if (item && "stage" in safeData && safeData.stage !== item.stage) {
         const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
         await persistProductionMove(item, productionMovePatch(item, safeData.stage, movedBy, safeData));
@@ -367,10 +378,9 @@ export default function ShopProduction() {
       name: item.name, type: item.type,
       project_id: item.project_id, project_name: item.project_name, room_name: item.room_name,
       notes: item.notes, files: safeFiles, pts: item.pts,
-      // A move also repairs a card whose stored total_points was left behind
-      total_points: totalPts,
+      // A move never rewrites the card's points. productionMovePatch stamps the
+      // card's current value onto the new stage_move_log entry as a snapshot instead.
       columns_visited: JSON.stringify(visited),
-      // Stage moves must not multiply the card's stored total_points value.
       pts_logged: ptsLogged,
       pts_logged_date: ptsLoggedDate,
       completed_date: completedDate,
@@ -439,36 +449,6 @@ export default function ShopProduction() {
           queryClient.invalidateQueries({ queryKey: ["projects"] });
         }
       } catch (error) {}
-    }
-  };
-
-  const handleInlinePtsChange = async (item, fileIndex, newPts) => {
-    const val = newPts === "" || newPts === undefined || newPts === null ? undefined : Number(newPts);
-    const isCardLevel = fileIndex === -1;
-    // Only schema fields are sent — extra props on a file make the write fail silently.
-    const updatedFiles = (item.files || [])
-      .map((f, i) => i === fileIndex ? { ...f, pts: val } : f)
-      .map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations }));
-    const patch = isCardLevel
-      ? { pts: val, total_points: computeTotalPoints({ files: item.files, pts: val }) }
-      : { files: updatedFiles, total_points: computeTotalPoints({ files: updatedFiles, pts: item.pts }) };
-
-    queryClient.setQueryData(["productionItems"], (old = []) => old.map(i => i.id === item.id ? { ...i, ...patch } : i));
-    await base44.entities.ProductionItem.update(item.id, patch);
-    queryClient.invalidateQueries({ queryKey: ["productionItems"] });
-    if (isCardLevel) return;
-
-    if (item.project_id && item.room_name) {
-      const projList = await base44.entities.Project.filter({ id: item.project_id });
-      const proj = projList[0];
-      if (proj?.rooms) {
-        const updatedRooms = proj.rooms.map(room => {
-          if (room.room_name !== item.room_name) return room;
-          return { ...room, files: (room.files || []).map(rf => { const match = updatedFiles.find(pf => pf.url === rf.url || pf.name === rf.name); return match !== undefined ? { ...rf, pts: match.pts } : rf; }) };
-        });
-        await base44.entities.Project.update(item.project_id, { rooms: updatedRooms });
-        queryClient.invalidateQueries({ queryKey: ["projects"] });
-      }
     }
   };
 
@@ -680,10 +660,7 @@ export default function ShopProduction() {
   };
 
   const sharedCardProps = {
-    editingPts,
-    setEditingPts,
     currentUser,
-    onInlinePtsChange: handleInlinePtsChange,
     onAnnotate: handleAnnotatePdf,
     getProjectColor,
     getRoomCadFiles,
@@ -1077,7 +1054,8 @@ export default function ShopProduction() {
               ? { ...data, is_job_info: false, project_id: packetsFormContext.project.id, project_name: packetsFormContext.project.project_name, room_name: packetsFormContext.roomName }
               : data;
             if (editingItem?.id) {
-              updateMutation.mutate({ id: editingItem.id, data: finalData, syncToProject: editingItem.project_id ? { project_id: editingItem.project_id, room_name: editingItem.room_name } : null });
+              // A save from this modal is the one explicit point edit
+              updateMutation.mutate({ id: editingItem.id, data: finalData, pointsEdited: true, syncToProject: editingItem.project_id ? { project_id: editingItem.project_id, room_name: editingItem.room_name } : null });
             } else {
               createMutation.mutate(finalData);
             }

@@ -1,15 +1,28 @@
 import { base44 } from "@/api/base44Client";
 import { holdUpdates } from "@/lib/updateGuards";
+import { cardPoints } from "@/lib/cardPoints";
 
+// A move NEVER rewrites the card's stored points. It records what the card was worth
+// at that moment on the log entry, so every day/week/month figure can be rebuilt from
+// history and later point edits cannot change what already happened.
 export function productionMovePatch(item, stage, movedBy, changes = {}) {
   const timestamp = new Date().toISOString();
+  const snapshot = changes.total_points !== undefined && changes.total_points !== null
+    ? Number(changes.total_points)
+    : cardPoints(item);
   return {
     ...changes,
     stage,
     stage_move_log: [
       // Month totals need the full trail, not just the last fourteen days.
       ...(item.stage_move_log || []),
-      { from_stage: item.stage || "staged", to_stage: stage || "staged", moved_by: movedBy, timestamp }
+      {
+        from_stage: item.stage || "staged",
+        to_stage: stage || "staged",
+        moved_by: movedBy,
+        timestamp,
+        points: Number.isFinite(snapshot) ? snapshot : 0,
+      }
     ]
   };
 }
@@ -36,7 +49,7 @@ export default async function persistProductionMove(item, patch, sentBack = fals
       from_column: move.from_stage,
       to_column: move.to_stage,
       // Parking a card earns nothing, so its log row carries zero.
-      points_awarded: intoParking ? 0 : Number(item.total_points) || 0,
+      points_awarded: intoParking ? 0 : Number(move.points) || 0,
       moved_by: move.moved_by,
       moved_at: move.timestamp,
       sent_back: sentBack

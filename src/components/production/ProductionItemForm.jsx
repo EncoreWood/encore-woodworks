@@ -37,6 +37,8 @@ const MISC_ITEM_OPTIONS = ["Base", "Crown", "Toe Kick", "Skin", "1/4'' Scribe", 
 export default function ProductionItemForm({ open, onOpenChange, onSubmit, initialData, isLoading, jobInfoProjects, rooms }) {
   const [formData, setFormData] = useState(initialFormState);
   const [uploadingGlb, setUploadingGlb] = useState(false);
+  // Most recent explicit point edit, shown under the PTS field
+  const lastPointChange = (initialData?.points_audit_log || []).slice(-1)[0] || null;
 
   // Draft protection: everything typed (and the raw sketch) is mirrored to local
   // storage so a crash, refresh, or accidental close can never blank this form.
@@ -430,6 +432,13 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
                 placeholder="e.g. 1.5"
                 className="h-9 text-sm"
               />
+              <p className="text-[11px] text-slate-500">Changing points affects future stage credit only.</p>
+              {lastPointChange && (
+                <p className="text-[11px] text-slate-400">
+                  Last change: {lastPointChange.from || 0} → {lastPointChange.to || 0} by {lastPointChange.by}
+                  {lastPointChange.at ? ` · ${new Date(lastPointChange.at).toLocaleDateString()}` : ""}
+                </p>
+              )}
             </div>
 
             <div className="space-y-1">

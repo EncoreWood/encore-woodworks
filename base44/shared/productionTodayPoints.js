@@ -38,6 +38,18 @@ const stageIndex = stage => todayPointFlow.indexOf(stage == null || stage === ""
 const isParking = stage => parkingStages.includes(stage);
 
 /**
+ * What a move was worth when it happened. Every move written from now on carries its
+ * own `points` snapshot, so editing a card's points later can never rewrite a past day.
+ * Moves written before the snapshot existed fall back to the card's stored total_points.
+ */
+export function movePoints(move, fallbackPoints) {
+  const snapshot = move?.points;
+  if (snapshot !== undefined && snapshot !== null && Number.isFinite(Number(snapshot))) return Number(snapshot);
+  const fallback = Number(fallbackPoints);
+  return Number.isFinite(fallback) ? fallback : 0;
+}
+
+/**
  * The card's genuine stage trail. Every move that touches a parking status is rewritten
  * so the card simply stays where it was:
  *   spray → on_hold   becomes  spray → spray   (no move)
@@ -94,14 +106,17 @@ export function getStageDayPoints(items, from, to) {
 
   const today = denverDay();
   const cards = (items || []).map(item => {
-    const points = Number(item.total_points);
+    const stored = Number(item.total_points);
+    const fallbackPoints = Number.isFinite(stored) ? stored : 0;
     return {
-      points: Number.isFinite(points) ? points : 0,
+      fallbackPoints,
       currentIndex: stageIndex(item.stage),
       moves: genuineStageMoves(item).map(move => ({
         at: new Date(move.timestamp).getTime(),
         fromIdx: stageIndex(move.from_stage),
-        toIdx: stageIndex(move.to_stage)
+        toIdx: stageIndex(move.to_stage),
+        // The move's own snapshot — never today's edited card value
+        points: movePoints(move, fallbackPoints)
       }))
     };
   });
@@ -112,25 +127,29 @@ export function getStageDayPoints(items, from, to) {
   const windowEnd = denverDayStart(nextDenverDay(days[days.length - 1])).getTime();
   const completeIndex = stageIndex("complete");
   for (const card of cards) {
-    let arrived = false;
+    let arrivedPoints = null;
     let finished = false;
     for (const move of card.moves) {
       if (move.at < windowStart || move.at >= windowEnd || move.fromIdx === move.toIdx) continue;
-      if (move.toIdx === completeIndex) arrived = true;
+      if (move.toIdx === completeIndex && arrivedPoints === null) arrivedPoints = move.points;
       finished = move.toIdx === completeIndex;
     }
-    if (arrived && finished) totals.complete += card.points;
+    if (arrivedPoints !== null && finished) totals.complete += arrivedPoints;
   }
 
   for (const day of days) {
     const start = denverDayStart(day).getTime();
     const end = denverDayStart(nextDenverDay(day)).getTime();
     for (const card of cards) {
-      if (!card.points) continue;
-      const leftThatDay = new Set(); // stages the card was actually sitting in and left
+      if (!card.moves.length) continue;
+      // Stages the card was actually sitting in and left that day → the points that
+      // move was worth at the time. Never today's card value.
+      const leftThatDay = new Map();
       let stageAtEnd = -1;
       for (const move of card.moves) {
-        if (move.at >= start && move.at < end && move.fromIdx >= 0) leftThatDay.add(move.fromIdx);
+        if (move.at >= start && move.at < end && move.fromIdx >= 0 && !leftThatDay.has(move.fromIdx)) {
+          leftThatDay.set(move.fromIdx, move.points);
+        }
         if (move.at < end && move.toIdx >= 0) stageAtEnd = move.toIdx;
       }
       // Nothing left a stage that day: the card earns nothing for it.
@@ -140,8 +159,8 @@ export function getStageDayPoints(items, from, to) {
       // which is what makes a send-back net to zero and cancels a stage merely passed through.
       const currentIndex = day >= today && card.currentIndex >= 0 ? card.currentIndex : stageAtEnd;
       if (currentIndex < 0) continue;
-      for (const index of leftThatDay) {
-        if (index < currentIndex) totals[todayPointFlow[index]] += card.points;
+      for (const [index, movePointsValue] of leftThatDay) {
+        if (index < currentIndex) totals[todayPointFlow[index]] += movePointsValue;
       }
     }
   }
@@ -169,12 +188,13 @@ export function getStageDaySeries(items, day) {
   const deltas = Object.fromEntries(todayPointFlow.map(stage => [stage, []]));
 
   for (const item of (items || [])) {
-    const points = Number(item.total_points);
-    if (!Number.isFinite(points) || points <= 0) continue;
+    const stored = Number(item.total_points);
+    const fallbackPoints = Number.isFinite(stored) ? stored : 0;
     const moves = genuineStageMoves(item).map(move => ({
       at: new Date(move.timestamp).getTime(),
       fromIdx: stageIndex(move.from_stage),
-      toIdx: stageIndex(move.to_stage)
+      toIdx: stageIndex(move.to_stage),
+      points: movePoints(move, fallbackPoints)
     }));
     const todaysMoves = moves.filter(move => move.at >= startMs && move.at < endMs);
     if (!todaysMoves.length) continue;
@@ -188,17 +208,17 @@ export function getStageDaySeries(items, day) {
     for (const move of todaysMoves) {
       if (move.fromIdx < 0 || credited.has(move.fromIdx) || move.fromIdx >= finalIndex) continue;
       credited.add(move.fromIdx);
-      deltas[todayPointFlow[move.fromIdx]].push([minuteOf(move.at), points]);
+      deltas[todayPointFlow[move.fromIdx]].push([minuteOf(move.at), move.points]);
     }
 
     let counted = false;
     for (const move of todaysMoves) {
       if (move.toIdx === completeIndex && !counted) {
         counted = true;
-        deltas.complete.push([minuteOf(move.at), points]);
+        deltas.complete.push([minuteOf(move.at), move.points]);
       } else if (move.fromIdx === completeIndex && counted) {
         counted = false;
-        deltas.complete.push([minuteOf(move.at), -points]);
+        deltas.complete.push([minuteOf(move.at), -move.points]);
       }
     }
   }

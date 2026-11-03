@@ -38,3 +38,21 @@ export function totalPointsPatch(item, changes = {}) {
     }),
   };
 }
+
+/**
+ * Audit row for an explicit point edit: who, from what, to what, when. Returns null
+ * when the value did not actually change, so a save that leaves points alone records
+ * nothing. Appended to the card's points_audit_log.
+ */
+export function pointsAuditEntry(item, nextPoints, user) {
+  if (!item) return null;
+  const from = cardPoints(item);
+  const to = roundPts(nextPoints);
+  if (from === to) return null;
+  return {
+    from,
+    to,
+    by: user?.full_name || user?.email || "Unknown",
+    at: new Date().toISOString(),
+  };
+}

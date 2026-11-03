@@ -268,7 +268,32 @@
     "total_points": {
       "type": "number",
       "default": 0,
-      "description": "Running total of points earned by this item across all column visits"
+      "description": "The card's point value. Written ONLY by an explicit save from the Edit Production Item modal, or once at card creation from the uploaded PDF. Never recalculated in the background; stage moves snapshot it onto the move instead of rewriting it."
+    },
+    "points_audit_log": {
+      "type": "array",
+      "description": "Who changed this card's points, from what value, to what value and when \u2014 one row per explicit point edit",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "number",
+            "description": "Point value before the change"
+          },
+          "to": {
+            "type": "number",
+            "description": "Point value after the change"
+          },
+          "by": {
+            "type": "string",
+            "description": "Name or email of the person who changed it"
+          },
+          "at": {
+            "type": "string",
+            "description": "ISO timestamp of the change"
+          }
+        }
+      }
     },
     "pts_logged": {
       "type": "number",
@@ -300,7 +325,7 @@
     },
     "stage_move_log": {
       "type": "array",
-      "description": "Timestamp log of every stage transition.",
+      "description": "Timestamp log of every stage transition. Each entry snapshots the card's point value at the moment of the move, so history can never be rewritten by a later point edit.",
       "items": {
         "type": "object",
         "properties": {
@@ -319,6 +344,10 @@
           "timestamp": {
             "type": "string",
             "description": "ISO datetime of the move"
+          },
+          "points": {
+            "type": "number",
+            "description": "The card's point value at the moment of this move. Every stage/day/week/month total uses this snapshot; older entries without it fall back to total_points."
           }
         }
       }
@@ -351,7 +380,7 @@
           },
           "pts": {
             "type": "number",
-            "description": "Point value for this file"
+            "description": "Point value for this file. Kept equal to the card's PTS on a single-file card."
           },
           "annotations": {
             "type": "array",

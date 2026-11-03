@@ -10,10 +10,6 @@ import { cardPoints } from "@/lib/cardPoints";
  */
 export default function CutlistRow({
   item,
-  isAdmin,
-  editingPts,
-  setEditingPts,
-  onInlinePtsChange,
   onAnnotate,
   onOpenPdf,
 }) {
@@ -29,7 +25,6 @@ export default function CutlistRow({
   // The card's own total_points is what the face shows — never a separate file sum
   const totalPts = cardPoints(item);
   const single = files.length === 1;
-  const editing = isAdmin && editingPts?.itemId === item.id && editingPts?.fileIdx === (single ? files[0].idx : -2);
 
   const openFile = ({ file, idx }) => {
     const isPdf = /\.pdf($|\?)/i.test(file.url);
@@ -64,43 +59,14 @@ export default function CutlistRow({
         {!single && <span className="text-[9px] font-semibold text-amber-600">({files.length})</span>}
       </button>
 
-      {single ? (
-        <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-          <span className="text-[9px] font-bold text-slate-400">PTS</span>
-          {editing ? (
-            <input
-              type="number"
-              min="0"
-              step="any"
-              defaultValue={files[0].file.pts ?? ""}
-              autoFocus
-              onBlur={(e) => { onInlinePtsChange(item, files[0].idx, e.target.value); setEditingPts(null); }}
-              onKeyDown={(e) => { if (e.key === "Enter") { onInlinePtsChange(item, files[0].idx, e.target.value); setEditingPts(null); } }}
-              className="w-12 h-7 text-[11px] border border-amber-300 rounded px-1 text-center font-bold text-amber-600 bg-amber-50"
-              placeholder="0"
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => { if (isAdmin && setEditingPts) setEditingPts({ itemId: item.id, fileIdx: files[0].idx }); }}
-              className={`h-7 px-1.5 text-[11px] border border-amber-200 rounded font-bold text-amber-600 bg-amber-50 min-w-[42px] text-center ${isAdmin ? "hover:bg-amber-100" : "cursor-default"}`}
-              title={isAdmin ? "Edit points" : "Points"}
-            >
-              {totalPts || "—"}
-            </button>
-          )}
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setShowPicker(true); }}
-          className="flex-shrink-0 flex items-center gap-1 h-7 px-1.5 rounded border border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100"
-          title="Total points — tap to edit per file"
-        >
-          <span className="text-[9px] font-bold text-slate-400">PTS</span>
-          <span className="text-[11px] font-bold min-w-[22px] text-center">{totalPts || "—"}</span>
-        </button>
-      )}
+      {/* Read-only total. Points are only changed from the Edit Production Item modal. */}
+      <span
+        className="flex-shrink-0 flex items-center gap-1 h-7 px-1.5 rounded border border-amber-200 bg-amber-50 text-amber-600 select-none"
+        title="Points — change them in the Edit card modal"
+      >
+        <span className="text-[9px] font-bold text-slate-400">PTS</span>
+        <span className="text-[11px] font-bold min-w-[22px] text-center">{totalPts || "—"}</span>
+      </span>
 
       {noteCount > 0 && (
         <button
@@ -117,10 +83,6 @@ export default function CutlistRow({
         <CutlistFilesDialog
           item={item}
           files={files}
-          isAdmin={isAdmin}
-          editingPts={editingPts}
-          setEditingPts={setEditingPts}
-          onInlinePtsChange={onInlinePtsChange}
           onOpenFile={openFile}
           onClose={() => setShowPicker(false)}
         />

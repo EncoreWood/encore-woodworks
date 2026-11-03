@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { base44 } from "@/api/base44Client";
-import { Edit, CheckCircle2, Circle, Send, Trash2, FileText, Upload, ExternalLink } from "lucide-react";
+import { Edit, CheckCircle2, Circle, Send, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import SelectionsTab from "@/components/projects/room-tabs/SelectionsTab";
@@ -13,7 +13,7 @@ import PhotosTasksTab from "@/components/projects/room-tabs/PhotosTasksTab";
 import ShopFilesTab from "@/components/projects/room-tabs/ShopFilesTab";
 import { cn } from "@/lib/utils";
 import { zipLegacySelections } from "@/components/projects/room-tabs/SpeciesFinishCard";
-import { totalPointsPatch, computeTotalPoints } from "@/lib/cardPoints";
+import { computeTotalPoints } from "@/lib/cardPoints";
 
 const TABS = [
   { id: "selections", label: "🎨 Selections" },
@@ -155,19 +155,8 @@ export default function RoomManager({ open, onOpenChange, room, roomIndex, proje
     const updatedRooms = [...(project.rooms || [])];
     updatedRooms[roomIndex] = dataToSave;
     await base44.entities.Project.update(project.id, { rooms: updatedRooms });
-    for (const pi of productionItems) {
-      if (pi.project_id !== project?.id || pi.room_name !== formData.room_name) continue;
-      const updatedPiFiles = (pi.files || []).map(pf => {
-        const match = formData.files.find(f => f.url === pf.url || f.name === pf.name);
-        return match ? { ...pf, pts: match.pts } : pf;
-      });
-      if (JSON.stringify(updatedPiFiles) !== JSON.stringify(pi.files)) {
-        await base44.entities.ProductionItem.update(pi.id, {
-          files: updatedPiFiles,
-          ...totalPointsPatch(pi, { files: updatedPiFiles }),
-        });
-      }
-    }
+    // Production card points are NEVER rewritten from here — a card's points change only
+    // in the Edit Production Item modal, so a room save can't touch board totals.
     queryClient.invalidateQueries({ queryKey: ["productionItems"] });
     queryClient.invalidateQueries({ queryKey: ["project", project.id] });
     queryClient.invalidateQueries({ queryKey: ["projects"] });
