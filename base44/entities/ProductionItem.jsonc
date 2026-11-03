@@ -67,7 +67,7 @@
     },
     "parent_card_id": {
       "type": "string",
-      "description": "ID of the parent production card this missing-items card was split from"
+      "description": "ID of the parent production card this child card (missing-items or cut) was split from"
     },
     "missing_details": {
       "type": "array",
@@ -102,6 +102,79 @@
           "missing_item_id": {
             "type": "string",
             "description": "ID of the linked MissingItem record"
+          }
+        }
+      }
+    },
+    "is_cut_child": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when this card is a cut child spawned from a parent card with 'Send to Cut'. Cut children merge back into the parent when they complete."
+    },
+    "cut_details": {
+      "type": "object",
+      "description": "For cut child cards: what needs to be cut, shown on the card face",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Description of the part(s) to cut, e.g. Island wing panel 12 x 34"
+        },
+        "qty": {
+          "type": "number",
+          "description": "Quantity to cut"
+        },
+        "material": {
+          "type": "string",
+          "description": "Material / wood type for the cut parts"
+        },
+        "finish": {
+          "type": "string",
+          "description": "Finish for the cut parts"
+        }
+      }
+    },
+    "is_merged": {
+      "type": "boolean",
+      "default": false,
+      "description": "True when a cut child has been absorbed back into its parent. Merged cards keep their record, stage log and points but no longer appear on the Production board or in room counts."
+    },
+    "merged_into_card_id": {
+      "type": "string",
+      "description": "ID of the parent card a merged cut child was absorbed into"
+    },
+    "merged_at": {
+      "type": "string",
+      "description": "ISO timestamp of when the cut child merged back into its parent"
+    },
+    "cut_merge_log": {
+      "type": "array",
+      "description": "On a parent card: audit trail of cut children that were completed and merged back into it",
+      "items": {
+        "type": "object",
+        "properties": {
+          "cut_card_id": {
+            "type": "string",
+            "description": "ID of the merged cut child card"
+          },
+          "cut_card_name": {
+            "type": "string",
+            "description": "Name of the merged cut child card"
+          },
+          "description": {
+            "type": "string",
+            "description": "What was cut"
+          },
+          "qty": {
+            "type": "number",
+            "description": "Quantity that was cut"
+          },
+          "completed_by": {
+            "type": "string",
+            "description": "Name or email of the user who finished the cut"
+          },
+          "completed_at": {
+            "type": "string",
+            "description": "ISO timestamp of when the cut completed"
           }
         }
       }

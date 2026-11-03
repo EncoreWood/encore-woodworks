@@ -26,7 +26,7 @@ function RoomFolder({ project, roomName, items, onAddCard, onSendToProduction, s
     }
   }, [autoOpen]);
 
-  const roomItems = items.filter(i => i.project_id === project.id && i.room_name === roomName && !i.is_job_info);
+  const roomItems = items.filter(i => i.project_id === project.id && i.room_name === roomName && !i.is_job_info && !i.is_merged);
 
   const confirmSend = (stage) => {
     onSendToProduction(sendTarget, stage);

@@ -7,7 +7,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Hammer, Clock, MoreVertical } from "lucide-react";
+import { FileText, Pencil, Trash2, Link2, FolderOpen, RotateCcw, Box, PenLine, FileCode2, ChevronDown, PackageX, Flag, Star, Hammer, Clock, MoreVertical, Scissors } from "lucide-react";
+import CutPartsBadge from "@/components/production/CutPartsBadge";
 import RoomInfoIcon from "@/components/production/RoomInfoIcon";
 import StageChip from "@/components/production/StageChip";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -64,6 +65,8 @@ export default function ProductionCard({
   onToggleWorking,       // called with item to toggle the "currently working on" flag
   itemsById,             // map of all production items (for parent-name lookups)
   missingChildrenByParent, // map of parent card id -> its missing-items cards
+  cutChildrenByParent,   // map of parent card id -> its cut cards (open and merged)
+  onSendToCut,           // called with item to open the Send to Cut dialog
   onViewMissingCard,     // called with a card id to open the card viewer dialog
   onOpenRoomInfo,        // called with item to open the combined room workspace for its room
 }) {
@@ -200,7 +203,13 @@ export default function ProductionCard({
           );
         })}
 
-        {/* This card IS a missing-items card — link back to its parent */}
+        {/* Cut cards split off this card — open while cutting, "complete" once merged */}
+        <CutPartsBadge
+          cutChildren={cutChildrenByParent?.[item.id]}
+          onOpenCard={onViewMissingCard}
+        />
+
+        {/* This card IS a child card (missing items or cut) — link back to its parent */}
         {item.parent_card_id && itemsById?.get(item.parent_card_id) && (
           <button
             onClick={(e) => { e.stopPropagation(); onViewMissingCard?.(item.parent_card_id); }}
@@ -209,6 +218,17 @@ export default function ProductionCard({
           >
             From {itemsById.get(item.parent_card_id).name}
           </button>
+        )}
+
+        {/* What this cut card is cutting */}
+        {item.cut_details && (
+          <div className="mb-1 rounded-md bg-orange-50 border border-orange-200 px-1.5 py-1">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-orange-700 mb-0.5">Cut parts</p>
+            <p className="text-[10px] text-slate-700 leading-tight">
+              {item.cut_details.qty ? <span className="font-bold text-orange-700 mr-1">{item.cut_details.qty}×</span> : null}
+              <span>{item.cut_details.description || "Cut parts"}</span>
+            </p>
+          </div>
         )}
 
         {/* Missing item details carried on a missing-items card face */}
@@ -287,8 +307,20 @@ export default function ProductionCard({
               </button>
             )}
 
+            {/* Send to Cut — one tap splits a cut card off this card */}
+            {onSendToCut && item.id && !item.is_cut_child && !item.is_merged && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onSendToCut(item); }}
+                className="flex items-center justify-center w-6 h-6 rounded bg-orange-100 hover:bg-orange-200 border border-orange-300 text-orange-700 flex-shrink-0 transition-colors"
+                title="Send to Cut — split a cut card off this card"
+                aria-label="Send to Cut"
+              >
+                <Scissors className="w-3.5 h-3.5" />
+              </button>
+            )}
+
             {/* Actions menu — gathers the rest of the card actions in one place */}
-            {item.id && (onReturnToFolder || onOpenRoomFolder || onToggleUrgent || onQuickReportMissing || onEdit || onDelete) && (
+            {item.id && (onReturnToFolder || onOpenRoomFolder || onToggleUrgent || onQuickReportMissing || onEdit || onDelete || onSendToCut) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -300,6 +332,11 @@ export default function ProductionCard({
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-52" onClick={(e) => e.stopPropagation()}>
+                  {onSendToCut && !item.is_cut_child && !item.is_merged && (
+                    <DropdownMenuItem onClick={() => onSendToCut(item)}>
+                      <Scissors className="w-3.5 h-3.5 text-orange-600" /> Send to Cut
+                    </DropdownMenuItem>
+                  )}
                   {onReturnToFolder && (
                     <DropdownMenuItem onClick={() => onReturnToFolder(item)}>
                       <RotateCcw className="w-3.5 h-3.5" /> Return to Packet

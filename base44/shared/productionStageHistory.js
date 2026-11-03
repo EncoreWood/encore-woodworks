@@ -17,6 +17,8 @@ export function productionBoardQuery(now) {
   cutoff.setUTCDate(cutoff.getUTCDate() - 6);
   return {
     is_job_info: { $ne: true },
+    // Cut cards merged back into their parent are no longer cards on the board
+    is_merged: { $ne: true },
     stage: { $in: productionStages },
     $or: [
       { stage: { $ne: "complete" } },

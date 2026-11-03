@@ -19,7 +19,7 @@ export const cardProgress = (item) => STAGE_PROGRESS[item?.stage] ?? 0;
  * Returns { pct, cardCount, completeCount }.
  */
 export function roomProgress(items = []) {
-  const cards = (items || []).filter((i) => i && !i.is_job_info);
+  const cards = (items || []).filter((i) => i && !i.is_job_info && !i.is_merged);
   if (cards.length === 0) return { pct: 0, cardCount: 0, completeCount: 0 };
 
   const total = cards.reduce((sum, item) => sum + cardProgress(item), 0);

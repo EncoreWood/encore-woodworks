@@ -172,7 +172,7 @@ export default function ProjectDetails() {
     return rooms.map((room, idx) => {
       const name = room.room_name || `Room ${idx + 1}`;
       const roomItems = (productionItems || []).filter(
-        (i) => i.project_id === project.id && i.room_name === name && !i.is_job_info
+        (i) => i.project_id === project.id && i.room_name === name && !i.is_job_info && !i.is_merged
       );
       return roomProgress(roomItems);
     });

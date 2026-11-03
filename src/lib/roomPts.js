@@ -6,5 +6,6 @@ export function cardPts(item) {
 }
 
 export function roomPts(items) {
-  return (items || []).reduce((s, item) => s + cardPts(item), 0);
+  // Merged cut cards absorbed back into a parent no longer count toward the room
+  return (items || []).filter(item => !item?.is_merged).reduce((s, item) => s + cardPts(item), 0);
 }

@@ -11,7 +11,7 @@ import { roomPts } from "@/lib/roomPts";
 export default function JobPacketsRoomModal({ project, roomName, items, currentUser }) {
   const [open, setOpen] = useState(false);
 
-  const roomItems = (items || []).filter(i => i.project_id === project.id && i.room_name === roomName && !i.is_job_info);
+  const roomItems = (items || []).filter(i => i.project_id === project.id && i.room_name === roomName && !i.is_job_info && !i.is_merged);
   const count = roomItems.length;
 
   return (

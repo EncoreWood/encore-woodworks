@@ -34,6 +34,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useProductionChatUnread } from "../components/production/useProductionChatUnread";
 import QuickReportMissingDialog from "../components/production/QuickReportMissingDialog";
 import MissingItemCardViewerDialog from "../components/production/MissingItemCardViewerDialog";
+import SendToCutDialog from "../components/production/SendToCutDialog";
+import { createCutChildCard, isCutChild, mergeCutChildIntoParent } from "../components/production/cutCardHelper";
+import { cardPts } from "@/lib/roomPts";
 import PickupFromHighlightDialog from "../components/production/PickupFromHighlightDialog";
 
 const productionColumns = [
@@ -77,6 +80,7 @@ export default function ShopProduction() {
   const [givingCompliment, setGivingCompliment] = useState(false);
   const [reportingMissing, setReportingMissing] = useState(null);
   const [viewMissingCardId, setViewMissingCardId] = useState(null);
+  const [sendToCutItem, setSendToCutItem] = useState(null);
   const [quickReportItem, setQuickReportItem] = useState(null);
   const [showEndOfDay, setShowEndOfDay] = useState(false);
   const [scrollToProjectId, setScrollToProjectId] = useState(null);
@@ -100,7 +104,7 @@ export default function ShopProduction() {
   }, []);
 
   // Pause background polling when any modal/form is open — prevents refresh interrupting edits
-  const anyModalOpen = showForm || !!pickupItem || !!reportingStruggle || givingCompliment || !!reportingMissing || !!quickReportItem || showEndOfDay || !!annotatingPdf;
+  const anyModalOpen = showForm || !!pickupItem || !!reportingStruggle || givingCompliment || !!reportingMissing || !!quickReportItem || showEndOfDay || !!annotatingPdf || !!sendToCutItem;
 
   const { data: items = [] } = useQuery({
     queryKey: ["productionItems"],
@@ -110,12 +114,21 @@ export default function ShopProduction() {
     refetchInterval: anyModalOpen ? false : 60_000,
   });
 
-  // Missing-items cards (split off a parent card by a missing-item report)
+  // Child cards split off a parent card — missing-items cards and cut cards
   const itemsById = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
   const missingChildrenByParent = useMemo(() => {
     const map = {};
     for (const it of items) {
-      if (!it.parent_card_id) continue;
+      if (!it.parent_card_id || isCutChild(it)) continue;
+      (map[it.parent_card_id] = map[it.parent_card_id] || []).push(it);
+    }
+    return map;
+  }, [items]);
+  // Cut cards per parent, including merged ones so the parent can show "Cut parts complete"
+  const cutChildrenByParent = useMemo(() => {
+    const map = {};
+    for (const it of items) {
+      if (!it.parent_card_id || !isCutChild(it)) continue;
       (map[it.parent_card_id] = map[it.parent_card_id] || []).push(it);
     }
     return map;
@@ -172,6 +185,38 @@ export default function ShopProduction() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["productionItems"] }); setShowForm(false); setEditingItem(null); setPacketsFormContext(null); }
   });
 
+  // Completing a cut card absorbs it back into its parent: the parent never moves,
+  // its points never change, and the cut points stay awarded once on the child.
+  const mergeCompletedCutCard = async (item) => {
+    if (!item?.is_cut_child || !item.parent_card_id) return;
+    const parent = itemsById.get(item.parent_card_id) || null;
+    try {
+      await mergeCutChildIntoParent({ child: item, parent, user: currentUser });
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+      toast({
+        title: parent ? `Cut parts merged into ${parent.name}` : "Cut card completed",
+        description: "The cut work is recorded on the parent card.",
+      });
+    } catch (error) {
+      console.error("Failed to merge the completed cut card:", error);
+      toast({ title: "Cut card completed, but the merge did not save", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // Send to Cut → a linked cut card in the Cut column; the parent stays put
+  const handleCreateCutCard = async (cut) => {
+    if (!sendToCutItem) return;
+    try {
+      const child = await createCutChildCard({ parent: sendToCutItem, cut });
+      setSendToCutItem(null);
+      queryClient.invalidateQueries({ queryKey: ["productionItems"] });
+      toast({ title: `${child.name} added to Cut`, description: cut.description });
+    } catch (error) {
+      console.error("Failed to create the cut card:", error);
+      toast({ title: "Could not create the cut card", description: error.message, variant: "destructive" });
+    }
+  };
+
   const updateMutation = useMutation({
     mutationFn: async ({ id, data, syncToProject }) => {
       // A save in flight must survive an update-triggered reload.
@@ -183,6 +228,7 @@ export default function ShopProduction() {
         const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
         await persistProductionMove(item, productionMovePatch(item, safeData.stage, movedBy, safeData));
         queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
+        if (safeData.stage === "complete") await mergeCompletedCutCard(item);
       } else {
         await base44.entities.ProductionItem.update(id, safeData);
       }
@@ -213,7 +259,14 @@ export default function ShopProduction() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.ProductionItem.delete(id),
+    // A parent card's cut children go with it, so no cut card is left orphaned
+    mutationFn: async (id) => {
+      const cutChildren = items.filter(i => i.parent_card_id === id && isCutChild(i));
+      for (const child of cutChildren) {
+        await base44.entities.ProductionItem.delete(child.id);
+      }
+      return base44.entities.ProductionItem.delete(id);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["productionItems"] })
   });
 
@@ -326,6 +379,9 @@ export default function ShopProduction() {
       queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
       queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] });
     }
+
+    // A finished cut card merges back into its parent card
+    if (newStage === "complete") await mergeCompletedCutCard(item);
 
     if (item?.pickup_item_id) {
       try { await base44.entities.PickupItem.update(item.pickup_item_id, { production_stage: newStage }); queryClient.invalidateQueries({ queryKey: ["pickupItems"] }); } catch (e) {}
@@ -619,9 +675,11 @@ export default function ShopProduction() {
     onUpdate: handleGlbUpdate,
     onToggleUrgent: handleToggleUrgent,
     onToggleWorking: (item) => { if (item.stage) handleToggleWorking(item); },
-    // Missing-items card links: parent badges + "From <parent>" badge on child cards
+    // Child-card links: parent badges + "From <parent>" badge on child cards
     itemsById,
     missingChildrenByParent,
+    cutChildrenByParent,
+    onSendToCut: (item) => setSendToCutItem(item),
     onViewMissingCard: (id) => setViewMissingCardId(id),
     // Opens the combined room workspace for the card's room
     onOpenRoomInfo: (item) => {
@@ -798,7 +856,7 @@ export default function ShopProduction() {
                   const isFocused = focusStage === column.id;
                   const isCollapsed = !!focusStage && !isFocused;
                   const columnItems = items
-                    .filter(i => i.stage === column.id && !i.is_job_info)
+                    .filter(i => i.stage === column.id && !i.is_job_info && !i.is_merged)
                     .sort(sortColumnItems);
                   const workingCount = columnItems.filter(i => i.is_being_worked).length;
                   // Header badge: total value of cards that have MOVED PAST this stage
@@ -1131,6 +1189,13 @@ export default function ShopProduction() {
         />
 
         <MissingItemCardViewerDialog cardId={viewMissingCardId} onClose={() => setViewMissingCardId(null)} />
+
+        <SendToCutDialog
+          item={sendToCutItem}
+          parentPts={sendToCutItem ? cardPts(sendToCutItem) : 0}
+          onClose={() => setSendToCutItem(null)}
+          onCreate={handleCreateCutCard}
+        />
 
         <EndOfDayDialog
           open={showEndOfDay}

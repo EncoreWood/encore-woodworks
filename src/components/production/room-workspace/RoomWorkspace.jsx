@@ -70,7 +70,7 @@ export default function RoomWorkspace({
   const [localEditingPts, setLocalEditingPts] = useState(null);
 
   const roomItems = (items || []).filter(
-    i => i.project_id === project.id && i.room_name === activeRoom && !i.is_job_info
+    i => i.project_id === project.id && i.room_name === activeRoom && !i.is_job_info && !i.is_merged
   );
   const stagedItems = roomItems.filter(i => !i.stage);
   const inProductionItems = roomItems.filter(i => i.stage);
