@@ -47,6 +47,7 @@ import ShopAreaDetail from './pages/ShopAreaDetail';
 import MyProfile from './pages/MyProfile';
 import PdfViewer from './pages/PdfViewer';
 import TabShell from './components/tabs/TabShell';
+import AppUpdateWatcher from '@/components/AppUpdateWatcher';
 
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -139,6 +140,7 @@ function App() {
           <AuthenticatedApp />
         </Router>
         <Toaster />
+        <AppUpdateWatcher />
       </QueryClientProvider>
     </AuthProvider>
   )

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Upload, X, FileIcon, Loader2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { holdUpdates } from "@/lib/updateGuards";
 
 export default function FileUploader({ files = [], onChange, label = "Files" }) {
   const [uploading, setUploading] = useState(false);
@@ -13,12 +14,14 @@ export default function FileUploader({ files = [], onChange, label = "Files" }) 
     if (!file) return;
 
     setUploading(true);
+    const release = holdUpdates(); // never reload mid-upload
     try {
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
       onChange([...files, { name: file.name, url: file_url, pts: undefined }]);
     } catch (error) {
       console.error("Upload failed:", error);
     } finally {
+      release();
       setUploading(false);
     }
   };

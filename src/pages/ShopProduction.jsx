@@ -29,6 +29,7 @@ import MobileCompactCard from "../components/production/MobileCompactCard";
 import { computeStagePoints, sinceWindow, formatStagePoints } from "@/lib/stagePoints";
 import persistProductionMove, { productionMovePatch } from "@/lib/productionMoves";
 import useProductionTodayPoints from "@/hooks/useProductionTodayPoints";
+import { holdUpdates } from "@/lib/updateGuards";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProductionChatUnread } from "../components/production/useProductionChatUnread";
 import QuickReportMissingDialog from "../components/production/QuickReportMissingDialog";
@@ -173,6 +174,9 @@ export default function ShopProduction() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data, syncToProject }) => {
+      // A save in flight must survive an update-triggered reload.
+      const release = holdUpdates();
+      try {
       const safeData = { ...data, files: (data.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations })) };
       const item = items.find(candidate => candidate.id === id);
       if (item && "stage" in safeData && safeData.stage !== item.stage) {
@@ -194,6 +198,9 @@ export default function ShopProduction() {
           await base44.entities.Project.update(syncToProject.project_id, { rooms: updatedRooms });
           queryClient.invalidateQueries({ queryKey: ["projects"] });
         }
+      }
+      } finally {
+        release();
       }
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["productionItems"] }); setShowForm(false); setEditingItem(null); setPacketsFormContext(null); },

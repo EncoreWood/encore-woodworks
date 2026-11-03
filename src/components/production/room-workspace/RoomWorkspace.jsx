@@ -13,6 +13,7 @@ import RoomInfoPane from "./RoomInfoPane";
 import RoomProgressBar from "@/components/production/RoomProgressBar";
 import { roomPts } from "@/lib/roomPts";
 import persistProductionMove, { productionMovePatch } from "@/lib/productionMoves";
+import { holdUpdates } from "@/lib/updateGuards";
 
 /**
  * Combined Room Workspace — production cards (left) and room info (right) in one
@@ -88,6 +89,8 @@ export default function RoomWorkspace({
   });
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
+      const release = holdUpdates(); // a save in flight must survive an update reload
+      try {
       const safeData = { ...data, files: (data.files || []).map(f => ({ name: f.name, url: f.url, pts: f.pts, annotations: f.annotations })) };
       const item = items.find(candidate => candidate.id === id);
       if (item && "stage" in safeData && safeData.stage !== item.stage) {
@@ -95,6 +98,9 @@ export default function RoomWorkspace({
         await persistProductionMove(item, productionMovePatch(item, safeData.stage, movedBy, safeData));
       } else {
         await base44.entities.ProductionItem.update(id, safeData);
+      }
+      } finally {
+        release();
       }
     },
     onSuccess: () => { invalidate(); setShowForm(false); setEditingItem(null); },

@@ -6,6 +6,7 @@ import { Pencil, Eraser, Download, Trash2, ZoomIn, ZoomOut, RotateCw, Undo2, Typ
 import RoomFilesModal from "@/components/production/RoomFilesModal";
 import AnnotatorImageLayer from "@/components/production/AnnotatorImageLayer";
 import { base44 } from "@/api/base44Client";
+import { useUpdateGuard } from "@/lib/updateGuards";
 import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 import "react-pdf/dist/esm/Page/TextLayer.css";
 
@@ -27,6 +28,8 @@ const HIGHLIGHT_COLORS = [
 const DEFAULT_SIZE = { width: 595, height: 842 };
 
 export default function PDFAnnotator({ open, onOpenChange, pdfUrl, annotations = [], onSave, showNotesField = false, initialNotes = "", hideDownload = false, onRequestPickup, onRequestMissing, onQuickReportMissing, roomInfo = null, initialMode = "view", currentUserName = "" }) {
+  // An open annotation session is mid-work: never reload the app out from under it.
+  useUpdateGuard(open);
   const [numPages, setNumPages] = useState(null);
   // The page currently in view (scroll-spy) — drives Undo / Clear Page and the header.
   const [pageNumber, setPageNumber] = useState(1);

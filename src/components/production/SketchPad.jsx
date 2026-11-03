@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Canvas, IText, Rect, Ellipse, Line, Image as FabricImage, PencilBrush } from "fabric";
 import { base44 } from "@/api/base44Client";
+import { useUpdateGuard } from "@/lib/updateGuards";
 
 // Simple modal that doesn't conflict with Radix parent dialogs
 function SimpleModal({ open, onClose, title, children }) {
@@ -36,6 +37,7 @@ const SIZES = [2, 4, 8, 14, 22];
 // (v5 CDN loader removed — fabric v6 is imported directly at the top.)
 
 export default function SketchPad({ onClose, onSave, existingImageUrl }) {
+  useUpdateGuard(); // unsaved drawing in progress
   const canvasElRef = useRef(null);
   const fabricCanvasRef = useRef(null);
   const padRootRef = useRef(null);
