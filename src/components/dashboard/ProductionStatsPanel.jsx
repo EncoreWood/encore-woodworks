@@ -3,9 +3,9 @@ import { Factory } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
-import { computeStagePoints, sinceWindow } from "@/lib/stagePoints";
+import { denverDateStr } from "@/lib/stagePoints";
+import useProductionTodayPoints from "@/hooks/useProductionTodayPoints";
+import useProductionStageWindowPoints from "@/hooks/useProductionStageWindowPoints";
 
 const STAT_STAGES = ["face_frame", "spray", "build", "complete"];
 const STAT_LABELS = { face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete" };
@@ -17,31 +17,27 @@ const STAGE_COLORS = {
 };
 
 export default function ProductionStatsPanel() {
-  const { data: columnMoveLogs = [] } = useQuery({
-    queryKey: ["columnMoveLogs"],
-    queryFn: () => base44.entities.ColumnMoveLog.list(),
-    staleTime: 30_000,
-  });
-
   const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Denver" }));
-  const todayStr = format(nowLocal, "yyyy-MM-dd");
-  const weekStart = startOfWeek(nowLocal, { weekStartsOn: 1 });
-  const monthStart = startOfMonth(nowLocal);
+  const todayStr = denverDateStr(new Date());
+  const weekStartStr = format(startOfWeek(nowLocal, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const monthStartStr = format(startOfMonth(nowLocal), "yyyy-MM-dd");
 
-  // Stage totals come from the move log: Complete is credited on arrival, every other
-  // stage on departure, so a card counts once per stage per window (reversals net out).
-  const dayTotals = computeStagePoints(columnMoveLogs, sinceWindow(todayStr));
-  const weekTotals = computeStagePoints(columnMoveLogs, sinceWindow(format(weekStart, "yyyy-MM-dd")));
-  const monthTotals = computeStagePoints(columnMoveLogs, sinceWindow(format(monthStart, "yyyy-MM-dd")));
+  // Same server calculation as the production board's daily pills: D is that exact
+  // number, W/M sum it day by day across the window.
+  const { data: todayPoints } = useProductionTodayPoints(true);
+  const { data: weekPoints } = useProductionStageWindowPoints(weekStartStr, todayStr, true);
+  const { data: monthPoints } = useProductionStageWindowPoints(monthStartStr, todayStr, true);
+
+  // Days elapsed this month, for the Avg/Day figure
+  const daysElapsed = Number(todayStr.slice(8, 10)) || 1;
 
   const colStats = Object.fromEntries(STAT_STAGES.map(s => {
-    const month = monthTotals.points[s] || 0;
-    const daysWithActivity = monthTotals.activeDays[s] || 1;
+    const month = monthPoints?.points?.[s] || 0;
     return [s, {
-      day: dayTotals.points[s] || 0,
-      week: weekTotals.points[s] || 0,
+      day: todayPoints?.points?.[s] || 0,
+      week: weekPoints?.points?.[s] || 0,
       month,
-      avgPerDay: Math.round((month / daysWithActivity) * 10) / 10,
+      avgPerDay: Math.round((month / daysElapsed) * 10) / 10,
     }];
   }));
 

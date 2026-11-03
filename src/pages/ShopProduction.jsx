@@ -26,9 +26,10 @@ import ProductionMissingItemsTab from "../components/production/ProductionMissin
 import ProductionChatTab from "../components/production/ProductionChatTab";
 import MoveHistoryTab from "../components/production/MoveHistoryTab";
 import MobileCompactCard from "../components/production/MobileCompactCard";
-import { computeStagePoints, sinceWindow, formatStagePoints } from "@/lib/stagePoints";
+import { formatStagePoints } from "@/lib/stagePoints";
 import persistProductionMove, { productionMovePatch } from "@/lib/productionMoves";
 import useProductionTodayPoints from "@/hooks/useProductionTodayPoints";
+import useProductionStageWindowPoints from "@/hooks/useProductionStageWindowPoints";
 import { holdUpdates } from "@/lib/updateGuards";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProductionChatUnread } from "../components/production/useProductionChatUnread";
@@ -478,26 +479,24 @@ export default function ShopProduction() {
     else setCurrentAnnotations(annotations);
   };
 
-  // PTS stats — per-stage totals derived from ColumnMoveLog within time windows
+  // PTS stats — every window goes through the one server calculation the pills use
   const { data: todayPoints, isError: todayPointsError, date: todayStr } = useProductionTodayPoints(!!currentUser);
   const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Denver" }));
-  const weekStart = startOfWeek(nowLocal, { weekStartsOn: 1 });
-  const monthStart = startOfMonth(nowLocal);
+  const weekStartStr = format(startOfWeek(nowLocal, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const monthStartStr = format(startOfMonth(nowLocal), "yyyy-MM-dd");
+  const { data: weekPoints } = useProductionStageWindowPoints(weekStartStr, todayStr, !!currentUser);
+  const { data: monthPoints } = useProductionStageWindowPoints(monthStartStr, todayStr, !!currentUser);
 
   const STAT_STAGES = ["face_frame", "spray", "build", "complete"];
   const STAT_LABELS = { face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete" };
 
-  // D/W/M per-stage totals — Complete is credited on arrival, every other stage on
-  // departure, so a card counts once per stage per window (reversals net out).
-  const dayTotals = computeStagePoints(columnMoveLogs, sinceWindow(todayStr));
-  const weekTotals = computeStagePoints(columnMoveLogs, sinceWindow(format(weekStart, "yyyy-MM-dd")));
-  const monthTotals = computeStagePoints(columnMoveLogs, sinceWindow(format(monthStart, "yyyy-MM-dd")));
-
+  // D/W/M per-stage totals, read from the same figures as the daily pills: D is the
+  // pill's own number, W/M sum that same day-by-day calculation across the window.
   const colStats = Object.fromEntries(
     [...new Set([...STAT_STAGES, ...productionColumns.map(c => c.id)])].map(s => [s, {
-      day: dayTotals.points[s] || 0,
-      week: weekTotals.points[s] || 0,
-      month: monthTotals.points[s] || 0,
+      day: todayPoints?.points?.[s] || 0,
+      week: weekPoints?.points?.[s] || 0,
+      month: monthPoints?.points?.[s] || 0,
     }])
   );
 

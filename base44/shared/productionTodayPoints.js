@@ -46,6 +46,21 @@ export function genuineStageMoves(item) {
   return trail;
 }
 
+// Every Denver day from `from` through `to` (inclusive). A window total is then just
+// the sum of those days' pills, so a week/month figure can never drift from the day.
+export function listDenverDays(from, to) {
+  const days = [];
+  let cursor = new Date(`${from}T12:00:00.000Z`);
+  if (!Number.isFinite(cursor.getTime())) return days;
+  for (let step = 0; step < 400; step++) {
+    const day = denverDay(cursor);
+    if (!day || day > to) break;
+    if (day >= from) days.push(day);
+    cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+  }
+  return days;
+}
+
 // Only ProductionItem fields participate; a stored zero stays zero.
 export function addTodayCardPoints(totals, items, day) {
   for (const item of items) {
