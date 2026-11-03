@@ -67,6 +67,9 @@ export default function RoomWorkspace({
   // surface room info in that same tap: docked beside the cards when wide enough,
   // as a slide-over drawer over the cards when narrow. The top-bar toggle closes it.
   const [infoOpen, setInfoOpen] = useState(true);
+  // Full-room card grid opened from the room info header; closing returns here
+  const [showAllCards, setShowAllCards] = useState(false);
+  useEffect(() => { setShowAllCards(false); }, [activeRoom]);
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [localEditingPts, setLocalEditingPts] = useState(null);
@@ -280,6 +283,8 @@ export default function RoomWorkspace({
         <RoomInfoPane
           project={project}
           roomName={activeRoom}
+          cardCount={count}
+          onViewCards={() => setShowAllCards(true)}
           onSelectRoom={(name) => { setActiveRoom(name); setSelected(new Set()); setExpanded(new Set()); }}
           onClose={onClose}
         />
@@ -297,7 +302,7 @@ export default function RoomWorkspace({
         paddingBottom: "calc(env(safe-area-inset-bottom) + 4px)",
       }}
     >
-      <div className="h-full w-full flex flex-col bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
+      <div className="relative h-full w-full flex flex-col bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
         {/* Pinned top bar — Exit View and the Room Info toggle stay visible at every width */}
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 border-b border-slate-200 bg-slate-50 flex-shrink-0">
           <Button
@@ -450,6 +455,50 @@ export default function RoomWorkspace({
             </aside>
           )}
         </div>
+
+        {/* Every card in this room — opened from the room info header; closing
+            returns to the room info pane exactly where it was. */}
+        {showAllCards && (
+          <div className="absolute inset-0 z-20 bg-white flex flex-col min-h-0">
+            <div className="flex flex-wrap items-center gap-2 px-2 sm:px-3 py-1.5 border-b border-slate-200 bg-slate-50 flex-shrink-0">
+              <Button
+                type="button"
+                onClick={() => setShowAllCards(false)}
+                className="h-9 px-2.5 sm:px-3 gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex-shrink-0"
+                title="Back to room info"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="whitespace-nowrap">Room Info</span>
+              </Button>
+              <div className="min-w-0 flex-1 basis-32">
+                <p className="text-sm font-bold text-slate-900 truncate leading-tight">
+                  <span className="text-slate-400 font-normal">{project.project_name} /</span> {activeRoom}
+                </p>
+                <p className="text-[11px] text-slate-500 leading-tight truncate">
+                  All {count} card{count !== 1 ? "s" : ""} in this room
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAllCards(false)}
+                className="flex items-center justify-center w-8 h-8 rounded-lg bg-white border border-slate-300 text-slate-500 hover:bg-slate-100 hover:text-slate-800 flex-shrink-0"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {count === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+                  <Package className="w-10 h-10 mb-3 opacity-40" />
+                  <p className="text-sm">No cards in this room yet.</p>
+                </div>
+              ) : (
+                <TypeGroupedGrid items={roomItems} renderCard={renderCard} gridClassName={gridClass} />
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <ProductionItemForm

@@ -9,7 +9,7 @@ import RoomImageGallery from "./RoomImageGallery";
 import ProjectFilesList from "@/components/projects/ProjectFilesList";
 import RoomSelectionsEditor from "./RoomSelectionsEditor";
 import RoomImageAddButton from "./RoomImageAddButton";
-import { Loader2, Images, Palette, Paperclip, FileText, ArrowLeft, ChevronDown, Check, ExternalLink } from "lucide-react";
+import { Loader2, Images, Palette, Paperclip, FileText, ArrowLeft, ChevronDown, Check, ExternalLink, LayoutGrid } from "lucide-react";
 
 function Section({ icon: Icon, title, count, action, children }) {
   return (
@@ -33,7 +33,7 @@ function Section({ icon: Icon, title, count, action, children }) {
  * notes + tasks, images (with annotation editing), saved selections and the
  * project's files. Same data sources as the production Room Info view.
  */
-export default function RoomInfoPane({ project, roomName, onClose, onSelectRoom }) {
+export default function RoomInfoPane({ project, roomName, cardCount = 0, onViewCards, onClose, onSelectRoom }) {
   const navigate = useNavigate();
   const [roomPickerOpen, setRoomPickerOpen] = useState(false);
   const { data: liveProject } = useQuery({
@@ -73,9 +73,10 @@ export default function RoomInfoPane({ project, roomName, onClose, onSelectRoom 
 
   return (
     <div className="h-full flex flex-col min-h-0">
-      {/* Pinned pane header — room switcher + project jump + Exit View */}
-      <div className="flex items-start justify-between gap-2 px-3 py-2 border-b border-slate-200 bg-slate-50 flex-shrink-0">
-        <div className="min-w-0 flex-1">
+      {/* Pinned pane header — room switcher + project jump + cards + Exit View.
+          Controls wrap to a second row instead of being clipped on tablet widths. */}
+      <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1 px-3 py-2 border-b border-slate-200 bg-slate-50 flex-shrink-0">
+        <div className="min-w-0 flex-1 basis-40">
           <Popover open={roomPickerOpen} onOpenChange={setRoomPickerOpen}>
             <PopoverTrigger asChild>
               <button
@@ -118,22 +119,34 @@ export default function RoomInfoPane({ project, roomName, onClose, onSelectRoom 
           </Popover>
           <p className="text-[11px] text-slate-400 truncate pl-0.5">{proj.project_name}</p>
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex flex-wrap items-center justify-end gap-1 flex-shrink-0">
           <button
             type="button"
             onClick={openProjectCard}
-            className="flex items-center gap-1 h-8 px-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800 text-xs font-semibold"
+            className="flex items-center gap-1 h-8 px-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800 text-xs font-semibold whitespace-nowrap"
             title="View this project on the Projects board"
             aria-label="View Project"
           >
             <ExternalLink className="w-3.5 h-3.5" />
             Project
           </button>
+          {onViewCards && (
+            <button
+              type="button"
+              onClick={onViewCards}
+              className="flex items-center gap-1 h-8 px-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 text-xs font-semibold whitespace-nowrap"
+              title="See every card in this room"
+              aria-label="View all cards in this room"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              Cards{cardCount > 0 ? ` (${cardCount})` : ""}
+            </button>
+          )}
           {onClose && (
             <button
               type="button"
               onClick={onClose}
-              className="flex items-center gap-1 h-8 px-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 text-xs font-semibold"
+              className="flex items-center gap-1 h-8 px-2 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 text-xs font-semibold whitespace-nowrap"
               title="Exit View"
               aria-label="Exit View"
             >
