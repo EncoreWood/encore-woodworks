@@ -7,6 +7,8 @@ import { useState } from "react";
 import { Plus, FileText, Loader2, ExternalLink, Eye, EyeOff, Copy, RotateCcw, ChevronDown } from "lucide-react";
 import { duplicateBid, markBidCurrent } from "@/components/bidding/estimateStatus";
 import ProjectFilesCard from "@/components/projects/ProjectFilesCard";
+import ProjectEstimateOverlay from "@/components/projects/ProjectEstimateOverlay";
+import EstimateTemplatePicker from "@/components/bidding/roombased/EstimateTemplatePicker";
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -37,10 +39,25 @@ export default function EstimatesProposalTab({ project }) {
     },
   });
 
-  const newEstimate = () => {
-    window.location.href = createPageUrl("PlanBidding") + "?project_id=" + project.id;
+  // Estimates open in place on top of the project card — no route change, so
+  // closing one lands the user right back on this project, exactly as they left it.
+  const [overlay, setOverlay] = useState(null); // { template, bidId? }
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+
+  const openBid = (bid) => {
+    const template = bid.bid_mode === "onsite"
+      ? "onsite"
+      : bid.template === "room_based" ? "room_based" : "item";
+    setOverlay({ template, bidId: bid.id });
   };
+
+  const newEstimate = () => setShowTemplatePicker(true);
   const newPresentation = () => createPres.mutate();
+
+  const handleEstimateSaved = () => {
+    qc.invalidateQueries({ queryKey: ["bids_for_project", project.id] });
+    qc.invalidateQueries({ queryKey: ["bids"] });
+  };
 
   const { toast } = useToast();
   const toggleClientVisible = useMutation({
@@ -96,7 +113,11 @@ export default function EstimatesProposalTab({ project }) {
   const renderEstimateRow = (bid, isOutdated) => (
     <div key={bid.id}
       className="flex items-center gap-2 sm:gap-3 p-3 rounded-lg border border-slate-100 hover:border-amber-200 hover:bg-amber-50 transition-all">
-      <a href={createPageUrl("PlanBidding") + "?bid_id=" + bid.id} className="flex items-center gap-3 flex-1 min-w-0">
+      <a
+        href={createPageUrl("ProjectDetails") + "?id=" + project.id}
+        onClick={(e) => { e.preventDefault(); openBid(bid); }}
+        className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer"
+      >
         <FileText className="w-4 h-4 text-amber-500 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-slate-800 truncate flex items-center gap-2">
@@ -260,6 +281,27 @@ export default function EstimatesProposalTab({ project }) {
 
       {/* Project file attachments */}
       <ProjectFilesCard project={project} />
+
+      {/* New estimate — template choice happens right here, then the editor
+          opens in place on top of the project card. */}
+      <EstimateTemplatePicker
+        open={showTemplatePicker}
+        onClose={() => setShowTemplatePicker(false)}
+        onPick={(template) => {
+          setShowTemplatePicker(false);
+          setOverlay({ template });
+        }}
+      />
+
+      {overlay && (
+        <ProjectEstimateOverlay
+          project={project}
+          template={overlay.template}
+          bidId={overlay.bidId}
+          onClose={() => setOverlay(null)}
+          onSaved={handleEstimateSaved}
+        />
+      )}
     </div>
   );
 }
