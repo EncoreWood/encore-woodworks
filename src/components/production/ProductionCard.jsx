@@ -307,18 +307,6 @@ export default function ProductionCard({
               </button>
             )}
 
-            {/* Send to Cut — one tap splits a cut card off this card */}
-            {onSendToCut && item.id && !item.is_cut_child && !item.is_merged && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onSendToCut(item); }}
-                className="flex items-center justify-center w-6 h-6 rounded bg-orange-100 hover:bg-orange-200 border border-orange-300 text-orange-700 flex-shrink-0 transition-colors"
-                title="Send to Cut — split a cut card off this card"
-                aria-label="Send to Cut"
-              >
-                <Scissors className="w-3.5 h-3.5" />
-              </button>
-            )}
-
             {/* Actions menu — gathers the rest of the card actions in one place */}
             {item.id && (onReturnToFolder || onOpenRoomFolder || onToggleUrgent || onQuickReportMissing || onEdit || onDelete || onSendToCut) && (
               <DropdownMenu>
