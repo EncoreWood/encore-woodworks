@@ -9,6 +9,7 @@ import {
 import { Canvas, IText, Rect, Ellipse, Line, Image as FabricImage, PencilBrush } from "fabric";
 import { base44 } from "@/api/base44Client";
 import { useUpdateGuard } from "@/lib/updateGuards";
+import { validSketchJson } from "@/lib/productionItemDraft";
 
 // Simple modal that doesn't conflict with Radix parent dialogs
 function SimpleModal({ open, onClose, title, children }) {
@@ -36,7 +37,7 @@ const SIZES = [2, 4, 8, 14, 22];
 
 // (v5 CDN loader removed — fabric v6 is imported directly at the top.)
 
-export default function SketchPad({ onClose, onSave, existingImageUrl }) {
+export default function SketchPad({ onClose, onSave, existingImageUrl, initialSketchJson, onDraftJson }) {
   useUpdateGuard(); // unsaved drawing in progress
   const canvasElRef = useRef(null);
   const fabricCanvasRef = useRef(null);
@@ -50,6 +51,38 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
   const shapeOrigin = useRef(null);
   const activeShape = useRef(null);
   const imageInputRef = useRef(null);
+
+  // One-time canvas guard + draft plumbing. The canvas must never be rebuilt
+  // because a parent re-rendered, and its strokes are handed back to the form
+  // (debounced) so a crash can still recover the drawing.
+  const initRef = useRef(false);
+  const hydratingRef = useRef(false);
+  const checkpointRef = useRef(null);
+  const latestJsonRef = useRef(null);
+  const draftTimerRef = useRef(null);
+  const initialPropsRef = useRef({ existingImageUrl, initialSketchJson });
+  const onDraftJsonRef = useRef(onDraftJson);
+
+  useEffect(() => {
+    onDraftJsonRef.current = onDraftJson;
+  }, [onDraftJson]);
+
+  const serializeCanvas = useCallback((fc) => {
+    try {
+      return JSON.stringify(fc.toJSON(["selectable", "evented"]));
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const queueDraftSave = useCallback((snapshot) => {
+    clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      if (snapshot) onDraftJsonRef.current?.(snapshot);
+    }, 500);
+  }, []);
+
+  useEffect(() => () => clearTimeout(draftTimerRef.current), []);
 
   // Template saving
   const [showSaveTemplate, setShowSaveTemplate] = useState(false);
@@ -81,12 +114,14 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
     };
   }, []);
 
-  // Init canvas (fabric is imported directly — no async loading step)
+  // Build the canvas exactly ONCE. Rebuilding it on a parent re-render (or
+  // disposing it mid-stroke) is what used to crash the pad and lose the drawing.
   useEffect(() => {
-    if (!canvasElRef.current) return;
-    if (fabricCanvasRef.current) return; // already init'd
+    const el = canvasElRef.current;
+    if (!el || initRef.current) return;
+    initRef.current = true;
 
-    const fc = new Canvas(canvasElRef.current, {
+    const fc = new Canvas(el, {
       width: 900,
       height: 560,
       backgroundColor: "#ffffff",
@@ -96,31 +131,81 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
 
     // iPad/Safari: stop the browser from treating stylus and touch moves on
     // the canvas as page pan/zoom gestures, which breaks strokes mid-draw.
-    canvasElRef.current.style.touchAction = "none";
+    el.style.touchAction = "none";
     if (fc.wrapperEl) fc.wrapperEl.style.touchAction = "none";
     if (fc.upperCanvasEl) fc.upperCanvasEl.style.touchAction = "none";
 
-    // Save state on object modifications for undo
-    const saveState = () => {
-      setHistoryStack(prev => [...prev.slice(-30), JSON.stringify(fc.toJSON())]);
+    // Checkpoint only when a stroke/object actually finishes — never mid-draw —
+    // and keep the last 20 snapshots so a long session can't exhaust memory.
+    const checkpoint = () => {
+      if (hydratingRef.current || fabricCanvasRef.current !== fc) return;
+      const snapshot = serializeCanvas(fc);
+      if (!snapshot) return;
+      latestJsonRef.current = snapshot;
+      setHistoryStack((prev) => {
+        const next = [...prev, snapshot];
+        return next.length > 20 ? next.slice(next.length - 20) : next;
+      });
+      queueDraftSave(snapshot);
     };
-    fc.on("object:added", saveState);
-    fc.on("object:modified", saveState);
-    fc.on("object:removed", saveState);
+    checkpointRef.current = checkpoint;
 
-    // Load existing image if provided
-    if (existingImageUrl) {
-      FabricImage.fromURL(existingImageUrl, { crossOrigin: "anonymous" }).then((img) => {
-        if (!fabricCanvasRef.current) return;
-        img.scaleToWidth(fc.width);
-        fc.add(img);
-        fc.sendObjectToBack(img);
-        fc.renderAll();
-      }).catch(() => {});
-    }
+    // Reopen an in-progress sketch from the draft, otherwise fall back to the
+    // image of a sketch that was already saved on the card.
+    const hydrate = async () => {
+      hydratingRef.current = true;
+      const saved = validSketchJson(initialPropsRef.current.initialSketchJson);
+      if (saved) {
+        try {
+          await fc.loadFromJSON(saved);
+          if (fabricCanvasRef.current !== fc) return;
+          fc.getObjects().forEach((o) => o.set({ selectable: true, evented: true }));
+          fc.renderAll();
+          return;
+        } catch (e) {
+          console.warn("Sketch restore failed — starting from the saved image:", e);
+        }
+      }
+      const url = initialPropsRef.current.existingImageUrl;
+      if (url) {
+        try {
+          const img = await FabricImage.fromURL(url, { crossOrigin: "anonymous" });
+          if (fabricCanvasRef.current !== fc) return;
+          img.scaleToWidth(fc.width);
+          fc.add(img);
+          fc.sendObjectToBack(img);
+          fc.renderAll();
+        } catch {
+          // image unavailable — leave the pad blank rather than failing
+        }
+      }
+    };
 
-    return () => { fc.dispose(); fabricCanvasRef.current = null; };
-  }, [existingImageUrl]);
+    Promise.resolve(hydrate()).finally(() => {
+      if (fabricCanvasRef.current !== fc) return;
+      hydratingRef.current = false;
+      fc.on("path:created", checkpoint); // freehand stroke finished
+      fc.on("object:modified", checkpoint); // object moved / scaled
+      fc.on("object:removed", checkpoint);
+      const baseline = serializeCanvas(fc);
+      if (baseline) {
+        latestJsonRef.current = baseline;
+        setHistoryStack([baseline]);
+      }
+    });
+
+    return () => {
+      initRef.current = false;
+      checkpointRef.current = null;
+      clearTimeout(draftTimerRef.current);
+      if (fabricCanvasRef.current === fc) fabricCanvasRef.current = null;
+      try {
+        fc.dispose();
+      } catch {
+        // already disposed
+      }
+    };
+  }, [serializeCanvas, queueDraftSave]);
 
   // Update drawing mode and tool behavior
   useEffect(() => {
@@ -163,6 +248,7 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
         fc.setActiveObject(text);
         text.enterEditing();
         fc.renderAll();
+        checkpointRef.current?.();
         // Switch back to select after placing
         setTool("select");
       });
@@ -237,6 +323,7 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
           activeShape.current = null;
         }
         fc.renderAll();
+        checkpointRef.current?.();
         setTool("select");
       });
     }
@@ -254,17 +341,36 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
     const fc = fabricCanvasRef.current;
     if (!fc || historyStack.length < 2) return;
     const prev = historyStack[historyStack.length - 2];
-    setHistoryStack(s => s.slice(0, -1));
-    fc.loadFromJSON(prev).then(() => fc.renderAll());
-  }, [historyStack]);
+    setHistoryStack((s) => s.slice(0, -1));
+    hydratingRef.current = true;
+    fc.loadFromJSON(prev)
+      .then(() => {
+        fc.getObjects().forEach((o) => o.set({ selectable: true, evented: true }));
+        fc.renderAll();
+      })
+      .catch(() => {})
+      .finally(() => {
+        hydratingRef.current = false;
+        latestJsonRef.current = prev;
+        queueDraftSave(prev);
+      });
+  }, [historyStack, queueDraftSave]);
 
   const clearCanvas = useCallback(() => {
     const fc = fabricCanvasRef.current;
     if (!fc) return;
+    hydratingRef.current = true;
     fc.clear();
     fc.backgroundColor = "#ffffff";
     fc.renderAll();
-  }, []);
+    hydratingRef.current = false;
+    const snapshot = serializeCanvas(fc);
+    if (snapshot) {
+      latestJsonRef.current = snapshot;
+      setHistoryStack((prev) => [...prev, snapshot].slice(-20));
+      queueDraftSave(snapshot);
+    }
+  }, [serializeCanvas, queueDraftSave]);
 
   const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
@@ -278,6 +384,7 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
         fc.add(img);
         fc.setActiveObject(img);
         fc.renderAll();
+        checkpointRef.current?.();
       });
     };
     reader.readAsDataURL(file);
@@ -288,13 +395,16 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
     const fc = fabricCanvasRef.current;
     if (!fc) return;
     setSaving(true);
-    const dataUrl = fc.toDataURL({ format: "png", multiplier: 1 });
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    const file = new File([blob], "sketch.png", { type: "image/png" });
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setSaving(false);
-    onSave(file_url);
+    try {
+      const dataUrl = fc.toDataURL({ format: "png", multiplier: 1 });
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], "sketch.png", { type: "image/png" });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      onSave(file_url);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSaveTemplate = async () => {
@@ -336,13 +446,21 @@ export default function SketchPad({ onClose, onSave, existingImageUrl }) {
   const loadTemplate = (sketch) => {
     const fc = fabricCanvasRef.current;
     if (!fc) return;
-    // canvas_json may be a string or already parsed object
-    const json = typeof sketch.canvas_json === "string" ? sketch.canvas_json : JSON.stringify(sketch.canvas_json);
-    fc.loadFromJSON(json).then(() => {
-      fc.getObjects().forEach(o => o.set({ selectable: true, evented: true }));
-      fc.renderAll();
-    });
     setShowLoadTemplate(false);
+    // canvas_json may be a string or already parsed object — never load junk
+    const json = validSketchJson(typeof sketch.canvas_json === "string" ? sketch.canvas_json : JSON.stringify(sketch.canvas_json));
+    if (!json) return;
+    hydratingRef.current = true;
+    fc.loadFromJSON(json)
+      .then(() => {
+        fc.getObjects().forEach(o => o.set({ selectable: true, evented: true }));
+        fc.renderAll();
+      })
+      .catch(() => {})
+      .finally(() => {
+        hydratingRef.current = false;
+        queueDraftSave(json);
+      });
   };
 
   const toolList = [

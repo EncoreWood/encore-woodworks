@@ -1,15 +1,22 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Upload, Box, X, PenLine, Wand2 } from "lucide-react";
+import { Loader2, Upload, Box, X, PenLine, Wand2, RotateCcw } from "lucide-react";
 import readCardSpecFromPdf from "@/components/production/readCardSpecFromPdf";
 import FileUploader from "../projects/FileUploader";
 import GlbViewer from "@/components/cad/GlbViewer";
 import SketchPad from "@/components/production/SketchPad";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import {
+  productionItemDraftKey,
+  loadProductionItemDraft,
+  saveProductionItemDraft,
+  clearProductionItemDraft,
+} from "@/lib/productionItemDraft";
 import { base44 } from "@/api/base44Client";
 
 const initialFormState = {
@@ -31,6 +38,23 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
   const [formData, setFormData] = useState(initialFormState);
   const [uploadingGlb, setUploadingGlb] = useState(false);
 
+  // Draft protection: everything typed (and the raw sketch) is mirrored to local
+  // storage so a crash, refresh, or accidental close can never blank this form.
+  const [sketchJson, setSketchJson] = useState(null);
+  const [restoredDraft, setRestoredDraft] = useState(false);
+  const [sketchSession, setSketchSession] = useState(0);
+  const dirtyRef = useRef(false);
+  const submittedRef = useRef(false);
+  const initialDataRef = useRef(initialData);
+  const activeDraftKeyRef = useRef(productionItemDraftKey(initialData));
+  const draftKey = productionItemDraftKey(initialData);
+
+  // Every real edit goes through here, so we only persist actual user work.
+  const updateForm = useCallback((updater) => {
+    dirtyRef.current = true;
+    setFormData((prev) => (typeof updater === "function" ? updater(prev) : updater));
+  }, []);
+
   // Rooms this card's project could belong to — project rooms plus the card's
   // current room (in case it no longer matches the project's room list).
   const roomOptions = [...new Set([
@@ -45,34 +69,82 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
     if (!file) return;
     setUploadingGlb(true);
     const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setFormData(prev => ({ ...prev, glb_url: file_url, glb_name: file.name }));
+    updateForm(prev => ({ ...prev, glb_url: file_url, glb_name: file.name }));
     setUploadingGlb(false);
     e.target.value = "";
   };
 
-  const removeGlb = () => setFormData(prev => ({ ...prev, glb_url: null, glb_name: null }));
+  const removeGlb = () => updateForm(prev => ({ ...prev, glb_url: null, glb_name: null }));
 
   const [showSketch, setShowSketch] = useState(false);
   const handleSketchSave = (url) => {
-    setFormData(prev => ({ ...prev, sketch_url: url }));
+    updateForm(prev => ({ ...prev, sketch_url: url }));
     setShowSketch(false);
   };
+  // The pad hands its strokes over (debounced) so they survive a crash.
+  const handleSketchDraft = useCallback((json) => {
+    dirtyRef.current = true;
+    setSketchJson(json);
+  }, []);
 
+  useEffect(() => { initialDataRef.current = initialData; });
+
+  // Reset ONLY when the modal opens or switches to a different card. initialData
+  // arrives as a brand-new object on every parent render — resetting on that
+  // identity is what used to wipe a half-typed card and close the sketch pad
+  // mid-stroke (the real cause of the crash and the lost work).
   useEffect(() => {
-    if (open) {
-      setFormData(initialData || initialFormState);
-      setShowSketch(false);
-      setSpecError("");
+    if (!open) return;
+    setShowSketch(false);
+    setSpecError("");
+    activeDraftKeyRef.current = draftKey;
+    const base = initialDataRef.current || initialFormState;
+    const draft = loadProductionItemDraft(draftKey);
+    if (draft) {
+      setFormData({ ...base, ...draft.data });
+      setSketchJson(draft.sketchJson || null);
+      setRestoredDraft(true);
+    } else {
+      setFormData(base);
+      setSketchJson(null);
+      setRestoredDraft(false);
     }
-  }, [open, initialData]);
+    dirtyRef.current = false;
+  }, [open, draftKey]);
+
+  // Mirror the draft (fields + sketch) while the user works.
+  useEffect(() => {
+    if (!open || !dirtyRef.current) return;
+    const timer = setTimeout(() => {
+      saveProductionItemDraft(activeDraftKeyRef.current, { data: formData, sketchJson });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [open, draftKey, formData, sketchJson]);
+
+  // Only a successful save (the parent closes the modal) clears the draft.
+  useEffect(() => {
+    if (open || !submittedRef.current) return;
+    clearProductionItemDraft(activeDraftKeyRef.current);
+    submittedRef.current = false;
+    dirtyRef.current = false;
+  }, [open]);
+
+  const discardDraft = () => {
+    clearProductionItemDraft(activeDraftKeyRef.current);
+    setFormData(initialDataRef.current || initialFormState);
+    setSketchJson(null);
+    setRestoredDraft(false);
+    dirtyRef.current = false;
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    submittedRef.current = true;
     onSubmit(formData);
   };
 
   const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    updateForm((prev) => ({ ...prev, [field]: value }));
   };
 
   // Read this card's wood type + finish off its own PDF cut list (one spec per card)
@@ -87,7 +159,7 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
         setSpecError("No wood type or finish found on this PDF.");
         return;
       }
-      setFormData(prev => ({
+      updateForm(prev => ({
         ...prev,
         wood_type: spec.wood_type || prev.wood_type || "",
         finish: spec.finish || prev.finish || "",
@@ -101,18 +173,18 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
 
   // Misc sub-items — add from dropdown, remove, and edit qty/wood/finish/notes per item
   const addMiscItem = (name) => {
-    setFormData((prev) => {
+    updateForm((prev) => {
       if ((prev.misc_items || []).some(m => m.name === name)) return prev;
       return { ...prev, misc_items: [...(prev.misc_items || []), { name, qty: "", wood_type: "", finish: "", notes: "" }] };
     });
   };
 
   const removeMiscItem = (name) => {
-    setFormData((prev) => ({ ...prev, misc_items: (prev.misc_items || []).filter(m => m.name !== name) }));
+    updateForm((prev) => ({ ...prev, misc_items: (prev.misc_items || []).filter(m => m.name !== name) }));
   };
 
   const updateMiscItem = (name, field, value) => {
-    setFormData((prev) => ({
+    updateForm((prev) => ({
       ...prev,
       misc_items: (prev.misc_items || []).map(m => m.name === name ? { ...m, [field]: value } : m),
     }));
@@ -121,11 +193,35 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
   return (
     <>
       {showSketch && (
-        <SketchPad
-          existingImageUrl={formData.sketch_url}
-          onClose={() => setShowSketch(false)}
-          onSave={handleSketchSave}
-        />
+        // Its own boundary: if the canvas throws, only the pad fails — the form
+        // underneath keeps every field the user already typed.
+        <ErrorBoundary
+          key={sketchSession}
+          fallback={() => (
+            <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-3 bg-slate-900/70 p-6 text-center">
+              <p className="text-sm font-semibold text-white">Sketch crashed — reopen</p>
+              <p className="max-w-xs text-xs text-white/70">
+                Your item details are safe, and the last saved strokes are kept.
+              </p>
+              <div className="flex gap-2">
+                <Button type="button" size="sm" variant="outline" className="bg-white" onClick={() => setShowSketch(false)}>
+                  Close sketch
+                </Button>
+                <Button type="button" size="sm" className="bg-amber-600 hover:bg-amber-700" onClick={() => setSketchSession(s => s + 1)}>
+                  Reopen
+                </Button>
+              </div>
+            </div>
+          )}
+        >
+          <SketchPad
+            existingImageUrl={formData.sketch_url}
+            initialSketchJson={sketchJson}
+            onDraftJson={handleSketchDraft}
+            onClose={() => setShowSketch(false)}
+            onSave={handleSketchSave}
+          />
+        </ErrorBoundary>
       )}
       <Dialog open={open && !showSketch} onOpenChange={(v) => { if (!showSketch) onOpenChange(v); }}>
       <DialogContent className="max-w-md flex flex-col max-h-[90vh]">
@@ -138,6 +234,16 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto space-y-3 py-2 pr-1">
+
+            {restoredDraft && (
+              <div className="flex items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-800">
+                <RotateCcw className="w-3 h-3 flex-shrink-0" />
+                <span className="flex-1">Restored unsaved draft</span>
+                <button type="button" onClick={discardDraft} className="font-semibold underline underline-offset-2">
+                  Discard
+                </button>
+              </div>
+            )}
 
             <div className="space-y-1">
               <Label className="text-xs font-medium text-slate-600">Item Name *</Label>
@@ -380,7 +486,7 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
                       <PenLine className="w-3 h-3" /> Edit
                     </Button>
                     <Button type="button" size="sm" variant="outline" className="gap-1 text-xs h-7 text-red-600 border-red-200"
-                      onClick={() => setFormData(prev => ({ ...prev, sketch_url: null }))}>
+                      onClick={() => { updateForm(prev => ({ ...prev, sketch_url: null })); setSketchJson(null); }}>
                       <X className="w-3 h-3" /> Remove
                     </Button>
                   </div>
