@@ -12,7 +12,7 @@ import { demoteOtherEstimates } from "@/components/bidding/estimateStatus";
 import ProposalRoomsEditor from "./ProposalRoomsEditor";
 import ProposalOptionsEditor from "./ProposalOptionsEditor";
 import RoomBasedClientView from "./RoomBasedClientView";
-import { computeRoomBasedTotals, money, nextSortOrder } from "./roomBasedTotals";
+import { computeRoomBasedTotals, groupOptionsByRoom, money, nextSortOrder } from "./roomBasedTotals";
 
 const uid = (prefix) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
@@ -94,6 +94,13 @@ export default function RoomBasedEstimateWorkspace({ bidId, project, onClose, on
     return next.map((row, i) => ({ ...row, sort_order: i + 1 }));
   };
 
+  const mainFields = fields;
+  const { byRoom: upgradesByRoom } = groupOptionsByRoom(options);
+
+  const scrollToMainSelections = () => {
+    document.getElementById("room-based-job-info")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   // ── Rooms ────────────────────────────────────────────────────────────────
   const addRoom = (payload, isOptional) => {
     setRooms((prev) => [...prev, {
@@ -104,20 +111,57 @@ export default function RoomBasedEstimateWorkspace({ bidId, project, onClose, on
       price: payload.price || 0,
       is_optional: isOptional,
       selected: false,
+      use_main_selections: true,
+      selections: {},
       sort_order: nextSortOrder(prev),
     }]);
   };
   const updateRoom = (id, patch) => setRooms((prev) => prev.map((room) => room.id === id ? { ...room, ...patch } : room));
+
   const deleteRoom = (id) => {
-    setRooms((prev) => prev.filter((room) => room.id !== id));
-    // A removed room's upgrades become whole-job options instead of orphans.
-    setOptions((prev) => prev.map((option) => option.parent_room_id === id ? { ...option, parent_room_id: "", parent_room_name: "" } : option));
+    const room = rooms.find((row) => row.id === id);
+    const roomUpgrades = options.filter((option) => option.parent_room_id === id);
+    if (roomUpgrades.length > 0) {
+      const ok = window.confirm(`Delete ${room?.room_name || "this room"} and its ${roomUpgrades.length} upgrade${roomUpgrades.length === 1 ? "" : "s"}?`);
+      if (!ok) return;
+    }
+    setRooms((prev) => prev.filter((row) => row.id !== id));
+    setOptions((prev) => prev.filter((option) => option.parent_room_id !== id));
   };
-  const duplicateRoom = (id) => setRooms((prev) => {
-    const row = prev.find((room) => room.id === id);
-    if (!row) return prev;
-    return [...prev, { ...row, id: uid("room"), room_name: `${row.room_name || "Room"} (copy)`, sort_order: nextSortOrder(prev) }];
-  });
+
+  const duplicateRoom = (id) => {
+    const room = rooms.find((row) => row.id === id);
+    if (!room) return;
+    const newRoomId = uid("room");
+    const copiedName = `${room.room_name || "Room"} (copy)`;
+    const roomUpgrades = options.filter((option) => option.parent_room_id === id);
+    setRooms((prev) => [...prev, { ...room, id: newRoomId, room_name: copiedName, sort_order: nextSortOrder(prev) }]);
+    if (roomUpgrades.length > 0) {
+      setOptions((prev) => {
+        let order = nextSortOrder(prev);
+        return [...prev, ...roomUpgrades.map((option) => ({
+          ...option,
+          id: uid("opt"),
+          parent_room_id: newRoomId,
+          parent_room_name: copiedName,
+          sort_order: order++,
+        }))];
+      });
+    }
+  };
+
+  const setRoomUseMain = (id, useMain) => setRooms((prev) => prev.map((room) => {
+    if (room.id !== id) return room;
+    if (useMain) return { ...room, use_main_selections: true };
+    const existing = room.selections || {};
+    // Switching to the room's own: prefill with the main values so only the
+    // differences need typing. The main selections are never touched.
+    return { ...room, use_main_selections: false, selections: Object.keys(existing).length ? existing : { ...fields } };
+  }));
+
+  const updateRoomSelection = (id, patch) => setRooms((prev) => prev.map((room) =>
+    room.id === id ? { ...room, selections: { ...(room.selections || {}), ...patch } } : room
+  ));
   const moveRoom = (id, delta) => setRooms((prev) => {
     const moving = prev.find((room) => room.id === id);
     if (!moving) return prev;
@@ -128,19 +172,22 @@ export default function RoomBasedEstimateWorkspace({ bidId, project, onClose, on
     return prev.map((room) => (!!room.is_optional === !!moving.is_optional ? reordered[cursor++] : room));
   });
 
-  // ── Options ──────────────────────────────────────────────────────────────
-  const addOption = (payload) => setOptions((prev) => [...prev, {
-    id: uid("opt"),
-    title: payload.title,
-    description: payload.description,
-    price: payload.price || 0,
-    price_mode: "delta",
-    parent_room_id: "",
-    parent_room_name: "",
-    default_selected: false,
-    selected: false,
-    sort_order: nextSortOrder(prev),
-  }]);
+  // ── Options & upgrades ───────────────────────────────────────────────────
+  const addOption = (payload, roomId = "") => {
+    const room = rooms.find((row) => row.id === roomId);
+    setOptions((prev) => [...prev, {
+      id: uid("opt"),
+      title: payload.title,
+      description: payload.description || "",
+      price: payload.price || 0,
+      price_mode: payload.price_mode || "delta",
+      parent_room_id: roomId || "",
+      parent_room_name: room?.room_name || "",
+      default_selected: false,
+      selected: false,
+      sort_order: nextSortOrder(prev),
+    }]);
+  };
   const updateOption = (id, patch) => setOptions((prev) => prev.map((option) => option.id === id ? { ...option, ...patch } : option));
   const deleteOption = (id) => setOptions((prev) => prev.filter((option) => option.id !== id));
   const duplicateOption = (id) => setOptions((prev) => {
@@ -148,7 +195,18 @@ export default function RoomBasedEstimateWorkspace({ bidId, project, onClose, on
     if (!row) return prev;
     return [...prev, { ...row, id: uid("opt"), title: `${row.title || "Option"} (copy)`, sort_order: nextSortOrder(prev) }];
   });
-  const moveOption = (id, delta) => setOptions((prev) => reorder(prev, id, delta));
+  // Reorder within a room's own upgrades, or within the whole-job options when roomId is empty.
+  const moveOption = (id, delta, roomId = "") => setOptions((prev) => {
+    const siblings = prev.filter((option) => (option.parent_room_id || "") === (roomId || ""));
+    const index = siblings.findIndex((option) => option.id === id);
+    const target = index + delta;
+    if (index < 0 || target < 0 || target >= siblings.length) return prev;
+    const a = prev.findIndex((option) => option.id === siblings[index].id);
+    const b = prev.findIndex((option) => option.id === siblings[target].id);
+    const next = [...prev];
+    [next[a], next[b]] = [next[b], next[a]];
+    return next.map((option, i) => ({ ...option, sort_order: i + 1 }));
+  });
 
   const refreshCache = (id, data) => {
     queryClient.setQueryData(["bid", id], (old) => {
@@ -240,8 +298,9 @@ export default function RoomBasedEstimateWorkspace({ bidId, project, onClose, on
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         <div className="max-w-5xl mx-auto space-y-4">
           {/* Job fields */}
-          <Card className="p-4">
+          <Card className="p-4 scroll-mt-20" id="room-based-job-info">
             <p className="font-semibold text-slate-900 mb-3">Job Information</p>
+            <p className="text-xs text-slate-500 -mt-2 mb-3">These are the main selections every room inherits unless it has its own.</p>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs text-slate-500">Job Name</Label>
@@ -269,17 +328,30 @@ export default function RoomBasedEstimateWorkspace({ bidId, project, onClose, on
 
           <ProposalRoomsEditor
             rooms={standardRooms}
+            mainFields={mainFields}
+            upgradesByRoom={upgradesByRoom}
+            onEditMain={scrollToMainSelections}
             onAdd={addRoom}
             onChange={updateRoom}
             onMove={moveRoom}
             onDuplicate={duplicateRoom}
             onDelete={deleteRoom}
+            onAddUpgrade={(roomId, payload) => addOption(payload, roomId)}
+            onChangeOption={updateOption}
+            onMoveOption={moveOption}
+            onDuplicateOption={duplicateOption}
+            onDeleteOption={deleteOption}
+            onSetUseMain={setRoomUseMain}
+            onSelectionChange={updateRoomSelection}
           />
 
           <ProposalOptionsEditor
             options={options}
             optionalRooms={optionalRooms}
             rooms={rooms}
+            upgradesByRoom={upgradesByRoom}
+            mainFields={mainFields}
+            onEditMain={scrollToMainSelections}
             onAddOption={addOption}
             onChangeOption={updateOption}
             onMoveOption={moveOption}
@@ -290,6 +362,13 @@ export default function RoomBasedEstimateWorkspace({ bidId, project, onClose, on
             onMoveRoom={moveRoom}
             onDuplicateRoom={duplicateRoom}
             onDeleteRoom={deleteRoom}
+            onAddUpgrade={(roomId, payload) => addOption(payload, roomId)}
+            onChangeUpgrade={updateOption}
+            onMoveUpgrade={moveOption}
+            onDuplicateUpgrade={duplicateOption}
+            onDeleteUpgrade={deleteOption}
+            onSetUseMain={setRoomUseMain}
+            onSelectionChange={updateRoomSelection}
           />
 
           {/* Totals */}

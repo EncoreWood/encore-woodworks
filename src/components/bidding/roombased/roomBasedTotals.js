@@ -33,5 +33,16 @@ export function computeRoomBasedTotals({ rooms = [], options = [] } = {}) {
   };
 }
 
+/** Split options into the ones nested under a room and the whole-job ones. */
+export function groupOptionsByRoom(options = []) {
+  const byRoom = {};
+  const loose = [];
+  options.forEach((option) => {
+    if (option.parent_room_id) (byRoom[option.parent_room_id] = byRoom[option.parent_room_id] || []).push(option);
+    else loose.push(option);
+  });
+  return { byRoom, loose };
+}
+
 export const nextSortOrder = (rows = []) =>
   rows.reduce((max, row) => Math.max(max, Number(row?.sort_order) || 0), 0) + 1;

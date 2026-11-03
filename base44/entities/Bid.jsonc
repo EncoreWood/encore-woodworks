@@ -226,7 +226,7 @@
     },
     "proposal_rooms": {
       "type": "array",
-      "description": "Room-based proposals only: one priced row per room (no LF, no catalog items). Optional rooms live here with is_optional=true so they are excluded from the Standard Total.",
+      "description": "Room-based proposals only: one priced row per room (no LF, no catalog items). Optional rooms live here with is_optional=true so they are excluded from the Standard Total. Each room carries its own selection values and its upgrades nest under it via proposal_options.parent_room_id.",
       "items": {
         "type": "object",
         "properties": {
@@ -239,7 +239,7 @@
           },
           "finish": {
             "type": "string",
-            "description": "Wood type / finish shown in the Finish column, e.g. 'Paint Grade Perimeter / White Oak Island'"
+            "description": "Wood type / finish shown in the Finish column, e.g. 'Paint Grade Perimeter / White Oak Island'. When empty, the finish column is filled from the room's selections (or the main selections when the room inherits them)."
           },
           "items_of_recognition": {
             "type": "string",
@@ -259,6 +259,46 @@
             "default": false,
             "description": "Whether an optional room is currently selected on the proposal"
           },
+          "use_main_selections": {
+            "type": "boolean",
+            "default": true,
+            "description": "True (default) = this room inherits the proposal-level selections. False = the room uses its own values stored in `selections`."
+          },
+          "selections": {
+            "type": "object",
+            "description": "Per-room selection values used only when use_main_selections is false. Prefilled from the main selections when the room is switched to its own, so only the differences need entering.",
+            "properties": {
+              "cabinet_style": {
+                "type": "string"
+              },
+              "wood_species": {
+                "type": "string"
+              },
+              "finish": {
+                "type": "string",
+                "description": "Room-specific finish / color; fills the Finish column when the room row's finish is left blank"
+              },
+              "door_style": {
+                "type": "string"
+              },
+              "handles": {
+                "type": "string"
+              },
+              "drawerbox": {
+                "type": "string"
+              },
+              "drawer_glides": {
+                "type": "string"
+              },
+              "hinges": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "string",
+                "description": "Room-specific notes printed under the room on the proposal"
+              }
+            }
+          },
           "sort_order": {
             "type": "number",
             "description": "Display order within the Standard table / Options list"
@@ -268,7 +308,7 @@
     },
     "proposal_options": {
       "type": "array",
-      "description": "Room-based proposals only: upgrades and add-ons. An option may belong to a room (parent_room_id) and may be priced as a delta on that room or as an absolute amount.",
+      "description": "Room-based proposals only: upgrades and add-ons. An option may belong to a room (parent_room_id) and may be priced as a delta on that room or as an absolute amount. Options with a parent_room_id print nested beneath that room.",
       "items": {
         "type": "object",
         "properties": {

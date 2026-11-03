@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { Fragment, useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Printer, X, Mail, Loader2 } from "lucide-react";
 import { base44 } from "@/api/base44Client";
-import { computeRoomBasedTotals, money, signedMoney } from "./roomBasedTotals";
+import { computeRoomBasedTotals, groupOptionsByRoom, money, signedMoney } from "./roomBasedTotals";
+import { effectiveFinish, mainFieldsFromBid, roomSelectionLines, roomNotes } from "./roomSelections";
 
 const LOGO = "https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/6984bc8fae105e5a06a39d65/db639205f_ew_wood1.png";
 
@@ -47,6 +48,11 @@ export default function RoomBasedClientView({ open, onClose, bid, onSelectionSav
   if (!bid) return null;
 
   const totals = computeRoomBasedTotals({ rooms, options });
+  const mainFields = mainFieldsFromBid(bid);
+  const { byRoom: upgradesByRoom, loose: looseOptions } = groupOptionsByRoom(options);
+  const hasOptions = looseOptions.length > 0 || totals.optionalRooms.length > 0;
+  const standardUpgradeCount = totals.standardRooms
+    .reduce((count, room) => count + (upgradesByRoom[room.id] || []).length, 0);
   const dateLabel = bid.created_date
     ? new Date(bid.created_date).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })
     : new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
@@ -184,14 +190,48 @@ export default function RoomBasedClientView({ open, onClose, bid, onSelectionSav
             <tbody>
               {totals.standardRooms.length === 0 ? (
                 <tr><td colSpan={4} className="px-3 py-4 text-center text-slate-400 italic">No rooms added yet</td></tr>
-              ) : totals.standardRooms.map((room) => (
-                <tr key={room.id} className="border-b border-slate-200 align-top">
-                  <td className="px-3 py-2.5 font-semibold text-slate-900">{room.room_name || "—"}</td>
-                  <td className="px-3 py-2.5 text-slate-700">{room.finish || "—"}</td>
-                  <td className="px-3 py-2.5 text-slate-600">{room.items_of_recognition || "—"}</td>
-                  <td className="px-3 py-2.5 text-right font-semibold text-slate-900">{money(room.price)}</td>
-                </tr>
-              ))}
+              ) : totals.standardRooms.map((room) => {
+                const roomUpgrades = upgradesByRoom[room.id] || [];
+                const selectionLines = roomSelectionLines(room, mainFields);
+                const notes = roomNotes(room);
+                return (
+                  <Fragment key={room.id}>
+                    <tr className="border-b border-slate-200 align-top">
+                      <td className="px-3 py-2.5">
+                        <p className="font-semibold text-slate-900">{room.room_name || "—"}</p>
+                        {selectionLines.map((line) => (
+                          <p key={line.key} className="text-[11px] text-slate-500 leading-snug">{line.label}: {line.value}</p>
+                        ))}
+                        {notes && <p className="text-[11px] text-slate-400 italic leading-snug mt-0.5">{notes}</p>}
+                      </td>
+                      <td className="px-3 py-2.5 text-slate-700">{effectiveFinish(room, mainFields) || "—"}</td>
+                      <td className="px-3 py-2.5 text-slate-600">{room.items_of_recognition || "—"}</td>
+                      <td className="px-3 py-2.5 text-right font-semibold text-slate-900">{money(room.price)}</td>
+                    </tr>
+                    {roomUpgrades.map((option) => (
+                      <tr
+                        key={option.id}
+                        className={`border-b border-slate-100 ${option.selected ? "bg-green-50/70" : "bg-slate-50/80"}`}
+                      >
+                        <td colSpan={3} className="px-3 py-1.5 pl-8 border-l-2 border-amber-300">
+                          <label className="flex items-start gap-2 cursor-pointer">
+                            <Checkbox checked={!!option.selected} onCheckedChange={() => toggleOption(option.id)} className="mt-0.5" />
+                            <span className="min-w-0">
+                              <span className="text-sm text-slate-800">↳ {option.title || "Option"}</span>
+                              {option.description && (
+                                <span className="block text-[11px] text-slate-500 leading-relaxed">{option.description}</span>
+                              )}
+                            </span>
+                          </label>
+                        </td>
+                        <td className="px-3 py-1.5 text-right text-sm font-semibold text-green-700 whitespace-nowrap">
+                          {(option.price_mode || "delta") === "delta" ? signedMoney(option.price) : money(option.price)}
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr className="bg-amber-50 border-y-2 border-amber-800">
@@ -201,8 +241,14 @@ export default function RoomBasedClientView({ open, onClose, bid, onSelectionSav
             </tfoot>
           </table>
 
+          {standardUpgradeCount > 0 && (
+            <p className="text-[11px] text-slate-500 -mt-5 mb-6">
+              Upgrades shown beneath a room are optional and not included in the Standard Total.
+            </p>
+          )}
+
           {/* Options */}
-          {totals.hasOptions && (
+          {hasOptions && (
             <div className="options-section mb-8">
               <div className="flex items-center gap-2 mb-3">
                 <div className="h-px flex-1 bg-slate-200" />
@@ -214,41 +260,69 @@ export default function RoomBasedClientView({ open, onClose, bid, onSelectionSav
               </p>
 
               <div className="space-y-2">
-                {totals.options.map((option) => (
-                  <label
-                    key={option.id}
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${option.selected ? "border-green-400 bg-green-50/70" : "border-slate-200 bg-white hover:border-slate-300"}`}
-                  >
-                    <Checkbox checked={!!option.selected} onCheckedChange={() => toggleOption(option.id)} className="mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">{option.title || "Option"}</p>
-                      {option.description && <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">{option.description}</p>}
-                      {option.parent_room_name && (
-                        <p className="text-[11px] text-slate-400 mt-1 uppercase tracking-wide">Upgrade · {option.parent_room_name}</p>
+                {totals.optionalRooms.map((room) => {
+                  const roomUpgrades = upgradesByRoom[room.id] || [];
+                  const finish = effectiveFinish(room, mainFields);
+                  return (
+                    <div
+                      key={room.id}
+                      className={`rounded-lg border transition-colors ${room.selected ? "border-green-400 bg-green-50/70" : "border-slate-200 bg-white"}`}
+                    >
+                      <label className="flex items-start gap-3 p-3 cursor-pointer">
+                        <Checkbox checked={!!room.selected} onCheckedChange={() => toggleOptionalRoom(room.id)} className="mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-900">{room.room_name || "Optional room"}</p>
+                          {room.items_of_recognition && <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">{room.items_of_recognition}</p>}
+                          <p className="text-[11px] text-slate-400 mt-1 uppercase tracking-wide">
+                            Optional room{finish ? ` · ${finish}` : ""}
+                          </p>
+                        </div>
+                        <span className="text-sm font-bold text-green-700 whitespace-nowrap">{money(room.price)}</span>
+                      </label>
+
+                      {roomUpgrades.length > 0 && (
+                        <div className="pl-8 pr-3 pb-2 space-y-1">
+                          {roomUpgrades.map((option) => (
+                            <label
+                              key={option.id}
+                              className={`flex items-start gap-2 p-2 rounded-md border-l-2 border-green-300 cursor-pointer ${option.selected ? "bg-green-100/70" : "bg-slate-50/80"}`}
+                            >
+                              <Checkbox checked={!!option.selected} onCheckedChange={() => toggleOption(option.id)} className="mt-0.5" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-slate-800">↳ {option.title || "Option"}</p>
+                                {option.description && <p className="text-[11px] text-slate-500 leading-relaxed">{option.description}</p>}
+                              </div>
+                              <span className="text-sm font-semibold text-green-700 whitespace-nowrap">
+                                {(option.price_mode || "delta") === "delta" ? signedMoney(option.price) : money(option.price)}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
                       )}
                     </div>
-                    <span className="text-sm font-bold text-green-700 whitespace-nowrap">
-                      {(option.price_mode || "delta") === "delta" ? signedMoney(option.price) : money(option.price)}
-                    </span>
-                  </label>
-                ))}
+                  );
+                })}
 
-                {totals.optionalRooms.map((room) => (
-                  <label
-                    key={room.id}
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${room.selected ? "border-green-400 bg-green-50/70" : "border-slate-200 bg-white hover:border-slate-300"}`}
-                  >
-                    <Checkbox checked={!!room.selected} onCheckedChange={() => toggleOptionalRoom(room.id)} className="mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-slate-900">{room.room_name || "Optional room"}</p>
-                      {room.items_of_recognition && <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">{room.items_of_recognition}</p>}
-                      <p className="text-[11px] text-slate-400 mt-1 uppercase tracking-wide">
-                        Optional room{room.finish ? ` · ${room.finish}` : ""}
-                      </p>
-                    </div>
-                    <span className="text-sm font-bold text-green-700 whitespace-nowrap">{money(room.price)}</span>
-                  </label>
-                ))}
+                {looseOptions.length > 0 && (
+                  <div className="space-y-2 pt-1">
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">Additional options</p>
+                    {looseOptions.map((option) => (
+                      <label
+                        key={option.id}
+                        className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${option.selected ? "border-green-400 bg-green-50/70" : "border-slate-200 bg-white hover:border-slate-300"}`}
+                      >
+                        <Checkbox checked={!!option.selected} onCheckedChange={() => toggleOption(option.id)} className="mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-slate-900">{option.title || "Option"}</p>
+                          {option.description && <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">{option.description}</p>}
+                        </div>
+                        <span className="text-sm font-bold text-green-700 whitespace-nowrap">
+                          {(option.price_mode || "delta") === "delta" ? signedMoney(option.price) : money(option.price)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
