@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { LayoutDashboard, Hammer, Kanban as KanbanIcon, Calendar, Factory, Coffee, Users, MessageSquare, ChevronDown, ChevronLeft, Settings, Trash2, ArrowUp, ArrowDown, Play, Square,   Package, Clipboard, ShoppingCart, FileText, Wrench, Truck, Home, Building2, PieChart, BarChart3, FileText as FileTextIcon, Archive, StickyNote, UserCircle, Menu, X as XIcon, ArrowLeftRight, ArchiveX, ShoppingCart as ShoppingCartIcon, ListTodo, GraduationCap, Scissors, Frame, SprayCan, HardHat, Sparkles, BookOpen, Workflow, Pin, PinOff } from "lucide-react";
 import MobileTabBar from "@/components/MobileTabBar";
+import MobileNavDrawer from "@/components/MobileNavDrawer";
 import TopPageTabs from "@/components/TopPageTabs";
 import ClockInModal from "@/components/timesheet/ClockInModal";
 import CommandPalette from "@/components/CommandPalette";
@@ -678,6 +679,20 @@ export default function Layout({ children, currentPageName }) {
 
   const ALWAYS_ALLOWED = new Set(["AccountSettings", "PrivacyPolicy", "MyAssignments", "Trainings", "TimeSheet"]);
 
+  // Groups shown in the phone menu, already filtered by role and allowed pages
+  const mobileNavGroups = currentUser
+    ? Object.entries(navGroups)
+        .filter(([groupKey]) => !(groupKey === "admin" && currentUser.role !== "admin"))
+        .map(([key, group]) => ({
+          key,
+          name: group.name,
+          items: currentUser.role === "admin"
+            ? group.items
+            : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page) || ALWAYS_ALLOWED.has(item.page)),
+        }))
+        .filter(group => group.items.length > 0)
+    : [];
+
   return (
     <div className="h-screen overflow-hidden flex flex-col" style={{ backgroundColor: "#d1d5db" }}>
       {/* Neumorphic soft-UI treatment for the sidebar nav (adapted from Sidebar Nav 3) */}
@@ -815,75 +830,14 @@ export default function Layout({ children, currentPageName }) {
       {/* Mobile Tab Bar */}
       <MobileTabBar currentPageName={currentPageName} onOpenMenu={() => setMobileNavOpen(true)} />
 
-      {/* Mobile Nav Drawer — slides in from left, collapsible arrow tab */}
+      {/* Mobile Nav Drawer — portalled above the tab bar so taps and scroll work */}
       {mobileNavOpen && (
-        <div className="sm:hidden fixed inset-0 z-50 flex">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onPointerDown={(e) => { e.preventDefault(); setMobileNavOpen(false); }}
-          />
-          <div className="relative flex h-full">
-            {/* Drawer panel */}
-            <div className="encore-neu-surface relative w-64 h-full flex flex-col shadow-2xl overflow-y-auto" style={{ backgroundColor: "#9ca3af" }}>
-              {/* Logo mini */}
-              <div className="flex items-center justify-between px-3 py-2 border-b border-slate-400">
-                <span className="font-bold text-slate-900 text-sm">Menu</span>
-                <button onClick={() => setMobileNavOpen(false)} className="p-1 text-slate-800"><XIcon className="w-4 h-4" /></button>
-              </div>
-              <nav className="p-3 space-y-3 flex-1 overflow-y-auto">
-                {Object.entries(navGroups).map(([groupKey, group]) => {
-                  if (!currentUser) return null;
-                  if (groupKey === "admin" && currentUser.role !== "admin") return null;
-                  const visibleItems = currentUser.role === "admin"
-                    ? group.items
-                    : group.items.filter(item => USER_ALLOWED_PAGES.has(item.page) || ALWAYS_ALLOWED.has(item.page));
-                  if (visibleItems.length === 0) return null;
-                  return (
-                    <div key={groupKey}>
-                      <p className="text-xs font-bold text-slate-600 uppercase px-2 mb-1 tracking-wider">{group.name}</p>
-                      <div className="space-y-0.5">
-                        {visibleItems.map((item) => (
-                          <Link
-                            key={item.page}
-                            to={createPageUrl(item.page)}
-                            onPointerDown={() => setMobileNavOpen(false)}
-                            className="encore-neu-link flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium touch-manipulation select-none active:opacity-70 min-h-[40px]"
-                            data-active={currentPageName === item.page}
-                          >
-                            <item.icon className="w-3.5 h-3.5 flex-shrink-0" />
-                            <span>{item.name}</span>
-                            {item.page === "MyAssignments" && pendingTaskCount > 0 && (
-                              <span className="ml-auto min-w-[16px] h-[16px] px-1 flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold">
-                                {pendingTaskCount}
-                              </span>
-                            )}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </nav>
-              <div className="p-3 border-t border-slate-400">
-                <Link to={createPageUrl("AccountSettings")} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-800 text-xs font-medium">
-                  <UserCircle className="w-3.5 h-3.5" /> Account
-                </Link>
-              </div>
-            </div>
-            {/* Collapse arrow tab — large touch target on right edge */}
-            <div className="flex items-center">
-              <button
-                type="button"
-                onPointerDown={(e) => { e.preventDefault(); setMobileNavOpen(false); }}
-                className="flex items-center justify-center w-8 h-20 rounded-r-xl shadow-md border border-l-0 border-slate-400 text-slate-700 touch-manipulation select-none active:opacity-60"
-                style={{ backgroundColor: "#9ca3af" }}
-                title="Collapse menu"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
+        <MobileNavDrawer
+          groups={mobileNavGroups}
+          currentPageName={currentPageName}
+          pendingTaskCount={pendingTaskCount}
+          onClose={() => setMobileNavOpen(false)}
+        />
       )}
 
       {/* Clock In Modal */}
