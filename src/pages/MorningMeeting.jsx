@@ -22,7 +22,6 @@ import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidge
 import WeeklyTopicPopup from "@/components/meeting/WeeklyTopicPopup";
 import TodaysScheduleDropdown from "@/components/meeting/TodaysScheduleDropdown";
 import { format, addDays, subDays } from "date-fns";
-import { computeStagePoints, dayWindow, STAGE_FLOW } from "@/lib/stagePoints";
 
 const motivationalQuotes = [
   "Excellence is not a skill, it's an attitude.",
@@ -96,6 +95,8 @@ export default function MorningMeeting() {
   const [topicPopup, setTopicPopup] = useState(null); // topic object to show in popup
 
   const dateString = format(selectedDate, "yyyy-MM-dd");
+  // The production day being reviewed: the one before the meeting date.
+  const reviewDateStr = format(subDays(selectedDate, 1), "yyyy-MM-dd");
   const queryClient = useQueryClient();
 
   // Pause polling when any dialog/popup is open to avoid refreshing while user is editing
@@ -157,9 +158,13 @@ export default function MorningMeeting() {
     queryFn: () => base44.entities.EndOfDayReview.list("-submitted_at", 100)
   });
 
-  const { data: columnMoveLogs = [] } = useQuery({
-    queryKey: ["columnMoveLogsAll"],
-    queryFn: () => base44.entities.ColumnMoveLog.list("-moved_at", 500)
+  // Previous day's points by stage — the exact same calculation the Shop Production
+  // daily stage pills use (getProductionTodayPoints), so the two can never disagree.
+  const { data: reviewDayPoints } = useQuery({
+    queryKey: ["productionStagePoints", reviewDateStr],
+    queryFn: async () => (await base44.functions.invoke("getProductionTodayPoints", { date: reviewDateStr })).data,
+    staleTime: 30_000,
+    enabled: Boolean(reviewDateStr),
   });
 
   const { data: struggles = [] } = useQuery({
@@ -589,9 +594,9 @@ export default function MorningMeeting() {
           </SectionCard>
 
           {/* 4. Previous Day Review */}
-          <SectionCard title="Previous Day Review" icon={ClipboardList} color="blue" defaultOpen={true}>
+          <SectionCard title={`Previous Day Review — ${format(subDays(selectedDate, 1), "EEE, MMM d")}`} icon={ClipboardList} color="blue" defaultOpen={true}>
             {(() => {
-              const yesterday = format(subDays(selectedDate, 1), "yyyy-MM-dd");
+              const yesterday = reviewDateStr;
 
               // --- End of Day Reviews ---
               const RATING_ORDER = ["great", "good", "fuck_alright", "okay", "bad", "terrible"];
@@ -617,11 +622,14 @@ export default function MorningMeeting() {
                 { id: "complete",   label: "Complete",   color: "bg-green-100 text-green-800 border-green-200" },
                 // On Hold is a parking status, not a stage — it never earns points.
               ];
-              // Points produced by stage = cards that ARRIVED in each stage yesterday,
-              // netted against any reversal on the same card and stage that day.
-              const stagePts = computeStagePoints(columnMoveLogs, dayWindow(yesterday), STAGE_FLOW).points;
-              const totalPts = Object.values(stagePts).reduce((s, v) => s + v, 0);
+              // Points PRODUCED by each stage = the points of the cards that moved OUT of
+              // it that day — the same calculation the Shop Production daily stage pills
+              // use, read from getProductionTodayPoints on America/Denver day boundaries.
+              const stagePts = reviewDayPoints?.points || {};
+              const totalPts = Math.round(STAGE_CONFIG.reduce((s, { id }) => s + (stagePts[id] || 0), 0) * 100) / 100;
               const hasAnyData = yesterdayReviews.length > 0 || totalPts > 0;
+              // Nothing to say until the stage points for the reviewed day have arrived.
+              if (!reviewDayPoints && yesterdayReviews.length === 0) return null;
 
               if (!hasAnyData) return (
                 <p className="text-slate-400 text-sm text-center py-4">No data recorded for {format(subDays(selectedDate, 1), "MMMM d")}.</p>
@@ -645,6 +653,7 @@ export default function MorningMeeting() {
                         })}
                       </div>
                       <p className="text-right text-xs text-slate-400 mt-1">Total: <strong className="text-slate-700">{totalPts} pts</strong></p>
+                      <p className="text-[10px] text-slate-400 text-right">Points produced (moved out) on {format(subDays(selectedDate, 1), "EEEE, MMM d")}</p>
                     </div>
                   )}
 

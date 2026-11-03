@@ -6,7 +6,14 @@ export default async function(req) {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me().catch(error => error.status === 401 ? null : Promise.reject(error));
     if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-    const date = denverDay();
+    // Optional `date`: points for one specific production day (yyyy-MM-dd, Denver).
+    // Omitted, it returns today — so the shop pills and the previous-day review share
+    // this one calculation and can never disagree.
+    const body = await req.json().catch(() => ({}));
+    const requested = typeof body?.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.date) && Number.isFinite(new Date(`${body.date}T00:00:00.000Z`).getTime())
+      ? body.date
+      : null;
+    const date = requested || denverDay();
     // A broad UTC window contains the entire Denver day, including DST changes.
     // The calculation then checks every timestamp against the exact Denver date.
     const start = new Date(`${date}T00:00:00.000Z`);
