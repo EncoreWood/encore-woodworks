@@ -27,6 +27,15 @@
       "type": "boolean",
       "default": false,
       "description": "Whether to share this in the morning meeting"
+    },
+    "is_announced": {
+      "type": "boolean",
+      "default": false,
+      "description": "True once this well done has been announced in the morning meeting. Announced well dones drop off the meeting widget for every user."
+    },
+    "announced_at": {
+      "type": "string",
+      "description": "ISO timestamp of when it was marked announced (nullable)"
     }
   },
   "required": [

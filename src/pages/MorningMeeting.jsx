@@ -4,7 +4,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +18,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { startOfWeek } from "date-fns";
 import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
+import SectionCard from "@/components/meeting/SectionCard";
+import WellDoneWidget from "@/components/meeting/WellDoneWidget";
 import WeeklyTopicPopup from "@/components/meeting/WeeklyTopicPopup";
 import TodaysScheduleDropdown from "@/components/meeting/TodaysScheduleDropdown";
 import { format, addDays, subDays } from "date-fns";
@@ -39,41 +40,6 @@ const motivationalQuotes = [
   "Take pride in every cut, every joint, every finish.",
   "Attention to detail makes all the difference."
 ];
-
-function SectionCard({ title, icon: Icon, color, count, children, defaultOpen = false }) {
-  const [open, setOpen] = useState(defaultOpen);
-  const colors = {
-    red:    { border: "border-l-red-500",    header: "bg-gradient-to-r from-red-100 to-red-50",       text: "text-red-700",    badge: "bg-red-500 text-white",    icon: "text-red-600" },
-    amber:  { border: "border-l-amber-500",  header: "bg-gradient-to-r from-amber-100 to-yellow-50",  text: "text-amber-800",  badge: "bg-amber-500 text-white",  icon: "text-amber-600" },
-    blue:   { border: "border-l-blue-500",   header: "bg-gradient-to-r from-blue-100 to-sky-50",      text: "text-blue-800",   badge: "bg-blue-500 text-white",   icon: "text-blue-600" },
-    green:  { border: "border-l-green-500",  header: "bg-gradient-to-r from-green-100 to-emerald-50", text: "text-green-800",  badge: "bg-green-500 text-white",  icon: "text-green-600" },
-    purple: { border: "border-l-purple-500", header: "bg-gradient-to-r from-purple-100 to-violet-50", text: "text-purple-800", badge: "bg-purple-500 text-white", icon: "text-purple-600" },
-    slate:  { border: "border-l-slate-500",  header: "bg-gradient-to-r from-slate-200 to-slate-100",  text: "text-slate-700",  badge: "bg-slate-500 text-white",  icon: "text-slate-600" },
-    orange: { border: "border-l-orange-500", header: "bg-gradient-to-r from-orange-100 to-amber-50",  text: "text-orange-800", badge: "bg-orange-500 text-white", icon: "text-orange-600" },
-  };
-  const c = colors[color] || colors.slate;
-
-  return (
-    <Card className={`overflow-hidden border-l-[6px] ${c.border} shadow-xl`}>
-      <button
-        className={`w-full flex items-center justify-between px-6 py-5 ${c.header} hover:brightness-95 transition-all`}
-        onClick={() => setOpen(o => !o)}
-      >
-        <div className="flex items-center gap-3">
-          <Icon className={`w-6 h-6 ${c.icon}`} />
-          <span className={`text-xl font-extrabold ${c.text}`}>{title}</span>
-        </div>
-        <div className="flex items-center gap-3">
-          {count !== undefined && (
-            <span className={`text-sm font-bold px-3 py-1 rounded-full shadow-sm ${c.badge}`}>{count}</span>
-          )}
-          <ChevronDown className={`w-5 h-5 ${c.text} transition-transform ${open ? "rotate-180" : ""}`} />
-        </div>
-      </button>
-      {open && <div className="p-5">{children}</div>}
-    </Card>
-  );
-}
 
 export default function MorningMeeting() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -170,11 +136,6 @@ export default function MorningMeeting() {
   const { data: struggles = [] } = useQuery({
     queryKey: ["struggles"],
     queryFn: () => base44.entities.Struggle.list("-created_date", 50)
-  });
-
-  const { data: compliments = [] } = useQuery({
-    queryKey: ["compliments"],
-    queryFn: () => base44.entities.Compliment.list("-submitted_at", 50)
   });
 
   // Persistent announcements and teach items from DailyNote
@@ -740,43 +701,8 @@ export default function MorningMeeting() {
             })()}
           </SectionCard>
 
-          {/* Compliments */}
-          {(() => {
-            // Use previous workday so Monday meetings show Friday's compliments (not Sunday's)
-            const dayOfWeek = selectedDate.getDay();
-            const prevWorkday = dayOfWeek === 1 ? subDays(selectedDate, 3) : subDays(selectedDate, 1);
-            const prevWorkdayStr = format(prevWorkday, "yyyy-MM-dd");
-            const prevWorkdayCompliments = compliments.filter(c => c.date === prevWorkdayStr);
-            const recentCompliments = compliments.slice(0, 5);
-            const displayCompliments = prevWorkdayCompliments.length > 0 ? prevWorkdayCompliments : recentCompliments;
-            const isShowingPrevWorkday = prevWorkdayCompliments.length > 0;
-            return (
-              <SectionCard title="Well Done! 🎉" icon={Sparkles} color="amber" count={displayCompliments.length} defaultOpen={isShowingPrevWorkday}>
-                {displayCompliments.length === 0 ? (
-                  <div className="flex items-center justify-center gap-2 py-4 text-slate-400">
-                    <span className="text-sm">No compliments yet. Give one from the Production board!</span>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {!isShowingPrevWorkday && (
-                      <p className="text-xs text-slate-400 text-center mb-2">Showing recent compliments (none from {format(prevWorkday, "EEEE")})</p>
-                    )}
-                    {displayCompliments.map(c => (
-                      <div key={c.id} className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">{c.from}</span>
-                          <span className="text-xs text-slate-400">→</span>
-                          <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">{c.to}</span>
-                          <span className="text-xs text-slate-400 ml-auto">{c.date}</span>
-                        </div>
-                        <p className="text-sm text-slate-700 leading-relaxed">"{c.message}"</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </SectionCard>
-            );
-          })()}
+          {/* Well dones — last 7 days, unannounced only */}
+          <WellDoneWidget />
 
           {/* Struggles & Solutions */}
           {(() => {
