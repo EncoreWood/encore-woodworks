@@ -85,8 +85,10 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Employee.list()
   });
 
+  // Its own cache key: a 200-card subset under the board's key would replace the
+  // board's full card list with a partial one.
   const { data: productionItems = [] } = useQuery({
-    queryKey: ["productionItems"],
+    queryKey: ["productionItems", "recent"],
     queryFn: () => base44.entities.ProductionItem.list("-updated_date", 200),
     staleTime: 30_000,
     refetchOnWindowFocus: false,
@@ -95,9 +97,9 @@ export default function Dashboard() {
   // Real-time sync: keep production items current without polling
   useEffect(() => {
     const unsub = base44.entities.ProductionItem.subscribe((event) => {
-      queryClient.setQueryData(["productionItems"], (old = []) => {
+      queryClient.setQueryData(["productionItems", "recent"], (old = []) => {
         if (event.type === "create") return [...old, event.data];
-        if (event.type === "update") return old.map(i => i.id === event.id ? event.data : i);
+        if (event.type === "update") return old.map(i => i.id === event.id ? { ...i, ...event.data } : i);
         if (event.type === "delete") return old.filter(i => i.id !== event.id);
         return old;
       });

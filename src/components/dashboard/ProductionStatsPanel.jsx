@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { denverDateStr } from "@/lib/stagePoints";
-import useProductionTodayPoints from "@/hooks/useProductionTodayPoints";
-import useProductionStageWindowPoints from "@/hooks/useProductionStageWindowPoints";
+import useProductionBoardPoints from "@/hooks/useProductionBoardPoints";
 
 const STAT_STAGES = ["face_frame", "spray", "build", "complete"];
 const STAT_LABELS = { face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete" };
@@ -24,9 +23,15 @@ export default function ProductionStatsPanel() {
 
   // Same server calculation as the production board's daily pills: D is that exact
   // number, W/M sum it day by day across the window.
-  const { data: todayPoints } = useProductionTodayPoints(true);
-  const { data: weekPoints } = useProductionStageWindowPoints(weekStartStr, todayStr, true);
-  const { data: monthPoints } = useProductionStageWindowPoints(monthStartStr, todayStr, true);
+  // One call for day, week and month: the server reads the board's cards once.
+  const { data: boardPoints } = useProductionBoardPoints({
+    enabled: true,
+    weekFrom: weekStartStr,
+    monthFrom: monthStartStr,
+  });
+  const todayPoints = boardPoints;
+  const weekPoints = boardPoints?.windows?.week;
+  const monthPoints = boardPoints?.windows?.month;
 
   // Days elapsed this month, for the Avg/Day figure
   const daysElapsed = Number(todayStr.slice(8, 10)) || 1;

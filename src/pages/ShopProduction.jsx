@@ -20,7 +20,7 @@ import ProductionItemForm from "../components/production/ProductionItemForm";
 import RoomWorkspace from "../components/production/room-workspace/RoomWorkspace";
 import PDFAnnotator from "../components/production/PDFAnnotator";
 import PickupItemForm from "../components/pickup/PickupItemForm";
-import ProductionCard from "../components/production/ProductionCard";
+import SafeProductionCard from "../components/production/SafeProductionCard";
 import JobPacketsTab from "../components/production/JobPacketsTab";
 import ProductionMissingItemsTab from "../components/production/ProductionMissingItemsTab";
 import ProductionChatTab from "../components/production/ProductionChatTab";
@@ -29,8 +29,8 @@ import MobileCompactCard from "../components/production/MobileCompactCard";
 import { formatStagePoints } from "@/lib/stagePoints";
 import { computeTotalPoints, pointsAuditEntry } from "@/lib/cardPoints";
 import persistProductionMove, { productionMovePatch } from "@/lib/productionMoves";
-import useProductionTodayPoints from "@/hooks/useProductionTodayPoints";
-import useProductionStageWindowPoints from "@/hooks/useProductionStageWindowPoints";
+import useProductionBoardPoints from "@/hooks/useProductionBoardPoints";
+import BoardErrorBanner from "../components/production/BoardErrorBanner";
 import { holdUpdates } from "@/lib/updateGuards";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProductionChatUnread } from "../components/production/useProductionChatUnread";
@@ -120,13 +120,23 @@ export default function ShopProduction() {
   // Pause background polling when any modal/form is open — prevents refresh interrupting edits
   const anyModalOpen = showForm || !!pickupItem || !!reportingStruggle || givingCompliment || !!reportingMissing || !!quickReportItem || showEndOfDay || !!annotatingPdf || !!sendToCutItem || !!cutFromPlan;
 
-  const { data: items = [] } = useQuery({
+  const {
+    data: items = [],
+    isError: itemsError,
+    error: itemsErrorDetails,
+    refetch: refetchItems,
+  } = useQuery({
     queryKey: ["productionItems"],
     queryFn: () => base44.entities.ProductionItem.list(),
     staleTime: 30_000,
     // Real-time subscriptions handle instant updates; polling is just a safety net
     refetchInterval: anyModalOpen ? false : 60_000,
   });
+
+  // A failed card fetch must never read as "the board is empty" — keep the reason.
+  useEffect(() => {
+    if (itemsError) console.error("Failed to load production cards:", itemsErrorDetails);
+  }, [itemsError, itemsErrorDetails]);
 
   // Child cards split off a parent card — missing-items cards and cut cards
   const itemsById = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
@@ -162,16 +172,30 @@ export default function ShopProduction() {
     refetchInterval: anyModalOpen ? false : 60_000,
   });
 
+  // A burst of card events must not fire a points recalculation each time: that alone
+  // can exhaust the app's entity-read budget and stall the whole board.
+  const pointsRefreshTimer = useRef(null);
+  const refreshPointsSoon = useCallback(() => {
+    if (pointsRefreshTimer.current) return;
+    pointsRefreshTimer.current = setTimeout(() => {
+      pointsRefreshTimer.current = null;
+      queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] });
+    }, 4000);
+  }, [queryClient]);
+  useEffect(() => () => clearTimeout(pointsRefreshTimer.current), []);
+
   // Real-time subscriptions
   useEffect(() => {
     const unsubItems = base44.entities.ProductionItem.subscribe((event) => {
       queryClient.setQueryData(["productionItems"], (old = []) => {
         if (event.type === "create") return [...old, event.data];
-        if (event.type === "update") return old.map(i => i.id === event.id ? event.data : i);
+        // Merge: an update event can carry only the changed fields, and replacing the
+        // card would drop its stage and take it off the board.
+        if (event.type === "update") return old.map(i => i.id === event.id ? { ...i, ...event.data } : i);
         if (event.type === "delete") return old.filter(i => i.id !== event.id);
         return old;
       });
-      queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] });
+      refreshPointsSoon();
     });
     const unsubLogs = base44.entities.ColumnMoveLog.subscribe((event) => {
       queryClient.setQueryData(["columnMoveLogs"], (old = []) => {
@@ -180,7 +204,7 @@ export default function ShopProduction() {
       });
     });
     return () => { unsubItems(); unsubLogs(); };
-  }, [queryClient]);
+  }, [queryClient, refreshPointsSoon]);
 
   // Projects in an active status, plus any project with production cards on the board
   // (e.g. an early-status job whose cards were sent to production) — so they still show in Job Packets.
@@ -479,13 +503,25 @@ export default function ShopProduction() {
     else setCurrentAnnotations(annotations);
   };
 
-  // PTS stats — every window goes through the one server calculation the pills use
-  const { data: todayPoints, isError: todayPointsError, date: todayStr } = useProductionTodayPoints(!!currentUser);
+  // PTS stats — day, week and month arrive from ONE server call that reads the board's
+  // cards once. Asking three times is what tripped the entity-read limit.
   const nowLocal = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Denver" }));
   const weekStartStr = format(startOfWeek(nowLocal, { weekStartsOn: 1 }), "yyyy-MM-dd");
   const monthStartStr = format(startOfMonth(nowLocal), "yyyy-MM-dd");
-  const { data: weekPoints } = useProductionStageWindowPoints(weekStartStr, todayStr, !!currentUser);
-  const { data: monthPoints } = useProductionStageWindowPoints(monthStartStr, todayStr, !!currentUser);
+  const boardPoints = useProductionBoardPoints({
+    enabled: !!currentUser,
+    weekFrom: weekStartStr,
+    monthFrom: monthStartStr,
+  });
+  const todayStr = boardPoints.date;
+  const todayPoints = boardPoints.data;
+  const todayPointsError = boardPoints.isError;
+  const weekPoints = boardPoints.data?.windows?.week;
+  const monthPoints = boardPoints.data?.windows?.month;
+
+  useEffect(() => {
+    if (todayPointsError) console.error("Failed to calculate production points:", boardPoints.error);
+  }, [todayPointsError, boardPoints.error]);
 
   const STAT_STAGES = ["face_frame", "spray", "build", "complete"];
   const STAT_LABELS = { face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete" };
@@ -693,7 +729,7 @@ export default function ShopProduction() {
     const proj = projects.find(p => p.id === item.project_id);
     const hasRoom = proj?.rooms?.some(r => r.room_name === item.room_name);
     const card = (
-      <ProductionCard
+      <SafeProductionCard
         item={item}
         {...sharedCardProps}
         roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
@@ -743,6 +779,11 @@ export default function ShopProduction() {
 
           {/* ── PRODUCTION TAB ── */}
           <TabsContent value="production" className="mt-0">
+            <BoardErrorBanner
+              itemsError={itemsError ? itemsErrorDetails?.message : null}
+              pointsError={todayPointsError ? boardPoints.error?.message : null}
+              onRetry={() => { refetchItems(); boardPoints.refetch(); }}
+            />
             <DragDropContext onDragEnd={handleDragEnd}>
               {/* Focused-stage banner */}
               {focusStage && (
@@ -889,7 +930,7 @@ export default function ShopProduction() {
                                           moveStages={productionColumns.filter(c => c.id !== item.stage).map(c => ({ id: c.id, label: c.label.replace(/^\d+\.\s*/, "") }))}
                                           onMove={(stageId) => handleMobileMove(item, stageId)}
                                         >
-                                          <ProductionCard
+                                          <SafeProductionCard
                                             item={item}
                                             {...sharedCardProps}
                                             roomCadFiles={getRoomCadFiles(item.project_id, item.room_name)}
@@ -899,7 +940,7 @@ export default function ShopProduction() {
                                           />
                                         </MobileCompactCard>
                                       ) : (
-                                        <ProductionCard
+                                        <SafeProductionCard
                                           item={item}
                                           compact
                                           {...sharedCardProps}
@@ -932,7 +973,7 @@ export default function ShopProduction() {
                                              moveStages={productionColumns.filter(c => c.id !== item.stage).map(c => ({ id: c.id, label: c.label.replace(/^\d+\.\s*/, "") }))}
                                              onMove={(stageId) => handleMobileMove(item, stageId)}
                                            >
-                                             <ProductionCard
+                                             <SafeProductionCard
                                                item={item}
                                                isDragging={snapshot.isDragging}
                                                {...sharedCardProps}
@@ -943,7 +984,7 @@ export default function ShopProduction() {
                                              />
                                            </MobileCompactCard>
                                          ) : (
-                                           <ProductionCard
+                                           <SafeProductionCard
                                              item={item}
                                              isDragging={snapshot.isDragging}
                                              {...sharedCardProps}

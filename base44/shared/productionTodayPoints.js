@@ -58,8 +58,11 @@ export function movePoints(move, fallbackPoints) {
  * Rows keep their timestamp, so day windows still work.
  */
 export function genuineStageMoves(item) {
-  const moves = (item.stage_move_log || [])
-    .filter(move => move.timestamp && Number.isFinite(new Date(move.timestamp).getTime()))
+  // A card written before the trail existed (or holding a damaged value) simply has
+  // no moves — never assume the array is there.
+  const log = Array.isArray(item?.stage_move_log) ? item.stage_move_log : [];
+  const moves = log
+    .filter(move => move && move.timestamp && Number.isFinite(new Date(move.timestamp).getTime()))
     .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   const trail = [];
   let stage = null; // the genuine stage the card is actually sitting in
@@ -92,6 +95,32 @@ export function listDenverDays(from, to) {
 }
 
 /**
+ * One card's point value plus its genuine, timestamped moves. Returns null when the
+ * card cannot be read at all, so a single damaged record is skipped instead of
+ * failing the whole calculation and zeroing every column with it.
+ */
+function readCard(item) {
+  try {
+    const stored = Number(item?.total_points);
+    const fallbackPoints = Number.isFinite(stored) ? stored : 0;
+    return {
+      fallbackPoints,
+      currentIndex: stageIndex(item?.stage),
+      moves: genuineStageMoves(item).map(move => ({
+        at: new Date(move.timestamp).getTime(),
+        fromIdx: stageIndex(move.from_stage),
+        toIdx: stageIndex(move.to_stage),
+        // The move's own snapshot — never today's edited card value
+        points: movePoints(move, fallbackPoints)
+      }))
+    };
+  } catch (error) {
+    console.error("Skipped a production card in the points tally:", error);
+    return null;
+  }
+}
+
+/**
  * Production stages keep their existing per-day departure/stage-crossing rule.
  * Complete is the exception: credit each card that arrived during the requested
  * Denver window and remained finished at its end, once per card. A later departure
@@ -105,26 +134,19 @@ export function getStageDayPoints(items, from, to) {
   if (!days.length) return totals;
 
   const today = denverDay();
-  const cards = (items || []).map(item => {
-    const stored = Number(item.total_points);
-    const fallbackPoints = Number.isFinite(stored) ? stored : 0;
-    return {
-      fallbackPoints,
-      currentIndex: stageIndex(item.stage),
-      moves: genuineStageMoves(item).map(move => ({
-        at: new Date(move.timestamp).getTime(),
-        fromIdx: stageIndex(move.from_stage),
-        toIdx: stageIndex(move.to_stage),
-        // The move's own snapshot — never today's edited card value
-        points: movePoints(move, fallbackPoints)
-      }))
-    };
-  });
+  const cards = [];
+  for (const item of Array.isArray(items) ? items : []) {
+    const card = readCard(item);
+    if (card) cards.push(card);
+  }
 
   // Complete counts arrivals, not departures. Evaluate the entire D/W/M window
   // together so repeated completion/rework cycles never count a card twice.
-  const windowStart = denverDayStart(days[0]).getTime();
-  const windowEnd = denverDayStart(nextDenverDay(days[days.length - 1])).getTime();
+  const windowStartDay = denverDayStart(days[0]);
+  const windowEndDay = denverDayStart(nextDenverDay(days[days.length - 1]));
+  if (!windowStartDay || !windowEndDay) return totals;
+  const windowStart = windowStartDay.getTime();
+  const windowEnd = windowEndDay.getTime();
   const completeIndex = stageIndex("complete");
   for (const card of cards) {
     let arrivedPoints = null;
@@ -138,8 +160,11 @@ export function getStageDayPoints(items, from, to) {
   }
 
   for (const day of days) {
-    const start = denverDayStart(day).getTime();
-    const end = denverDayStart(nextDenverDay(day)).getTime();
+    const startDay = denverDayStart(day);
+    const endDay = denverDayStart(nextDenverDay(day));
+    if (!startDay || !endDay) continue;
+    const start = startDay.getTime();
+    const end = endDay.getTime();
     for (const card of cards) {
       if (!card.moves.length) continue;
       // Stages the card was actually sitting in and left that day → the points that
@@ -181,21 +206,18 @@ export function getStageDaySeries(items, day) {
   const start = denverDayStart(day);
   if (!start) return series;
   const startMs = start.getTime();
-  const endMs = denverDayStart(nextDenverDay(day)).getTime();
+  const endDay = denverDayStart(nextDenverDay(day));
+  if (!endDay) return series;
+  const endMs = endDay.getTime();
   const minuteOf = ms => Math.round((ms - startMs) / 60000);
   const today = denverDay();
   const completeIndex = stageIndex("complete");
   const deltas = Object.fromEntries(todayPointFlow.map(stage => [stage, []]));
 
-  for (const item of (items || [])) {
-    const stored = Number(item.total_points);
-    const fallbackPoints = Number.isFinite(stored) ? stored : 0;
-    const moves = genuineStageMoves(item).map(move => ({
-      at: new Date(move.timestamp).getTime(),
-      fromIdx: stageIndex(move.from_stage),
-      toIdx: stageIndex(move.to_stage),
-      points: movePoints(move, fallbackPoints)
-    }));
+  for (const item of Array.isArray(items) ? items : []) {
+    const card = readCard(item);
+    if (!card) continue;
+    const { moves } = card;
     const todaysMoves = moves.filter(move => move.at >= startMs && move.at < endMs);
     if (!todaysMoves.length) continue;
 

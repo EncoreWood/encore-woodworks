@@ -31,8 +31,10 @@ export default function EmployeeDashboard() {
     queryFn: () => base44.entities.Project.list("-created_date")
   });
 
+  // Its own cache key: a 200-card subset under the board's key would replace the
+  // board's full card list with a partial one.
   const { data: productionItems = [] } = useQuery({
-    queryKey: ["productionItems"],
+    queryKey: ["productionItems", "recent"],
     queryFn: () => base44.entities.ProductionItem.list("-updated_date", 200)
   });
 
