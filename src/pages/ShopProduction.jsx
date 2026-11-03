@@ -27,6 +27,7 @@ import ProductionChatTab from "../components/production/ProductionChatTab";
 import MoveHistoryTab from "../components/production/MoveHistoryTab";
 import MobileCompactCard from "../components/production/MobileCompactCard";
 import { formatStagePoints } from "@/lib/stagePoints";
+import { computeTotalPoints, totalPointsPatch } from "@/lib/cardPoints";
 import persistProductionMove, { productionMovePatch } from "@/lib/productionMoves";
 import useProductionTodayPoints from "@/hooks/useProductionTodayPoints";
 import useProductionStageWindowPoints from "@/hooks/useProductionStageWindowPoints";
@@ -183,7 +184,11 @@ export default function ShopProduction() {
   };
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.ProductionItem.create(data),
+    // A new card is worth its uploaded files' points from the moment it exists
+    mutationFn: (data) => base44.entities.ProductionItem.create({
+      ...data,
+      total_points: computeTotalPoints({ files: data.files, pts: data.pts }),
+    }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["productionItems"] }); setShowForm(false); setEditingItem(null); setPacketsFormContext(null); }
   });
 
