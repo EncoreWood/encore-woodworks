@@ -91,6 +91,7 @@ export default async function (req) {
     }
 
     const sends = recipients.map(async (person) => {
+      // Bell notification only — the reminder is never posted into Production Chat.
       await svc.entities.Notification.create({
         user_email: person.email,
         title: "End of day review is due",
@@ -100,13 +101,6 @@ export default async function (req) {
         action: "end_of_day",
         read: false,
         date: shop.date,
-      });
-      await svc.entities.ProductionChatMessage.create({
-        message: `@${person.name} End of day review is due — submit it and clock out.`,
-        user_name: "Encore Shop",
-        user_email: "system",
-        mentions: [{ name: person.name, email: person.email }],
-        action: "end_of_day",
       });
       return person.email;
     });

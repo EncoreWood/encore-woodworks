@@ -1,13 +1,13 @@
 {
   "name": "End of Day Review Reminder",
-  "description": "Checks every 10 minutes and, when shop time (America/Denver) falls in the 5:25 PM window on a weekday, reminds employees who are clocked in and haven't submitted their End of Day Review \u2014 bell notification plus a Production Chat mention that opens the review. Sending is DST-safe and once per person per day.",
+  "description": "Runs at 5:25 and 5:35 PM shop time (America/Denver) on a weekday and, when the clock is inside the 5:25 PM window, reminds employees who are clocked in and haven't submitted their End of Day Review \u2014 bell notification only (never posted into Production Chat). Sending is DST-safe and once per person per day.",
   "trigger": {
     "condition": null,
     "config": {
       "trigger_type": "scheduled",
       "events": [],
       "schedule_mode": "recurring",
-      "cron_expression": "*/10 * * * *",
+      "cron_expression": "25,35 * * * *",
       "one_time_date": null,
       "timezone": "America/Denver",
       "interval_value": null,

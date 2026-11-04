@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import PacingHeaderSummary from "./pacing/PacingHeaderSummary";
 import StageStrip from "./StageStrip";
+import { useEodWindow } from "@/hooks/useEodWindow";
 
 // Compact header: title + subtitle (subtitle only on wide screens) on the left, and on
 // the right the pacing chip, today's per-stage strip, action icons, then Add Item.
@@ -26,9 +27,12 @@ export default function ProductionHeader({
   onMistake,
   onAddItem,
 }) {
+  // Pulses only during the 5:25–5:35 PM shop-time reminder window.
+  const eodWindow = useEodWindow();
+
   const actions = [
     { key: "missing", label: "Report Missing", icon: PackageX, onClick: onReportMissing, className: "border-orange-300 text-orange-600 hover:bg-orange-50" },
-    { key: "end_of_day", label: "End of Day", icon: Sunset, onClick: onEndOfDay, className: "border-amber-300 text-amber-700 hover:bg-amber-50" },
+    { key: "end_of_day", label: "End of Day", icon: Sunset, onClick: onEndOfDay, className: "border-amber-300 text-amber-700 hover:bg-amber-50", highlight: eodWindow },
     { key: "struggle", label: "Report Struggle", icon: AlertTriangle, onClick: onReportStruggle, className: "border-red-300 text-red-600 hover:bg-red-50" },
     { key: "well_done", label: "Well Done", emoji: "🎉", onClick: onWellDone, className: "border-amber-300 text-amber-600 hover:bg-amber-50" },
     { key: "mistake", label: "Report Mistake", icon: AlertTriangle, onClick: onMistake, className: "border-red-300 text-red-600 hover:bg-red-50" },
@@ -46,7 +50,9 @@ export default function ProductionHeader({
         size="icon"
         title={action.label}
         aria-label={action.label}
-        className={`h-8 w-8 flex-shrink-0 ${action.className}`}
+        className={`h-8 w-8 flex-shrink-0 ${action.className} ${
+          action.highlight ? "animate-pulse ring-2 ring-amber-400" : ""
+        }`}
       >
         {Icon ? <Icon className="w-4 h-4" /> : <span className="text-sm leading-none">{action.emoji}</span>}
       </Button>

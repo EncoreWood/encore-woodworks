@@ -58,7 +58,7 @@
     },
     "action": {
       "type": "string",
-      "description": "Optional in-app action the message carries \u2014 'end_of_day' renders an Open End of Day Review button"
+      "description": "Legacy in-app action field. Automated system messages are no longer written to this entity \u2014 reminders go to the bell."
     },
     "task_id": {
       "type": "string",
@@ -72,5 +72,10 @@
   "required": [
     "message",
     "user_name"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
 }

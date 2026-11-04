@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
+import { shopTime } from '@/lib/shopTime';
 import { createPortal } from 'react-dom';
 import { Plus, Trash2, Send, Paperclip, X, ExternalLink, FileText, Image, Settings, Hash, Reply, CornerUpLeft, Menu, ChevronRight } from 'lucide-react';
 import {
@@ -189,7 +190,7 @@ function RoomItem({ room, selectedRoomId, unreadCounts = {}, projects = [], onSe
 
 function MessageBubble({ msg, currentUser, onReply, replySource, accentColor, onImageClick }) {
   const isMe = msg.user_name === (currentUser?.full_name || currentUser?.email);
-  const time = msg.created_date ? new Date(msg.created_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  const time = shopTime(msg.created_date);
 
   return (
     <div className={`group flex gap-3 px-4 py-1.5 hover:bg-black/[0.03] rounded-lg transition-colors ${isMe ? 'flex-row-reverse' : ''}`}>

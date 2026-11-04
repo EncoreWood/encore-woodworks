@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { format } from "date-fns";
+import { shopTime } from "@/lib/shopTime";
 import { CheckCircle2, Circle, Check, ChevronLeft, ChevronRight, Download, MessageSquare, Send, X, DollarSign, Image, FileText, Calendar, MapPin, User, ClipboardList, StickyNote, Clock, DoorOpen, Paperclip, Box } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GanttChart from "@/components/projects/GanttChart";
@@ -238,7 +239,7 @@ function Messages({ projectId, user }) {
                     ))}
                   </div>
                 )}
-                <p className={`text-xs mt-0.5 ${mine ? "text-amber-100" : "text-slate-400"}`}>{m.created_date ? format(new Date(m.created_date), "h:mm a") : ""}</p>
+                <p className={`text-xs mt-0.5 ${mine ? "text-amber-100" : "text-slate-400"}`}>{shopTime(m.created_date)}</p>
               </div>
             </div>
           );

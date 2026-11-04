@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
-import { format } from "date-fns";
+import { shopStamp } from "@/lib/shopTime";
 import { Send, Loader2, MessageSquare, Paperclip, X, FileText, Image as ImageIcon, Plus, Check, FolderPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -185,7 +185,7 @@ export default function ProjectChatTab({ project }) {
                   )}
                   {m.created_date && (
                     <p className={`text-xs mt-0.5 ${mine ? "text-amber-100" : "text-slate-400"}`}>
-                      {format(new Date(m.created_date), "MMM d, h:mm a")}
+                      {shopStamp(m.created_date)}
                     </p>
                   )}
                 </div>
