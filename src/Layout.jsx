@@ -52,7 +52,6 @@ export default function Layout({ children, currentPageName }) {
     projects: true,
     operations: true,
     team: true,
-    lean: true,
     shop_areas: true
   });
   const [currentUser, setCurrentUser] = useState(null);
@@ -151,13 +150,6 @@ export default function Layout({ children, currentPageName }) {
           { name: "My Assignments", icon: ListTodo, iconName: "ListTodo", page: "MyAssignments" },
           { name: "Flow", icon: Workflow, iconName: "Workflow", page: "Flow" },
           { name: "Privacy Policy", icon: FileText, iconName: "FileText", page: "PrivacyPolicy" }
-      ]
-    },
-    lean: {
-      name: "Lean",
-      items: [
-        { name: "Group Lean", icon: Users, iconName: "Users", page: "GroupLean" },
-        { name: "Individual Lean", icon: Users, iconName: "Users", page: "IndividualLean" }
       ]
     },
     shop_areas: {

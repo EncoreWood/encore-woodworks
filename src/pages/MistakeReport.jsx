@@ -244,9 +244,13 @@ function WizardTab() {
       photos: data.photos, status: "Submitted",
     });
     if (data.sop_task_created) {
-      await base44.entities.GroupLeanItem.create({
-        title: `Create SOP: ${data.stem_of_mistake}`, category: "Training",
-        priority: "high", status: "open", assigned_to: "",
+      // SOP follow-ups live with the shop-wide lean records (Shop Areas → General).
+      await base44.entities.ShopAreaRecord.create({
+        area: "General",
+        section: "lean",
+        title: `Create SOP: ${data.stem_of_mistake}`,
+        description: "Raised from a mistake report where no SOP was followed.",
+        status: "Idea",
       });
     }
     setSubmitting(false);

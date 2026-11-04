@@ -12,7 +12,7 @@ export const SHOP_AREAS = [
   { name: "Delivery", page: "ShopAreaDelivery", icon: Truck, blurb: "Loading, transport and site delivery" },
   { name: "Install", page: "ShopAreaInstall", icon: HardHat, blurb: "Install crews, site work and punch lists" },
   { name: "Specialty", page: "ShopAreaSpecialty", icon: Sparkles, blurb: "Custom pieces, curves and one-off work" },
-  { name: "General", page: "ShopAreaGeneral", icon: BookOpen, blurb: "Shop-wide standards and shared procedures" },
+  { name: "General", page: "ShopAreaGeneral", icon: BookOpen, blurb: "Shop-wide standards, Lean improvement ideas and trainings" },
   { name: "Office", page: "ShopAreaOffice", icon: Building2, blurb: "Admin, scheduling and office supplies" },
 ];
 

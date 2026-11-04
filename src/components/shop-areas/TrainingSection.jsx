@@ -8,6 +8,7 @@ import SectionSheet from "./SectionSheet";
 import TrainingForm from "@/components/trainings/TrainingForm";
 import TrainingViewer from "@/components/trainings/TrainingViewer";
 import { findMyEmployee } from "@/lib/findMyEmployee";
+import ShopAreaTrainingRecords from "./ShopAreaTrainingRecords";
 
 /**
  * The Training section of a shop area. Backed by the real Training entity
@@ -37,6 +38,18 @@ export default function TrainingSection({ area, section }) {
       return [...rows].sort((a, b) => (a.title || "").localeCompare(b.title || ""));
     },
   });
+
+  // Trainings that were kept as plain shop-area records (migrated off the old
+  // Lean board) are listed alongside the rich Training-entity trainings.
+  const { data: areaRecords = [] } = useQuery({
+    queryKey: ["shopAreaRecords", area, section.key],
+    queryFn: async () => {
+      const rows = await base44.entities.ShopAreaRecord.filter({ area, section: section.key });
+      return [...rows].sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+    },
+  });
+
+  const totalCount = trainings.length + areaRecords.length;
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees-for-training"],
@@ -91,7 +104,7 @@ export default function TrainingSection({ area, section }) {
         sectionKey={section.key}
         icon={Icon}
         label={section.label}
-        count={trainings.length}
+        count={totalCount}
         loading={isLoading}
         onClick={() => setOpen(true)}
       />
@@ -101,7 +114,7 @@ export default function TrainingSection({ area, section }) {
         onOpenChange={setOpen}
         icon={Icon}
         title={section.label}
-        subtitle={`${area} · ${trainings.length} training${trainings.length === 1 ? "" : "s"}`}
+        subtitle={`${area} · ${totalCount} training${totalCount === 1 ? "" : "s"}`}
         actions={
           isAdmin ? (
             <Button onClick={openNew} size="sm" className="h-9 px-3 bg-amber-600 hover:bg-amber-700 text-xs">
@@ -115,7 +128,7 @@ export default function TrainingSection({ area, section }) {
               <div className="flex items-center justify-center py-10">
                 <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
               </div>
-            ) : trainings.length === 0 ? (
+            ) : totalCount === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
                 <Inbox className="w-6 h-6 text-slate-300 mb-1.5" />
                 <p className="text-xs text-slate-400">No trainings yet</p>
@@ -184,6 +197,13 @@ export default function TrainingSection({ area, section }) {
                 ))}
               </ul>
             )}
+
+            <ShopAreaTrainingRecords
+              area={area}
+              section={section}
+              records={areaRecords}
+              showHeading={trainings.length > 0}
+            />
           </div>
       </SectionSheet>
 

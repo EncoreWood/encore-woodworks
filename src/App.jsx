@@ -30,8 +30,6 @@ function RoleBasedHome() {
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Admin from './pages/Admin';
 import BillingTracker from './pages/BillingTracker';
-import GroupLean from './pages/GroupLean';
-import IndividualLean from './pages/IndividualLean';
 import ArchivedProjects from './pages/ArchivedProjects';
 import StrugglesSolutions from './pages/StrugglesSolutions';
 import ProductionPlanning from './pages/ProductionPlanning';
@@ -68,8 +66,6 @@ const TabRouteView = ({ location }) => (
     ))}
     <Route path="/Admin" element={<Admin />} />
     <Route path="/BillingTracker" element={<BillingTracker />} />
-    <Route path="/GroupLean" element={<GroupLean />} />
-    <Route path="/IndividualLean" element={<IndividualLean />} />
     <Route path="/ArchivedProjects" element={<ArchivedProjects />} />
     <Route path="/StrugglesSolutions" element={<StrugglesSolutions />} />
     <Route path="/ProductionPlanning" element={<ProductionPlanning />} />

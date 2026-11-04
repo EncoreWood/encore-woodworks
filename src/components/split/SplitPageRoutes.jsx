@@ -30,8 +30,6 @@ import EmployeeDashboard from "@/pages/EmployeeDashboard";
 import Assignments from "@/pages/Assignments";
 import Admin from "@/pages/Admin";
 import BillingTracker from "@/pages/BillingTracker";
-import GroupLean from "@/pages/GroupLean";
-import IndividualLean from "@/pages/IndividualLean";
 import ArchivedProjects from "@/pages/ArchivedProjects";
 import StrugglesSolutions from "@/pages/StrugglesSolutions";
 import ProductionPlanning from "@/pages/ProductionPlanning";
@@ -83,8 +81,6 @@ export const SPLIT_PAGES = {
   Assignments,
   Admin,
   BillingTracker,
-  GroupLean,
-  IndividualLean,
   ArchivedProjects,
   StrugglesSolutions,
   ProductionPlanning,

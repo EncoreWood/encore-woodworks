@@ -44,8 +44,7 @@ const COMMANDS = [
   { label: "Forms", icon: FileText, page: "Forms", group: "Team" },
   { label: "Trainings", icon: GraduationCap, page: "Trainings", group: "Team" },
   { label: "Flow Board", icon: Workflow, page: "Flow", group: "Team" },
-  { label: "Group Lean", icon: Users, page: "GroupLean", group: "Lean" },
-  { label: "Individual Lean", icon: Users, page: "IndividualLean", group: "Lean" },
+  { label: "Lean & Trainings", icon: GraduationCap, page: "ShopAreaGeneral", group: "Shop Areas" },
 ];
 
 export default function CommandPalette({ open, onClose }) {
