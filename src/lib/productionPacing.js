@@ -90,6 +90,33 @@ export function buildPacingRows(series, uptoMinute, from = DAY_START) {
     }));
 }
 
+// The same rows as buildPacingRows, but carrying a running value for every stage, so
+// one chart can draw several areas at once. Each stage's step series comes straight
+// from the shared points function — nothing is recalculated here.
+export function buildAreaPacingRows(seriesByStage, stages, uptoMinute, from = DAY_START) {
+  const end = Math.max(from, Math.min(uptoMinute, DAY_END));
+  // Block edges are marks too, so the paced target steps exactly where production
+  // resumes instead of smearing across a break.
+  const marks = new Set([from, end, DAY_START, DAY_END]);
+  PRODUCTION_BLOCKS.forEach(([start, finish]) => { marks.add(start); marks.add(finish); });
+  NON_PRODUCTION_BLOCKS.forEach(({ start, end: finish }) => { marks.add(start); marks.add(finish); });
+  (stages || []).forEach(stage => {
+    (seriesByStage?.[stage] || []).forEach(([at]) => {
+      if (at > from && at < end) marks.add(at);
+    });
+  });
+  return [...marks]
+    .filter(minute => minute >= from && minute <= end)
+    .sort((a, b) => a - b)
+    .map(minute => {
+      const row = { minute, target: paceAt(minute, DAILY_TARGET), minimum: paceAt(minute, DAILY_MINIMUM) };
+      (stages || []).forEach(stage => {
+        row[stage] = valueAt(seriesByStage?.[stage], minute);
+      });
+      return row;
+    });
+}
+
 export function projectedFinish(completed, minute) {
   const elapsed = productionMinutesAt(minute);
   if (elapsed <= 0) return null;

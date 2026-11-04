@@ -11,6 +11,8 @@ import { DAILY_MINIMUM, DAILY_TARGET, denverMinuteNow, projectedFinish } from "@
 import { monthTargetPoints, shopDay, weekTargetPoints } from "@/lib/pacingTargets";
 import DayPacingChart from "./pacing/DayPacingChart";
 import TrendPacingChart from "./pacing/TrendPacingChart";
+import PacingAreaPicker from "./pacing/PacingAreaPicker";
+import { visibleAreas } from "./pacing/pacingAreas";
 
 const MODES = [
   { id: "day", label: "Day" },
@@ -30,12 +32,18 @@ function Chip({ label, value, goal }) {
   );
 }
 
-function Legend({ tint }) {
+function Legend({ area, tint }) {
   return (
     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-500">
-      <span className="flex items-center gap-1"><span className="h-0.5 w-3 bg-emerald-600" /> Completed</span>
+      {visibleAreas(area).map(item => (
+        <span key={item.id} className="flex items-center gap-1">
+          <span className="h-0.5 w-3" style={{ backgroundColor: item.color }} /> {item.label}
+        </span>
+      ))}
       <span className="flex items-center gap-1"><span className="h-0.5 w-3 border-t border-dashed border-blue-600" /> Target {DAILY_TARGET}</span>
-      <span className="flex items-center gap-1"><span className="h-0.5 w-3 border-t border-dotted border-slate-400" /> Minimum {DAILY_MINIMUM}</span>
+      {area !== "all" && (
+        <span className="flex items-center gap-1"><span className="h-0.5 w-3 border-t border-dotted border-slate-400" /> Minimum {DAILY_MINIMUM}</span>
+      )}
       <span className="flex items-center gap-1">
         <span className="h-2.5 w-2.5 rounded-sm border border-slate-200 bg-slate-100" /> {tint}
       </span>
@@ -46,6 +54,8 @@ function Legend({ tint }) {
 export default function PacingPanel() {
   const tier = useViewportTier();
   const [mode, setMode] = useState("day");
+  // "all" plots every stage at once; a stage id plots just that area.
+  const [area, setArea] = useState("all");
   const todayStr = denverDateStr(new Date());
   const today = shopDay(todayStr);
   const weekFrom = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
@@ -106,6 +116,8 @@ export default function PacingPanel() {
         )}
       </div>
 
+      <PacingAreaPicker value={area} onChange={setArea} />
+
       {isError && (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
           Pacing is unavailable right now.
@@ -120,10 +132,11 @@ export default function PacingPanel() {
 
       {!isError && ready && mode === "day" && (
         <DayPacingChart
-          series={data?.series?.complete}
+          series={data?.series}
           upto={minuteNow}
           height={chartHeight}
           dense={tier === "narrow"}
+          area={area}
         />
       )}
 
@@ -133,6 +146,7 @@ export default function PacingPanel() {
           todayStr={todayStr}
           mode="week"
           height={chartHeight}
+          area={area}
         />
       )}
 
@@ -142,10 +156,11 @@ export default function PacingPanel() {
           todayStr={todayStr}
           mode="month"
           height={chartHeight}
+          area={area}
         />
       )}
 
-      {!isError && ready && <Legend tint={mode === "day" ? "Non-production" : "Weekend"} />}
+      {!isError && ready && <Legend area={area} tint={mode === "day" ? "Non-production" : "Weekend"} />}
     </div>
   );
 }
