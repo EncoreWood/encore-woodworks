@@ -22,7 +22,7 @@ import SectionCard from "@/components/meeting/SectionCard";
 import PreviousDayPoints, { stageFigures, stageTotal } from "@/components/meeting/PreviousDayPoints";
 import usePacingTargets from "@/hooks/usePacingTargets";
 import { TabsContext } from "@/components/tabs/TabContext";
-import { openProductionBoard } from "@/lib/meetingReturn";
+import { TODAY_FOCUS_PATH } from "@/lib/todayScope";
 import WellDoneWidget from "@/components/meeting/WellDoneWidget";
 import WeeklyTopicPopup from "@/components/meeting/WeeklyTopicPopup";
 import TodaysScheduleDropdown from "@/components/meeting/TodaysScheduleDropdown";
@@ -70,8 +70,12 @@ export default function MorningMeeting() {
   // Yesterday is graded against the target that was in effect that day, not today's.
   const { targetsFor: pacingTargetsFor } = usePacingTargets();
   const queryClient = useQueryClient();
-  // The app's own tab strip: the Production board opens there when a browser tab can't.
+  // The app's own tab strip: today's production opens as a tab beside this meeting.
   const tabs = useContext(TabsContext);
+  const openTodaysProduction = () => {
+    if (tabs?.openTab) tabs.openTab(TODAY_FOCUS_PATH);
+    else window.location.assign(TODAY_FOCUS_PATH);
+  };
 
   // Pause polling when any dialog/popup is open to avoid refreshing while user is editing
   const anyDialogOpen = showPresenterDialog || !!topicPopup;
@@ -810,7 +814,7 @@ export default function MorningMeeting() {
             icon={Crosshair}
             color="orange"
             count={todaysFocusProjects.length + todayDesignMeetings.length + todayInstalls.length + todayDeliveries.length + todayGeneralMeetings.length}
-            onTitleClick={() => openProductionBoard(tabs)}
+            onTitleClick={openTodaysProduction}
           >
             <div className="space-y-4">
 

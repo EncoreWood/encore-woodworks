@@ -1,4 +1,4 @@
-import { useContext, useState, useCallback, useEffect, useMemo, useRef, Fragment } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef, Fragment } from "react";
 import { format, startOfWeek, startOfMonth, subDays } from "date-fns";
 import CompleteStageCards from "../components/production/CompleteStageCards";
 import { base44 } from "@/api/base44Client";
@@ -9,10 +9,10 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { X, Hammer, ArrowLeft } from "lucide-react";
-import { TabsContext } from "../components/tabs/TabContext";
-import { markedForReturn, onMeetingReturnChange, returnToMorningMeeting } from "@/lib/meetingReturn";
+import { X, Hammer } from "lucide-react";
+import { useLocation } from "react-router-dom";
 import { usePaneNavigate } from "@/lib/paneSearch";
+import { isTodayFocus, scopeItemsToToday, todayProductionProjects } from "@/lib/todayScope";
 import { useToast } from "@/components/ui/use-toast";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
 import GiveComplimentDialog from "../components/production/GiveComplimentDialog";
@@ -72,10 +72,11 @@ export default function ShopProduction() {
    const queryClient = useQueryClient();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("production");
-  // Set when the board was opened from the meeting because a new browser tab wasn't
-  // available — then the header offers the way back to exactly where they were.
-  const tabs = useContext(TabsContext);
-  const [openedFromMeeting, setOpenedFromMeeting] = useState(() => markedForReturn());
+  // Opened from the Morning Meeting's "Today's Focus": the board shows only the projects
+  // that are in production today, so the meeting reviews that day's work. Read from this
+  // tab's own location, so the tab keeps its scope whatever the address bar says.
+  const location = useLocation();
+  const [focusToday, setFocusToday] = useState(() => isTodayFocus(location.search));
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [annotatingPdf, setAnnotatingPdf] = useState(null);
@@ -122,10 +123,6 @@ export default function ShopProduction() {
     const pid = params.get("project_id");
     if (pid) setScrollToProjectId(pid);
   }, []);
-
-  // A Production tab that is already open never re-mounts, so it re-reads the flag when
-  // the meeting sends people here instead of the state it happened to mount with.
-  useEffect(() => onMeetingReturnChange(() => setOpenedFromMeeting(markedForReturn())), []);
 
   // Pause background polling when any modal/form is open — prevents refresh interrupting edits
   const anyModalOpen = showForm || !!pickupItem || !!reportingStruggle || givingCompliment || !!reportingMissing || !!quickReportItem || showEndOfDay || !!annotatingPdf || !!sendToCutItem || !!cutFromPlan;
@@ -222,6 +219,17 @@ export default function ShopProduction() {
   const activeProjects = projects.filter(p =>
     !p.archived && (ACTIVE_PROJECT_STATUSES.includes(p.status) || projectIdsWithCards.has(p.id))
   );
+
+  // "Today's Focus" scoping — the same projects the Morning Meeting lists as in production today.
+  const boardItems = useMemo(
+    () => (focusToday ? scopeItemsToToday(items, projects) : items),
+    [focusToday, items, projects]
+  );
+  const scopedProjectCount = useMemo(() => {
+    if (!focusToday) return 0;
+    const idsWithCards = new Set(boardItems.map(i => i.project_id));
+    return todayProductionProjects(projects).filter(p => idsWithCards.has(p.id)).length;
+  }, [focusToday, boardItems, projects]);
 
   const getProjectColor = (projectId) => {
     if (!projectId) return null;
@@ -770,16 +778,6 @@ export default function ShopProduction() {
     <div className="min-h-screen bg-slate-50">
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
-        {openedFromMeeting && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => returnToMorningMeeting(tabs)}
-            className="mb-2 gap-1.5 border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to Morning Meeting
-          </Button>
-        )}
         <ProductionHeader
           points={todayPoints?.points}
           series={todayPoints?.series}
@@ -805,6 +803,21 @@ export default function ShopProduction() {
               onRetry={() => { refetchItems(); boardPoints.refetch(); }}
             />
             <DragDropContext onDragEnd={handleDragEnd}>
+              {/* Today's production banner (opened from the Morning Meeting) */}
+              {focusToday && (
+                <div className="mb-3 flex items-center gap-2 flex-wrap">
+                  <span className="text-sm text-slate-600">
+                    Today's production —{" "}
+                    <span className="font-semibold text-slate-900">
+                      {scopedProjectCount} project{scopedProjectCount === 1 ? "" : "s"}
+                    </span>{" "}
+                    in production
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => setFocusToday(false)} className="h-7">
+                    Show all work
+                  </Button>
+                </div>
+              )}
               {/* Focused-stage banner */}
               {focusStage && (
                 <div className="mb-3 flex items-center gap-2">
@@ -820,7 +833,7 @@ export default function ShopProduction() {
                 {productionColumns.map((column, colIdx) => {
                   const isFocused = focusStage === column.id;
                   const isCollapsed = !!focusStage && !isFocused;
-                  const columnItems = items
+                  const columnItems = boardItems
                     .filter(i => i.stage === column.id && !i.is_job_info && !i.is_merged)
                     .sort(sortColumnItems);
                   const workingCount = columnItems.filter(i => i.is_being_worked).length;
