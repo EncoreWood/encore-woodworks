@@ -4,11 +4,11 @@ import PacingChart from "./PacingChart";
 import StagePills from "./StagePills";
 import CheckpointList from "./CheckpointList";
 import {
-  DAILY_TARGET, DAILY_MINIMUM, PRODUCTION_MINUTES,
-  denverMinuteNow, projectedFinish, formatClock,
+  PRODUCTION_MINUTES, denverMinuteNow, projectedFinish, formatClock,
 } from "@/lib/productionPacing";
 import { formatStagePoints } from "@/lib/stagePoints";
 import useViewportTier from "@/hooks/useViewportTier";
+import usePacingTargets from "@/hooks/usePacingTargets";
 
 const STAGE_PILLS = [
   { id: "cut", label: "Cut", activeBg: "bg-orange-100", activeText: "text-orange-800", border: "border-orange-200" },
@@ -32,11 +32,15 @@ function StatTile({ icon: Icon, label, value, hint }) {
 
 export default function PacingView({ points, series, loading, error }) {
   const tier = useViewportTier();
+  const { target: dailyTarget, minimum: dailyMinimum } = usePacingTargets();
   const [stage, setStage] = useState("complete");
   const minuteNow = denverMinuteNow();
   const completed = Number(points?.complete) || 0;
   const projected = projectedFinish(completed, minuteNow);
   const chartHeight = tier === "desktop" ? 340 : tier === "tablet" ? 270 : 230;
+  const productionHours = PRODUCTION_MINUTES / 60;
+  const rate = points => `${(points / productionHours).toFixed(1)} pts / hr`;
+  const targets = { target: dailyTarget, minimum: dailyMinimum };
 
   const pills = STAGE_PILLS.map(pill => ({ ...pill, points: formatStagePoints(points?.[pill.id] || 0) }));
   const selected = pills.find(pill => pill.id === stage) || pills[pills.length - 1];
@@ -49,8 +53,8 @@ export default function PacingView({ points, series, loading, error }) {
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <StatTile icon={Clock} label="Production time" value="8h 40m" hint={`${PRODUCTION_MINUTES} production min`} />
-        <StatTile icon={Target} label="Target" value={`${DAILY_TARGET} pts`} hint="≈2.3 pts / hr" />
-        <StatTile icon={Gauge} label="Minimum" value={`${DAILY_MINIMUM} pts`} hint="≈1.7 pts / hr" />
+        <StatTile icon={Target} label="Target" value={`${dailyTarget} pts`} hint={`≈${rate(dailyTarget)}`} />
+        <StatTile icon={Gauge} label="Minimum" value={`${dailyMinimum} pts`} hint={`≈${rate(dailyMinimum)}`} />
         <StatTile
           icon={TrendingUp}
           label="Projected finish"
@@ -65,9 +69,9 @@ export default function PacingView({ points, series, loading, error }) {
             <h3 className="text-sm font-bold text-slate-800">Completed today</h3>
             <p className="text-[11px] text-slate-500">Cumulative points arrived in Complete</p>
           </div>
-          <p className="text-lg font-bold text-green-700">
+          <p className="text-lg font-bold text-slate-800">
             {loading ? "…" : formatStagePoints(completed)}
-            <span className="ml-0.5 text-xs font-medium text-slate-400">/ {DAILY_TARGET} pts</span>
+            <span className="ml-0.5 text-xs font-medium text-slate-400">/ {dailyTarget} pts</span>
           </p>
         </div>
         <PacingChart
@@ -76,6 +80,7 @@ export default function PacingView({ points, series, loading, error }) {
           height={chartHeight}
           dense={tier === "narrow"}
           grade="Completed"
+          targets={targets}
         />
       </div>
 
@@ -87,7 +92,7 @@ export default function PacingView({ points, series, loading, error }) {
               Points that left each stage today — Complete counts points that arrived
             </p>
           </div>
-          <p className="text-lg font-bold text-green-700">
+          <p className="text-lg font-bold text-slate-800">
             {selected.points}
             <span className="ml-0.5 text-xs font-medium text-slate-400">pts</span>
           </p>
@@ -101,6 +106,7 @@ export default function PacingView({ points, series, loading, error }) {
           height={chartHeight - 30}
           dense={tier === "narrow"}
           grade={selected.label}
+          targets={targets}
         />
       </div>
 

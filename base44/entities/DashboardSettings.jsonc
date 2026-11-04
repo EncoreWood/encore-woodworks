@@ -10,7 +10,9 @@
         "google_sheet",
         "book_of_month",
         "portal_url",
-        "today_projects"
+        "today_projects",
+        "pts_goals",
+        "pacing"
       ],
       "enumColors": [
         "gray",
@@ -18,9 +20,11 @@
         "gray",
         "blue",
         "gray",
-        "purple"
+        "purple",
+        "green",
+        "yellow"
       ],
-      "description": "Dashboard section name. today_projects holds a per-day project selection: {\"date\":\"YYYY-MM-DD\",\"ids\":[...]} so tomorrow starts fresh."
+      "description": "Dashboard section name. today_projects holds a per-day project selection: {\"date\":\"YYYY-MM-DD\",\"ids\":[...]}. The pacing section holds the shop's daily pacing targets as JSON: {\"daily_target_points\":20,\"daily_minimum_points\":15,\"history\":[{\"from\":\"YYYY-MM-DD\",\"daily_target_points\":20,\"daily_minimum_points\":15}]} \u2014 the history keeps past days measured against the target they actually had."
     },
     "visible_to_users": {
       "type": "boolean",
@@ -34,7 +38,7 @@
     },
     "value": {
       "type": "string",
-      "description": "Generic string value (e.g. book title, or the published portal base URL for the portal_url section)"
+      "description": "Generic string value (e.g. book title, the published portal base URL for the portal_url section, or the JSON pacing targets)"
     }
   },
   "required": [

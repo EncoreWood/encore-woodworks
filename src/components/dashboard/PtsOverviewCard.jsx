@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { base44 } from "@/api/base44Client";
 import { format, startOfWeek, addDays, subMonths } from "date-fns";
 import { cardPoints } from "@/lib/cardPoints";
+import usePacingTargets from "@/hooks/usePacingTargets";
 
 function ProgressBar({ value, goal, label }) {
   const pct = goal > 0 ? Math.min((value / goal) * 100, 100) : 0;
@@ -67,6 +68,8 @@ export default function PtsOverviewCard({ dayPts, weekPts, monthPts, quarterlyPt
   const [showGoalSettings, setShowGoalSettings] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // The daily goal is the shop's pacing target — one source of truth for the number.
+  const { target: dailyPacingTarget } = usePacingTargets();
   const goalSetting = dashboardSettings?.find(s => s.section === "pts_goals");
   let goals = { day: 0, week: 0, month: 0, quarterly: 0 };
   if (goalSetting?.value) {
@@ -127,8 +130,9 @@ export default function PtsOverviewCard({ dayPts, weekPts, monthPts, quarterlyPt
       {showGoalSettings && (
         <div className="mb-4 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
           <p className="text-xs font-bold text-slate-600">Set PTS Goals</p>
-          <div className="grid grid-cols-4 gap-2">
-            {["day", "week", "month", "quarterly"].map(period => (
+          <p className="text-[10px] text-slate-400 -mt-2">The daily goal follows the PTS Pacing targets (gear on that panel, or Admin → Settings).</p>
+          <div className="grid grid-cols-3 gap-2">
+            {["week", "month", "quarterly"].map(period => (
               <div key={period}>
                 <label className="text-xs text-slate-500 capitalize mb-1 block">{period}</label>
                 <Input
@@ -153,7 +157,7 @@ export default function PtsOverviewCard({ dayPts, weekPts, monthPts, quarterlyPt
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { label: "Day", value: dayPts, goal: goals.day },
+          { label: "Day", value: dayPts, goal: dailyPacingTarget },
           { label: "Week", value: weekPts, goal: goals.week },
           { label: "Month", value: monthPts, goal: goals.month },
           { label: "Quarterly", value: quarterlyPts ?? 0, goal: goals.quarterly },
@@ -164,7 +168,7 @@ export default function PtsOverviewCard({ dayPts, weekPts, monthPts, quarterlyPt
         ))}
       </div>
 
-      <WeeklyBarChart weekDayPts={weekDayPts} goals={goals} />
+      <WeeklyBarChart weekDayPts={weekDayPts} goals={{ ...goals, day: dailyPacingTarget }} />
     </div>
   );
 }

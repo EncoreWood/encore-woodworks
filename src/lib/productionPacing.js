@@ -1,6 +1,11 @@
 // Pacing display math only. Point values always come from getProductionTodayPoints
 // (shared/productionTodayPoints.js) — nothing here calculates earned points.
 
+import { DEFAULT_MINIMUM, DEFAULT_TARGET } from "@/lib/pacingSettings";
+
+// Fallback for the moments before the settings read lands — never a second source of truth.
+export const FALLBACK_TARGETS = { target: DEFAULT_TARGET, minimum: DEFAULT_MINIMUM };
+
 // Minutes from midnight, shop time (America/Denver).
 export const DAY_START = 7 * 60;              // 7:00 — chart opens
 export const DAY_END = 17 * 60 + 30;          // 5:30 — chart closes
@@ -16,9 +21,6 @@ export const NON_PRODUCTION_BLOCKS = [
   { start: 12 * 60, end: 12 * 60 + 30, label: "Lunch" },
   { start: 17 * 60 + 15, end: 17 * 60 + 30, label: "Cleanup" },
 ];
-
-export const DAILY_TARGET = 20;
-export const DAILY_MINIMUM = 15;
 
 export const CHECKPOINTS = [485, 540, 600, 660, 720, 750, 780, 840, 900, 960, 1020, 1035];
 
@@ -73,7 +75,7 @@ export function valueAt(series, minute) {
 
 // Chart rows across the visible window, so every pace block edge and every move lands
 // on a point and the pace lines stay flat through breaks.
-export function buildPacingRows(series, uptoMinute, from = DAY_START) {
+export function buildPacingRows(series, uptoMinute, from = DAY_START, targets = FALLBACK_TARGETS) {
   const end = Math.max(from, Math.min(uptoMinute, DAY_END));
   const marks = new Set([from, end, DAY_START, DAY_END]);
   PRODUCTION_BLOCKS.forEach(([start, finish]) => { marks.add(start); marks.add(finish); });
@@ -85,15 +87,15 @@ export function buildPacingRows(series, uptoMinute, from = DAY_START) {
     .map(minute => ({
       minute,
       actual: valueAt(series, minute),
-      target: paceAt(minute, DAILY_TARGET),
-      minimum: paceAt(minute, DAILY_MINIMUM),
+      target: paceAt(minute, targets.target),
+      minimum: paceAt(minute, targets.minimum),
     }));
 }
 
 // The same rows as buildPacingRows, but carrying a running value for every stage, so
 // one chart can draw several areas at once. Each stage's step series comes straight
 // from the shared points function — nothing is recalculated here.
-export function buildAreaPacingRows(seriesByStage, stages, uptoMinute, from = DAY_START) {
+export function buildAreaPacingRows(seriesByStage, stages, uptoMinute, from = DAY_START, targets = FALLBACK_TARGETS) {
   const end = Math.max(from, Math.min(uptoMinute, DAY_END));
   // Block edges are marks too, so the paced target steps exactly where production
   // resumes instead of smearing across a break.
@@ -109,7 +111,7 @@ export function buildAreaPacingRows(seriesByStage, stages, uptoMinute, from = DA
     .filter(minute => minute >= from && minute <= end)
     .sort((a, b) => a - b)
     .map(minute => {
-      const row = { minute, target: paceAt(minute, DAILY_TARGET), minimum: paceAt(minute, DAILY_MINIMUM) };
+      const row = { minute, target: paceAt(minute, targets.target), minimum: paceAt(minute, targets.minimum) };
       (stages || []).forEach(stage => {
         row[stage] = valueAt(seriesByStage?.[stage], minute);
       });

@@ -2,10 +2,14 @@ import {
   CartesianGrid, Line, LineChart, ReferenceArea, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { format } from "date-fns";
-import { DAILY_MINIMUM, DAILY_TARGET } from "@/lib/productionPacing";
-import { isWeekend, paceTargets, shopDay } from "@/lib/pacingTargets";
+import { DEFAULT_MINIMUM, DEFAULT_TARGET } from "@/lib/pacingSettings";
+import { isWeekend, shopDay } from "@/lib/pacingTargets";
 import { axisTicks, formatAxisValue } from "@/lib/pacingAxis";
+import { COMPLETED_INK, COMPLETED_WIDTH } from "@/lib/pacingZones";
 import { AREA_IDS, visibleAreas } from "./pacingAreas";
+import PacingZoneAreas from "./PacingZoneAreas";
+
+const DEFAULT_FOR = { target: DEFAULT_TARGET, minimum: DEFAULT_MINIMUM };
 
 function ChartTooltip({ active, payload, areas, showMinimum }) {
   if (!active || !payload?.length) return null;
@@ -25,38 +29,50 @@ function ChartTooltip({ active, payload, areas, showMinimum }) {
   );
 }
 
-export default function TrendPacingChart({ days = [], todayStr, mode, height, area = "all" }) {
+export default function TrendPacingChart({ days = [], todayStr, mode, height, area = "all", resolveTargets }) {
   const areas = visibleAreas(area);
-  const showMinimum = area !== "all";
-  const windowStart = days.length ? shopDay(days[0].date) : null;
+  const zones = area !== "all";
+  const targetsFor = resolveTargets || (() => DEFAULT_FOR);
   const rows = [];
   const running = Object.fromEntries(AREA_IDS.map(id => [id, 0]));
+
+  // Each business day adds the target that was in effect on that day, so a target
+  // changed mid-window only lifts the days from then on.
+  let cumulativeTarget = 0;
+  let cumulativeMinimum = 0;
 
   days.forEach((day, index) => {
     const date = shopDay(day.date);
     const finished = day.date <= todayStr;
     if (finished) AREA_IDS.forEach(id => { running[id] += Number(day.points?.[id]) || 0; });
-    const { target, minimum } = paceTargets(date, windowStart);
+    const dayTargets = targetsFor(day.date) || DEFAULT_FOR;
+    if (!isWeekend(date)) {
+      cumulativeTarget += Number(dayTargets.target) || 0;
+      cumulativeMinimum += Number(dayTargets.minimum) || 0;
+    }
     const row = {
       index,
       date: day.date,
       label: mode === "week" ? format(date, "EEE") : String(date.getDate()),
-      target,
-      minimum,
+      target: Math.round(cumulativeTarget * 100) / 100,
+      minimum: Math.round(cumulativeMinimum * 100) / 100,
       weekend: isWeekend(date),
     };
     AREA_IDS.forEach(id => { row[id] = finished ? Math.round(running[id] * 100) / 100 : null; });
     rows.push(row);
   });
 
-  const lastTarget = rows.length ? rows[rows.length - 1].target : DAILY_TARGET;
+  const lastTarget = rows.length ? rows[rows.length - 1].target : DEFAULT_TARGET;
   const highest = Math.max(
-    DAILY_TARGET,
+    Number(targetsFor(todayStr || "").target) || DEFAULT_TARGET,
     lastTarget,
     ...rows.flatMap(row => areas.map(item => Number(row[item.id]) || 0))
   );
   const ticks = axisTicks(highest);
   const top = ticks[ticks.length - 1];
+  const data = zones
+    ? rows.map(row => ({ ...row, zoneTop: Math.max(0, top - row.target) }))
+    : rows;
   const xTicks = mode === "week"
     ? rows.map(row => row.index)
     : rows.filter(row => row.index === 0 || (row.index + 1) % 5 === 0 || row.index === rows.length - 1).map(row => row.index);
@@ -65,14 +81,16 @@ export default function TrendPacingChart({ days = [], todayStr, mode, height, ar
   return (
     <div style={{ height }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={rows} margin={{ top: 10, right: 12, bottom: 0, left: 0 }}>
-          {rows.filter(row => row.weekend).map(row => (
+        <LineChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: 0 }}>
+          {/* Weekend columns only in the all-areas view; they compete with the zones otherwise. */}
+          {!zones && rows.filter(row => row.weekend).map(row => (
             <ReferenceArea
               key={row.index}
               x1={row.index - 0.5} x2={row.index + 0.5} y1={0} y2={top}
               fill="#f1f5f9" fillOpacity={1} stroke="none"
             />
           ))}
+          {zones && <PacingZoneAreas curve="stepAfter" />}
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           <XAxis
             dataKey="index" type="number" domain={[-0.5, Math.max(rows.length - 0.5, 0.5)]}
@@ -85,9 +103,9 @@ export default function TrendPacingChart({ days = [], todayStr, mode, height, ar
             tick={{ fontSize: 10, fill: "#64748b" }} tickMargin={4}
             axisLine={false} tickLine={false} width={32}
           />
-          <Tooltip content={<ChartTooltip areas={areas} showMinimum={showMinimum} />} />
+          <Tooltip content={<ChartTooltip areas={areas} showMinimum={zones} />} />
           <Line type="stepAfter" dataKey="target" stroke="#2563eb" strokeDasharray="5 4" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-          {showMinimum && (
+          {zones && (
             <Line type="stepAfter" dataKey="minimum" stroke="#94a3b8" strokeDasharray="2 4" strokeWidth={1.5} dot={false} isAnimationActive={false} />
           )}
           {areas.map(item => (
@@ -95,8 +113,8 @@ export default function TrendPacingChart({ days = [], todayStr, mode, height, ar
               key={item.id}
               type="linear"
               dataKey={item.id}
-              stroke={item.color}
-              strokeWidth={showMinimum ? 2.5 : 1.8}
+              stroke={zones ? COMPLETED_INK : item.color}
+              strokeWidth={zones ? COMPLETED_WIDTH : 1.8}
               dot={false}
               isAnimationActive={false}
             />
@@ -107,8 +125,8 @@ export default function TrendPacingChart({ days = [], todayStr, mode, height, ar
             return (
               <ReferenceDot
                 key={item.id}
-                x={lastFinished.index} y={value} r={showMinimum ? 4 : 3}
-                fill={item.color} stroke="#ffffff" strokeWidth={1.5}
+                x={lastFinished.index} y={value} r={zones ? 4 : 3}
+                fill={zones ? COMPLETED_INK : item.color} stroke="#ffffff" strokeWidth={1.5}
               />
             );
           })}

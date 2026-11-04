@@ -19,6 +19,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { startOfWeek } from "date-fns";
 import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
 import SectionCard from "@/components/meeting/SectionCard";
+import DayPacingChart from "@/components/dashboard/pacing/DayPacingChart";
+import usePacingTargets from "@/hooks/usePacingTargets";
+import { DAY_END } from "@/lib/productionPacing";
 import WellDoneWidget from "@/components/meeting/WellDoneWidget";
 import WeeklyTopicPopup from "@/components/meeting/WeeklyTopicPopup";
 import TodaysScheduleDropdown from "@/components/meeting/TodaysScheduleDropdown";
@@ -63,6 +66,8 @@ export default function MorningMeeting() {
   const dateString = format(selectedDate, "yyyy-MM-dd");
   // The production day being reviewed: the one before the meeting date.
   const reviewDateStr = format(subDays(selectedDate, 1), "yyyy-MM-dd");
+  // Yesterday is graded against the target that was in effect that day, not today's.
+  const { targetsFor: pacingTargetsFor } = usePacingTargets();
   const queryClient = useQueryClient();
 
   // Pause polling when any dialog/popup is open to avoid refreshing while user is editing
@@ -618,6 +623,37 @@ export default function MorningMeeting() {
                       <p className="text-[10px] text-slate-400 text-right">Stage departures; Complete counts net arrivals on {format(subDays(selectedDate, 1), "EEEE, MMM d")}</p>
                     </div>
                   )}
+
+                  {/* Pacing for the reviewed day — zones and lines against that day's targets */}
+                  {reviewDayPoints?.series && (() => {
+                    const reviewTargets = pacingTargetsFor(yesterday);
+                    // The day is graded on Complete points, the same figure the pacing
+                    // chart's Completed line ends on — not the stage-departure total above.
+                    const reviewComplete = Number(reviewDayPoints?.points?.complete) || 0;
+                    const verdict = reviewComplete >= reviewTargets.target
+                      ? { label: "Ahead of target", tone: "border-green-200 bg-green-50 text-green-800" }
+                      : reviewComplete >= reviewTargets.minimum
+                        ? { label: "Between minimum and target", tone: "border-slate-200 bg-slate-50 text-slate-700" }
+                        : { label: "Behind minimum", tone: "border-red-200 bg-red-50 text-red-700" };
+                    return (
+                      <div>
+                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">📈 Pacing — {reviewComplete} pts in Complete</p>
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${verdict.tone}`}>{verdict.label}</span>
+                        </div>
+                        <DayPacingChart
+                          series={reviewDayPoints.series}
+                          upto={DAY_END}
+                          height={190}
+                          area="complete"
+                          targets={reviewTargets}
+                        />
+                        <p className="mt-1 text-[10px] text-slate-400">
+                          Measured against that day&rsquo;s target ({reviewTargets.target} pts) and minimum ({reviewTargets.minimum} pts).
+                        </p>
+                      </div>
+                    );
+                  })()}
 
                   {/* EOD Review Summary */}
                   {yesterdayReviews.length > 0 && (

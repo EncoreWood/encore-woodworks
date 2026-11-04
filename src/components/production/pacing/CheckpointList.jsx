@@ -1,13 +1,15 @@
-import { CHECKPOINTS, DAILY_TARGET, DAILY_MINIMUM, paceAt, formatClock } from "@/lib/productionPacing";
+import { CHECKPOINTS, paceAt, formatClock } from "@/lib/productionPacing";
 import { formatStagePoints } from "@/lib/stagePoints";
+import usePacingTargets from "@/hooks/usePacingTargets";
 
 // Stacked on phones, two columns on iPad, three on desktop — never a squeezed table.
 export default function CheckpointList({ minuteNow }) {
+  const { target: dailyTarget, minimum: dailyMinimum } = usePacingTargets();
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
       {CHECKPOINTS.map(checkpoint => {
-        const target = paceAt(checkpoint, DAILY_TARGET);
-        const minimum = paceAt(checkpoint, DAILY_MINIMUM);
+        const target = paceAt(checkpoint, dailyTarget);
+        const minimum = paceAt(checkpoint, dailyMinimum);
         const passed = minuteNow >= checkpoint;
         return (
           <div
