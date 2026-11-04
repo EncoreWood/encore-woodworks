@@ -6,6 +6,8 @@ import { format } from "date-fns";
 import { STATUS_CONFIG, STATUS_FLOW, DONE_STATUSES } from "./missingItemStatusConfig";
 import { getSizeBreakdown, legacySizeSummary, sizeSummary } from "./missingItemSizes";
 import SendToProductionDialog from "./SendToProductionDialog";
+import { cardPoints } from "@/lib/cardPoints";
+import { formatStagePoints } from "@/lib/stagePoints";
 
 const STAGE_LABELS = { cut: "Cut", face_frame: "Face Frame", spray: "Spray", build: "Build", complete: "Complete", on_hold: "On Hold" };
 
@@ -17,7 +19,7 @@ const PRIMARY_ACTION = {
   Ready:           { label: "Mark Completed", status: "Completed", cls: "bg-green-600 hover:bg-green-700 text-white border-green-600" },
 };
 
-export default function MissingItemRow({ item, card, projects, isAdmin, updating, onStatus, onSendToProduction, onBackToOpen, sending, onViewCard, showProject }) {
+export default function MissingItemRow({ item, card, missingCard, projects, isAdmin, updating, onStatus, onSendToProduction, onBackToOpen, sending, onViewCard, showProject }) {
   const [stageDialogOpen, setStageDialogOpen] = useState(false);
   const confirmed = JSON.parse(item.confirmed_by || "[]");
 
@@ -40,6 +42,9 @@ export default function MissingItemRow({ item, card, projects, isAdmin, updating
   const primary = PRIMARY_ACTION[item.status];
   // "Received" advances by sending the card into production (stage picker)
   const receivedPrimary = item.status === "Received" && item.production_item_id;
+  // A missing card waits in the held "missing" state until someone sends it to production
+  const held = missingCard?.stage === "missing";
+  const ptsLabel = !missingCard ? "—" : held ? "—" : formatStagePoints(cardPoints(missingCard));
 
   return (
     <div className={`px-5 py-3 flex items-start gap-4 ${isDone ? "opacity-50" : ""}`}>
@@ -60,7 +65,11 @@ export default function MissingItemRow({ item, card, projects, isAdmin, updating
               {item.room_name ? <span className="text-slate-400"> · {item.room_name}</span> : null}
             </span>
           )}
-          {item.production_item_name && <span className="font-medium text-slate-700">{item.production_item_name}</span>}
+          {item.production_item_name && <span className="font-medium text-slate-700">From {item.production_item_name}</span>}
+          {held && (
+            <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-200 text-[10px] px-2 py-0">Held — Missing</Badge>
+          )}
+          <span className="font-medium text-slate-600">PTS {ptsLabel}</span>
           {item.production_item_id && (
             <button
               type="button"
@@ -113,7 +122,7 @@ export default function MissingItemRow({ item, card, projects, isAdmin, updating
 
       {isAdmin && !isDone && (
         <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
-          {receivedPrimary ? (
+          {held || receivedPrimary ? (
             <>
               <button
                 disabled={sending === item.id}
@@ -121,12 +130,13 @@ export default function MissingItemRow({ item, card, projects, isAdmin, updating
                 className="text-xs px-2.5 py-1 bg-blue-600 border border-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium"
                 title="Send this item's production card into a production stage"
               >
-                🏭 To Production
+                {held ? "Send to Production" : "🏭 To Production"}
               </button>
               <SendToProductionDialog
                 open={stageDialogOpen}
                 items={[item]}
-                onConfirm={(stage) => { setStageDialogOpen(false); onSendToProduction(item, stage); }}
+                showPoints={held}
+                onConfirm={(stage, points) => { setStageDialogOpen(false); onSendToProduction(item, stage, points); }}
                 onClose={() => setStageDialogOpen(false)}
               />
             </>

@@ -326,6 +326,7 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
                       <SelectItem value="build">Build</SelectItem>
                       <SelectItem value="complete">Complete</SelectItem>
                       <SelectItem value="on_hold">On Hold</SelectItem>
+                      <SelectItem value="missing">Missing (held)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

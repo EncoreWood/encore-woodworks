@@ -10,6 +10,7 @@ const STAGE_BADGES = {
   build: "bg-blue-100 text-blue-800 border-blue-200",
   complete: "bg-green-100 text-green-800 border-green-200",
   on_hold: "bg-slate-200 text-slate-700 border-slate-300",
+  missing: "bg-orange-100 text-orange-800 border-orange-200",
 };
 
 export default function MissingItemCardViewerDialog({ cardId, onClose }) {

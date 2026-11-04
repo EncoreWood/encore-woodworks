@@ -168,9 +168,10 @@ export default function ProductionMissingItemsTab({ currentUser }) {
     }
   };
 
-  // Send this item's linked production card back into the production flow (Cut stage).
-  // With the linked-card model, the missing-items card is the one sent through.
-  const sendCardToProduction = async (item, stage) => {
+  // Send this item's held missing card into the production flow. With the linked-card
+  // model, the missing-items card is the one sent through — it leaves the held "missing"
+  // state and behaves like a normal card from there on.
+  const sendCardToProduction = async (item, stage, points) => {
     const targetCardId = item.missing_card_id || item.production_item_id;
     if (!targetCardId) {
       toast.error("This item has no linked production card");
@@ -182,12 +183,24 @@ export default function ProductionMissingItemsTab({ currentUser }) {
       const card = cardById.get(targetCardId) || await base44.entities.ProductionItem.get(targetCardId);
       const movedBy = currentUser?.full_name || currentUser?.email || "Unknown";
       if (card.stage !== targetStage) {
-        await persistProductionMove(card, productionMovePatch(card, targetStage, movedBy));
+        // Points start at whatever was entered (default 0). A missing card never
+        // inherits the parent card's points.
+        const pts = points === undefined || points === null ? 0 : (Number(points) || 0);
+        const nextSort = Math.max(-1, ...productionItems.filter(i => i.stage === targetStage && !i.is_job_info).map(i => i.sort_order ?? -1)) + 1;
+        await persistProductionMove(card, productionMovePatch(card, targetStage, movedBy, {
+          total_points: pts,
+          sort_order: nextSort,
+          is_being_worked: false,
+        }));
+        if (!DONE_STATUSES.includes(item.status)) {
+          await base44.entities.MissingItem.update(item.id, { status: "In Production" });
+        }
       }
       toast.success(`Card sent to production (${targetStage.replace(/_/g, " ")}) ✓`);
       queryClient.invalidateQueries({ queryKey: ["productionItems"] });
       queryClient.invalidateQueries({ queryKey: ["columnMoveLogs"] });
       queryClient.invalidateQueries({ queryKey: ["productionTodayPoints"] });
+      queryClient.invalidateQueries({ queryKey: ["missingItems"] });
     } catch (err) {
       console.error("Failed to send card to production:", err);
       toast.error("Failed to send card to production");

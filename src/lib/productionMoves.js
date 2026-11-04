@@ -27,10 +27,11 @@ export function productionMovePatch(item, stage, movedBy, changes = {}) {
   };
 }
 
-// On Hold is a parking status, not a production stage: a card moved into it stays
-// where it was, so that move earns no points. (Leaving parking is still a genuine
-// departure from the stage it was parked in, so it keeps the card's value.)
-const PARKING = ["on_hold"];
+// On Hold and Missing are parking statuses, not production stages: a card moved into
+// them stays where it was, so that move earns no points. (Leaving parking is still a
+// genuine departure from the stage it was parked in, so it keeps the card's value.)
+// A missing-items card therefore joins a real stage only when someone sends it there.
+const PARKING = ["on_hold", "missing"];
 
 // Shared by every stage-move control. Never derive history points from files,
 // pts, visit counts, or whether the move is forward/backward.

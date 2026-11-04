@@ -39,6 +39,7 @@ export default function ActionQueueList({ items, cardById, projects, isAdmin, up
             key={item.id}
             item={item}
             card={cardById?.get(item.production_item_id)}
+            missingCard={cardById?.get(item.missing_card_id)}
             projects={projects}
             isAdmin={isAdmin}
             updating={updating}

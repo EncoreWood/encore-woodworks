@@ -1,10 +1,11 @@
-// The production flow, in order. "On Hold" is deliberately absent: it is a parking
-// status, not a stage, so it never earns points and never sits between two stages.
+// The production flow, in order. "On Hold" and "Missing" are deliberately absent: they
+// are parking statuses, not stages, so they never earn points and never sit between two
+// stages. A missing-items card waits in "missing" until it is sent to production.
 export const todayPointFlow = ["staged", "cut", "face_frame", "spray", "build", "complete"];
 
 // Statuses that park a card without moving it through the flow. A card parked here is
 // still sitting in the stage it came from, so its moves never award or remove points.
-export const parkingStages = ["on_hold"];
+export const parkingStages = ["on_hold", "missing"];
 
 export function denverDay(value = new Date()) {
   const date = new Date(value);

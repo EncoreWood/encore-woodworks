@@ -37,10 +37,20 @@
         "spray",
         "build",
         "complete",
-        "on_hold"
+        "on_hold",
+        "missing"
+      ],
+      "enumColors": [
+        "blue",
+        "purple",
+        "pink",
+        "yellow",
+        "green",
+        "gray",
+        "red"
       ],
       "default": "face_frame",
-      "description": "Current production stage"
+      "description": "Current production stage. 'missing' is a HELD state, not a production stage: a missing-items card waits there (earning no points, in no column) until someone sends it to production."
     },
     "sort_order": {
       "type": "number",

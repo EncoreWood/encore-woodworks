@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ArrowRight } from "lucide-react";
 
 const STAGE_OPTIONS = [
@@ -11,14 +12,16 @@ const STAGE_OPTIONS = [
   { id: "complete", label: "5. Complete", color: "bg-green-100 border-green-300 text-green-800 hover:bg-green-200" },
 ];
 
-export default function SendToProductionDialog({ open, items, onConfirm, onClose }) {
+export default function SendToProductionDialog({ open, items, onConfirm, onClose, showPoints = false }) {
   const [stage, setStage] = useState("cut");
+  const [points, setPoints] = useState("0");
 
   useEffect(() => {
-    if (open) setStage("cut");
+    if (open) { setStage("cut"); setPoints("0"); }
   }, [open]);
 
   const count = items?.length || 0;
+  const confirm = () => onConfirm(stage, showPoints ? (Number(points) || 0) : undefined);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -42,12 +45,28 @@ export default function SendToProductionDialog({ open, items, onConfirm, onClose
           ))}
         </div>
 
+        {showPoints && (
+          <div className="space-y-1 pb-1">
+            <label className="text-xs font-medium text-slate-600">Points for this card</label>
+            <Input
+              type="number"
+              min="0"
+              step="0.25"
+              value={points}
+              onChange={(e) => setPoints(e.target.value)}
+              className="h-9 text-sm"
+              placeholder="0"
+            />
+            <p className="text-[11px] text-slate-500">Starts at 0 — a missing card never inherits the parent card's points.</p>
+          </div>
+        )}
+
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
             className="bg-green-600 hover:bg-green-700 gap-2"
             disabled={count === 0}
-            onClick={() => onConfirm(stage)}
+            onClick={confirm}
           >
             <ArrowRight className="w-4 h-4" />
             Send to {STAGE_OPTIONS.find(s => s.id === stage)?.label}

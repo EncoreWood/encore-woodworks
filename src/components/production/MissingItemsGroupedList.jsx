@@ -108,7 +108,7 @@ export default function MissingItemsGroupedList({ items, cardById, projects, isA
                       {!roomCollapsed && (
                         <div className="divide-y divide-slate-50">
                           {roomItems.map(item => (
-                            <MissingItemRow key={item.id} item={item} card={cardById?.get(item.production_item_id)} projects={projects} isAdmin={isAdmin} updating={updating} onStatus={onStatus} onSendToProduction={onSendToProduction} onBackToOpen={onBackToOpen} sending={sending} onViewCard={onViewCard} />
+                            <MissingItemRow key={item.id} item={item} card={cardById?.get(item.production_item_id)} missingCard={cardById?.get(item.missing_card_id)} projects={projects} isAdmin={isAdmin} updating={updating} onStatus={onStatus} onSendToProduction={onSendToProduction} onBackToOpen={onBackToOpen} sending={sending} onViewCard={onViewCard} />
                           ))}
                         </div>
                       )}

@@ -45,6 +45,12 @@ export const STAGE_PALETTE = {
     dot: "bg-red-700 dark:bg-red-300",
     accent: "#B91C1C",
   },
+  missing: {
+    label: "Missing",
+    chip: "bg-orange-100 text-orange-800 border-orange-800/20 dark:bg-orange-900 dark:text-orange-100 dark:border-orange-300/30",
+    dot: "bg-orange-600 dark:bg-orange-300",
+    accent: "#EA580C",
+  },
 };
 
 /** The palette key for a production card — cards with no stage yet show as Staged. */

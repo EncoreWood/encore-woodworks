@@ -37,13 +37,13 @@ export async function ensureMissingItemCard({ parentItem, rows, notes }) {
   } else {
     const baseName = (parentItem.name || "Card").replace(/-M\d*$/, "");
     const childName = children.length ? `${baseName}-M${children.length + 1}` : `${baseName}-M`;
-    const sameStage = await base44.entities.ProductionItem.filter({ stage: "cut" });
-    const maxSort = Math.max(-1, ...sameStage.filter(i => !i.is_job_info).map(i => i.sort_order ?? -1));
+    // The child card is created HELD as "missing" — never dropped into Cut. It earns no
+    // points and occupies no column until someone sends it to production themselves.
     child = await base44.entities.ProductionItem.create({
       name: childName,
       type: parentItem.type || "cabinet",
-      stage: "cut",
-      sort_order: maxSort + 1,
+      stage: "missing",
+      sort_order: -1,
       project_id: parentItem.project_id || null,
       project_name: parentItem.project_name || null,
       room_name: parentItem.room_name || null,

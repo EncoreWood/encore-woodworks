@@ -5,7 +5,8 @@ export const STAGE_FLOW = ["cut", "face_frame", "spray", "build", "complete"];
 
 // Parking statuses sit outside the flow. A card parked here has NOT left the stage it
 // came from, so parking moves award and remove nothing — the card resumes where it was.
-export const PARKING_STATUSES = ["on_hold"];
+// "missing" is where a missing-items card waits: it is held, never in the flow.
+export const PARKING_STATUSES = ["on_hold", "missing"];
 
 const round2 = (n) => Math.round(n * 100) / 100;
 
