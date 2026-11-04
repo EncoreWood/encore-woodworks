@@ -119,8 +119,11 @@ export function buildAreaPacingRows(seriesByStage, stages, uptoMinute, from = DA
     });
 }
 
+// The day's total at 5:30 PM on today's rate. Production minutes stop at DAY_END, so a
+// rate read after the shop closes projects the number already on the board instead of
+// extrapolating into the evening.
 export function projectedFinish(completed, minute) {
-  const elapsed = productionMinutesAt(minute);
+  const elapsed = productionMinutesAt(Math.min(minute, DAY_END));
   if (elapsed <= 0) return null;
   return Math.round((completed / elapsed) * PRODUCTION_MINUTES * 10) / 10;
 }

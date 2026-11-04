@@ -1,5 +1,5 @@
 import {
-  CartesianGrid, Line, LineChart, ReferenceArea, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  CartesianGrid, ComposedChart, Line, ReferenceArea, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { format } from "date-fns";
 import { DEFAULT_MINIMUM, DEFAULT_TARGET } from "@/lib/pacingSettings";
@@ -7,7 +7,7 @@ import { isWeekend, shopDay } from "@/lib/pacingTargets";
 import { axisTicks, formatAxisValue } from "@/lib/pacingAxis";
 import { COMPLETED_INK, COMPLETED_WIDTH } from "@/lib/pacingZones";
 import { AREA_IDS, visibleAreas } from "./pacingAreas";
-import PacingZoneAreas from "./PacingZoneAreas";
+import { zoneAreas } from "./zoneAreas";
 
 const DEFAULT_FOR = { target: DEFAULT_TARGET, minimum: DEFAULT_MINIMUM };
 
@@ -81,7 +81,7 @@ export default function TrendPacingChart({ days = [], todayStr, mode, height, ar
   return (
     <div style={{ height }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: 0 }}>
+        <ComposedChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: 0 }}>
           {/* Weekend columns only in the all-areas view; they compete with the zones otherwise. */}
           {!zones && rows.filter(row => row.weekend).map(row => (
             <ReferenceArea
@@ -90,7 +90,7 @@ export default function TrendPacingChart({ days = [], todayStr, mode, height, ar
               fill="#f1f5f9" fillOpacity={1} stroke="none"
             />
           ))}
-          {zones && <PacingZoneAreas curve="stepAfter" />}
+          {zones && zoneAreas("stepAfter")}
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           <XAxis
             dataKey="index" type="number" domain={[-0.5, Math.max(rows.length - 0.5, 0.5)]}
@@ -130,7 +130,7 @@ export default function TrendPacingChart({ days = [], todayStr, mode, height, ar
               />
             );
           })}
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

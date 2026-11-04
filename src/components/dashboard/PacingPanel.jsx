@@ -99,14 +99,15 @@ export default function PacingPanel() {
       <div className="flex items-center justify-between gap-2 mb-3">
         <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">PTS Pacing</h3>
         <div className="flex items-center gap-1">
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => setShowTargets(true)}
-            title="Pacing targets"
-            className="rounded-md p-1 text-slate-400 transition-colors hover:text-slate-700"
+            className="h-8 gap-1.5 text-xs font-semibold text-slate-700"
           >
-            <Settings className="w-4 h-4" />
-          </button>
+            <Settings className="w-3.5 h-3.5" /> Targets
+          </Button>
           <Link to={createPageUrl("ShopProduction")}>
             <Button variant="ghost" size="sm" className="gap-1 text-slate-500 hover:text-slate-800 text-xs">
               <Factory className="w-3 h-3" /> View Board

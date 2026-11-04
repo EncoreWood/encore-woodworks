@@ -1,5 +1,5 @@
 import {
-  CartesianGrid, Line, LineChart, ReferenceArea, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  CartesianGrid, ComposedChart, Line, ReferenceArea, ReferenceDot, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import {
   DAY_END, DAY_START, FALLBACK_TARGETS, NON_PRODUCTION_BLOCKS,
@@ -8,7 +8,7 @@ import {
 import { axisTicks, formatAxisValue } from "@/lib/pacingAxis";
 import { COMPLETED_INK, COMPLETED_WIDTH } from "@/lib/pacingZones";
 import { AREA_IDS, visibleAreas } from "./pacingAreas";
-import PacingZoneAreas from "./PacingZoneAreas";
+import { zoneAreas } from "./zoneAreas";
 
 const DAY_TICKS = [420, 480, 540, 600, 660, 720, 780, 840, 900, 960, 1020];
 
@@ -50,7 +50,7 @@ export default function DayPacingChart({ series, upto, height, dense, area = "al
   return (
     <div style={{ height }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: 0 }}>
+        <ComposedChart data={data} margin={{ top: 10, right: 12, bottom: 0, left: 0 }}>
           {/* Non-production band shading competes with the zones, so it only shows in the
               all-areas view. The pace lines keep their flat steps either way. */}
           {!zones && NON_PRODUCTION_BLOCKS.map(block => {
@@ -65,7 +65,7 @@ export default function DayPacingChart({ series, upto, height, dense, area = "al
               />
             );
           })}
-          {zones && <PacingZoneAreas />}
+          {zones && zoneAreas("linear")}
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           <XAxis
             dataKey="minute" type="number" domain={[DAY_START, end]}
@@ -106,7 +106,7 @@ export default function DayPacingChart({ series, upto, height, dense, area = "al
               />
             );
           })}
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

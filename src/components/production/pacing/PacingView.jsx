@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Clock, Target, Gauge, TrendingUp } from "lucide-react";
+import { Clock, Target, Gauge, TrendingUp, Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import PacingChart from "./PacingChart";
 import StagePills from "./StagePills";
 import CheckpointList from "./CheckpointList";
+import PacingTargetsDialog from "@/components/dashboard/pacing/PacingTargetsDialog";
 import {
-  PRODUCTION_MINUTES, denverMinuteNow, projectedFinish, formatClock,
+  PRODUCTION_MINUTES, DAY_END, denverMinuteNow, projectedFinish, formatClock,
 } from "@/lib/productionPacing";
 import { formatStagePoints } from "@/lib/stagePoints";
 import useViewportTier from "@/hooks/useViewportTier";
@@ -34,9 +36,11 @@ export default function PacingView({ points, series, loading, error }) {
   const tier = useViewportTier();
   const { target: dailyTarget, minimum: dailyMinimum } = usePacingTargets();
   const [stage, setStage] = useState("complete");
+  const [showTargets, setShowTargets] = useState(false);
   const minuteNow = denverMinuteNow();
   const completed = Number(points?.complete) || 0;
   const projected = projectedFinish(completed, minuteNow);
+  const dayClosed = minuteNow >= DAY_END;
   const chartHeight = tier === "desktop" ? 340 : tier === "tablet" ? 270 : 230;
   const productionHours = PRODUCTION_MINUTES / 60;
   const rate = points => `${(points / productionHours).toFixed(1)} pts / hr`;
@@ -51,17 +55,32 @@ export default function PacingView({ points, series, loading, error }) {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500">PTS Pacing</h3>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setShowTargets(true)}
+          className="h-8 gap-1.5 text-xs font-semibold text-slate-700"
+        >
+          <Settings className="w-3.5 h-3.5" /> Targets
+        </Button>
+      </div>
+
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         <StatTile icon={Clock} label="Production time" value="8h 40m" hint={`${PRODUCTION_MINUTES} production min`} />
-        <StatTile icon={Target} label="Target" value={`${dailyTarget} pts`} hint={`≈${rate(dailyTarget)}`} />
-        <StatTile icon={Gauge} label="Minimum" value={`${dailyMinimum} pts`} hint={`≈${rate(dailyMinimum)}`} />
+        <StatTile icon={Target} label="Target" value={`${dailyTarget} pts`} hint={`≈ ${rate(dailyTarget)}`} />
+        <StatTile icon={Gauge} label="Minimum" value={`${dailyMinimum} pts`} hint={`≈ ${rate(dailyMinimum)}`} />
         <StatTile
           icon={TrendingUp}
-          label="Projected finish"
+          label="Projected at close"
           value={projected == null ? "—" : `${formatStagePoints(projected)} pts`}
-          hint={`at current rate · ${formatClock(minuteNow)}`}
+          hint={dayClosed ? `day closed ${formatClock(DAY_END)}` : `by ${formatClock(DAY_END)} at this rate`}
         />
       </div>
+
+      <PacingTargetsDialog open={showTargets} onOpenChange={setShowTargets} />
 
       <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
         <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
