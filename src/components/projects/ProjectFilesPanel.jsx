@@ -2,8 +2,10 @@ import { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, Trash2, Loader2 } from "lucide-react";
+import { Upload, FileText, Trash2, Loader2, Files } from "lucide-react";
 import ProjectFilePreviewDialog from "@/components/projects/ProjectFilePreviewDialog";
+import { combineFilesToPdf } from "@/lib/combineFilesToPdf";
+import { useToast } from "@/components/ui/use-toast";
 
 const NAMED_SECTIONS = [
   { tag: "house_plans", label: "House Plans" },
@@ -15,6 +17,9 @@ const EXCLUDED_TAGS = ["house_plans", "appliance_specs", "job_photo", "cad_dxf",
 export default function ProjectFilesPanel({ project, onSave }) {
   const [uploadingTag, setUploadingTag] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
+  const [combiningTag, setCombiningTag] = useState(null);
+  const [combineProgress, setCombineProgress] = useState("");
+  const { toast } = useToast();
 
   const files = project.files || [];
   const sections = [
@@ -45,13 +50,68 @@ export default function ProjectFilesPanel({ project, onSave }) {
     if (confirm("Delete this file?")) onSave({ files: files.filter((_, i) => i !== idx) });
   };
 
+  const handleCombine = async (section) => {
+    if (combiningTag) return;
+    setCombiningTag(section.tag);
+    setCombineProgress(`1/${section.items.length}`);
+    try {
+      const { blob, pages, skipped } = await combineFilesToPdf(section.items, {
+        onProgress: ({ index, total }) => setCombineProgress(`${index}/${total}`),
+      });
+      if (!blob) {
+        toast({ title: "Nothing to combine", description: "Those files could not be turned into a PDF.", variant: "destructive" });
+        return;
+      }
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${project.project_name || "Project"} - ${section.label}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      toast({
+        title: "Combined PDF ready",
+        description: `${pages} page${pages === 1 ? "" : "s"} downloaded${skipped ? ` · ${skipped} file${skipped === 1 ? "" : "s"} skipped` : ""}.`,
+      });
+    } finally {
+      setCombiningTag(null);
+      setCombineProgress("");
+    }
+  };
+
   return (
     <Card className="p-5 bg-white border-0 shadow-sm">
       <h2 className="text-lg font-semibold text-slate-900 mb-4">Project Files</h2>
       <div className="space-y-5">
         {sections.map(section => (
           <div key={section.tag}>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{section.label}</p>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{section.label}</p>
+              {section.items.length > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleCombine(section)}
+                  disabled={combiningTag !== null}
+                  className="h-7 px-2 text-xs text-slate-500 hover:text-amber-600 flex-shrink-0"
+                  title="Combine these files into one PDF"
+                >
+                  {combiningTag === section.tag ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      {combineProgress}
+                    </>
+                  ) : (
+                    <>
+                      <Files className="w-3.5 h-3.5" />
+                      Combine to PDF
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
             {section.items.length > 0 && (
               <div className="space-y-1.5 mb-2">
                 {section.items.map((file) => {
