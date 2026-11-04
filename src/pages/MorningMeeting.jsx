@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useContext, useState, useEffect, useRef } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -19,9 +19,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { startOfWeek } from "date-fns";
 import CleaningScheduleWidget from "@/components/dashboard/CleaningScheduleWidget";
 import SectionCard from "@/components/meeting/SectionCard";
-import DayPacingChart from "@/components/dashboard/pacing/DayPacingChart";
+import PreviousDayPoints, { stageFigures, stageTotal } from "@/components/meeting/PreviousDayPoints";
 import usePacingTargets from "@/hooks/usePacingTargets";
-import { DAY_END } from "@/lib/productionPacing";
+import { TabsContext } from "@/components/tabs/TabContext";
+import { openProductionBoard } from "@/lib/meetingReturn";
 import WellDoneWidget from "@/components/meeting/WellDoneWidget";
 import WeeklyTopicPopup from "@/components/meeting/WeeklyTopicPopup";
 import TodaysScheduleDropdown from "@/components/meeting/TodaysScheduleDropdown";
@@ -69,6 +70,8 @@ export default function MorningMeeting() {
   // Yesterday is graded against the target that was in effect that day, not today's.
   const { targetsFor: pacingTargetsFor } = usePacingTargets();
   const queryClient = useQueryClient();
+  // The app's own tab strip: the Production board opens there when a browser tab can't.
+  const tabs = useContext(TabsContext);
 
   // Pause polling when any dialog/popup is open to avoid refreshing while user is editing
   const anyDialogOpen = showPresenterDialog || !!topicPopup;
@@ -583,17 +586,9 @@ export default function MorningMeeting() {
               const tomorrowPlans = yesterdayReviews.filter(r => r.tomorrow_plan?.trim()).map(r => ({ who: r.submitted_by, text: r.tomorrow_plan }));
 
               // --- Production Points by Stage ---
-              const STAGE_CONFIG = [
-                { id: "face_frame", label: "Face Frame", color: "bg-blue-100 text-blue-800 border-blue-200" },
-                { id: "spray",      label: "Spray",      color: "bg-purple-100 text-purple-800 border-purple-200" },
-                { id: "build",      label: "Build",      color: "bg-amber-100 text-amber-800 border-amber-200" },
-                { id: "complete",   label: "Complete",   color: "bg-green-100 text-green-800 border-green-200" },
-                // On Hold is a parking status, not a stage — it never earns points.
-              ];
-              // Same Denver-day figures as the board: production-stage departures,
-              // but net arrivals for Complete.
-              const stagePts = reviewDayPoints?.points || {};
-              const totalPts = Math.round(STAGE_CONFIG.reduce((s, { id }) => s + (stagePts[id] || 0), 0) * 100) / 100;
+              // Read off the reviewed day's own series — the very line the chart draws —
+              // so the tiles, the total and the curve are always the same day's figures.
+              const totalPts = stageTotal(stageFigures(reviewDayPoints));
               const hasAnyData = yesterdayReviews.length > 0 || totalPts > 0;
               // Nothing to say until the stage points for the reviewed day have arrived.
               if (!reviewDayPoints && yesterdayReviews.length === 0) return null;
@@ -604,56 +599,13 @@ export default function MorningMeeting() {
 
               return (
                 <div className="space-y-5">
-                  {/* Production Points */}
-                  {totalPts > 0 && (
-                    <div>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">📦 Points Produced by Stage</p>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {STAGE_CONFIG.map(({ id, label, color }) => {
-                          const pts = stagePts[id] || 0;
-                          return (
-                            <div key={id} className={`rounded-lg border px-3 py-2.5 text-center ${color} ${pts === 0 ? "opacity-40" : ""}`}>
-                              <p className="text-xs font-semibold mb-0.5">{label}</p>
-                              <p className="text-xl font-bold">{pts}<span className="text-xs font-normal ml-0.5">pts</span></p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <p className="text-right text-xs text-slate-400 mt-1">Total: <strong className="text-slate-700">{totalPts} pts</strong></p>
-                      <p className="text-[10px] text-slate-400 text-right">Stage departures; Complete counts net arrivals on {format(subDays(selectedDate, 1), "EEEE, MMM d")}</p>
-                    </div>
-                  )}
-
-                  {/* Pacing for the reviewed day — zones and lines against that day's targets */}
-                  {reviewDayPoints?.series && (() => {
-                    const reviewTargets = pacingTargetsFor(yesterday);
-                    // The day is graded on Complete points, the same figure the pacing
-                    // chart's Completed line ends on — not the stage-departure total above.
-                    const reviewComplete = Number(reviewDayPoints?.points?.complete) || 0;
-                    const verdict = reviewComplete >= reviewTargets.target
-                      ? { label: "Ahead of target", tone: "border-green-200 bg-green-50 text-green-800" }
-                      : reviewComplete >= reviewTargets.minimum
-                        ? { label: "Between minimum and target", tone: "border-slate-200 bg-slate-50 text-slate-700" }
-                        : { label: "Behind minimum", tone: "border-red-200 bg-red-50 text-red-700" };
-                    return (
-                      <div>
-                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-xs font-bold uppercase tracking-wide text-slate-500">📈 Pacing — {reviewComplete} pts in Complete</p>
-                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${verdict.tone}`}>{verdict.label}</span>
-                        </div>
-                        <DayPacingChart
-                          series={reviewDayPoints.series}
-                          upto={DAY_END}
-                          height={190}
-                          area="complete"
-                          targets={reviewTargets}
-                        />
-                        <p className="mt-1 text-[10px] text-slate-400">
-                          Measured against that day&rsquo;s target ({reviewTargets.target} pts) and minimum ({reviewTargets.minimum} pts).
-                        </p>
-                      </div>
-                    );
-                  })()}
+                  {/* Stage figures and pacing — both for the reviewed day only */}
+                  <PreviousDayPoints
+                    date={yesterday}
+                    dateLabel={format(subDays(selectedDate, 1), "EEEE, MMM d")}
+                    payload={reviewDayPoints}
+                    targets={pacingTargetsFor(yesterday)}
+                  />
 
                   {/* EOD Review Summary */}
                   {yesterdayReviews.length > 0 && (
@@ -853,7 +805,13 @@ export default function MorningMeeting() {
           })()}
 
           {/* 5. Today's Focus */}
-          <SectionCard title="Today's Focus" icon={Crosshair} color="orange" count={todaysFocusProjects.length + todayDesignMeetings.length + todayInstalls.length + todayDeliveries.length + todayGeneralMeetings.length}>
+          <SectionCard
+            title="Today's Focus"
+            icon={Crosshair}
+            color="orange"
+            count={todaysFocusProjects.length + todayDesignMeetings.length + todayInstalls.length + todayDeliveries.length + todayGeneralMeetings.length}
+            onTitleClick={() => openProductionBoard(tabs)}
+          >
             <div className="space-y-4">
 
               {/* Today's Schedule — collapsible dropdown */}

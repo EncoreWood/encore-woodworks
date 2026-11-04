@@ -10,12 +10,11 @@ import usePacingTargets from "@/hooks/usePacingTargets";
 import { denverDateStr, formatStagePoints } from "@/lib/stagePoints";
 import { denverMinuteNow, projectedFinish } from "@/lib/productionPacing";
 import { monthTargetPoints, quarterStart, quarterTargetPoints, shopDay, weekTargetPoints } from "@/lib/pacingTargets";
-import { ZONE_GREEN, ZONE_RED } from "@/lib/pacingZones";
 import DayPacingChart from "./pacing/DayPacingChart";
+import PacingLegend from "./pacing/PacingLegend";
 import TrendPacingChart from "./pacing/TrendPacingChart";
 import PacingAreaPicker from "./pacing/PacingAreaPicker";
 import PacingTargetsDialog from "./pacing/PacingTargetsDialog";
-import { visibleAreas } from "./pacing/pacingAreas";
 
 const MODES = [
   { id: "day", label: "Day" },
@@ -31,36 +30,6 @@ function Chip({ label, value, goal }) {
         {value}
         {goal ? <span className="ml-0.5 text-[11px] font-medium text-slate-400">/ {goal}</span> : null}
       </p>
-    </div>
-  );
-}
-
-function Legend({ area, tint, targets, zones }) {
-  return (
-    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-slate-500">
-      {visibleAreas(area).map(item => (
-        <span key={item.id} className="flex items-center gap-1">
-          <span className="h-0.5 w-3" style={{ backgroundColor: zones ? "#0f172a" : item.color }} /> {item.label}
-        </span>
-      ))}
-      <span className="flex items-center gap-1"><span className="h-0.5 w-3 border-t border-dashed border-blue-600" /> Target {targets.target}</span>
-      {zones && (
-        <span className="flex items-center gap-1"><span className="h-0.5 w-3 border-t border-dotted border-slate-400" /> Minimum {targets.minimum}</span>
-      )}
-      {zones ? (
-        <>
-          <span className="flex items-center gap-1">
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: ZONE_GREEN, opacity: 0.35 }} /> Ahead of target
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: ZONE_RED, opacity: 0.35 }} /> Behind minimum
-          </span>
-        </>
-      ) : (
-        <span className="flex items-center gap-1">
-          <span className="h-2.5 w-2.5 rounded-sm border border-slate-200 bg-slate-100" /> {tint}
-        </span>
-      )}
     </div>
   );
 }
@@ -193,7 +162,7 @@ export default function PacingPanel() {
       )}
 
       {!isError && ready && (
-        <Legend
+        <PacingLegend
           area={area}
           zones={zones}
           targets={targets}

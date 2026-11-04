@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef, Fragment } from "react";
+import { useContext, useState, useCallback, useEffect, useMemo, useRef, Fragment } from "react";
 import { format, startOfWeek, startOfMonth, subDays } from "date-fns";
 import CompleteStageCards from "../components/production/CompleteStageCards";
 import { base44 } from "@/api/base44Client";
@@ -9,7 +9,9 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { X, Hammer } from "lucide-react";
+import { X, Hammer, ArrowLeft } from "lucide-react";
+import { TabsContext } from "../components/tabs/TabContext";
+import { markedForReturn, onMeetingReturnChange, returnToMorningMeeting } from "@/lib/meetingReturn";
 import { usePaneNavigate } from "@/lib/paneSearch";
 import { useToast } from "@/components/ui/use-toast";
 import ReportStruggleDialog from "../components/production/ReportStruggleDialog";
@@ -70,6 +72,10 @@ export default function ShopProduction() {
    const queryClient = useQueryClient();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("production");
+  // Set when the board was opened from the meeting because a new browser tab wasn't
+  // available — then the header offers the way back to exactly where they were.
+  const tabs = useContext(TabsContext);
+  const [openedFromMeeting, setOpenedFromMeeting] = useState(() => markedForReturn());
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [annotatingPdf, setAnnotatingPdf] = useState(null);
@@ -116,6 +122,10 @@ export default function ShopProduction() {
     const pid = params.get("project_id");
     if (pid) setScrollToProjectId(pid);
   }, []);
+
+  // A Production tab that is already open never re-mounts, so it re-reads the flag when
+  // the meeting sends people here instead of the state it happened to mount with.
+  useEffect(() => onMeetingReturnChange(() => setOpenedFromMeeting(markedForReturn())), []);
 
   // Pause background polling when any modal/form is open — prevents refresh interrupting edits
   const anyModalOpen = showForm || !!pickupItem || !!reportingStruggle || givingCompliment || !!reportingMissing || !!quickReportItem || showEndOfDay || !!annotatingPdf || !!sendToCutItem || !!cutFromPlan;
@@ -760,6 +770,16 @@ export default function ShopProduction() {
     <div className="min-h-screen bg-slate-50">
       <PullToRefreshIndicator pullDistance={pullDistance} isRefreshing={isRefreshing} />
       <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
+        {openedFromMeeting && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => returnToMorningMeeting(tabs)}
+            className="mb-2 gap-1.5 border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Morning Meeting
+          </Button>
+        )}
         <ProductionHeader
           points={todayPoints?.points}
           series={todayPoints?.series}
