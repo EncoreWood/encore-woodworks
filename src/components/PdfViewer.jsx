@@ -227,7 +227,7 @@ export default function PdfViewer({ url, className = "", continuous = false }) {
   return (
     <div
       ref={containerRef}
-      className={`relative flex flex-col bg-slate-800 ${className}`}
+      className={`relative flex flex-col h-full min-h-0 bg-slate-800 ${className}`}
       onContextMenu={handleContextMenu}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
@@ -279,8 +279,8 @@ export default function PdfViewer({ url, className = "", continuous = false }) {
       <div
         ref={scrollRef}
         onWheel={handleWheel}
-        className={`flex-1 overflow-auto overscroll-contain ${cursorClass}`}
-        style={{ WebkitOverflowScrolling: "touch", touchAction: continuous && scale <= 1 ? "pan-y" : "none" }}
+        className={`flex-1 min-h-0 overflow-auto overscroll-contain ${cursorClass}`}
+        style={{ WebkitOverflowScrolling: "touch", touchAction: scale <= 1 ? "pan-x pan-y" : "none" }}
       >
         {error ? (
           <div className="flex flex-col items-center justify-center h-full text-white/70 gap-3 p-6 text-center">
