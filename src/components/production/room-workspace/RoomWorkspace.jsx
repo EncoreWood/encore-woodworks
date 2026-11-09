@@ -102,12 +102,14 @@ export default function RoomWorkspace({
       const item = items.find(candidate => candidate.id === id);
       // This modal is the one place a card's points change; every other save leaves them alone
       if (pointsEdited && item) {
+        const nextPts = data.pts === "" || data.pts === null || data.pts === undefined ? null : Number(data.pts);
         let files = safeData.files || [];
-        if ("pts" in safeData && files.length === 1) {
-          files = [{ ...files[0], pts: safeData.pts }];
+        if (files.length === 1) {
+          files = [{ ...files[0], pts: nextPts }];
           safeData.files = files;
         }
-        safeData.total_points = computeTotalPoints({ files, pts: "pts" in safeData ? safeData.pts : item.pts });
+        safeData.pts = nextPts;
+        safeData.total_points = computeTotalPoints({ files, pts: nextPts });
         const audit = pointsAuditEntry(item, safeData.total_points, currentUser);
         if (audit) safeData.points_audit_log = [...(item.points_audit_log || []), audit];
       }

@@ -142,7 +142,11 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
   const handleSubmit = (e) => {
     e.preventDefault();
     submittedRef.current = true;
-    onSubmit(formData);
+    // Points are typed as text so nothing the user types is dropped mid-entry;
+    // normalize to a number (or null for a blank field) on the way out.
+    const rawPts = formData.pts;
+    const pts = rawPts === "" || rawPts === null || rawPts === undefined ? null : Number(rawPts);
+    onSubmit({ ...formData, pts: Number.isFinite(pts) ? pts : null });
   };
 
   const handleChange = (field, value) => {
@@ -425,11 +429,10 @@ export default function ProductionItemForm({ open, onOpenChange, onSubmit, initi
             <div className="space-y-1">
               <Label className="text-xs font-medium text-slate-600">Points (PTS)</Label>
               <Input
-                type="number"
-                step="0.1"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 value={formData.pts ?? ""}
-                onChange={(e) => handleChange("pts", e.target.value === "" ? undefined : parseFloat(e.target.value))}
+                onChange={(e) => handleChange("pts", e.target.value.replace(/[^0-9.]/g, ""))}
                 placeholder="e.g. 1.5"
                 className="h-9 text-sm"
               />

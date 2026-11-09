@@ -289,13 +289,15 @@ export default function ShopProduction() {
       // The Edit Production Item modal is the only place a card's points change.
       // Every other save leaves total_points exactly as it is.
       if (pointsEdited && item) {
+        const nextPts = data.pts === "" || data.pts === null || data.pts === undefined ? null : Number(data.pts);
         let files = safeData.files || [];
         // Card PTS is authoritative: a single-file card keeps that file's PTS equal to it
-        if ("pts" in safeData && files.length === 1) {
-          files = [{ ...files[0], pts: safeData.pts }];
+        if (files.length === 1) {
+          files = [{ ...files[0], pts: nextPts }];
           safeData.files = files;
         }
-        safeData.total_points = computeTotalPoints({ files, pts: "pts" in safeData ? safeData.pts : item.pts });
+        safeData.pts = nextPts;
+        safeData.total_points = computeTotalPoints({ files, pts: nextPts });
         const audit = pointsAuditEntry(item, safeData.total_points, currentUser);
         if (audit) safeData.points_audit_log = [...(item.points_audit_log || []), audit];
       }
