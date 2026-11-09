@@ -15,6 +15,9 @@ import { parseDate } from "@/lib/parseDate";
 
 export default function VacationRequestForm({ employee, currentUser }) {
   const [showDialog, setShowDialog] = useState(false);
+  const [ptoHoursInput, setPtoHoursInput] = useState("");
+  // true once the person typed their own PTO amount, so date changes stop overwriting it
+  const [ptoManual, setPtoManual] = useState(false);
   const [formData, setFormData] = useState({
     start_date: "",
     end_date: "",
@@ -144,10 +147,10 @@ export default function VacationRequestForm({ employee, currentUser }) {
     return { earned, used, available };
   };
 
-  const calculateVacationDays = () => {
-    if (!formData.start_date || !formData.end_date) return 0;
-    const start = parseDate(formData.start_date);
-    const end = parseDate(formData.end_date);
+  const calculateVacationDays = (data = formData) => {
+    if (!data.start_date || !data.end_date) return 0;
+    const start = parseDate(data.start_date);
+    const end = parseDate(data.end_date);
     
     const workDays = settings[0]?.work_days || [1, 2, 3, 4];
     const allDays = eachDayOfInterval({ start, end });
@@ -160,8 +163,8 @@ export default function VacationRequestForm({ employee, currentUser }) {
     return businessDays.length;
   };
 
-  const calculateHoursNeeded = () => {
-    const days = calculateVacationDays();
+  const calculateHoursNeeded = (data = formData) => {
+    const days = calculateVacationDays(data);
     const workStartTime = settings[0]?.work_start_time || "07:00";
     const workEndTime = settings[0]?.work_end_time || "17:30";
     const lunchBreak = settings[0]?.lunch_break_minutes || 30;
@@ -175,25 +178,33 @@ export default function VacationRequestForm({ employee, currentUser }) {
     return days * hoursPerDay;
   };
 
+  const handleDateChange = (field, value) => {
+    const next = { ...formData, [field]: value };
+    setFormData(next);
+    if (next.use_pto && !ptoManual) {
+      setPtoHoursInput(calculateHoursNeeded(next).toFixed(2));
+    }
+  };
+
   const handleSubmit = async () => {
     if (!employee || !formData.start_date || !formData.end_date) return;
 
-    const hoursNeeded = calculateHoursNeeded();
     const pto = calculatePTO();
 
-    if (formData.use_pto && hoursNeeded > pto.available) {
-      alert(`Not enough PTO. You need ${hoursNeeded.toFixed(2)} hours but only have ${pto.available.toFixed(2)} available.`);
+    if (formData.use_pto && ptoHoursToUse > pto.available) {
+      alert(`Not enough PTO. You're using ${ptoHoursToUse.toFixed(2)} hours but only have ${pto.available.toFixed(2)} available.`);
       return;
     }
 
     const status = currentUser?.role === "admin" ? "approved" : "pending";
+    const usesPto = formData.use_pto && ptoHoursToUse > 0;
     const vacation = await base44.entities.Vacation.create({
       employee_id: employee.id,
       employee_name: employee.full_name,
       start_date: formData.start_date,
       end_date: formData.end_date,
-      use_pto: formData.use_pto,
-      pto_hours_used: formData.use_pto ? hoursNeeded : 0,
+      use_pto: usesPto,
+      pto_hours_used: usesPto ? parseFloat(ptoHoursToUse.toFixed(2)) : 0,
       status,
       notes: formData.notes || undefined
     });
@@ -205,11 +216,15 @@ export default function VacationRequestForm({ employee, currentUser }) {
     queryClient.invalidateQueries({ queryKey: ["vacations"] });
     setShowDialog(false);
     setFormData({ start_date: "", end_date: "", use_pto: false, notes: "" });
+    setPtoHoursInput("");
+    setPtoManual(false);
   };
 
   const pto = calculatePTO();
   const hoursNeeded = calculateHoursNeeded();
   const vacationDays = calculateVacationDays();
+  // Full PTO cover unless the person typed their own amount
+  const ptoHoursToUse = ptoManual ? parseFloat(ptoHoursInput) || 0 : hoursNeeded;
 
   const statusColors = {
     pending: "bg-yellow-100 text-yellow-800",
@@ -321,7 +336,7 @@ export default function VacationRequestForm({ employee, currentUser }) {
               <Input
                 type="date"
                 value={formData.start_date}
-                onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                onChange={(e) => handleDateChange("start_date", e.target.value)}
                 className="mt-1"
               />
             </div>
@@ -330,7 +345,7 @@ export default function VacationRequestForm({ employee, currentUser }) {
               <Input
                 type="date"
                 value={formData.end_date}
-                onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                onChange={(e) => handleDateChange("end_date", e.target.value)}
                 className="mt-1"
               />
             </div>
@@ -347,20 +362,44 @@ export default function VacationRequestForm({ employee, currentUser }) {
               <Checkbox
                 id="use_pto"
                 checked={formData.use_pto}
-                onCheckedChange={(checked) => setFormData({ ...formData, use_pto: checked })}
+                onCheckedChange={(checked) => {
+                  setFormData({ ...formData, use_pto: checked });
+                  setPtoManual(false);
+                  setPtoHoursInput(checked ? calculateHoursNeeded().toFixed(2) : "");
+                }}
               />
               <Label htmlFor="use_pto" className="cursor-pointer font-normal">
                 Use PTO hours for this vacation
               </Label>
             </div>
 
-            {formData.use_pto && hoursNeeded > 0 && (
-              <div className={`p-3 rounded-lg ${hoursNeeded > pto.available ? "bg-red-50" : "bg-green-50"}`}>
-                <p className={`text-sm font-medium ${hoursNeeded > pto.available ? "text-red-900" : "text-green-900"}`}>
-                  {hoursNeeded > pto.available ? (
-                    <>⚠️ Not enough PTO. Need {hoursNeeded.toFixed(2)} hrs, have {pto.available.toFixed(2)} hrs</>
+            {formData.use_pto && vacationDays > 0 && (
+              <div>
+                <Label>PTO hours to use</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.25"
+                  value={ptoHoursInput}
+                  onChange={(e) => {
+                    setPtoHoursInput(e.target.value);
+                    setPtoManual(true);
+                  }}
+                  className="mt-1"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  {hoursNeeded.toFixed(2)} hrs covers all {vacationDays} work day{vacationDays !== 1 ? "s" : ""}. Enter a lower amount to use less PTO.
+                </p>
+              </div>
+            )}
+
+            {formData.use_pto && ptoHoursToUse > 0 && (
+              <div className={`p-3 rounded-lg ${ptoHoursToUse > pto.available ? "bg-red-50" : "bg-green-50"}`}>
+                <p className={`text-sm font-medium ${ptoHoursToUse > pto.available ? "text-red-900" : "text-green-900"}`}>
+                  {ptoHoursToUse > pto.available ? (
+                    <>⚠️ Not enough PTO. Need {ptoHoursToUse.toFixed(2)} hrs, have {pto.available.toFixed(2)} hrs</>
                   ) : (
-                    <>✓ Will use {hoursNeeded.toFixed(2)} PTO hours. {(pto.available - hoursNeeded).toFixed(2)} hrs remaining</>
+                    <>✓ Will use {ptoHoursToUse.toFixed(2)} PTO hours ({(ptoHoursToUse / vacationDays).toFixed(2)} hrs/day). {(pto.available - ptoHoursToUse).toFixed(2)} hrs remaining</>
                   )}
                 </p>
               </div>
