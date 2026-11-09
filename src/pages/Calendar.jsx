@@ -14,6 +14,7 @@ import {
   format, isSameDay, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
   addMonths, addDays, isWithinInterval, startOfDay
 } from "date-fns";
+import { parseDate } from "@/lib/parseDate";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -359,7 +360,7 @@ export default function CalendarPage() {
     return assignedTasks.filter(t => t.due_date === dateStr && (isAdmin || t.assigned_to_email === currentUser?.email));
   };
   const getBathroomCleaningsForDate = (date) => bathroomCleanings.filter(c => c.date === format(date, "yyyy-MM-dd"));
-  const getVacationsForDate = (date) => vacations.filter(v => isWithinInterval(date, { start: new Date(v.start_date), end: new Date(v.end_date) }));
+  const getVacationsForDate = (date) => vacations.filter(v => isWithinInterval(date, { start: parseDate(v.start_date), end: parseDate(v.end_date) }));
 
   // Projects hidden from the calendar via the timeline "On Calendar" toggle
   const calendarVisibleProjects = projects.filter(p => p.show_on_calendar !== false);

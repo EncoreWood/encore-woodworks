@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar, Trash2, Clock } from "lucide-react";
 import { format, differenceInDays, eachDayOfInterval } from "date-fns";
+import { parseDate } from "@/lib/parseDate";
 
 export default function VacationRequestForm({ employee, currentUser }) {
   const [showDialog, setShowDialog] = useState(false);
@@ -49,7 +50,7 @@ export default function VacationRequestForm({ employee, currentUser }) {
     const [eH, eM] = workEndTime.split(":").map(Number);
     const hoursPerDay = ((eH * 60 + eM) - (sH * 60 + sM) - lunchBreak) / 60;
 
-    const days = eachDayOfInterval({ start: new Date(vacation.start_date), end: new Date(vacation.end_date) });
+    const days = eachDayOfInterval({ start: parseDate(vacation.start_date), end: parseDate(vacation.end_date) });
     const workDayList = days.filter(day => {
       const dow = day.getDay() === 0 ? 7 : day.getDay();
       return workDays.includes(dow);
@@ -145,8 +146,8 @@ export default function VacationRequestForm({ employee, currentUser }) {
 
   const calculateVacationDays = () => {
     if (!formData.start_date || !formData.end_date) return 0;
-    const start = new Date(formData.start_date);
-    const end = new Date(formData.end_date);
+    const start = parseDate(formData.start_date);
+    const end = parseDate(formData.end_date);
     
     const workDays = settings[0]?.work_days || [1, 2, 3, 4];
     const allDays = eachDayOfInterval({ start, end });
@@ -278,7 +279,7 @@ export default function VacationRequestForm({ employee, currentUser }) {
                       )}
                     </div>
                     <p className="text-sm font-medium text-slate-900">
-                      {format(new Date(vacation.start_date), "MMM d")} - {format(new Date(vacation.end_date), "MMM d, yyyy")}
+                      {format(parseDate(vacation.start_date), "MMM d")} - {format(parseDate(vacation.end_date), "MMM d, yyyy")}
                     </p>
                     {vacation.notes && (
                       <p className="text-xs text-slate-600 mt-1">{vacation.notes}</p>
