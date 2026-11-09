@@ -116,10 +116,18 @@ export default function VacationRequestForm({ employee, currentUser }) {
     const totalHoursWorked = workEntries.reduce((sum, e) => sum + (e.hours_worked || 0), 0);
     const earned = totalHoursWorked * accrualRate;
 
+    // PTO days auto-created when a vacation was approved (notes "Vacation <id>") are already
+    // counted through the vacation's own pto_hours_used — counting them again double-charges.
     const ptoEntries = timeEntries.filter(
-      (e) => e.employee_id === employee.id && e.entry_type === "pto"
+      (e) =>
+        e.employee_id === employee.id &&
+        e.entry_type === "pto" &&
+        !(e.notes || "").startsWith("Vacation ")
     );
-    const ptoUsedFromEntries = ptoEntries.length * 8;
+    const ptoUsedFromEntries = ptoEntries.reduce(
+      (sum, e) => sum + (e.hours_worked || 0),
+      0
+    );
 
     const approvedVacations = vacations.filter(
       (v) => v.status === "approved" && v.use_pto

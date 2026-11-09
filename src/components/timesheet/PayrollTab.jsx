@@ -198,8 +198,14 @@ function calcAvailablePTO(employee, timeEntries, vacations, accrualRate) {
   const totalHoursWorked = workEntries.reduce((s, e) => s + (e.hours_worked || 0), 0);
   const earned = totalHoursWorked * accrualRate;
 
-  const ptoEntries = timeEntries.filter(e => e.employee_id === employee.id && e.entry_type === "pto");
-  const ptoUsedFromEntries = ptoEntries.length * 8;
+  // Skip the day entries auto-created by an approved vacation — those hours are already
+  // in the vacation's pto_hours_used below.
+  const ptoEntries = timeEntries.filter(e =>
+    e.employee_id === employee.id &&
+    e.entry_type === "pto" &&
+    !(e.notes || "").startsWith("Vacation ")
+  );
+  const ptoUsedFromEntries = ptoEntries.reduce((s, e) => s + (e.hours_worked || 0), 0);
 
   const approvedVacations = vacations.filter(v => v.employee_id === employee.id && v.status === "approved" && v.use_pto);
   const ptoUsedFromVacations = approvedVacations.reduce((s, v) => s + (v.pto_hours_used || 0), 0);
