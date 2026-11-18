@@ -93,8 +93,8 @@ function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved
     <div className="border border-slate-200 rounded-xl overflow-hidden mb-3">
       {/* Header row */}
       <div
-        onClick={onOpenSummary}
-        title="Click to see this pay period's time cards"
+        onClick={() => { if (!editing) onOpenSummary?.(); }}
+        title={editing ? undefined : "Click to see this pay period's time cards"}
         className="cursor-pointer hover:bg-slate-100 flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200 flex-wrap transition-colors"
       >
         <div className="flex items-center gap-3 flex-wrap">
@@ -102,7 +102,7 @@ function EmployeePayRow({ employee, timeEntries, periodStart, periodEnd, onSaved
 
           {/* Pay rate display / edit */}
           {editing ? (
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
               <Select value={form.pay_type} onValueChange={v => setForm(f => ({ ...f, pay_type: v }))}>
                 <SelectTrigger className="h-7 w-24 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
