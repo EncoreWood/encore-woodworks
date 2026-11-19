@@ -7,6 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import RoomNotesTasksPanel from "./RoomNotesTasksPanel";
 import RoomImageGallery from "./RoomImageGallery";
 import ProjectFilesList from "@/components/projects/ProjectFilesList";
+import ProjectFileAddButton from "@/components/projects/ProjectFileAddButton";
 import RoomSelectionsEditor from "./RoomSelectionsEditor";
 import RoomImageAddButton from "./RoomImageAddButton";
 import { Loader2, Images, Palette, Paperclip, FileText, ArrowLeft, ChevronDown, Check, ExternalLink, LayoutGrid } from "lucide-react";
@@ -216,7 +217,7 @@ export default function RoomInfoPane({ project, roomName, cardCount = 0, onViewC
           />
         </Section>
 
-        <Section icon={Paperclip} title="Project Files">
+        <Section icon={Paperclip} title="Project Files" action={<ProjectFileAddButton project={proj} />}>
           <ProjectFilesList files={proj.files || []} dark={false} />
         </Section>
       </div>
