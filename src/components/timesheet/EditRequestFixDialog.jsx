@@ -7,6 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import TimePicker from "./TimePicker";
 
+const LUNCH_MARK = "[−30 min lunch]";
+
 function calcHours(clockIn, clockOut) {
   if (!clockIn || !clockOut) return "0.00";
   const [inH, inM] = clockIn.split(":").map(Number);
@@ -26,7 +28,8 @@ export default function EditRequestFixDialog({ open, onOpenChange, request, entr
   useEffect(() => {
     if (!open || !request) return;
     setError(null);
-    setLunchTaken(false);
+    // A day that already carries the lunch marker has had 30 minutes taken off it
+    setLunchTaken(entries.some(e => (e.notes || "").includes(LUNCH_MARK)));
     const existing = entries.map(e => ({ id: e.id, clock_in: e.clock_in || "", clock_out: e.clock_out || "" }));
     setRows(existing.length ? existing : [{ id: null, clock_in: "", clock_out: "" }]);
   }, [open, request?.id]);
@@ -47,14 +50,20 @@ export default function EditRequestFixDialog({ open, onOpenChange, request, entr
     try {
       const applied = [];
       for (const r of usable) {
+        const previous = r.id ? entries.find(e => e.id === r.id) : null;
+        const previousNotes = previous?.notes || "";
+        // Hours always come from the clock times, so a lunch already taken has to be
+        // taken off again here — otherwise the marker claims a deduction that is gone.
+        const notes = previousNotes.split(LUNCH_MARK).join("").trim();
         const data = {
           clock_in: r.clock_in,
           clock_out: r.clock_out || null,
-          hours_worked: r.clock_out ? parseFloat(calcHours(r.clock_in, r.clock_out)) : 0
+          hours_worked: r.clock_out ? parseFloat(calcHours(r.clock_in, r.clock_out)) : 0,
+          notes
         };
         if (r.id) {
           await base44.entities.TimeEntry.update(r.id, data);
-          applied.push({ id: r.id, hours: data.hours_worked, notes: entries.find(e => e.id === r.id)?.notes || "" });
+          applied.push({ id: r.id, hours: data.hours_worked, notes, hadLunch: previousNotes.includes(LUNCH_MARK) });
         } else {
           const created = await base44.entities.TimeEntry.create({
             employee_id: request.employee_id,
@@ -63,15 +72,16 @@ export default function EditRequestFixDialog({ open, onOpenChange, request, entr
             entry_type: "work",
             ...data
           });
-          applied.push({ id: created.id, hours: data.hours_worked, notes: "" });
+          applied.push({ id: created.id, hours: data.hours_worked, notes, hadLunch: false });
         }
       }
       // 30-minute unpaid lunch — same convention the lunch-deduction tool uses
-      const target = applied.reduce((best, a) => (a.hours > best.hours ? a : best), applied[0]);
-      if (lunchTaken && target && !target.notes.includes("[−30 min lunch]")) {
+      if (lunchTaken && applied.length) {
+        const target = applied.find(a => a.hadLunch) ||
+          applied.reduce((best, a) => (a.hours > best.hours ? a : best), applied[0]);
         await base44.entities.TimeEntry.update(target.id, {
           hours_worked: parseFloat(Math.max(0, target.hours - 0.5).toFixed(2)),
-          notes: (target.notes ? target.notes + " " : "") + "[−30 min lunch]"
+          notes: (target.notes ? target.notes + " " : "") + LUNCH_MARK
         });
       }
       await base44.entities.TimeEditRequest.update(request.id, {

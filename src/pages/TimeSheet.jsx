@@ -604,9 +604,14 @@ export default function TimeSheet() {
 
   const handleSaveEdit = () => {
     if (!editingEntry) return;
-    const hoursWorked = editForm.clock_in && editForm.clock_out
+    const fromTimes = !!(editForm.clock_in && editForm.clock_out);
+    let hoursWorked = fromTimes
       ? parseFloat(calculateHours(editForm.clock_in, editForm.clock_out))
       : editingEntry.hours_worked;
+    // Re-deriving hours from the clock times must keep an already-applied 30-min lunch
+    if (fromTimes && (editForm.notes || "").includes("[−30 min lunch]")) {
+      hoursWorked = parseFloat(Math.max(0, hoursWorked - 0.5).toFixed(2));
+    }
     updateEntryMutation.mutate({ id: editingEntry.id, data: { clock_in: editForm.clock_in || null, clock_out: editForm.clock_out || null, notes: editForm.notes, hours_worked: hoursWorked } });
   };
 
